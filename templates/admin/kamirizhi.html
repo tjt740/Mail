@@ -133,7 +133,7 @@
     }
 
     body.sidebar-collapsed .sidebar-logo::after {
-        content: '📧';
+        content: '';
         font-size: 20px;
         display: block;
         text-align: center;
@@ -512,29 +512,29 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <div class="sidebar-logo">📧 邮件管理系统</div>
+        <div class="sidebar-logo"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span> 邮件管理系统</div>
     </div>
     <nav class="sidebar-nav">
         <a href="{{ url_for('admin_home') }}" class="nav-item">
-            <i>🏠</i> 首页
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-home"></use></svg></span></i> 首页
         </a>
         <a href="{{ url_for('admin_mailbox') }}" class="nav-item">
-            <i>📫</i> 邮箱管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span></i> 邮箱管理
         </a>
         <a href="{{ url_for('admin_daili') }}" class="nav-item">
-            <i>🌐</i> 代理池
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span></i> 代理池
         </a>
         <a href="{{ url_for('admin_kami') }}" class="nav-item">
-            <i>🔑</i> 卡密管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-key"></use></svg></span></i> 卡密管理
         </a>
         <a href="{{ url_for('admin_kamirizhi') }}" class="nav-item active">
-            <i>📝</i> 卡密日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span></i> 卡密日志
         </a>
         <a href="{{ url_for('admin_shoujian') }}" class="nav-item">
-            <i>📧</i> 收件日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span></i> 收件日志
         </a>
         <a href="{{ url_for('admin_system') }}" class="nav-item">
-            <i>⚙️</i> 系统设置
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span></i> 系统设置
         </a>
     </nav>
 </div>
@@ -543,8 +543,8 @@
 <div class="main-content">
     <div class="header">
         <div style="display: flex; align-items: center; gap: 15px;">
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏">⮞</button>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span></button>
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu"></use></svg></span></button>
             <h1 class="header-title">卡密日志</h1>
         </div>
         <div class="header-actions">
@@ -564,13 +564,13 @@
                 <div class="search-controls">
                     <div class="search-box">
                         <input type="text" id="cardLogSearch" placeholder="搜索卡密..." onkeydown="if(event.key==='Enter'){searchCardLogs();}">
-                        <button class="btn btn-primary" onclick="searchCardLogs()">🔍 搜索</button>
-                        <button class="btn btn-danger" onclick="clearLogSearch()">🧹 清除</button>
+                        <button class="btn btn-primary" onclick="searchCardLogs()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 搜索</button>
+                        <button class="btn btn-danger" onclick="clearLogSearch()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-clear"></use></svg></span> 清除</button>
                     </div>
                     <div class="search-actions">
                         <input type="number" id="retentionDays" min="0" placeholder="保留天数(0关闭)" style="padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 8px; width: 160px;">
-                        <button class="btn btn-primary" onclick="saveLogRetention()">💾 保存定期清理</button>
-                        <button class="btn btn-danger" onclick="clearCardLogs()">🗑️ 清空日志</button>
+                        <button class="btn btn-primary" onclick="saveLogRetention()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-save"></use></svg></span> 保存定期清理</button>
+                        <button class="btn btn-danger" onclick="clearCardLogs()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 清空日志</button>
                     </div>
                 </div>
                 
@@ -608,7 +608,7 @@
         const btn = document.getElementById('sidebarToggle');
         if (!btn) return;
         const isCollapsed = document.body.classList.contains('sidebar-collapsed');
-        btn.textContent = isCollapsed ? '⮞' : '⮜';
+        btn.textContent = isCollapsed ? '展开' : '收起';
         btn.setAttribute('aria-expanded', (!isCollapsed).toString());
         btn.title = isCollapsed ? '展开菜单' : '收起菜单';
     }

@@ -1,0 +1,438 @@
+/* =========================================================================
+   Claude-style theme for 邮件查看系统
+   Loaded after each page's inline <style> so it wins on the cascade.
+   Visual properties use !important to override legacy inline rules reliably.
+   Palette: warm cream surfaces + clay/coral accent (Claude design language).
+   ========================================================================= */
+
+:root {
+    /* Brand */
+    --primary-color: #C96442;          /* clay / coral accent */
+    --secondary-color: #B0552F;        /* deeper clay for gradients */
+    --primary-soft: #F3E6DF;           /* tinted clay surface */
+    --primary-ring: rgba(201, 100, 66, 0.18);
+
+    /* Surfaces */
+    --app-bg: #F5F4EE;                 /* warm cream app background */
+    --surface: #FFFFFF;
+    --surface-2: #FAF9F5;
+    --surface-3: #F0EEE6;
+
+    /* Sidebar (warm near-black) */
+    --sidebar-bg: #262624;
+    --sidebar-bg-2: #1F1E1C;
+    --sidebar-text: #C9C6BC;
+    --sidebar-text-active: #FFFFFF;
+
+    /* Text */
+    --text: #2B2A27;
+    --text-muted: #6E6C64;
+    --border: #E7E4DB;
+    --border-strong: #D9D5C9;
+
+    /* Status */
+    --success: #4F8A5B;
+    --danger: #BC4B3C;
+    --warning: #C08A2D;
+
+    --radius: 12px;
+    --radius-sm: 9px;
+    --shadow-sm: 0 1px 2px rgba(40, 35, 28, 0.06);
+    --shadow: 0 4px 16px rgba(40, 35, 28, 0.07);
+    --shadow-lg: 0 12px 32px rgba(40, 35, 28, 0.10);
+    --transition: all 0.2s ease;
+
+    --font-sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+        Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ----------------------------------------------------------------- base */
+html, body {
+    font-family: var(--font-sans) !important;
+    color: var(--text) !important;
+    background: var(--app-bg) !important;
+    background-image: none !important;
+    animation: none !important;            /* kill gradient-shift animations */
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* Center pages that were full-screen flex (login) keep working */
+::selection { background: var(--primary-ring); }
+
+/* --------------------------------------------------------------- sidebar */
+.sidebar {
+    background: var(--sidebar-bg) !important;
+    background-image: none !important;
+    box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+.sidebar-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+.sidebar-logo {
+    color: #F5F4EE !important;
+    text-shadow: none !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em;
+}
+.nav-item {
+    color: var(--sidebar-text) !important;
+    border-left: 3px solid transparent !important;
+    border-radius: 0 !important;
+    margin: 2px 10px;
+    border-radius: 10px !important;
+    transform: none !important;
+}
+.nav-item::before { display: none !important; }
+.nav-item i { opacity: 0.95; }
+.nav-item:hover {
+    color: var(--sidebar-text-active) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-left-color: transparent !important;
+    transform: none !important;
+}
+.nav-item.active {
+    color: var(--sidebar-text-active) !important;
+    background: rgba(201, 100, 66, 0.18) !important;
+    border-left-color: var(--primary-color) !important;
+    transform: none !important;
+}
+body.sidebar-collapsed .sidebar-logo::after { content: "" !important; }
+
+/* ---------------------------------------------------------------- header */
+.header {
+    background: var(--surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+    box-shadow: none !important;
+}
+.header-title { color: var(--text) !important; font-weight: 600 !important; }
+.user-info { color: var(--text-muted) !important; }
+
+.sidebar-toggle,
+.mobile-menu-toggle {
+    color: var(--text-muted) !important;
+    border-color: var(--border) !important;
+    background: var(--surface) !important;
+    box-shadow: none !important;
+}
+.sidebar-toggle:hover,
+.mobile-menu-toggle:hover {
+    color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ----------------------------------------------------------------- cards */
+.card,
+.mail-input-card,
+.control-block,
+.stat-card,
+.login-container,
+.modal-content {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow) !important;
+    backdrop-filter: none !important;
+}
+.card:hover,
+.stat-card:hover { transform: none !important; box-shadow: var(--shadow) !important; }
+
+.card-header,
+.modal-header {
+    background: var(--surface) !important;
+    background-image: none !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.card-title,
+.modal-title { color: var(--text) !important; font-weight: 600 !important; }
+
+/* stat cards */
+.stat-card { border-left: 3px solid var(--primary-color) !important; }
+.stat-number { color: var(--primary-color) !important; }
+.stat-label { color: var(--text-muted) !important; }
+
+/* --------------------------------------------------------------- buttons */
+.btn,
+button.btn,
+.login-btn,
+.folder-btn {
+    border-radius: var(--radius-sm) !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    transition: var(--transition) !important;
+    box-shadow: none !important;
+}
+.btn::before, .login-btn::before { display: none !important; }
+
+.btn-primary,
+.login-btn,
+button[type="submit"].login-btn {
+    background: var(--primary-color) !important;
+    background-image: none !important;
+    color: #fff !important;
+    border: 1px solid var(--primary-color) !important;
+}
+.btn-primary:hover,
+.login-btn:hover {
+    background: var(--secondary-color) !important;
+    border-color: var(--secondary-color) !important;
+    transform: none !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.btn-secondary {
+    background: var(--surface) !important;
+    background-image: none !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border-strong) !important;
+}
+.btn-secondary:hover {
+    background: var(--surface-3) !important;
+    transform: none !important;
+}
+
+.btn-danger {
+    background: var(--danger) !important;
+    background-image: none !important;
+    color: #fff !important;
+    border: 1px solid var(--danger) !important;
+}
+.btn-success {
+    background: var(--success) !important;
+    background-image: none !important;
+    color: #fff !important;
+    border: 1px solid var(--success) !important;
+}
+.btn-warning {
+    background: var(--warning) !important;
+    background-image: none !important;
+    color: #fff !important;
+    border: 1px solid var(--warning) !important;
+}
+.btn-danger:hover, .btn-success:hover, .btn-warning:hover {
+    filter: brightness(0.94);
+    transform: none !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.logout-btn {
+    background: var(--surface) !important;
+    background-image: none !important;
+    color: var(--danger) !important;
+    border: 1px solid var(--border-strong) !important;
+    box-shadow: none !important;
+}
+.logout-btn:hover {
+    background: #FBEDEA !important;
+    border-color: var(--danger) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ----------------------------------------------------------------- forms */
+.form-control,
+.form-group input,
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="email"],
+input[type="search"],
+textarea,
+select {
+    border: 1px solid var(--border-strong) !important;
+    border-radius: var(--radius-sm) !important;
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    transition: var(--transition) !important;
+    box-shadow: none !important;
+}
+.form-control:focus,
+.form-group input:focus,
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px var(--primary-ring) !important;
+    transform: none !important;
+}
+.form-label,
+.form-group label,
+.control-block label { color: var(--text) !important; }
+
+.password-toggle:hover { color: var(--primary-color) !important; }
+
+/* ---------------------------------------------------------------- tables */
+table { border-collapse: collapse !important; }
+table th,
+table td,
+.table th,
+.table td,
+.receive-table th,
+.receive-table td {
+    border-bottom: 1px solid var(--border) !important;
+    /* one row per record: keep data on a single line, scroll horizontally */
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+}
+table th,
+.table th,
+.receive-table th {
+    background: var(--surface-2) !important;
+    color: var(--text-muted) !important;
+    font-weight: 600 !important;
+    text-transform: none !important;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+table tr:hover,
+.table tr:hover { background: var(--surface-3) !important; }
+
+/* allow naturally long text cells (e.g. subject/body) to wrap with ellipsis
+   instead of forcing the whole table taller */
+td.wrap, th.wrap, .cell-wrap { white-space: normal !important; }
+.cell-ellipsis {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+    display: inline-block;
+    vertical-align: middle;
+}
+.table-container,
+.scroll-card-body .table-container { overflow: auto !important; }
+.pagination-container { background: var(--surface) !important; }
+
+/* --------------------------------------------------------------- badges */
+.status-badge {
+    border-radius: 999px !important;
+    font-weight: 500 !important;
+    border: 1px solid transparent !important;
+}
+
+/* --------------------------------------------------------------- modals */
+.modal { background-color: rgba(40, 35, 28, 0.45) !important; }
+.modal-content { box-shadow: var(--shadow-lg) !important; }
+.modal-footer { border-top: 1px solid var(--border) !important; }
+.modal-close { color: var(--text-muted) !important; }
+.modal-close:hover { color: var(--text) !important; }
+
+/* ------------------------------------------------------------ pagination */
+.page-btn {
+    border: 1px solid var(--border-strong) !important;
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    transition: var(--transition) !important;
+}
+.page-btn:hover:not(:disabled) {
+    border-color: var(--primary-color) !important;
+    color: var(--primary-color) !important;
+    transform: none !important;
+}
+.page-btn.active {
+    background: var(--primary-color) !important;
+    background-image: none !important;
+    border-color: var(--primary-color) !important;
+    color: #fff !important;
+}
+.pagination-info { color: var(--text-muted) !important; }
+
+/* --------------------------------------------------- frontend (index.html) */
+.frontend-page .header,
+body > .container .header { background: transparent !important; border: 0 !important; }
+.frontend-page .header h1,
+.container > .header h1,
+.container > .header p { color: var(--text) !important; text-shadow: none !important; }
+.folder-panel { background: var(--surface-2) !important; border-color: var(--border) !important; }
+.folder-btn {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+.folder-btn:hover { border-color: var(--primary-color) !important; color: var(--primary-color) !important; }
+.folder-btn.active {
+    background: var(--primary-soft) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--primary-color) !important;
+}
+
+/* --------------------------------------------------------- antd icons */
+.anticon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+    line-height: 0;
+    vertical-align: -0.125em;
+    fill: currentColor;
+}
+.anticon svg { width: 1em; height: 1em; display: block; fill: currentColor; }
+/* icons used inside nav <i> wrappers should not be italic-shifted */
+.nav-item i { font-style: normal; display: inline-flex; align-items: center; }
+.nav-item i .anticon { width: 1.05em; height: 1.05em; }
+
+/* =====================================================================
+   Responsive: mobile + small desktop screens
+   ===================================================================== */
+@media (max-width: 1024px) {
+    .content { padding: 18px !important; }
+    .control-row { grid-template-columns: 1fr !important; }
+    .mail-layout { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 768px) {
+    .header { padding: 0 16px !important; }
+    .header-title { font-size: 18px !important; }
+    .content { padding: 14px !important; }
+    .card-body { padding: 16px !important; }
+    .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
+    .modal-content { width: 94% !important; max-width: 94% !important; }
+    .login-container { padding: 28px 22px !important; }
+
+    /* keep tables single-row but scrollable on phones */
+    .table-container,
+    .scroll-card-body .table-container { -webkit-overflow-scrolling: touch; }
+    table th, table td, .table th, .table td { padding: 10px 12px !important; }
+
+    /* buttons & toolbars wrap nicely */
+    .search-controls, .header-actions { flex-wrap: wrap !important; gap: 8px !important; }
+    .btn, .btn-small, .btn-sm { padding: 8px 12px !important; font-size: 13px !important; }
+}
+
+@media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr !important; }
+    .header-actions .user-info span { display: none; }
+}
+
+/* =====================================================================
+   Dark mode (Claude warm dark) — pages toggle body.dark-mode
+   ===================================================================== */
+body.dark-mode {
+    --app-bg: #262624;
+    --surface: #30302E;
+    --surface-2: #2A2A28;
+    --surface-3: #383735;
+    --text: #ECE9E1;
+    --text-muted: #A8A59B;
+    --border: #45443F;
+    --border-strong: #524F49;
+    background: var(--app-bg) !important;
+    color: var(--text) !important;
+}
+body.dark-mode .login-container,
+body.dark-mode .card,
+body.dark-mode .modal-content { color: var(--text) !important; }
+body.dark-mode .form-control,
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select { background: var(--surface-2) !important; color: var(--text) !important; }
+body.dark-mode .login-header h1 { -webkit-text-fill-color: var(--primary-color) !important; }

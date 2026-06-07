@@ -305,7 +305,7 @@
 {% block body %}
 <div class="login-container">
     <div class="login-header">
-        <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        <button class="theme-toggle" onclick="toggleTheme()" title="切换主题"><span class="anticon"><svg aria-hidden="true"><use href="#ai-moon"></use></svg></span></button>
         <h1>管理员登录</h1>
         <p>邮件查看系统后台管理</p>
     </div>
@@ -323,7 +323,7 @@
         <div class="form-group">
             <label for="password">密码</label>
             <input type="password" id="password" name="password" required>
-            <button type="button" class="password-toggle" onclick="togglePassword()" title="显示/隐藏密码">👁️</button>
+            <button type="button" class="password-toggle" onclick="togglePassword()" title="显示/隐藏密码"><span class="anticon"><svg aria-hidden="true"><use href="#ai-eye"></use></svg></span></button>
         </div>
         
         <button type="submit" class="login-btn">登录</button>
@@ -341,11 +341,11 @@
         body.classList.toggle('dark-mode');
         
         if (body.classList.contains('dark-mode')) {
-            themeToggle.textContent = '☀️';
+            themeToggle.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-sun"></use></svg></span>';
             themeToggle.title = '切换到明亮模式';
             localStorage.setItem('theme', 'dark');
         } else {
-            themeToggle.textContent = '🌙';
+            themeToggle.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-moon"></use></svg></span>';
             themeToggle.title = '切换到暗黑模式';
             localStorage.setItem('theme', 'light');
         }
@@ -358,11 +358,11 @@
         
         if (passwordInput.type === 'password') {
             passwordInput.type = 'text';
-            toggleButton.textContent = '🙈';
+            toggleButton.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-eye-invisible"></use></svg></span>';
             toggleButton.title = '隐藏密码';
         } else {
             passwordInput.type = 'password';
-            toggleButton.textContent = '👁️';
+            toggleButton.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-eye"></use></svg></span>';
             toggleButton.title = '显示密码';
         }
     }
@@ -374,7 +374,7 @@
         
         if (savedTheme === 'dark') {
             document.body.classList.add('dark-mode');
-            themeToggle.textContent = '☀️';
+            themeToggle.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-sun"></use></svg></span>';
             themeToggle.title = '切换到明亮模式';
         }
     });

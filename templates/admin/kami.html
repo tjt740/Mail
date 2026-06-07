@@ -133,7 +133,7 @@
     }
 
     body.sidebar-collapsed .sidebar-logo::after {
-        content: '📧';
+        content: '';
         font-size: 20px;
         display: block;
         text-align: center;
@@ -1138,29 +1138,29 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <div class="sidebar-logo">📧 邮件管理系统</div>
+        <div class="sidebar-logo"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span> 邮件管理系统</div>
     </div>
     <nav class="sidebar-nav">
         <a href="{{ url_for('admin_home') }}" class="nav-item">
-            <i>🏠</i> 首页
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-home"></use></svg></span></i> 首页
         </a>
         <a href="{{ url_for('admin_mailbox') }}" class="nav-item">
-            <i>📫</i> 邮箱管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span></i> 邮箱管理
         </a>
         <a href="{{ url_for('admin_daili') }}" class="nav-item">
-            <i>🌐</i> 代理池
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span></i> 代理池
         </a>
         <a href="{{ url_for('admin_kami') }}" class="nav-item active">
-            <i>🔑</i> 卡密管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-key"></use></svg></span></i> 卡密管理
         </a>
         <a href="{{ url_for('admin_kamirizhi') }}" class="nav-item">
-            <i>📝</i> 卡密日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span></i> 卡密日志
         </a>
         <a href="{{ url_for('admin_shoujian') }}" class="nav-item">
-            <i>📧</i> 收件日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span></i> 收件日志
         </a>
         <a href="{{ url_for('admin_system') }}" class="nav-item">
-            <i>⚙️</i> 系统设置
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span></i> 系统设置
         </a>
     </nav>
 </div>
@@ -1169,8 +1169,8 @@
 <div class="main-content">
     <div class="header">
         <div style="display: flex; align-items: center; gap: 15px;">
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏">⮞</button>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span></button>
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu"></use></svg></span></button>
             <h1 class="header-title">卡密管理</h1>
         </div>
         <div class="header-actions">
@@ -1210,19 +1210,19 @@
             <div class="card-body scroll-card-body">
                 <div class="btn-group">
                     <button class="btn btn-primary" onclick="showGenerateModal()">
-                        <i>➕</i> 生成卡密
+                        <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span></i> 生成卡密
                     </button>
                     <button class="btn btn-success" onclick="showBatchGenerateModal()">
-                        <i>📦</i> 批量生成卡密
+                        <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span></i> 批量生成卡密
                     </button>
                     <button class="btn btn-secondary" onclick="showRecycleBinModal()">
-                        <i>🗑️</i> 回收站
+                        <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span></i> 回收站
                     </button>
                     <button class="btn btn-danger" onclick="batchDeleteCards()" style="display: none;" id="batchDeleteBtn">
-                        <i>🗑️</i> 批量删除
+                        <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span></i> 批量删除
                     </button>
                     <button class="btn btn-secondary" onclick="refreshCardList()">
-                        <i>🔄</i> 刷新
+                        <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-reload"></use></svg></span></i> 刷新
                     </button>
                 </div>
 
@@ -1230,8 +1230,8 @@
                 <div class="search-controls">
                     <div class="search-box">
                         <input type="text" id="searchInput" placeholder="搜索卡密..." onkeyup="searchCards()">
-                        <button class="btn btn-primary" onclick="searchCards()">🔍 搜索</button>
-                        <button class="btn btn-danger" onclick="clearSearch()">🗑️ 清除</button>
+                        <button class="btn btn-primary" onclick="searchCards()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 搜索</button>
+                        <button class="btn btn-danger" onclick="clearSearch()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 清除</button>
                     </div>
                 </div>
 
@@ -1488,7 +1488,7 @@
     <div id="recycleBinModal" class="modal">
         <div class="modal-content" style="max-width: 900px; max-height: 80vh;">
             <div class="modal-header">
-                <h3 class="modal-title">🗑️ 卡密回收站</h3>
+                <h3 class="modal-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 卡密回收站</h3>
                 <button class="modal-close" onclick="closeModal('recycleBinModal')">&times;</button>
             </div>
             <div class="modal-body" style="overflow-y: auto;">
@@ -1516,10 +1516,10 @@
                         <h4 style="color: #ef4444; margin-bottom: 15px;">已删除的卡密</h4>
                         <div id="deletedBatchActions" style="margin-bottom: 10px; display: none;">
                             <button class="btn btn-primary btn-sm" onclick="batchRestoreRecycleItems('deleted')" id="batchRestoreDeletedBtn">
-                                🔄 批量恢复 (0)
+                                <span class="anticon"><svg aria-hidden="true"><use href="#ai-reload"></use></svg></span> 批量恢复 (0)
                             </button>
                             <button class="btn btn-danger btn-sm" onclick="batchPermanentDeleteRecycleItems('deleted')" id="batchDeleteDeletedBtn">
-                                🗑️ 批量永久删除 (0)
+                                <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量永久删除 (0)
                             </button>
                         </div>
                         <div class="table-container">
@@ -1549,10 +1549,10 @@
                         <h4 style="color: #f59e0b; margin-bottom: 15px;">已过期的卡密</h4>
                         <div id="expiredBatchActions" style="margin-bottom: 10px; display: none;">
                             <button class="btn btn-primary btn-sm" onclick="batchRestoreRecycleItems('expired')" id="batchRestoreExpiredBtn">
-                                🔄 批量恢复 (0)
+                                <span class="anticon"><svg aria-hidden="true"><use href="#ai-reload"></use></svg></span> 批量恢复 (0)
                             </button>
                             <button class="btn btn-danger btn-sm" onclick="batchPermanentDeleteRecycleItems('expired')" id="batchDeleteExpiredBtn">
-                                🗑️ 批量永久删除 (0)
+                                <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量永久删除 (0)
                             </button>
                         </div>
                         <div class="table-container">
@@ -1595,7 +1595,7 @@
         const btn = document.getElementById('sidebarToggle');
         if (!btn) return;
         const isCollapsed = document.body.classList.contains('sidebar-collapsed');
-        btn.textContent = isCollapsed ? '⮞' : '⮜';
+        btn.textContent = isCollapsed ? '展开' : '收起';
         btn.setAttribute('aria-expanded', (!isCollapsed).toString());
         btn.title = isCollapsed ? '展开菜单' : '收起菜单';
     }
@@ -1896,7 +1896,7 @@
                         </code>
                         <button class="btn btn-sm" onclick="copyToClipboard('${card.card_key}')" 
                                 title="复制卡密" style="padding: 2px 6px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer;">
-                            📋
+                            <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span>
                         </button>
                     </div>
                 </td>
@@ -1915,13 +1915,13 @@
                 <td>
                     <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                         <button class="btn btn-sm btn-primary" onclick="showEditModal(${card.id})" 
-                                title="编辑">✏️</button>
-                        <button class="btn btn-sm btn-warning" onclick="openQuickBindEmailModal(${card.id})" 
-                                title="绑定选择邮箱">📧</button>
-                        <button class="btn btn-sm btn-success" onclick="apiPickup('${card.card_key}')" 
-                                title="API取件">📥</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteCard(${card.id})" 
-                                title="删除">🗑️</button>
+                                title="编辑"><span class="anticon"><svg aria-hidden="true"><use href="#ai-edit"></use></svg></span></button>
+                        <button class="btn btn-sm btn-warning" onclick="openQuickBindEmailModal(${card.id})"
+                                title="绑定选择邮箱"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span></button>
+                        <button class="btn btn-sm btn-success" onclick="apiPickup('${card.card_key}')"
+                                title="API取件"><span class="anticon"><svg aria-hidden="true"><use href="#ai-download"></use></svg></span></button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteCard(${card.id})"
+                                title="删除"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span></button>
                     </div>
                 </td>
             </tr>
@@ -1992,7 +1992,7 @@
         return `<div style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;">
             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(email)}">${escapeHtml(email)}</span>
             <button class="btn btn-sm" onclick="copyBoundEmail(${card.id})"
-                    title="复制邮箱" style="padding: 2px 6px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; font-size: 11px;">📋</button>
+                    title="复制邮箱" style="padding: 2px 6px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; font-size: 11px;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span></button>
         </div>`;
     }
 
@@ -2192,7 +2192,7 @@
         const batchDeleteBtn = document.getElementById('batchDeleteBtn');
         if (selectedCards.size > 0) {
             batchDeleteBtn.style.display = 'inline-block';
-            batchDeleteBtn.innerHTML = `<i>🗑️</i> 批量删除 (${selectedCards.size})`;
+            batchDeleteBtn.innerHTML = `<i><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span></i> 批量删除 (${selectedCards.size})`;
         } else {
             batchDeleteBtn.style.display = 'none';
         }
@@ -2528,7 +2528,7 @@
                 
                 // 显示提示信息
                 const emailListContainer = document.getElementById('emailListContainer');
-                emailListContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: #6b7280;"><div style="font-size: 16px; margin-bottom: 10px;">💡 选择邮箱</div><div>请使用搜索框搜索邮箱，或点击左侧分组查看可用邮箱列表</div><div style="margin-top: 10px; font-size: 14px; color: #ef4444;">注意：已绑定到其他卡密的邮箱不会显示</div></div>';
+                emailListContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: #6b7280;"><div style="font-size: 16px; margin-bottom: 10px;"><span class=\"anticon\"><svg aria-hidden=\"true\"><use href=\"#ai-bulb\"></use></svg></span> 选择邮箱</div><div>请使用搜索框搜索邮箱，或点击左侧分组查看可用邮箱列表</div><div style="margin-top: 10px; font-size: 14px; color: #ef4444;">注意：已绑定到其他卡密的邮箱不会显示</div></div>';
             } else {
                 showToast('加载邮箱数据失败', 'error');
             }
@@ -2563,7 +2563,7 @@
         const allGroupItem = document.createElement('div');
         allGroupItem.className = 'group-list-item active';
         allGroupItem.dataset.groupId = 'ALL';
-        allGroupItem.textContent = `📬 所有分组`;
+        allGroupItem.textContent = `所有分组`;
         allGroupItem.onclick = function() {
             selectGroupInModal('ALL');
         };
@@ -2573,7 +2573,7 @@
         const ungroupedItem = document.createElement('div');
         ungroupedItem.className = 'group-list-item';
         ungroupedItem.dataset.groupId = 'UNGROUPED';
-        ungroupedItem.textContent = `📧 未分组`;
+        ungroupedItem.textContent = `未分组`;
         ungroupedItem.onclick = function() {
             selectGroupInModal('UNGROUPED');
         };
@@ -3131,9 +3131,9 @@
                 <td>
                     <div style="display: flex; gap: 5px;">
                         <button class="btn btn-sm btn-success" onclick="restoreCard(${card.id}, '${type}')" 
-                                title="恢复">🔄</button>
+                                title="恢复"><span class="anticon"><svg aria-hidden="true"><use href="#ai-reload"></use></svg></span></button>
                         <button class="btn btn-sm btn-danger" onclick="permanentDeleteCard(${card.id}, '${type}')" 
-                                title="永久删除">❌</button>
+                                title="永久删除"><span class="anticon"><svg aria-hidden="true"><use href="#ai-close"></use></svg></span></button>
                     </div>
                 </td>
             </tr>
@@ -3275,8 +3275,8 @@
         
         if (checkedCount > 0) {
             batchActions.style.display = 'block';
-            restoreBtn.textContent = `🔄 批量恢复 (${checkedCount})`;
-            deleteBtn.textContent = `🗑️ 批量永久删除 (${checkedCount})`;
+            restoreBtn.textContent = `批量恢复 (${checkedCount})`;
+            deleteBtn.textContent = `批量永久删除 (${checkedCount})`;
         } else {
             batchActions.style.display = 'none';
         }

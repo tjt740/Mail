@@ -952,7 +952,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📧 邮件查看系统</h1>
+            <h1><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span> 邮件查看系统</h1>
         </div>
     
     <div class="mail-input-card">
@@ -973,8 +973,8 @@
         <div class="mail-layout">
             <div class="folder-panel">
                 <div class="folder-title">邮箱文件夹</div>
-                <button class="folder-btn active" data-folder="inbox" onclick="switchFolder('inbox')">📥 收件箱</button>
-                <button class="folder-btn" data-folder="trash" onclick="switchFolder('trash')">🗑️ 垃圾箱</button>
+                <button class="folder-btn active" data-folder="inbox" onclick="switchFolder('inbox')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-download"></use></svg></span> 收件箱</button>
+                <button class="folder-btn" data-folder="trash" onclick="switchFolder('trash')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 垃圾箱</button>
             </div>
             <div class="mail-list-panel" id="mailListPanel">
                 <div class="loading" id="loading">正在获取邮件，请稍候...</div>
@@ -1006,7 +1006,7 @@
                 </div>
                 <div class="mail-display" id="mailDisplay">
                     <div class="mail-display-actions">
-                        <button class="back-btn" type="button" onclick="backToList()" aria-label="返回邮件列表">← 返回邮件列表</button>
+                        <button class="back-btn" type="button" onclick="backToList()" aria-label="返回邮件列表"><span class="anticon"><svg aria-hidden="true"><use href="#ai-arrow-left"></use></svg></span> 返回邮件列表</button>
                     </div>
                     <div class="mail-header">
                         <div class="mail-subject" id="mailSubject"></div>
@@ -1030,13 +1030,13 @@
                     
                     <!-- Images section -->
                     <div class="mail-images" id="mailImages" style="display: none;">
-                        <h4 style="color: #667eea; margin-bottom: 10px;">📷 图片内容</h4>
+                        <h4 style="color: #667eea; margin-bottom: 10px;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-camera"></use></svg></span> 图片内容</h4>
                         <div class="image-container" id="imageContainer"></div>
                     </div>
                     
                     <!-- Attachments section -->
                     <div class="mail-attachments" id="mailAttachments" style="display: none;">
-                        <h4 style="color: #667eea; margin-bottom: 10px;">📎 附件</h4>
+                        <h4 style="color: #667eea; margin-bottom: 10px;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-paper-clip"></use></svg></span> 附件</h4>
                         <div class="attachment-list" id="attachmentList"></div>
                     </div>
                 </div>
@@ -1469,14 +1469,14 @@
     }
     
     function getFileIcon(mimeType) {
-        if (mimeType.startsWith('image/')) return '🖼️';
-        if (mimeType.startsWith('video/')) return '🎥';
-        if (mimeType.startsWith('audio/')) return '🎵';
-        if (mimeType.includes('pdf')) return '📄';
-        if (mimeType.includes('word') || mimeType.includes('doc')) return '📝';
-        if (mimeType.includes('excel') || mimeType.includes('sheet')) return '📊';
-        if (mimeType.includes('zip') || mimeType.includes('rar')) return '📦';
-        return '📎';
+        if (mimeType.startsWith('image/')) return '<span class="anticon"><svg aria-hidden="true"><use href="#ai-picture"></use></svg></span>';
+        if (mimeType.startsWith('video/')) return '<span class="anticon"><svg aria-hidden="true"><use href="#ai-video-camera"></use></svg></span>';
+        if (mimeType.startsWith('audio/')) return '<span class="anticon"><svg aria-hidden="true"><use href="#ai-customer-service"></use></svg></span>';
+        if (mimeType.includes('pdf')) return '<span class="anticon"><svg aria-hidden="true"><use href="#ai-file-text"></use></svg></span>';
+        if (mimeType.includes('word') || mimeType.includes('doc')) return '<span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span>';
+        if (mimeType.includes('excel') || mimeType.includes('sheet')) return '<span class="anticon"><svg aria-hidden="true"><use href="#ai-bar-chart"></use></svg></span>';
+        if (mimeType.includes('zip') || mimeType.includes('rar')) return '<span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span>';
+        return '<span class="anticon"><svg aria-hidden="true"><use href="#ai-paper-clip"></use></svg></span>';
     }
     
     function openImageModal(src) {

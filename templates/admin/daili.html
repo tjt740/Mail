@@ -134,7 +134,7 @@
     }
 
     body.sidebar-collapsed .sidebar-logo::after {
-        content: '📧';
+        content: '';
         font-size: 20px;
         display: block;
         text-align: center;
@@ -854,29 +854,29 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <div class="sidebar-logo">📧 邮件管理系统</div>
+        <div class="sidebar-logo"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span> 邮件管理系统</div>
     </div>
     <nav class="sidebar-nav">
         <a href="{{ url_for('admin_home') }}" class="nav-item">
-            <i>🏠</i> 首页
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-home"></use></svg></span></i> 首页
         </a>
         <a href="{{ url_for('admin_mailbox') }}" class="nav-item">
-            <i>📫</i> 邮箱管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span></i> 邮箱管理
         </a>
         <a href="{{ url_for('admin_daili') }}" class="nav-item active">
-            <i>🌐</i> 代理池
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span></i> 代理池
         </a>
         <a href="{{ url_for('admin_kami') }}" class="nav-item">
-            <i>🔑</i> 卡密管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-key"></use></svg></span></i> 卡密管理
         </a>
         <a href="{{ url_for('admin_kamirizhi') }}" class="nav-item">
-            <i>📝</i> 卡密日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span></i> 卡密日志
         </a>
         <a href="{{ url_for('admin_shoujian') }}" class="nav-item">
-            <i>📧</i> 收件日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span></i> 收件日志
         </a>
         <a href="{{ url_for('admin_system') }}" class="nav-item">
-            <i>⚙️</i> 系统设置
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span></i> 系统设置
         </a>
     </nav>
 </div>
@@ -885,8 +885,8 @@
 <div class="main-content">
     <div class="header">
         <div style="display: flex; align-items: center; gap: 15px;">
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏">⮞</button>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span></button>
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu"></use></svg></span></button>
             <h1 class="header-title">代理池管理</h1>
         </div>
         <div class="header-actions">
@@ -903,26 +903,26 @@
             <div class="card-body" style="padding: 20px;">
                 <div class="button-group">
                     <button class="btn btn-primary" onclick="showAddProxyModal('http')">
-                        ➕ 添加HTTP代理
+                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span> 添加HTTP代理
                     </button>
                     <button class="btn btn-primary" onclick="showAddProxyModal('socks5')">
-                        ➕ 添加SOCKS5代理
+                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span> 添加SOCKS5代理
                     </button>
                     <button class="btn btn-success" onclick="enableProxy()" id="enableProxyBtn">
-                        🚀 开启代理
+                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-rocket"></use></svg></span> 开启代理
                     </button>
                     <button class="btn btn-warning" onclick="disableProxy()" id="disableProxyBtn" style="display: none;">
-                        ⏹️ 关闭代理
+                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-stop"></use></svg></span> 关闭代理
                     </button>
                     <button class="btn btn-danger" onclick="batchDeleteProxies()" id="batchDeleteBtn" style="display: none;">
-                        🗑️ 批量删除
+                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除
                     </button>
                 </div>
                 
                 <!-- 代理状态显示 -->
                 <div id="proxyStatusPanel" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <span id="proxyStatusIcon">🌐</span>
+                        <span id="proxyStatusIcon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span></span>
                         <strong>代理状态：</strong>
                         <span id="proxyStatusText">未启用</span>
                     </div>
@@ -940,8 +940,8 @@
                 <div class="search-controls">
                     <div class="search-box">
                         <input type="text" id="proxySearchInput" placeholder="搜索代理名称、地址或备注..." onkeyup="searchProxies()">
-                        <button class="btn btn-primary" onclick="searchProxies()">🔍 搜索</button>
-                        <button class="btn btn-danger" onclick="clearProxySearch()">🗑️ 清除</button>
+                        <button class="btn btn-primary" onclick="searchProxies()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 搜索</button>
+                        <button class="btn btn-danger" onclick="clearProxySearch()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 清除</button>
                     </div>
                 </div>
                 
@@ -1052,7 +1052,9 @@
         const btn = document.getElementById('sidebarToggle');
         if (!btn) return;
         const isCollapsed = document.body.classList.contains('sidebar-collapsed');
-        btn.textContent = isCollapsed ? '⮞' : '⮜';
+        btn.innerHTML = isCollapsed
+            ? '<span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span>'
+            : '<span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-fold"></use></svg></span>';
         btn.setAttribute('aria-expanded', (!isCollapsed).toString());
         btn.title = isCollapsed ? '展开菜单' : '收起菜单';
     }
@@ -1191,7 +1193,7 @@
             // 代理已启用
             statusPanel.style.display = 'block';
             statusPanel.style.background = '#d4edda';
-            statusIcon.textContent = '🟢';
+            statusIcon.innerHTML = '<span class="anticon" style="color:#4F8A5B"><svg aria-hidden="true"><use href="#ai-check-circle"></use></svg></span>';
             statusText.textContent = '已启用';
             statusText.style.color = '#155724';
             statusDetails.innerHTML = `
@@ -1205,7 +1207,7 @@
             // 代理已启用但无有效代理
             statusPanel.style.display = 'block';
             statusPanel.style.background = '#fff3cd';
-            statusIcon.textContent = '⚠️';
+            statusIcon.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-warning"></use></svg></span>';
             statusText.textContent = '配置异常';
             statusText.style.color = '#856404';
             statusDetails.textContent = '代理已启用但未找到有效的代理配置';
@@ -1217,7 +1219,7 @@
             // 代理未启用
             statusPanel.style.display = 'block';
             statusPanel.style.background = '#f8f9fa';
-            statusIcon.textContent = '⚪';
+            statusIcon.innerHTML = '<span class="anticon" style="color:#9b9890"><svg aria-hidden="true"><use href="#ai-stop"></use></svg></span>';
             statusText.textContent = '未启用';
             statusText.style.color = '#6b7280';
             statusDetails.textContent = '点击"开启代理"按钮智能选择延迟最低的代理，或手动切换到指定代理';
@@ -1707,13 +1709,13 @@
                     
                     results.forEach(result => {
                         if (result.success) {
-                            message += `\n✅ ${result.url}: ${result.response_time}ms`;
+                            message += `\n成功 ${result.url}: ${result.response_time}ms`;
                         } else {
-                            message += `\n❌ ${result.url}: 测试失败`;
+                            message += `\n失败 ${result.url}: 测试失败`;
                         }
                     });
                 }
-                
+
                 showToast(message, 'success', 5000);
                 loadAllProxies(currentPage, searchQuery);
             } else {
@@ -1784,13 +1786,13 @@
                     
                     results.forEach(result => {
                         if (result.success) {
-                            message += `\n✅ ${result.url}: ${result.response_time}ms`;
+                            message += `\n成功 ${result.url}: ${result.response_time}ms`;
                         } else {
-                            message += `\n❌ ${result.url}: 测试失败`;
+                            message += `\n失败 ${result.url}: 测试失败`;
                         }
                     });
                 }
-                
+
                 showToast(message, 'success', 5000);
             } else {
                 showToast(result.message || '代理测试失败', 'error');
@@ -1912,7 +1914,7 @@
         
         if (selectedCount > 0) {
             btn.style.display = 'inline-block';
-            btn.textContent = `🗑️ 批量删除 (${selectedCount})`;
+            btn.innerHTML = `<span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除 (${selectedCount})`;
         } else {
             btn.style.display = 'none';
         }

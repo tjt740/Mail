@@ -15,11 +15,13 @@
     <meta name="msapplication-config" content="{{ url_for('static', filename='img/favicons/browserconfig.xml') }}">
     
     <!-- Theme colors for mobile browsers -->
-    <meta name="theme-color" content="#667eea">
-    <meta name="msapplication-TileColor" content="#667eea">
+    <meta name="theme-color" content="#C96442">
+    <meta name="msapplication-TileColor" content="#C96442">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     
     {% block head %}{% endblock %}
+    <!-- Claude-style theme: loaded last so it overrides per-page inline styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/claude-theme.css') }}">
     <style>
         :root {
             --scroll-card-offset: 110px; /* reserve ~110px (search toolbar + card padding + pagination buffer) so pagination stays visible */
@@ -98,6 +100,7 @@
     </style>
 </head>
 <body class="preload">
+    {% include '_icons.html' %}
     <script>
         (function() {
             try {

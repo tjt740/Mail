@@ -134,7 +134,7 @@
     }
 
     body.sidebar-collapsed .sidebar-logo::after {
-        content: '📧';
+        content: '';
         font-size: 20px;
         display: block;
         text-align: center;
@@ -1164,29 +1164,29 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <div class="sidebar-logo">📧 邮件管理系统</div>
+        <div class="sidebar-logo"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span> 邮件管理系统</div>
     </div>
     <nav class="sidebar-nav">
         <a href="{{ url_for('admin_home') }}" class="nav-item">
-            <i>🏠</i> 首页
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-home"></use></svg></span></i> 首页
         </a>
         <a href="{{ url_for('admin_mailbox') }}" class="nav-item active">
-            <i>📫</i> 邮箱管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span></i> 邮箱管理
         </a>
         <a href="{{ url_for('admin_daili') }}" class="nav-item">
-            <i>🌐</i> 代理池
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span></i> 代理池
         </a>
         <a href="{{ url_for('admin_kami') }}" class="nav-item">
-            <i>🔑</i> 卡密管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-key"></use></svg></span></i> 卡密管理
         </a>
         <a href="{{ url_for('admin_kamirizhi') }}" class="nav-item">
-            <i>📝</i> 卡密日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span></i> 卡密日志
         </a>
         <a href="{{ url_for('admin_shoujian') }}" class="nav-item">
-            <i>📧</i> 收件日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span></i> 收件日志
         </a>
         <a href="{{ url_for('admin_system') }}" class="nav-item">
-            <i>⚙️</i> 系统设置
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span></i> 系统设置
         </a>
     </nav>
 </div>
@@ -1195,8 +1195,8 @@
     <div class="main-content">
         <div class="header">
             <div style="display: flex; align-items: center; gap: 15px;">
-                <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏">⮞</button>
-                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+                <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span></button>
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu"></use></svg></span></button>
                 <h1 class="header-title">邮箱管理</h1>
             </div>
             <div class="header-actions">
@@ -1223,23 +1223,23 @@
                         <div class="toolbar-row">
                             <div class="button-group">
                                 <button class="btn btn-primary" onclick="showAddModal()">
-                                    ➕ 添加邮箱
+                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span> 添加邮箱
                                 </button>
                                 <button class="btn btn-primary" onclick="showBatchAddModal()">
-                                    📝 批量添加邮箱
+                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量添加邮箱
                                 </button>
                                 <button class="btn btn-primary" onclick="showServerModal()">
-                                    🌐 添加服务器地址
+                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span> 添加服务器地址
                                 </button>
                                 <button class="btn btn-danger" onclick="batchDeleteMailboxes()" id="batchDeleteBtn" style="display: none;">
-                                    🗑️ 批量删除
+                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除
                                 </button>
                             </div>
                             <div class="search-controls">
                                 <div class="search-box">
                                     <input type="text" id="searchInput" placeholder="搜索邮箱地址或服务器..." onkeyup="searchMailboxes()">
-                                    <button class="btn btn-primary" onclick="searchMailboxes()">🔍 搜索</button>
-                                    <button class="btn btn-danger" onclick="clearMailboxSearch()">🗑️ 清除</button>
+                                    <button class="btn btn-primary" onclick="searchMailboxes()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 搜索</button>
+                                    <button class="btn btn-danger" onclick="clearMailboxSearch()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 清除</button>
                                 </div>
                             </div>
                         </div>
@@ -1364,8 +1364,8 @@
                     <input type="number" id="emailCountInput" min="1" max="100" value="10" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px;" oninput="updateEmailCountDisplay(this.value)">
                 </div>
                 <button class="btn btn-primary" onclick="fetchMailboxMails()">收取邮件</button>
-                <button class="receive-tab active" data-folder="inbox" onclick="switchReceiveFolder('inbox')">📥 收件箱</button>
-                <button class="receive-tab" data-folder="trash" onclick="switchReceiveFolder('trash')">🗑️ 垃圾箱</button>
+                <button class="receive-tab active" data-folder="inbox" onclick="switchReceiveFolder('inbox')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-download"></use></svg></span> 收件箱</button>
+                <button class="receive-tab" data-folder="trash" onclick="switchReceiveFolder('trash')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 垃圾箱</button>
             </div>
             <div class="receive-main">
                 <div id="receiveListView">
@@ -1389,7 +1389,7 @@
                         <div class="receive-meta" id="receiveDetailMeta"></div>
                         <div style="background:#f8fafc; border-radius: 10px; padding: 12px; border:1px solid #e5e7eb;" id="receiveDetailBody"></div>
                         <div id="receiveDetailImages" style="display:none; margin-top:10px;">
-                            <div style="font-weight:600; margin-bottom:6px; color:#374151; font-size:13px;">📷 图片</div>
+                            <div style="font-weight:600; margin-bottom:6px; color:#374151; font-size:13px;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-camera"></use></svg></span> 图片</div>
                             <div id="receiveDetailImageContainer" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
                         </div>
                     </div>
@@ -1712,7 +1712,9 @@
         const btn = document.getElementById('sidebarToggle');
         if (!btn) return;
         const isCollapsed = document.body.classList.contains('sidebar-collapsed');
-        btn.textContent = isCollapsed ? '⮞' : '⮜';
+        btn.innerHTML = isCollapsed
+            ? '<span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span>'
+            : '<span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-fold"></use></svg></span>';
         btn.setAttribute('aria-expanded', (!isCollapsed).toString());
         btn.title = isCollapsed ? '展开菜单' : '收起菜单';
     }
@@ -3583,7 +3585,7 @@
         const btn = document.getElementById('batchDeleteBtn');
         if (selectedMailboxes.size > 0) {
             btn.style.display = 'inline-block';
-            btn.textContent = `🗑️ 批量删除 (${selectedMailboxes.size})`;
+            btn.innerHTML = `<span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除 (${selectedMailboxes.size})`;
         } else {
             btn.style.display = 'none';
         }

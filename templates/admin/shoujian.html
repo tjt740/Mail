@@ -133,7 +133,7 @@
     }
 
     body.sidebar-collapsed .sidebar-logo::after {
-        content: '📧';
+        content: '';
         font-size: 20px;
         display: block;
         text-align: center;
@@ -371,29 +371,29 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <div class="sidebar-logo">📧 邮件管理系统</div>
+        <div class="sidebar-logo"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span> 邮件管理系统</div>
     </div>
     <nav class="sidebar-nav">
         <a href="{{ url_for('admin_home') }}" class="nav-item">
-            <i>🏠</i> 首页
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-home"></use></svg></span></i> 首页
         </a>
         <a href="{{ url_for('admin_mailbox') }}" class="nav-item">
-            <i>📫</i> 邮箱管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span></i> 邮箱管理
         </a>
         <a href="{{ url_for('admin_daili') }}" class="nav-item">
-            <i>🌐</i> 代理池
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span></i> 代理池
         </a>
         <a href="{{ url_for('admin_kami') }}" class="nav-item">
-            <i>🔑</i> 卡密管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-key"></use></svg></span></i> 卡密管理
         </a>
         <a href="{{ url_for('admin_kamirizhi') }}" class="nav-item">
-            <i>📝</i> 卡密日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span></i> 卡密日志
         </a>
         <a href="{{ url_for('admin_shoujian') }}" class="nav-item active">
-            <i>📧</i> 收件日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span></i> 收件日志
         </a>
         <a href="{{ url_for('admin_system') }}" class="nav-item">
-            <i>⚙️</i> 系统设置
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span></i> 系统设置
         </a>
     </nav>
 </div>
@@ -403,7 +403,7 @@
     <div class="header">
         <div style="display: flex; align-items: center; gap: 15px;">
             <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏">»</button>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu"></use></svg></span></button>
             <h1 class="header-title">收件日志</h1>
         </div>
         <div class="header-actions">
@@ -421,7 +421,7 @@
             </div>
             <div class="card-body">
                 <div class="feature-intro">
-                    <div class="feature-icon">📧</div>
+                    <div class="feature-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span></div>
                     <h3>收件日志系统</h3>
                     <p>实时记录所有邮件收取操作和处理结果</p>
                     <p>详细记录邮件获取时间、状态、错误信息等</p>

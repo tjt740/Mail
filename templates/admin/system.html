@@ -133,7 +133,7 @@
     }
 
     body.sidebar-collapsed .sidebar-logo::after {
-        content: '📧';
+        content: '';
         font-size: 20px;
         display: block;
         text-align: center;
@@ -536,29 +536,29 @@
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <div class="sidebar-logo">📧 邮件管理系统</div>
+        <div class="sidebar-logo"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span> 邮件管理系统</div>
     </div>
     <nav class="sidebar-nav">
         <a href="{{ url_for('admin_home') }}" class="nav-item">
-            <i>🏠</i> 首页
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-home"></use></svg></span></i> 首页
         </a>
         <a href="{{ url_for('admin_mailbox') }}" class="nav-item">
-            <i>📫</i> 邮箱管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span></i> 邮箱管理
         </a>
         <a href="{{ url_for('admin_daili') }}" class="nav-item">
-            <i>🌐</i> 代理池
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span></i> 代理池
         </a>
         <a href="{{ url_for('admin_kami') }}" class="nav-item">
-            <i>🔑</i> 卡密管理
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-key"></use></svg></span></i> 卡密管理
         </a>
         <a href="{{ url_for('admin_kamirizhi') }}" class="nav-item">
-            <i>📝</i> 卡密日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span></i> 卡密日志
         </a>
         <a href="{{ url_for('admin_shoujian') }}" class="nav-item">
-            <i>📧</i> 收件日志
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span></i> 收件日志
         </a>
         <a href="{{ url_for('admin_system') }}" class="nav-item active">
-            <i>⚙️</i> 系统设置
+            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span></i> 系统设置
         </a>
     </nav>
 </div>
@@ -568,7 +568,7 @@
     <div class="header">
         <div style="display: flex; align-items: center; gap: 15px;">
             <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏">»</button>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu"></use></svg></span></button>
             <h1 class="header-title">系统设置</h1>
         </div>
         <div class="header-actions">
@@ -583,7 +583,7 @@
         <!-- 管理员账号设置 -->
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">👤 管理员账号设置</h2>
+                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 管理员账号设置</h2>
             </div>
             <div class="card-body">
                 <form id="adminAccountForm">
@@ -612,7 +612,7 @@
         <!-- 管理员万能秘钥 -->
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">🛡️ 管理员万能秘钥</h2>
+                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 管理员万能秘钥</h2>
             </div>
             <div class="card-body">
                 <form id="masterKeyForm">
@@ -621,7 +621,7 @@
                             <label class="form-label">万能秘钥</label>
                             <div class="secure-input">
                                 <input type="password" class="form-control" id="adminMasterKey" name="admin_master_key" placeholder="至少6位，设置后可免卡密取件">
-                                <button type="button" class="toggle-visibility" id="toggleMasterKeyVisibility" onclick="toggleAdminMasterKeyVisibility()" aria-label="显示或隐藏万能秘钥">👁</button>
+                                <button type="button" class="toggle-visibility" id="toggleMasterKeyVisibility" onclick="toggleAdminMasterKeyVisibility()" aria-label="显示或隐藏万能秘钥"><span class="anticon"><svg aria-hidden="true"><use href="#ai-eye"></use></svg></span></button>
                             </div>
                         </div>
                         <div class="master-key-status">
@@ -637,7 +637,7 @@
         <!-- 系统标题设置 -->
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">🎯 系统标题设置</h2>
+                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-aim"></use></svg></span> 系统标题设置</h2>
             </div>
             <div class="card-body">
                 <form id="systemTitleForm">
@@ -655,7 +655,7 @@
         <!-- 页面标题设置 -->
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">🏷️ 页面标题设置</h2>
+                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-tag"></use></svg></span> 页面标题设置</h2>
             </div>
             <div class="card-body">
                 <form id="pageTitlesForm">
@@ -685,7 +685,7 @@
         <!-- 系统信息 -->
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">ℹ️ 系统信息</h2>
+                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-info-circle"></use></svg></span> 系统信息</h2>
             </div>
             <div class="card-body">
                 <div class="form-row">
@@ -765,7 +765,7 @@
         if (!input || !toggleBtn) return;
         const isHidden = input.type === 'password';
         input.type = isHidden ? 'text' : 'password';
-        toggleBtn.textContent = isHidden ? '🙈' : '👁';
+        toggleBtn.textContent = isHidden ? '隐藏' : '显示';
         toggleBtn.setAttribute('aria-label', isHidden ? '隐藏万能秘钥' : '显示万能秘钥');
     }
 
