@@ -1,6 +1,12 @@
 # SQLite 数据库文件
 db/*.sqlite
 db/*.db
+db/*.sqlite-wal
+db/*.sqlite-shm
+db/*.db-wal
+db/*.db-shm
+db/backup*/
+db/backups/
 
 # 临时文件
 *.tmp
@@ -22,6 +28,7 @@ Thumbs.db
 
 # 日志文件
 *.log
+logs/
 
 # 缓存文件
 cache/
@@ -35,6 +42,8 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
+.venv-*/
 .env
 
 # 测试环境
