@@ -16,7 +16,7 @@
 
 ## 第一步：准备阿里云服务器
 
-建议系统选择 Ubuntu 22.04 或 Debian 12。
+建议系统选择 Ubuntu 22.04、Debian 12，或 Alibaba Cloud Linux 3。
 
 在阿里云控制台确认：
 
@@ -27,26 +27,38 @@
 本地测试能否连接：
 
 ```bash
-ssh root@你的服务器公网IP
+ssh 用户名@你的服务器公网IP
 ```
 
-如果 SSH 端口不是 `22`：
+你的这台服务器已经确认是：
 
-```bash
-ssh -p 你的端口 root@你的服务器公网IP
+```text
+IP: 47.106.176.71
+SSH 用户: admin
+SSH 端口: 22
+本机私钥: /Users/t/.ssh/ccbot_aliyun_deploy
+推荐部署目录: /home/admin/mail
+系统: Alibaba Cloud Linux 3
 ```
 
 ## 第二步：在服务器上安装基础环境
 
 登录服务器后执行：
 
+如果是 Ubuntu/Debian：
+
 ```bash
-apt update
-apt install -y python3 python3-pip python3-venv git rsync
-mkdir -p /opt/mail
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv git rsync
+mkdir -p /home/admin/mail
 ```
 
-如果你用的不是 `root` 用户，需要确保这个用户能写入 `/opt/mail`。
+如果是 Alibaba Cloud Linux 3：
+
+```bash
+sudo dnf install -y python3.11 python3.11-pip python3.11-devel git rsync gcc gcc-c++ make openssl-devel libffi-devel
+mkdir -p /home/admin/mail
+```
 
 ## 第三步：配置 GitHub Secrets
 
@@ -61,12 +73,12 @@ mkdir -p /opt/mail
 添加这些 Secret：
 
 ```text
-ALIYUN_HOST=你的服务器公网IP
-ALIYUN_USER=root
+ALIYUN_HOST=47.106.176.71
+ALIYUN_USER=admin
 ALIYUN_PORT=22
-ALIYUN_DEPLOY_PATH=/opt/mail
+ALIYUN_DEPLOY_PATH=/home/admin/mail
 ALIYUN_SSH_KEY=你的 SSH 私钥内容
-ALIYUN_DEPLOY_COMMAND=bash install.sh && systemctl restart mail-system
+ALIYUN_DEPLOY_COMMAND=./scripts/deploy_server.sh
 ```
 
 `ALIYUN_SSH_KEY` 是私钥内容，不是 `.pub` 公钥。服务器上需要提前把对应公钥加入：
@@ -112,16 +124,16 @@ nano .deploy.env
 最常用配置如下：
 
 ```bash
-ALIYUN_HOST=你的服务器公网IP
-ALIYUN_USER=root
+ALIYUN_HOST=47.106.176.71
+ALIYUN_USER=admin
 ALIYUN_PORT=22
-ALIYUN_DEPLOY_PATH=/opt/mail
-ALIYUN_SSH_KEY=/Users/t/.ssh/你的私钥文件
+ALIYUN_DEPLOY_PATH=/home/admin/mail
+ALIYUN_SSH_KEY=/Users/t/.ssh/ccbot_aliyun_deploy
 
 LOCAL_DB=db/mail.sqlite
-REMOTE_DB=/opt/mail/db/mail.sqlite
-REMOTE_STOP_COMMAND='systemctl stop mail-system 2>/dev/null || true'
-REMOTE_RESTART_COMMAND='systemctl restart mail-system 2>/dev/null || (cd /opt/mail && ./restart.sh)'
+REMOTE_DB=/home/admin/mail/db/mail.sqlite
+REMOTE_STOP_COMMAND='sudo systemctl stop mail-system 2>/dev/null || true'
+REMOTE_RESTART_COMMAND='sudo systemctl restart mail-system'
 REMOTE_CHOWN_COMMAND=
 ```
 
@@ -185,7 +197,7 @@ GitHub Actions 会自动部署代码。
 测试 SSH：
 
 ```bash
-ssh -i /Users/t/.ssh/你的私钥文件 -p 22 root@你的服务器公网IP
+ssh -i /Users/t/.ssh/ccbot_aliyun_deploy -p 22 admin@47.106.176.71
 ```
 
 查看服务器服务：
@@ -203,7 +215,6 @@ journalctl -u mail-system -n 100 --no-pager
 手动重启：
 
 ```bash
-cd /opt/mail
-bash install.sh
-systemctl restart mail-system
+cd /home/admin/mail
+./scripts/deploy_server.sh
 ```

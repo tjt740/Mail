@@ -80,6 +80,8 @@ jobs:
 
           if [ -n "$deploy_command" ]; then
             bash -lc "$deploy_command"
+          elif [ -x ./scripts/deploy_server.sh ]; then
+            ./scripts/deploy_server.sh
           elif [ -x ./restart.sh ]; then
             ./restart.sh
           else
