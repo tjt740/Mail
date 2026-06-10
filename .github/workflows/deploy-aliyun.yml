@@ -1,6 +1,7 @@
 name: Deploy to Aliyun
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -63,6 +64,13 @@ jobs:
             --exclude '__pycache__/' \
             --exclude 'db/*.sqlite' \
             --exclude 'db/*.db' \
+            --exclude 'db/*.sqlite-wal' \
+            --exclude 'db/*.sqlite-shm' \
+            --exclude 'db/*.db-wal' \
+            --exclude 'db/*.db-shm' \
+            --exclude 'db/backups/' \
+            --exclude 'db/backup*/' \
+            --exclude 'logs/' \
             -e "ssh -i ~/.ssh/aliyun_deploy_key -p ${ALIYUN_PORT:-22}" \
             ./ "$ALIYUN_USER@$ALIYUN_HOST:$ALIYUN_DEPLOY_PATH/"
 
