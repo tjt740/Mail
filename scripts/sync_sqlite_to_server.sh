@@ -45,9 +45,16 @@ if [[ -n "${ALIYUN_SSH_KEY:-}" ]]; then
   SCP_OPTS+=(-i "$ALIYUN_SSH_KEY")
 fi
 
+encode_arg() {
+  printf '%s' "$1" | base64 | tr -d '\n'
+}
+
 TMP_DIR="$(mktemp -d)"
 SNAPSHOT="$TMP_DIR/mail.sqlite"
 REMOTE_TMP="/tmp/mail.sqlite.$(date +%Y%m%d%H%M%S).$$"
+REMOTE_STOP_COMMAND_B64="$(encode_arg "$REMOTE_STOP_COMMAND")"
+REMOTE_RESTART_COMMAND_B64="$(encode_arg "$REMOTE_RESTART_COMMAND")"
+REMOTE_CHOWN_COMMAND_B64="$(encode_arg "$REMOTE_CHOWN_COMMAND")"
 
 cleanup() {
   rm -rf "$TMP_DIR"
@@ -79,17 +86,25 @@ ssh "${SSH_OPTS[@]}" "$SSH_TARGET" bash -s -- \
   "$REMOTE_TMP" \
   "$REMOTE_DB" \
   "$REMOTE_BACKUP_DIR" \
-  "$REMOTE_STOP_COMMAND" \
-  "$REMOTE_RESTART_COMMAND" \
-  "$REMOTE_CHOWN_COMMAND" <<'REMOTE_SH'
+  "$REMOTE_STOP_COMMAND_B64" \
+  "$REMOTE_RESTART_COMMAND_B64" \
+  "$REMOTE_CHOWN_COMMAND_B64" <<'REMOTE_SH'
 set -euo pipefail
+
+decode_arg() {
+  if [[ -z "$1" ]]; then
+    return 0
+  fi
+
+  printf '%s' "$1" | base64 -d
+}
 
 remote_tmp="$1"
 remote_db="$2"
 backup_dir="$3"
-stop_command="$4"
-restart_command="$5"
-chown_command="$6"
+stop_command="$(decode_arg "$4")"
+restart_command="$(decode_arg "$5")"
+chown_command="$(decode_arg "${6:-}")"
 db_dir="$(dirname "$remote_db")"
 backup_file="$backup_dir/mail.sqlite.$(date +%Y%m%d%H%M%S).bak"
 
