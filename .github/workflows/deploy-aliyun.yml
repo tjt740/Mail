@@ -1,0 +1,92 @@
+name: Deploy to Aliyun
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+      ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+      ALIYUN_PORT: ${{ secrets.ALIYUN_PORT }}
+      ALIYUN_SSH_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+      ALIYUN_DEPLOY_PATH: ${{ secrets.ALIYUN_DEPLOY_PATH }}
+      ALIYUN_DEPLOY_COMMAND: ${{ secrets.ALIYUN_DEPLOY_COMMAND }}
+
+    steps:
+      - name: Check deploy secrets
+        id: config
+        run: |
+          if [ -z "$ALIYUN_HOST" ] || [ -z "$ALIYUN_USER" ] || [ -z "$ALIYUN_SSH_KEY" ] || [ -z "$ALIYUN_DEPLOY_PATH" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Aliyun deploy secrets are not configured; skipping deploy."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install SSH tools
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsync openssh-client
+
+      - name: Prepare SSH key
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$ALIYUN_SSH_KEY" > ~/.ssh/aliyun_deploy_key
+          chmod 600 ~/.ssh/aliyun_deploy_key
+          ssh-keyscan -p "${ALIYUN_PORT:-22}" "$ALIYUN_HOST" >> ~/.ssh/known_hosts
+
+      - name: Ensure deploy directory
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          ssh -i ~/.ssh/aliyun_deploy_key -p "${ALIYUN_PORT:-22}" "$ALIYUN_USER@$ALIYUN_HOST" \
+            "mkdir -p '$ALIYUN_DEPLOY_PATH'"
+
+      - name: Sync code
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          rsync -az --delete \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.deploy.env' \
+            --exclude '.venv/' \
+            --exclude 'venv/' \
+            --exclude '__pycache__/' \
+            --exclude 'db/*.sqlite' \
+            --exclude 'db/*.db' \
+            -e "ssh -i ~/.ssh/aliyun_deploy_key -p ${ALIYUN_PORT:-22}" \
+            ./ "$ALIYUN_USER@$ALIYUN_HOST:$ALIYUN_DEPLOY_PATH/"
+
+      - name: Restart service
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          ssh -i ~/.ssh/aliyun_deploy_key -p "${ALIYUN_PORT:-22}" "$ALIYUN_USER@$ALIYUN_HOST" \
+            bash -s -- "$ALIYUN_DEPLOY_PATH" "$ALIYUN_DEPLOY_COMMAND" <<'REMOTE'
+          set -euo pipefail
+
+          deploy_path="$1"
+          deploy_command="$2"
+
+          cd "$deploy_path"
+
+          if [ -n "$deploy_command" ]; then
+            bash -lc "$deploy_command"
+          elif [ -x ./restart.sh ]; then
+            ./restart.sh
+          else
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+            pkill -f 'python.*app.py' || true
+            nohup venv/bin/python app.py > app.log 2>&1 &
+          fi
+          REMOTE
