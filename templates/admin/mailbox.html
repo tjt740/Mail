@@ -16,8 +16,57 @@
         --sidebar-width: 200px;
         --sidebar-collapsed-width: 72px;
         --header-height: 70px;
-        --transition: all 0.3s ease;
+        --motion-fast: 140ms;
+        --motion-base: 220ms;
+        --motion-slow: 320ms;
+        --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+        --transition: all var(--motion-base) var(--motion-ease);
         --receive-sidebar-width: 140px; /* narrower nav to keep modal list area wider */
+    }
+
+    @keyframes panelEnter {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes rowEnter {
+        from {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes copiedPulse {
+        0% {
+            box-shadow: inset 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+        45% {
+            box-shadow: inset 3px 0 0 rgba(16, 185, 129, 0.85);
+        }
+        100% {
+            box-shadow: inset 3px 0 0 rgba(16, 185, 129, 0.45);
+        }
+    }
+
+    @keyframes menuEnter {
+        from {
+            opacity: 0;
+            transform: translateY(-6px) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
     }
     
     body {
@@ -26,6 +75,13 @@
         line-height: 1.6;
         color: #334155;
         transition: var(--transition);
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    html {
+        height: 100%;
+        overflow: hidden;
     }
     
     /* Sidebar Styles */
@@ -164,13 +220,18 @@
     /* Main Content */
     .main-content {
         margin-left: var(--sidebar-width);
-        min-height: 100vh;
+        height: 100vh;
+        min-height: 0;
         transition: var(--transition);
+        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
     }
     
     .header {
         background: white;
         height: var(--header-height);
+        flex: 0 0 var(--header-height);
         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         display: flex;
         align-items: center;
@@ -218,8 +279,11 @@
     
     /* Content Area */
     .content {
-        padding: 30px;
-        min-height: calc(100vh - var(--header-height));
+        padding: 18px 24px;
+        flex: 1;
+        min-height: 0;
+        max-width: 100%;
+        overflow: hidden;
     }
     
     /* Cards */
@@ -495,10 +559,22 @@
 
     .content-grid {
         display: grid;
-        grid-template-columns: 220px 1fr;
+        grid-template-columns: minmax(200px, 220px) minmax(0, 1fr);
         gap: 20px;
         align-items: stretch;
-        min-height: calc(100vh - var(--header-height) - 80px);
+        height: 100%;
+        min-height: 0;
+        max-width: 100%;
+        transition: grid-template-columns var(--motion-slow) var(--motion-ease), gap var(--motion-base) var(--motion-ease);
+    }
+
+    .content-grid.group-panel-collapsed {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+
+    .content-grid.group-panel-collapsed .group-panel {
+        display: none;
     }
 
     .group-panel {
@@ -506,12 +582,14 @@
         border-radius: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
         padding: 16px;
-        position: sticky;
-        top: calc(var(--header-height) + 20px);
-        height: calc(100vh - var(--header-height) - 80px); /* Fixed height aligned to page bottom */
+        position: relative;
+        height: 100%;
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        min-width: 0;
+        animation: panelEnter var(--motion-slow) var(--motion-ease) both;
+        transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease);
     }
 
     .group-header {
@@ -521,6 +599,27 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+    }
+
+    .group-panel-header-toggle {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        color: #64748b;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+    }
+
+    .group-panel-header-toggle:hover {
+        color: var(--primary-color);
+        border-color: var(--primary-color);
+        background: #f8fafc;
+        transform: translateY(-1px);
     }
 
     .group-tree {
@@ -542,6 +641,7 @@
         display: flex;
         align-items: center;
         gap: 8px;
+        transform: translateZ(0);
     }
 
     .group-toggle {
@@ -564,12 +664,14 @@
 
     .group-item:hover {
         background: #f8fafc;
+        transform: translateX(2px);
     }
 
     .group-item.active {
         background: rgba(102, 126, 234, 0.1);
         color: #4f46e5;
         font-weight: 600;
+        box-shadow: inset 3px 0 0 rgba(102, 126, 234, 0.45);
     }
 
     .group-children {
@@ -588,12 +690,42 @@
     .mail-panel {
         display: flex;
         flex-direction: column;
-        gap: 15px;
-        min-height: calc(100vh - var(--header-height) - 80px);
+        gap: 12px;
+        height: 100%;
+        min-height: 0;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .mail-panel .card {
+        min-width: 0;
+        margin-bottom: 0;
+        animation: panelEnter var(--motion-slow) var(--motion-ease) both;
+    }
+
+    .mail-panel .card:nth-child(2) {
+        animation-delay: 45ms;
+    }
+
+    .group-panel-toggle {
+        white-space: nowrap;
+    }
+
+    .toolbar-card {
+        flex: 0 0 auto;
+        overflow: visible !important;
+        position: relative;
+        z-index: 20;
+    }
+
+    .toolbar-card-body {
+        padding: 16px 18px;
+        overflow: visible;
     }
 
     .mail-panel .card:last-of-type {
         flex: 1;
+        min-height: 0;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -610,19 +742,189 @@
         min-height: 0;
     }
 
+    #mailboxTable {
+        min-width: 1220px;
+        table-layout: fixed;
+        margin-top: 0;
+        transition: min-width var(--motion-base) var(--motion-ease);
+    }
+
+    #mailboxTable.server-column-visible {
+        min-width: 1450px;
+    }
+
+    .mailbox-col-select {
+        width: 44px;
+        text-align: center;
+    }
+
+    .mailbox-col-id {
+        width: 72px;
+    }
+
+    .mailbox-col-group {
+        width: 90px;
+    }
+
+    .mailbox-col-email {
+        width: 460px;
+    }
+
+    .mailbox-col-server {
+        width: 230px;
+    }
+
+    .mailbox-col-created_at {
+        width: 158px;
+    }
+
+    .mailbox-col-remarks {
+        width: 110px;
+    }
+
+    .mailbox-col-actions {
+        width: 300px;
+    }
+
+    .mailbox-col-remarks {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mailbox-email-cell {
+        cursor: copy;
+        color: #1f2937;
+        overflow: visible;
+        text-overflow: clip;
+        transition: var(--transition);
+    }
+
+    .mailbox-email-text {
+        display: inline-block;
+        max-width: none;
+        padding: 4px 8px;
+        margin: -4px -8px;
+        border-radius: 8px;
+        transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+    }
+
+    .mailbox-email-cell:hover .mailbox-email-text {
+        color: var(--primary-color);
+        background: rgba(201, 100, 66, 0.08) !important;
+        box-shadow: inset 0 -2px 0 rgba(201, 100, 66, 0.42);
+    }
+
+    #mailboxTable tr.mailbox-row-copied .mailbox-email-text {
+        background: rgba(16, 185, 129, 0.14) !important;
+        color: #1f6f45;
+        font-weight: 600;
+        animation: copiedPulse var(--motion-slow) var(--motion-ease) both;
+    }
+
+    #mailboxTable tbody tr {
+        transition: background-color var(--motion-fast) ease;
+    }
+
+    #mailboxTable tbody tr[data-mailbox-id] {
+        animation: rowEnter var(--motion-base) var(--motion-ease) both;
+    }
+
+    #mailboxTable tbody tr:hover {
+        background: transparent !important;
+    }
+
+    #mailboxTable tbody tr:hover,
+    #mailboxTable tbody tr:hover td,
+    #mailboxTable tbody tr.mailbox-row-copied:hover td {
+        background: transparent !important;
+    }
+
+    #mailboxTable tbody tr:hover td.mailbox-email-cell:hover .mailbox-email-text {
+        color: var(--primary-color);
+        background: rgba(201, 100, 66, 0.10) !important;
+        box-shadow: inset 0 -2px 0 rgba(201, 100, 66, 0.42);
+    }
+
+    #mailboxTable tbody tr.mailbox-row-copied:hover td.mailbox-email-cell .mailbox-email-text {
+        background: rgba(16, 185, 129, 0.16) !important;
+    }
+
+    .mailbox-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+    }
+
+    .mailbox-actions .btn-small {
+        flex: 0 0 auto;
+        min-width: 42px;
+        padding: 6px 9px;
+        line-height: 1.2;
+        transition: transform var(--motion-fast) var(--motion-ease), filter var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+    }
+
+    .mailbox-actions .btn-small:hover {
+        transform: translateY(-1px);
+    }
+
+    .mailbox-actions .btn-small[data-action="edit"] {
+        background: #4F8A5B !important;
+        border-color: #4F8A5B !important;
+        color: #fff !important;
+    }
+
+    .mailbox-actions .btn-small[data-action="receive"] {
+        background: #2F6F9F !important;
+        border-color: #2F6F9F !important;
+        color: #fff !important;
+    }
+
+    .mailbox-actions .btn-small[data-action="send"] {
+        background: #2D8C7F !important;
+        border-color: #2D8C7F !important;
+        color: #fff !important;
+    }
+
+    .mailbox-actions .btn-small[data-action="test"] {
+        background: #C08A2D !important;
+        border-color: #C08A2D !important;
+        color: #fff !important;
+    }
+
+    .mailbox-actions .btn-small[data-action="remarks"] {
+        background: #6E5AA8 !important;
+        border-color: #6E5AA8 !important;
+        color: #fff !important;
+    }
+
+    .mailbox-actions .btn-small[data-action="delete"] {
+        background: #BC4B3C !important;
+        border-color: #BC4B3C !important;
+        color: #fff !important;
+    }
+
+    .mailbox-actions .btn-small:hover {
+        filter: brightness(0.94);
+        box-shadow: 0 3px 8px rgba(40, 35, 28, 0.12);
+    }
+
     /* Add explicit height for scrollable card body aligned to page bottom */
     .scroll-card-body {
-        /* 260px accounts for: header (70px) + card header (~80px) + toolbar (~50px) + padding/margins (~60px) */
-        height: calc(100vh - var(--header-height) - 260px); /* Fixed height aligned to page bottom */
-        overflow-y: auto;
+        height: auto;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
     }
 
     .scroll-card-body .table-container {
         flex: 1;
-        overflow-y: auto;
+        overflow: auto;
         min-height: 0;
+        scroll-behavior: smooth;
     }
 
     .receive-modal .modal-content {
@@ -776,21 +1078,91 @@
     }
 
     .toolbar-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+        align-items: stretch;
     }
 
     .toolbar-row .button-group {
         margin-bottom: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .toolbar-row .button-group > .btn,
+    .toolbar-row .button-group > .column-config {
+        transition: transform var(--motion-fast) var(--motion-ease), opacity var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+    }
+
+    .toolbar-row .button-group > .btn:hover,
+    .column-config-toggle:hover {
+        transform: translateY(-1px);
+    }
+
+    .selection-action-visible {
+        animation: menuEnter var(--motion-base) var(--motion-ease) both;
+    }
+
+    .column-config {
+        position: relative;
+        display: inline-flex;
+        flex: 0 0 auto;
+    }
+
+    .column-config-menu {
+        position: absolute;
+        left: 0;
+        top: calc(100% + 8px);
+        width: 180px;
+        padding: 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+        display: none;
+        z-index: 1500;
+    }
+
+    .column-config-menu.show {
+        display: block;
+        animation: menuEnter var(--motion-base) var(--motion-ease) both;
+    }
+
+    .column-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 6px;
+        color: #374151;
+        font-size: 13px;
+        cursor: pointer;
+        border-radius: 7px;
+        user-select: none;
+        transition: background-color var(--motion-fast) ease, transform var(--motion-fast) var(--motion-ease), color var(--motion-fast) ease;
+    }
+
+    .column-option:hover {
+        background: #f8fafc;
+        transform: translateX(2px);
+    }
+
+    .column-option input {
+        flex: 0 0 auto;
+    }
+
+    .column-option.required {
+        color: #9ca3af;
+        cursor: not-allowed;
     }
 
     .toolbar-row .search-controls {
         margin-bottom: 0;
-        flex: 1;
-        justify-content: flex-end;
+        width: 100%;
+        min-width: 0;
+        justify-content: stretch;
     }
 
     .group-context-menu {
@@ -826,16 +1198,17 @@
     }
     
     .search-box {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) auto auto;
         gap: 10px;
-        flex: 1;
-        max-width: 600px; /* Increased from 400px for longer search box */
+        width: 100%;
+        max-width: none;
         min-width: 0; /* Allow shrinking */
     }
     
     .search-box input {
-        flex: 1;
-        min-width: 250px; /* Increased from 150px for better appearance */
+        width: 100%;
+        min-width: 0;
         padding: 10px 16px; /* Enhanced padding for better visual appeal */
         border: 2px solid #e5e7eb;
         border-radius: 8px;
@@ -1025,22 +1398,27 @@
     @media (max-width: 1024px) {
         .content-grid {
             grid-template-columns: 1fr;
+            grid-template-rows: auto minmax(0, 1fr);
+        }
+
+        .content-grid.group-panel-collapsed {
+            grid-template-rows: minmax(0, 1fr);
+        }
+
+        .content-grid:not(.group-panel-collapsed) {
+            gap: 12px;
         }
         
         .group-panel {
             height: auto;
-            max-height: none;
-        }
-        
-        .toolbar-row {
-            flex-direction: column;
-            align-items: stretch;
-        }
-        
-        .toolbar-row .search-controls {
-            justify-content: space-between;
+            max-height: 180px;
         }
 
+        .mail-panel {
+            height: 100%;
+            min-height: 0;
+        }
+        
         .receive-body {
             grid-template-columns: 1fr;
         }
@@ -1106,7 +1484,7 @@
         }
         
         .content {
-            padding: 20px;
+            padding: 10px !important;
         }
         
         .mobile-menu-toggle {
@@ -1114,7 +1492,15 @@
         }
         
         .button-group {
-            flex-direction: column;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 2px;
+        }
+
+        .button-group .btn,
+        .button-group .column-config {
+            flex: 0 0 auto;
         }
         
         .search-controls {
@@ -1123,7 +1509,25 @@
         }
         
         .search-box {
+            grid-template-columns: 1fr;
             max-width: none;
+        }
+
+        .toolbar-card-body {
+            padding: 12px !important;
+        }
+
+        .column-config-menu {
+            left: auto;
+            right: 0;
+        }
+
+        #mailboxTable {
+            min-width: 1220px;
+        }
+
+        #mailboxTable.server-column-visible {
+            min-width: 1450px;
         }
         
         .form-row {
@@ -1133,6 +1537,44 @@
         .pagination-container {
             flex-wrap: wrap;
             gap: 5px;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .header {
+            padding: 0 12px;
+        }
+
+        .header-actions {
+            gap: 8px;
+        }
+
+        .search-box {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .search-box input {
+            grid-column: 1 / -1;
+        }
+
+        .search-box .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .group-panel {
+            max-height: 150px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 1ms !important;
+            animation-iteration-count: 1 !important;
+            scroll-behavior: auto !important;
+            transition-duration: 1ms !important;
         }
     }
     
@@ -1212,16 +1654,28 @@
             <div class="group-panel" id="groupPanel">
                 <div class="group-header">
                     <span>分组管理</span>
+                    <button type="button" class="group-panel-header-toggle" onclick="toggleMailboxGroupPanel()" title="收起分组" aria-label="收起分组">
+                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-fold"></use></svg></span>
+                    </button>
                 </div>
                 <ul class="group-tree" id="groupTree"></ul>
                 <div class="group-empty" id="groupEmptyHint" style="display: none;">暂无自定义分组</div>
             </div>
             
             <div class="mail-panel">
-                <div class="card" style="margin-bottom: 15px;">
-                    <div class="card-body" style="padding: 20px;">
+                <div class="card toolbar-card">
+                    <div class="card-body toolbar-card-body">
                         <div class="toolbar-row">
                             <div class="button-group">
+                                <button class="btn btn-secondary group-panel-toggle" id="groupPanelToggle" type="button" onclick="toggleMailboxGroupPanel()" aria-expanded="false">
+                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span> 显示分组
+                                </button>
+                                <div class="column-config">
+                                    <button class="btn btn-secondary column-config-toggle" id="columnConfigBtn" type="button" onclick="toggleColumnConfig(event)">
+                                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span> 显示列
+                                    </button>
+                                    <div class="column-config-menu" id="columnConfigMenu" aria-hidden="true"></div>
+                                </div>
                                 <button class="btn btn-primary" onclick="showAddModal()">
                                     <span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span> 添加邮箱
                                 </button>
@@ -1230,6 +1684,9 @@
                                 </button>
                                 <button class="btn btn-primary" onclick="showServerModal()">
                                     <span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span> 添加服务器地址
+                                </button>
+                                <button class="btn btn-success" onclick="copySelectedMailboxes()" id="batchCopyBtn" style="display: none;">
+                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span> 批量复制
                                 </button>
                                 <button class="btn btn-danger" onclick="batchDeleteMailboxes()" id="batchDeleteBtn" style="display: none;">
                                     <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除
@@ -1251,16 +1708,7 @@
                         <div class="table-container">
                             <table id="mailboxTable">
                                 <thead>
-                                    <tr>
-                                        <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
-                                        <th>序号ID</th>
-                                        <th>分组</th>
-                                        <th>邮箱地址</th>
-                                        <th>服务器（收/发）</th>
-                                        <th>添加时间</th>
-                                        <th>备注</th>
-                                        <th>操作</th>
-                                    </tr>
+                                    <tr id="mailboxTableHead"></tr>
                                 </thead>
                                 <tbody>
                                     <!-- 邮箱列表将通过JavaScript加载 -->
@@ -1707,6 +2155,65 @@
 {% block scripts %}
 <script>
     const SIDEBAR_COLLAPSE_KEY = 'adminSidebarCollapsed';
+    const MAILBOX_GROUP_PANEL_KEY = 'mailboxGroupPanelCollapsed';
+    const MAILBOX_COLUMN_STORAGE_KEY = 'mailboxTableVisibleColumnsV2';
+
+    function getStoredPreference(key) {
+        try {
+            return window.localStorage ? window.localStorage.getItem(key) : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function setStoredPreference(key, value) {
+        try {
+            if (window.localStorage) {
+                window.localStorage.setItem(key, value);
+            }
+        } catch (error) {
+            // Storage can be unavailable in embedded/private browser contexts.
+        }
+    }
+
+    function updateMailboxGroupPanelControls(collapsed) {
+        const toggleBtn = document.getElementById('groupPanelToggle');
+        const headerToggle = document.querySelector('.group-panel-header-toggle');
+
+        if (toggleBtn) {
+            toggleBtn.innerHTML = collapsed
+                ? '<span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span> 显示分组'
+                : '<span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-fold"></use></svg></span> 隐藏分组';
+            toggleBtn.setAttribute('aria-expanded', (!collapsed).toString());
+            toggleBtn.title = collapsed ? '展开左侧分组' : '收起左侧分组';
+        }
+
+        if (headerToggle) {
+            headerToggle.setAttribute('aria-expanded', (!collapsed).toString());
+            headerToggle.title = collapsed ? '展开分组' : '收起分组';
+            headerToggle.setAttribute('aria-label', collapsed ? '展开分组' : '收起分组');
+        }
+    }
+
+    function applyMailboxGroupPanelState(collapsed) {
+        const grid = document.querySelector('.content-grid');
+        if (!grid) return;
+        grid.classList.toggle('group-panel-collapsed', collapsed);
+        updateMailboxGroupPanelControls(collapsed);
+    }
+
+    function toggleMailboxGroupPanel() {
+        const grid = document.querySelector('.content-grid');
+        const shouldCollapse = grid ? !grid.classList.contains('group-panel-collapsed') : false;
+        applyMailboxGroupPanelState(shouldCollapse);
+        setStoredPreference(MAILBOX_GROUP_PANEL_KEY, shouldCollapse ? '1' : '0');
+    }
+
+    function initMailboxGroupPanel() {
+        const saved = getStoredPreference(MAILBOX_GROUP_PANEL_KEY);
+        const shouldCollapse = saved === null ? true : saved === '1';
+        applyMailboxGroupPanelState(shouldCollapse);
+    }
 
     function updateSidebarToggleButton() {
         const btn = document.getElementById('sidebarToggle');
@@ -1731,8 +2238,8 @@
 
     function toggleSidebarCollapse() {
         const shouldCollapse = !document.body.classList.contains('sidebar-collapsed');
-        localStorage.setItem(SIDEBAR_COLLAPSE_KEY, shouldCollapse ? '1' : '0');
         applySidebarState(shouldCollapse);
+        setStoredPreference(SIDEBAR_COLLAPSE_KEY, shouldCollapse ? '1' : '0');
     }
 
     function initSidebarCollapse() {
@@ -1740,13 +2247,13 @@
         if (toggleBtn) {
             toggleBtn.addEventListener('click', toggleSidebarCollapse);
         }
-        const saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY);
+        const saved = getStoredPreference(SIDEBAR_COLLAPSE_KEY);
         const shouldCollapse = saved === null ? true : saved === '1';
         applySidebarState(shouldCollapse);
     }
 
     function handleSidebarResize() {
-        const saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY);
+        const saved = getStoredPreference(SIDEBAR_COLLAPSE_KEY);
         const shouldCollapse = saved === null ? true : saved === '1';
         applySidebarState(shouldCollapse);
         if (window.innerWidth > 768) {
@@ -1785,6 +2292,8 @@
     // Close mobile menu when clicking on navigation items
     document.addEventListener('DOMContentLoaded', function() {
         initSidebarCollapse();
+        initMailboxGroupPanel();
+        initMailboxColumnConfig();
         const navItems = document.querySelectorAll('.nav-item');
         navItems.forEach(item => {
             item.addEventListener('click', function() {
@@ -1792,6 +2301,14 @@
             });
         });
         window.addEventListener('resize', handleSidebarResize);
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('columnConfigMenu');
+            const wrapper = e.target.closest('.column-config');
+            if (menu && !wrapper) {
+                menu.classList.remove('show');
+                menu.setAttribute('aria-hidden', 'true');
+            }
+        });
     });
 
     // 全局变量
@@ -1803,8 +2320,19 @@
     let selectedServers = new Set();
     let servers = [];
     let mailboxData = [];
+    let highlightedMailboxId = null;
     const ROOT_GROUP_ID = 'all_groups';
     const UNGROUPED_GROUP_ID = 'ungrouped';
+    const MAILBOX_COLUMNS = [
+        { key: 'select', label: '', required: true, defaultVisible: true },
+        { key: 'id', label: '序号ID', required: true, defaultVisible: true },
+        { key: 'group', label: '分组', defaultVisible: false },
+        { key: 'email', label: '邮箱地址', required: true, defaultVisible: true },
+        { key: 'server', label: '服务器（收/发）', defaultVisible: false },
+        { key: 'created_at', label: '添加时间', defaultVisible: true },
+        { key: 'remarks', label: '备注', defaultVisible: true },
+        { key: 'actions', label: '操作', required: true, defaultVisible: true }
+    ];
     let groups = [];
     let mailboxGroupMap = {};
     let mailboxGroupMappings = [];
@@ -1842,11 +2370,19 @@
         if (mailboxTable) {
             mailboxTable.addEventListener('click', function(e) {
                 const target = e.target;
+                const emailCell = target.closest('.mailbox-email-cell');
+                if (emailCell) {
+                    const mailboxId = parseInt(emailCell.dataset.mailboxId, 10);
+                    copyMailboxEmail(emailCell.dataset.email || '', mailboxId);
+                    return;
+                }
+
+                const actionButton = target.closest('button[data-action]');
                 
                 // 处理操作按钮
-                if (target.tagName === 'BUTTON' && target.dataset.action) {
-                    const action = target.dataset.action;
-                    const mailboxId = parseInt(target.dataset.mailboxId, 10);
+                if (actionButton) {
+                    const action = actionButton.dataset.action;
+                    const mailboxId = parseInt(actionButton.dataset.mailboxId, 10);
                     
                     if (!mailboxId || isNaN(mailboxId) || mailboxId <= 0) return;
                     
@@ -1888,6 +2424,139 @@
     });
     
     // ========== 邮箱管理功能 ==========
+
+    function getDefaultVisibleMailboxColumns() {
+        return MAILBOX_COLUMNS
+            .filter(column => column.required || column.defaultVisible)
+            .map(column => column.key);
+    }
+
+    function getVisibleMailboxColumnKeys() {
+        const requiredKeys = MAILBOX_COLUMNS.filter(column => column.required).map(column => column.key);
+        let visibleKeys = getDefaultVisibleMailboxColumns();
+        const stored = getStoredPreference(MAILBOX_COLUMN_STORAGE_KEY);
+
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) {
+                    const validKeys = new Set(MAILBOX_COLUMNS.map(column => column.key));
+                    visibleKeys = parsed.filter(key => validKeys.has(key));
+                }
+            } catch (error) {
+                visibleKeys = getDefaultVisibleMailboxColumns();
+            }
+        }
+
+        requiredKeys.forEach(key => {
+            if (!visibleKeys.includes(key)) visibleKeys.push(key);
+        });
+
+        return MAILBOX_COLUMNS
+            .map(column => column.key)
+            .filter(key => visibleKeys.includes(key));
+    }
+
+    function saveVisibleMailboxColumns(keys) {
+        setStoredPreference(MAILBOX_COLUMN_STORAGE_KEY, JSON.stringify(keys));
+    }
+
+    function initMailboxColumnConfig() {
+        renderMailboxColumnConfig();
+        renderMailboxTableHeader();
+    }
+
+    function renderMailboxColumnConfig() {
+        const menu = document.getElementById('columnConfigMenu');
+        if (!menu) return;
+        const visibleKeys = new Set(getVisibleMailboxColumnKeys());
+        menu.innerHTML = MAILBOX_COLUMNS
+            .filter(column => column.label)
+            .map(column => `
+                <label class="column-option ${column.required ? 'required' : ''}">
+                    <input type="checkbox"
+                        data-column-key="${column.key}"
+                        ${visibleKeys.has(column.key) ? 'checked' : ''}
+                        ${column.required ? 'disabled' : ''}
+                        onchange="toggleMailboxColumn('${column.key}', this.checked)">
+                    <span>${escapeHtml(column.label)}</span>
+                </label>
+            `).join('');
+    }
+
+    function toggleColumnConfig(event) {
+        event.stopPropagation();
+        const menu = document.getElementById('columnConfigMenu');
+        if (!menu) return;
+        const nextVisible = !menu.classList.contains('show');
+        menu.classList.toggle('show', nextVisible);
+        menu.setAttribute('aria-hidden', nextVisible ? 'false' : 'true');
+    }
+
+    function toggleMailboxColumn(key, checked) {
+        const visibleKeys = new Set(getVisibleMailboxColumnKeys());
+        if (checked) {
+            visibleKeys.add(key);
+        } else {
+            visibleKeys.delete(key);
+        }
+        MAILBOX_COLUMNS.filter(column => column.required).forEach(column => visibleKeys.add(column.key));
+        saveVisibleMailboxColumns(MAILBOX_COLUMNS.map(column => column.key).filter(columnKey => visibleKeys.has(columnKey)));
+        renderMailboxColumnConfig();
+        renderMailboxView(currentPage);
+    }
+
+    function renderMailboxTableHeader() {
+        const header = document.getElementById('mailboxTableHead');
+        const table = document.getElementById('mailboxTable');
+        if (!header || !table) return;
+        const visibleColumns = getVisibleMailboxColumnKeys()
+            .map(key => MAILBOX_COLUMNS.find(column => column.key === key))
+            .filter(Boolean);
+
+        table.classList.toggle('server-column-visible', visibleColumns.some(column => column.key === 'server'));
+        header.innerHTML = visibleColumns.map(column => {
+            if (column.key === 'select') {
+                return '<th class="mailbox-col-select"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>';
+            }
+            return `<th class="mailbox-col-${column.key}">${escapeHtml(column.label)}</th>`;
+        }).join('');
+    }
+
+    function getMailboxCellHtml(column, mailbox, rowNumber) {
+        switch (column.key) {
+            case 'select':
+                return `<td class="mailbox-col-select"><input type="checkbox" class="mailbox-checkbox" value="${mailbox.id}" data-mailbox-id="${mailbox.id}" ${selectedMailboxes.has(mailbox.id) ? 'checked' : ''}></td>`;
+            case 'id':
+                return `<td class="mailbox-col-id">${rowNumber}</td>`;
+            case 'group':
+                return `<td class="mailbox-col-group">${escapeHtml(getMailboxGroupName(mailbox))}</td>`;
+            case 'email':
+                return `<td class="mailbox-col-email mailbox-email-cell" data-email="${escapeAttribute(mailbox.email)}" data-mailbox-id="${mailbox.id}" title="点击复制邮箱"><span class="mailbox-email-text">${escapeHtml(mailbox.email)}</span></td>`;
+            case 'server':
+                return `<td class="mailbox-col-server">
+                    <div>收：${escapeHtml(mailbox.server)}</div>
+                    <div>发：${escapeHtml(mailbox.send_server || mailbox.server || '')}</div>
+                </td>`;
+            case 'created_at':
+                return `<td class="mailbox-col-created_at">${formatDateTime(mailbox.created_at)}</td>`;
+            case 'remarks':
+                return `<td class="mailbox-col-remarks">${escapeHtml(mailbox.remarks || '')}</td>`;
+            case 'actions':
+                return `<td class="mailbox-col-actions">
+                    <div class="mailbox-actions">
+                        <button class="btn btn-success btn-small" data-action="edit" data-mailbox-id="${mailbox.id}">编辑</button>
+                        <button class="btn btn-primary btn-small" data-action="receive" data-mailbox-id="${mailbox.id}">收件</button>
+                        <button class="btn btn-primary btn-small" data-action="send" data-mailbox-id="${mailbox.id}">发件</button>
+                        <button class="btn btn-primary btn-small" data-action="test" data-mailbox-id="${mailbox.id}">测试</button>
+                        <button class="btn btn-success btn-small" data-action="remarks" data-mailbox-id="${mailbox.id}">备注</button>
+                        <button class="btn btn-danger btn-small" data-action="delete" data-mailbox-id="${mailbox.id}">删除</button>
+                    </div>
+                </td>`;
+            default:
+                return '';
+        }
+    }
 
     async function refreshMailboxGroupMappings() {
         try {
@@ -1943,10 +2612,14 @@
     // 渲染邮箱表格
     function renderMailboxTable(mailboxes) {
         const tbody = document.querySelector('#mailboxTable tbody');
+        const visibleColumns = getVisibleMailboxColumnKeys()
+            .map(key => MAILBOX_COLUMNS.find(column => column.key === key))
+            .filter(Boolean);
+        renderMailboxTableHeader();
         tbody.innerHTML = '';
         
         if (mailboxes.length === 0) {
-            const colCount = document.querySelectorAll('#mailboxTable thead th').length || 8;
+            const colCount = visibleColumns.length || 1;
             tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align: center; color: #6b7280;">暂无邮箱账号</td></tr>`;
             return;
         }
@@ -1954,32 +2627,13 @@
         mailboxes.forEach((mailbox, index) => {
             const row = document.createElement('tr');
             const rowNumber = (currentPage - 1) * perPage + index + 1;
-            row.innerHTML = `
-                <td><input type="checkbox" class="mailbox-checkbox" value="${mailbox.id}" data-mailbox-id="${mailbox.id}"></td>
-                <td>${rowNumber}</td>
-                <td>${escapeHtml(getMailboxGroupName(mailbox))}</td>
-                <td>${escapeHtml(mailbox.email)}</td>
-                <td>
-                    <div>收：${escapeHtml(mailbox.server)}</div>
-                    <div>发：${escapeHtml(mailbox.send_server || mailbox.server || '')}</div>
-                </td>
-                <td>${formatDateTime(mailbox.created_at)}</td>
-                <td>${escapeHtml(mailbox.remarks || '')}</td>
-                <td>
-                    <div class="actions" style="display: flex; gap: 5px; flex-wrap: wrap;">
-                        <button class="btn btn-success btn-small" data-action="edit" data-mailbox-id="${mailbox.id}">编辑</button>
-                        <button class="btn btn-primary btn-small" data-action="receive" data-mailbox-id="${mailbox.id}">收件</button>
-                        <button class="btn btn-primary btn-small" data-action="send" data-mailbox-id="${mailbox.id}">发件</button>
-                        <button class="btn btn-primary btn-small" data-action="test" data-mailbox-id="${mailbox.id}">测试</button>
-                        <button class="btn btn-success btn-small" data-action="remarks" data-mailbox-id="${mailbox.id}">备注</button>
-                        <button class="btn btn-danger btn-small" data-action="delete" data-mailbox-id="${mailbox.id}">删除</button>
-                    </div>
-                </td>
-            `;
+            row.dataset.mailboxId = mailbox.id;
+            row.className = highlightedMailboxId === mailbox.id ? 'mailbox-row-copied' : '';
+            row.innerHTML = visibleColumns.map(column => getMailboxCellHtml(column, mailbox, rowNumber)).join('');
             tbody.appendChild(row);
         });
         
-        updateBatchDeleteButton();
+        updateSelectionButtons();
     }
     
     function renderMailboxView(page = 1) {
@@ -3552,6 +4206,85 @@
     }
     
     // ========== 选择管理功能 ==========
+
+    async function writeTextToClipboard(text) {
+        if (!text) return false;
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            }
+        } catch (error) {
+            // Fall through to legacy copy path.
+        }
+
+        try {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            textarea.style.top = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            const success = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            return success;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function highlightMailboxRow(mailboxId) {
+        highlightedMailboxId = mailboxId;
+        document.querySelectorAll('#mailboxTable tbody tr').forEach(row => {
+            const isTarget = parseInt(row.dataset.mailboxId, 10) === mailboxId;
+            row.classList.remove('mailbox-row-copied');
+            if (isTarget) {
+                requestAnimationFrame(() => row.classList.add('mailbox-row-copied'));
+            }
+        });
+    }
+
+    async function copyMailboxEmail(email, mailboxId) {
+        const normalizedEmail = (email || '').trim();
+        if (!normalizedEmail) {
+            showToast('邮箱地址为空', 'error');
+            return;
+        }
+        const copied = await writeTextToClipboard(normalizedEmail);
+        if (copied) {
+            highlightMailboxRow(mailboxId);
+            showToast(`已复制：${normalizedEmail}`, 'success');
+        } else {
+            showToast('复制失败，请手动复制', 'error');
+        }
+    }
+
+    async function copySelectedMailboxes() {
+        if (selectedMailboxes.size === 0) {
+            showToast('请选择要复制的邮箱', 'error');
+            return;
+        }
+
+        const idSet = new Set(Array.from(selectedMailboxes).map(id => parseInt(id, 10)));
+        const emails = mailboxData
+            .filter(mailbox => idSet.has(mailbox.id))
+            .map(mailbox => mailbox.email)
+            .filter(Boolean);
+
+        if (emails.length === 0) {
+            showToast('选中的邮箱不存在', 'error');
+            return;
+        }
+
+        const copied = await writeTextToClipboard(emails.join('\n'));
+        if (copied) {
+            showToast(`已复制 ${emails.length} 个邮箱`, 'success');
+        } else {
+            showToast('复制失败，请手动复制', 'error');
+        }
+    }
     
     // 全选/取消全选
     function toggleSelectAll() {
@@ -3567,7 +4300,7 @@
             }
         });
         
-        updateBatchDeleteButton();
+        updateSelectionButtons();
     }
     
     // 切换邮箱选择状态
@@ -3577,18 +4310,43 @@
         } else {
             selectedMailboxes.add(id);
         }
-        updateBatchDeleteButton();
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.mailbox-checkbox');
+        if (selectAll && checkboxes.length > 0) {
+            selectAll.checked = Array.from(checkboxes).every(checkbox => checkbox.checked);
+        }
+        updateSelectionButtons();
     }
     
-    // 更新批量删除按钮状态
-    function updateBatchDeleteButton() {
-        const btn = document.getElementById('batchDeleteBtn');
+    // 更新批量操作按钮状态
+    function updateSelectionButtons() {
+        const copyBtn = document.getElementById('batchCopyBtn');
+        const deleteBtn = document.getElementById('batchDeleteBtn');
         if (selectedMailboxes.size > 0) {
-            btn.style.display = 'inline-block';
-            btn.innerHTML = `<span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除 (${selectedMailboxes.size})`;
+            if (copyBtn) {
+                copyBtn.style.display = 'inline-flex';
+                copyBtn.classList.add('selection-action-visible');
+                copyBtn.innerHTML = `<span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span> 批量复制 (${selectedMailboxes.size})`;
+            }
+            if (deleteBtn) {
+                deleteBtn.style.display = 'inline-flex';
+                deleteBtn.classList.add('selection-action-visible');
+                deleteBtn.innerHTML = `<span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除 (${selectedMailboxes.size})`;
+            }
         } else {
-            btn.style.display = 'none';
+            if (copyBtn) {
+                copyBtn.style.display = 'none';
+                copyBtn.classList.remove('selection-action-visible');
+            }
+            if (deleteBtn) {
+                deleteBtn.style.display = 'none';
+                deleteBtn.classList.remove('selection-action-visible');
+            }
         }
+    }
+
+    function updateBatchDeleteButton() {
+        updateSelectionButtons();
     }
     
     // 批量删除邮箱
@@ -4217,6 +4975,10 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    function escapeAttribute(text) {
+        return escapeHtml(text).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
     
     function formatDateTime(dateString) {

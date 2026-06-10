@@ -7636,6 +7636,7 @@ def api_admin_system_config():
         try:
             # 获取当前管理员信息
             current_admin_username = session.get('admin_username', 'admin')
+            current_admin_id = session.get('admin_id')
             
             # 获取系统配置
             system_config = {}
@@ -7643,12 +7644,18 @@ def api_admin_system_config():
                 config_rows = db.execute('SELECT config_key, config_value FROM system_config').fetchall()
                 for row in config_rows:
                     system_config[row['config_key']] = row['config_value']
+                admin_rows = db.execute('SELECT id, username, created_at FROM admin_users ORDER BY id ASC').fetchall()
+                admin_users = [dict(row) for row in admin_rows]
             else:
                 cursor = db.cursor()
                 cursor.execute('SELECT config_key, config_value FROM system_config')
                 config_rows = cursor.fetchall()
                 for row in config_rows:
                     system_config[row[0]] = row[1]
+                cursor.execute('SELECT id, username, created_at FROM admin_users ORDER BY id ASC')
+                admin_rows = cursor.fetchall()
+                admin_columns = [desc[0] for desc in cursor.description]
+                admin_users = [dict(zip(admin_columns, row)) for row in admin_rows]
             
             return jsonify({
                 'success': True,
@@ -7661,7 +7668,9 @@ def api_admin_system_config():
                     'api_page_title': system_config.get('api_page_title', 'API取件页面'),
                     'frontend_page_title': system_config.get('frontend_page_title', '邮件查看'),
                     'admin_login_title': system_config.get('admin_login_title', '管理员登录'),
-                    'admin_master_key_set': bool(system_config.get('admin_master_key', ''))
+                    'admin_master_key_set': bool(system_config.get('admin_master_key', '')),
+                    'current_admin_id': current_admin_id,
+                    'admin_users': admin_users
                 }
             })
         except Exception as e:
@@ -7678,6 +7687,12 @@ def api_admin_system_config():
             
             if action == 'update_admin':
                 return _update_admin_account(db, db_type, data)
+            elif action == 'add_admin':
+                return _add_admin_account(db, db_type, data)
+            elif action == 'reset_admin_password':
+                return _reset_admin_password(db, db_type, data)
+            elif action == 'delete_admin':
+                return _delete_admin_account(db, db_type, data)
             elif action == 'update_page_titles':
                 return _update_page_titles(db, db_type, data)
             elif action == 'update_system_title':
@@ -7812,6 +7827,228 @@ def _update_admin_account(db, db_type, data):
         return jsonify({
             'success': False,
             'message': f'更新管理员账号失败: {str(e)}'
+        })
+
+def _add_admin_account(db, db_type, data):
+    """新增后台管理员账号"""
+    username = data.get('admin_username', '').strip()
+    password = data.get('admin_password', '').strip()
+
+    if not username or not password:
+        return jsonify({
+            'success': False,
+            'message': '用户名和密码不能为空'
+        })
+
+    if len(password) < 4:
+        return jsonify({
+            'success': False,
+            'message': '密码长度至少4位'
+        })
+
+    try:
+        hashed_password = generate_password_hash(password)
+        now = get_beijing_time()
+
+        if db_type == 'sqlite':
+            existing_user = db.execute(
+                'SELECT id FROM admin_users WHERE username = ?',
+                (username,)
+            ).fetchone()
+            if existing_user:
+                return jsonify({
+                    'success': False,
+                    'message': '用户名已存在'
+                })
+
+            db.execute(
+                'INSERT INTO admin_users (username, password, created_at) VALUES (?, ?, ?)',
+                (username, hashed_password, now)
+            )
+            db.commit()
+            admin_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        else:
+            cursor = db.cursor()
+            cursor.execute(
+                'SELECT id FROM admin_users WHERE username = %s',
+                (username,)
+            )
+            if cursor.fetchone():
+                return jsonify({
+                    'success': False,
+                    'message': '用户名已存在'
+                })
+
+            cursor.execute(
+                'INSERT INTO admin_users (username, password, created_at) VALUES (%s, %s, %s)',
+                (username, hashed_password, now)
+            )
+            db.commit()
+            admin_id = getattr(cursor, 'lastrowid', None)
+
+        return jsonify({
+            'success': True,
+            'message': '管理员添加成功',
+            'data': {
+                'id': admin_id,
+                'username': username,
+                'created_at': now
+            }
+        })
+    except Exception as e:
+        logger.error(f"Add admin account error: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'添加管理员失败: {str(e)}'
+        })
+
+def _reset_admin_password(db, db_type, data):
+    """重置指定后台管理员密码"""
+    admin_id = safe_int(data.get('admin_id'), 0)
+    new_password = data.get('admin_password', '').strip()
+
+    if admin_id <= 0:
+        return jsonify({
+            'success': False,
+            'message': '缺少管理员ID'
+        })
+
+    if not new_password:
+        return jsonify({
+            'success': False,
+            'message': '密码不能为空'
+        })
+
+    if len(new_password) < 4:
+        return jsonify({
+            'success': False,
+            'message': '密码长度至少4位'
+        })
+
+    try:
+        hashed_password = generate_password_hash(new_password)
+
+        if db_type == 'sqlite':
+            target_admin = db.execute(
+                'SELECT id, username FROM admin_users WHERE id = ?',
+                (admin_id,)
+            ).fetchone()
+            if not target_admin:
+                return jsonify({
+                    'success': False,
+                    'message': '管理员不存在'
+                })
+
+            db.execute(
+                'UPDATE admin_users SET password = ? WHERE id = ?',
+                (hashed_password, admin_id)
+            )
+            db.commit()
+            username = target_admin['username']
+        else:
+            cursor = db.cursor()
+            cursor.execute(
+                'SELECT id, username FROM admin_users WHERE id = %s',
+                (admin_id,)
+            )
+            target_admin = cursor.fetchone()
+            if not target_admin:
+                return jsonify({
+                    'success': False,
+                    'message': '管理员不存在'
+                })
+
+            cursor.execute(
+                'UPDATE admin_users SET password = %s WHERE id = %s',
+                (hashed_password, admin_id)
+            )
+            db.commit()
+            username = target_admin[1]
+
+        return jsonify({
+            'success': True,
+            'message': f'管理员 {username} 的密码已重置'
+        })
+    except Exception as e:
+        logger.error(f"Reset admin password error: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'重置密码失败: {str(e)}'
+        })
+
+def _delete_admin_account(db, db_type, data):
+    """删除后台管理员账号"""
+    admin_id = safe_int(data.get('admin_id'), 0)
+    current_admin_id = safe_int(session.get('admin_id'), 0)
+
+    if admin_id <= 0:
+        return jsonify({
+            'success': False,
+            'message': '缺少管理员ID'
+        })
+
+    if admin_id == current_admin_id:
+        return jsonify({
+            'success': False,
+            'message': '不能删除当前登录的管理员'
+        })
+
+    try:
+        if db_type == 'sqlite':
+            admin_count = db.execute('SELECT COUNT(*) FROM admin_users').fetchone()[0]
+            if admin_count <= 1:
+                return jsonify({
+                    'success': False,
+                    'message': '至少需要保留一个管理员账号'
+                })
+
+            target_admin = db.execute(
+                'SELECT id, username FROM admin_users WHERE id = ?',
+                (admin_id,)
+            ).fetchone()
+            if not target_admin:
+                return jsonify({
+                    'success': False,
+                    'message': '管理员不存在'
+                })
+
+            db.execute('DELETE FROM admin_users WHERE id = ?', (admin_id,))
+            db.commit()
+            deleted_username = target_admin['username']
+        else:
+            cursor = db.cursor()
+            cursor.execute('SELECT COUNT(*) FROM admin_users')
+            admin_count = cursor.fetchone()[0]
+            if admin_count <= 1:
+                return jsonify({
+                    'success': False,
+                    'message': '至少需要保留一个管理员账号'
+                })
+
+            cursor.execute(
+                'SELECT id, username FROM admin_users WHERE id = %s',
+                (admin_id,)
+            )
+            target_admin = cursor.fetchone()
+            if not target_admin:
+                return jsonify({
+                    'success': False,
+                    'message': '管理员不存在'
+                })
+
+            deleted_username = target_admin[1]
+            cursor.execute('DELETE FROM admin_users WHERE id = %s', (admin_id,))
+            db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'管理员 {deleted_username} 已删除'
+        })
+    except Exception as e:
+        logger.error(f"Delete admin account error: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'删除管理员失败: {str(e)}'
         })
 
 def _update_page_titles(db, db_type, data):

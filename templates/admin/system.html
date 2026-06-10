@@ -364,6 +364,72 @@
         gap: 15px;
     }
 
+    .table-container {
+        overflow-x: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 560px;
+    }
+
+    .admin-table th,
+    .admin-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid #e5e7eb;
+        text-align: left;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+    .admin-table th {
+        background: #f8fafc;
+        color: #374151;
+        font-weight: 600;
+    }
+
+    .admin-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .admin-current-badge {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .password-mask {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        letter-spacing: 2px;
+        color: #4b5563;
+    }
+
+    .inline-form-panel {
+        display: none;
+        margin-bottom: 20px;
+        padding: 16px;
+        border: 1px solid #dbeafe;
+        border-radius: 8px;
+        background: #eff6ff;
+    }
+
+    .inline-form-actions,
+    .admin-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
     /* Buttons */
     .btn {
         display: inline-block;
@@ -386,6 +452,28 @@
     .btn-primary:hover {
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+        transform: none !important;
+        box-shadow: none !important;
     }
 
     /* Toast Notifications */
@@ -609,6 +697,73 @@
             </div>
         </div>
 
+        <!-- 多管理员管理 -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 后台管理员管理</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>用户名</th>
+                                <th>密码</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminUsersTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #6b7280;">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <form id="resetAdminPasswordForm" class="inline-form-panel">
+                    <input type="hidden" id="resetAdminId" name="reset_admin_id">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">重置账号</label>
+                            <input type="text" class="form-control" id="resetAdminUsername" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">新密码</label>
+                            <input type="password" class="form-control" id="resetAdminPassword" placeholder="至少4位">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">确认新密码</label>
+                        <input type="password" class="form-control" id="resetAdminConfirmPassword" placeholder="再次输入密码确认">
+                    </div>
+                    <div class="inline-form-actions">
+                        <button type="button" class="btn btn-primary" onclick="submitResetAdminPassword()">保存新密码</button>
+                        <button type="button" class="btn" onclick="cancelResetAdminPassword()">取消</button>
+                    </div>
+                </form>
+
+                <form id="newAdminForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">新管理员用户名</label>
+                            <input type="text" class="form-control" id="newAdminUsername" name="new_admin_username" placeholder="输入新管理员用户名">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">新管理员密码</label>
+                            <input type="password" class="form-control" id="newAdminPassword" name="new_admin_password" placeholder="至少4位">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">确认新管理员密码</label>
+                        <input type="password" class="form-control" id="newAdminConfirmPassword" name="new_admin_confirm_password" placeholder="再次输入密码确认">
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="addAdminAccount()">新增管理员</button>
+                </form>
+            </div>
+        </div>
+
         <!-- 管理员万能秘钥 -->
         <div class="card">
             <div class="card-header">
@@ -769,6 +924,62 @@
         toggleBtn.setAttribute('aria-label', isHidden ? '隐藏万能秘钥' : '显示万能秘钥');
     }
 
+    function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value == null ? '' : String(value);
+        return div.innerHTML;
+    }
+
+    function formatDateTime(value) {
+        return value || '-';
+    }
+
+    function renderAdminUsers(adminUsers, currentAdminId) {
+        const tbody = document.getElementById('adminUsersTableBody');
+        if (!tbody) return;
+
+        if (!adminUsers || adminUsers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6b7280;">暂无管理员</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = adminUsers.map(admin => {
+            const adminId = Number(admin.id) || 0;
+            const isCurrent = adminId === Number(currentAdminId);
+            const encodedUsername = encodeURIComponent(admin.username || '');
+            const resetButton = `<button type="button" class="btn btn-primary btn-small" onclick="showResetAdminPassword(${adminId}, decodeURIComponent('${encodedUsername}'))">重置密码</button>`;
+            const deleteButton = isCurrent
+                ? '<button type="button" class="btn btn-small" disabled>当前账号</button>'
+                : `<button type="button" class="btn btn-danger btn-small" onclick="deleteAdminAccount(${adminId}, decodeURIComponent('${encodedUsername}'))">删除</button>`;
+
+            return `
+                <tr>
+                    <td>${adminId}</td>
+                    <td>${escapeHtml(admin.username)}${isCurrent ? '<span class="admin-current-badge">当前登录</span>' : ''}</td>
+                    <td><span class="password-mask">****</span></td>
+                    <td>${escapeHtml(formatDateTime(admin.created_at))}</td>
+                    <td><div class="admin-actions">${resetButton}${deleteButton}</div></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function showResetAdminPassword(adminId, username) {
+        const form = document.getElementById('resetAdminPasswordForm');
+        document.getElementById('resetAdminId').value = adminId;
+        document.getElementById('resetAdminUsername').value = username;
+        document.getElementById('resetAdminPassword').value = '';
+        document.getElementById('resetAdminConfirmPassword').value = '';
+        form.style.display = 'block';
+        document.getElementById('resetAdminPassword').focus();
+    }
+
+    function cancelResetAdminPassword() {
+        const form = document.getElementById('resetAdminPasswordForm');
+        form.reset();
+        form.style.display = 'none';
+    }
+
     // 页面加载时初始化
     document.addEventListener('DOMContentLoaded', function() {
         setMasterKeyStatus(false);
@@ -811,6 +1022,8 @@
                     if (typeof data.data.admin_master_key_set !== 'undefined') {
                         setMasterKeyStatus(data.data.admin_master_key_set);
                     }
+
+                    renderAdminUsers(data.data.admin_users || [], data.data.current_admin_id);
                     
                     // 更新数据库类型显示
                     if (data.data.database_type) {
@@ -821,6 +1034,145 @@
             .catch(error => {
                 console.error('加载系统设置失败:', error);
             });
+    }
+
+    function addAdminAccount() {
+        const username = document.getElementById('newAdminUsername').value.trim();
+        const password = document.getElementById('newAdminPassword').value;
+        const confirmPassword = document.getElementById('newAdminConfirmPassword').value;
+
+        if (!username) {
+            showToast('请输入新管理员用户名', 'error');
+            return;
+        }
+
+        if (!password) {
+            showToast('请输入新管理员密码', 'error');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showToast('两次输入的密码不一致', 'error');
+            return;
+        }
+
+        if (password.length < 4) {
+            showToast('密码长度至少4位', 'error');
+            return;
+        }
+
+        fetch('/admin/api/system-config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'add_admin',
+                admin_username: username,
+                admin_password: password
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('管理员添加成功', 'success');
+                document.getElementById('newAdminForm').reset();
+                loadCurrentSettings();
+            } else {
+                showToast(data.message || '添加失败', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('添加管理员失败:', error);
+            showToast('网络错误，请稍后重试', 'error');
+        });
+    }
+
+    function deleteAdminAccount(adminId, username) {
+        if (!confirm(`确定要删除管理员 ${username} 吗？`)) {
+            return;
+        }
+
+        fetch('/admin/api/system-config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'delete_admin',
+                admin_id: adminId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message || '管理员已删除', 'success');
+                loadCurrentSettings();
+            } else {
+                showToast(data.message || '删除失败', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('删除管理员失败:', error);
+            showToast('网络错误，请稍后重试', 'error');
+        });
+    }
+
+    function submitResetAdminPassword() {
+        const adminId = parseInt(document.getElementById('resetAdminId').value, 10);
+        const username = document.getElementById('resetAdminUsername').value;
+        const password = document.getElementById('resetAdminPassword').value;
+        const confirmPassword = document.getElementById('resetAdminConfirmPassword').value;
+
+        if (!adminId) {
+            showToast('请选择要重置的管理员', 'error');
+            return;
+        }
+
+        if (!password) {
+            showToast('请输入新密码', 'error');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showToast('两次输入的密码不一致', 'error');
+            return;
+        }
+
+        if (password.length < 4) {
+            showToast('密码长度至少4位', 'error');
+            return;
+        }
+
+        if (!confirm(`确定要重置管理员 ${username} 的密码吗？`)) {
+            return;
+        }
+
+        fetch('/admin/api/system-config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'reset_admin_password',
+                admin_id: adminId,
+                admin_password: password
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message || '密码已重置', 'success');
+                cancelResetAdminPassword();
+                loadCurrentSettings();
+            } else {
+                showToast(data.message || '重置失败', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('重置管理员密码失败:', error);
+            showToast('网络错误，请稍后重试', 'error');
+        });
     }
 
     // 更新管理员账号

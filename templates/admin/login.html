@@ -322,8 +322,10 @@
         
         <div class="form-group">
             <label for="password">密码</label>
-            <input type="password" id="password" name="password" required>
-            <button type="button" class="password-toggle" onclick="togglePassword()" title="显示/隐藏密码"><span class="anticon"><svg aria-hidden="true"><use href="#ai-eye"></use></svg></span></button>
+            <div class="password-field">
+                <input type="password" id="password" name="password" required>
+                <button type="button" class="password-toggle" onclick="togglePassword()" title="显示/隐藏密码" aria-label="显示密码"><span class="anticon"><svg aria-hidden="true"><use href="#ai-eye"></use></svg></span></button>
+            </div>
         </div>
         
         <button type="submit" class="login-btn">登录</button>
@@ -360,10 +362,12 @@
             passwordInput.type = 'text';
             toggleButton.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-eye-invisible"></use></svg></span>';
             toggleButton.title = '隐藏密码';
+            toggleButton.setAttribute('aria-label', '隐藏密码');
         } else {
             passwordInput.type = 'password';
             toggleButton.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-eye"></use></svg></span>';
             toggleButton.title = '显示密码';
+            toggleButton.setAttribute('aria-label', '显示密码');
         }
     }
     

@@ -265,7 +265,44 @@ select:focus {
 .form-group label,
 .control-block label { color: var(--text) !important; }
 
-.password-toggle:hover { color: var(--primary-color) !important; }
+/* Login password reveal control */
+.password-field {
+    position: relative;
+}
+.password-field input {
+    padding-right: 52px !important;
+}
+.password-toggle {
+    position: absolute !important;
+    top: 50% !important;
+    right: 10px !important;
+    width: 34px !important;
+    height: 34px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+    background: transparent !important;
+    color: var(--text-muted) !important;
+    cursor: pointer !important;
+    transform: translateY(-50%) !important;
+    transition: var(--transition) !important;
+}
+.password-toggle .anticon {
+    width: 18px !important;
+    height: 18px !important;
+    font-size: 18px !important;
+}
+.password-toggle:hover {
+    background: var(--surface-3) !important;
+    color: var(--primary-color) !important;
+}
+.password-toggle:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 3px var(--primary-ring) !important;
+}
 
 /* ---------------------------------------------------------------- tables */
 table { border-collapse: collapse !important; }
