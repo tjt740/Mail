@@ -561,8 +561,10 @@
     function createSwitcher() {
         if (document.getElementById('i18nLanguageSwitcher')) return;
 
+        const headerUserInfo = document.querySelector('.header-actions .user-info');
+        const headerActions = headerUserInfo ? headerUserInfo.parentElement : null;
         const wrapper = document.createElement('div');
-        wrapper.className = 'i18n-switcher';
+        wrapper.className = headerActions ? 'i18n-switcher i18n-switcher--header' : 'i18n-switcher';
         wrapper.id = 'i18nLanguageSwitcher';
 
         const label = document.createElement('label');
@@ -587,7 +589,11 @@
 
         wrapper.appendChild(label);
         wrapper.appendChild(select);
-        document.body.appendChild(wrapper);
+        if (headerActions) {
+            headerActions.insertBefore(wrapper, headerUserInfo);
+        } else {
+            document.body.appendChild(wrapper);
+        }
     }
 
     function startObserver() {

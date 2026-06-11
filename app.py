@@ -9,6 +9,7 @@ import os
 import sqlite3
 import secrets
 import json
+import csv
 import subprocess
 import sys
 import time
@@ -19,6 +20,7 @@ import smtplib
 import socket
 import ssl
 import errno
+import re
 from contextlib import contextmanager
 from email.message import EmailMessage
 from email.utils import formataddr
@@ -145,17 +147,65 @@ def translate_network_error(error, server_name=None, server_port=None):
             return f'连接被拒绝: SMTP服务器 {server_name}:{server_port} 不可访问'
         return '连接被拒绝'
     
-    # Return original error message if no specific translation found
+# Return original error message if no specific translation found
     return error_msg
+
+def get_persistent_secret_key():
+    """保持 Flask session secret 跨重启稳定，避免后台页面请求被重定向到登录页。"""
+    env_secret = os.environ.get('SECRET_KEY', '').strip()
+    if env_secret:
+        return env_secret
+
+    secret_path = os.path.join(os.path.dirname(__file__), 'db', 'flask_secret.key')
+    try:
+        if os.path.exists(secret_path):
+            with open(secret_path, 'r', encoding='utf-8') as secret_file:
+                saved_secret = secret_file.read().strip()
+                if saved_secret:
+                    return saved_secret
+
+        os.makedirs(os.path.dirname(secret_path), exist_ok=True)
+        new_secret = secrets.token_hex(32)
+        with open(secret_path, 'w', encoding='utf-8') as secret_file:
+            secret_file.write(new_secret)
+        try:
+            os.chmod(secret_path, 0o600)
+        except Exception:
+            pass
+        return new_secret
+    except Exception as e:
+        logger.warning(f"Failed to persist Flask secret key: {e}")
+        return secrets.token_hex(32)
 
 app = Flask(__name__)
 
 # 配置
-app.config['SECRET_KEY'] = secrets.token_hex(16)
+app.config['SECRET_KEY'] = get_persistent_secret_key()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_PERMANENT'] = False
 app.config['DATABASE'] = os.path.join(os.path.dirname(__file__), 'db', 'mail.sqlite')
 app.config['DATABASE_TYPE'] = os.environ.get('DATABASE_TYPE', 'sqlite')  # sqlite, mysql, postgresql
+
+# 邮件自动轮询配置
+MAIL_POLL_MIN_INTERVAL = 30
+MAIL_POLL_DEFAULT_INTERVAL = 300
+MAIL_POLL_FETCH_LIMIT = min(max(safe_int(os.environ.get('MAIL_POLL_FETCH_LIMIT'), 5), 1), 50)
+MAIL_POLL_TIMEOUT = min(max(safe_int(os.environ.get('MAIL_POLL_TIMEOUT'), 45), 10), 180)
+MAIL_POLLER_STARTED = False
+MAIL_POLLER_THREAD = None
+MAIL_POLLER_RUN_LOCK = threading.Lock()
+MAIL_POLLER_STATE_LOCK = threading.Lock()
+MAIL_POLLER_STATE = {
+    'started': False,
+    'running': False,
+    'last_started_at': '',
+    'last_finished_at': '',
+    'last_message': '邮件自动轮询尚未启动',
+    'last_checked_count': 0,
+    'last_new_count': 0,
+    'last_failed_count': 0,
+    'interval': MAIL_POLL_DEFAULT_INTERVAL
+}
 
 # 确保数据库目录存在
 os.makedirs(os.path.dirname(app.config['DATABASE']), exist_ok=True)
@@ -489,6 +539,9 @@ def init_db():
             
             # 数据库迁移：为card_logs表添加邮件主题字段
             migrate_card_logs_table(db, db_type)
+
+            # 数据库迁移：为mail_logs表添加自动轮询需要的字段和索引
+            migrate_mail_logs_table(db, db_type)
             
             # 创建邮箱分组管理表
             create_mailbox_groups_tables(db, db_type)
@@ -664,6 +717,62 @@ def create_admin_mail_logs_table(db, db_type):
             cursor.close()
     except Exception as e:
         logger.error(f"Failed to create admin mail logs table: {e}")
+        raise
+
+def migrate_mail_logs_table(db, db_type):
+    """迁移收件日志表，补充轮询去重和来源字段"""
+    try:
+        if db_type == 'sqlite':
+            result = db.execute("PRAGMA table_info(mail_logs)").fetchall()
+            columns = [col[1] for col in result]
+
+            if 'message_id' not in columns:
+                db.execute("ALTER TABLE mail_logs ADD COLUMN message_id TEXT DEFAULT ''")
+                logger.info("Added message_id column to mail_logs table")
+            if 'folder' not in columns:
+                db.execute("ALTER TABLE mail_logs ADD COLUMN folder TEXT DEFAULT 'inbox'")
+                logger.info("Added folder column to mail_logs table")
+            if 'source' not in columns:
+                db.execute("ALTER TABLE mail_logs ADD COLUMN source TEXT DEFAULT 'manual'")
+                logger.info("Added source column to mail_logs table")
+
+            db.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_message_id ON mail_logs(message_id)')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_status_created ON mail_logs(status, created_at DESC)')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_email_message ON mail_logs(email, message_id)')
+        else:
+            cursor = db.cursor()
+            try:
+                if db_type == 'mysql':
+                    columns_to_add = {
+                        'message_id': "ALTER TABLE mail_logs ADD COLUMN message_id VARCHAR(255) DEFAULT ''",
+                        'folder': "ALTER TABLE mail_logs ADD COLUMN folder VARCHAR(64) DEFAULT 'inbox'",
+                        'source': "ALTER TABLE mail_logs ADD COLUMN source VARCHAR(64) DEFAULT 'manual'"
+                    }
+                    for column_name, alter_sql in columns_to_add.items():
+                        cursor.execute(f"SHOW COLUMNS FROM mail_logs LIKE '{column_name}'")
+                        if not cursor.fetchone():
+                            cursor.execute(alter_sql)
+                            logger.info("Added %s column to mail_logs table", column_name)
+                    for index_sql in (
+                        'CREATE INDEX idx_mail_logs_message_id ON mail_logs(message_id)',
+                        'CREATE INDEX idx_mail_logs_status_created ON mail_logs(status, created_at)',
+                        'CREATE INDEX idx_mail_logs_email_message ON mail_logs(email, message_id)'
+                    ):
+                        try:
+                            cursor.execute(index_sql)
+                        except Exception:
+                            pass
+                elif db_type == 'postgresql':
+                    cursor.execute("ALTER TABLE mail_logs ADD COLUMN IF NOT EXISTS message_id TEXT DEFAULT ''")
+                    cursor.execute("ALTER TABLE mail_logs ADD COLUMN IF NOT EXISTS folder VARCHAR(64) DEFAULT 'inbox'")
+                    cursor.execute("ALTER TABLE mail_logs ADD COLUMN IF NOT EXISTS source VARCHAR(64) DEFAULT 'manual'")
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_message_id ON mail_logs(message_id)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_status_created ON mail_logs(status, created_at DESC)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_email_message ON mail_logs(email, message_id)')
+            finally:
+                cursor.close()
+    except Exception as e:
+        logger.error(f"Error during mail_logs table migration: {e}")
         raise
 
 def create_system_config_table(db, db_type):
@@ -975,14 +1084,17 @@ def migrate_cards_table(db, db_type):
         logger.error(f"Error during cards table migration: {e}")
 
 def migrate_mail_accounts_table(db, db_type):
-    """迁移mail_accounts表，添加发件服务器相关字段和remarks字段"""
+    """迁移mail_accounts表，添加发件服务器、备注和认证相关字段"""
     try:
         new_columns = [
             ('send_server', "TEXT DEFAULT ''", "VARCHAR(255) DEFAULT ''"),
             ('send_port', 'INTEGER DEFAULT 465', 'INT DEFAULT 465'),
             ('send_protocol', "TEXT DEFAULT 'smtp'", "VARCHAR(50) DEFAULT 'smtp'"),
             ('send_ssl', 'INTEGER DEFAULT 1', 'TINYINT DEFAULT 1'),
-            ('remarks', "TEXT DEFAULT ''", "TEXT DEFAULT ''")
+            ('remarks', "TEXT DEFAULT ''", "TEXT DEFAULT ''"),
+            ('auth_type', "TEXT DEFAULT 'password'", "VARCHAR(50) DEFAULT 'password'"),
+            ('oauth_client_id', "TEXT DEFAULT ''", "TEXT DEFAULT ''"),
+            ('oauth_refresh_token', "TEXT DEFAULT ''", "TEXT DEFAULT ''")
         ]
         
         for column_name, sqlite_def, other_def in new_columns:
@@ -1961,6 +2073,9 @@ def reorder_mailbox_ids(db, db_type):
                     send_protocol TEXT NOT NULL DEFAULT 'smtp',
                     send_ssl INTEGER NOT NULL DEFAULT 1,
                     remarks TEXT DEFAULT '',
+                    auth_type TEXT DEFAULT 'password',
+                    oauth_client_id TEXT DEFAULT '',
+                    oauth_refresh_token TEXT DEFAULT '',
                     status INTEGER DEFAULT 1,
                     last_test DATETIME DEFAULT NULL,
                     test_result TEXT DEFAULT '',
@@ -1974,14 +2089,16 @@ def reorder_mailbox_ids(db, db_type):
                 mailbox_dict = dict(mailbox)
                 db.execute(f'''
                     INSERT INTO {temp_table_name} 
-                    (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, status, last_test, test_result, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, status, last_test, test_result, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     mailbox_dict['email'], mailbox_dict['username'], mailbox_dict['password'],
                     mailbox_dict['server'], mailbox_dict['port'], mailbox_dict['protocol'],
                     mailbox_dict.get('ssl', 1), mailbox_dict.get('send_server', ''), mailbox_dict.get('send_port', 465),
                     mailbox_dict.get('send_protocol', 'smtp'), mailbox_dict.get('send_ssl', 1),
-                    mailbox_dict['remarks'], mailbox_dict['status'],
+                    mailbox_dict['remarks'], mailbox_dict.get('auth_type', 'password'),
+                    mailbox_dict.get('oauth_client_id', ''), mailbox_dict.get('oauth_refresh_token', ''),
+                    mailbox_dict['status'],
                     mailbox_dict['last_test'], mailbox_dict['test_result'],
                     mailbox_dict['created_at'], mailbox_dict['updated_at']
                 ))
@@ -2011,6 +2128,9 @@ def reorder_mailbox_ids(db, db_type):
                         send_protocol VARCHAR(50) NOT NULL DEFAULT 'smtp',
                         send_ssl TINYINT NOT NULL DEFAULT 1,
                         remarks TEXT DEFAULT '',
+                        auth_type VARCHAR(50) DEFAULT 'password',
+                        oauth_client_id TEXT DEFAULT '',
+                        oauth_refresh_token TEXT DEFAULT '',
                         status TINYINT DEFAULT 1,
                         last_test DATETIME DEFAULT NULL,
                         test_result TEXT DEFAULT '',
@@ -2034,6 +2154,9 @@ def reorder_mailbox_ids(db, db_type):
                         send_protocol VARCHAR(50) NOT NULL DEFAULT 'smtp',
                         send_ssl INTEGER NOT NULL DEFAULT 1,
                         remarks TEXT DEFAULT '',
+                        auth_type VARCHAR(50) DEFAULT 'password',
+                        oauth_client_id TEXT DEFAULT '',
+                        oauth_refresh_token TEXT DEFAULT '',
                         status INTEGER DEFAULT 1,
                         last_test TIMESTAMP DEFAULT NULL,
                         test_result TEXT DEFAULT '',
@@ -2046,14 +2169,16 @@ def reorder_mailbox_ids(db, db_type):
             for mailbox_dict in mailboxes:
                 cursor.execute(f'''
                     INSERT INTO {temp_table_name} 
-                    (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, status, last_test, test_result, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, status, last_test, test_result, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (
                     mailbox_dict.get('email'), mailbox_dict.get('username'), mailbox_dict.get('password'),
                     mailbox_dict.get('server'), mailbox_dict.get('port'), mailbox_dict.get('protocol'),
                     mailbox_dict.get('ssl', 1), mailbox_dict.get('send_server', ''), mailbox_dict.get('send_port', 465),
                     mailbox_dict.get('send_protocol', 'smtp'), mailbox_dict.get('send_ssl', 1),
-                    mailbox_dict.get('remarks'), mailbox_dict.get('status'),
+                    mailbox_dict.get('remarks'), mailbox_dict.get('auth_type', 'password'),
+                    mailbox_dict.get('oauth_client_id', ''), mailbox_dict.get('oauth_refresh_token', ''),
+                    mailbox_dict.get('status'),
                     mailbox_dict.get('last_test'), mailbox_dict.get('test_result'),
                     mailbox_dict.get('created_at'), mailbox_dict.get('updated_at')
                 ))
@@ -2197,6 +2322,396 @@ def get_system_config(key, default_value=''):
     except Exception as e:
         logger.error(f"Failed to get system config for key {key}: {e}")
         return default_value
+
+def _set_mail_poller_state(**kwargs):
+    """线程安全更新邮件轮询状态"""
+    with MAIL_POLLER_STATE_LOCK:
+        MAIL_POLLER_STATE.update(kwargs)
+
+def get_mail_poller_state():
+    """获取邮件轮询状态快照"""
+    with MAIL_POLLER_STATE_LOCK:
+        return dict(MAIL_POLLER_STATE)
+
+def _get_mail_poll_interval():
+    """读取自动轮询间隔，最低30秒"""
+    interval = safe_int(get_system_config('mail_check_interval', MAIL_POLL_DEFAULT_INTERVAL), MAIL_POLL_DEFAULT_INTERVAL)
+    return max(interval, MAIL_POLL_MIN_INTERVAL)
+
+def _row_to_dict(row, columns=None):
+    if row is None:
+        return None
+    if isinstance(row, sqlite3.Row):
+        return dict(row)
+    if isinstance(row, dict):
+        return dict(row)
+    if columns:
+        return dict(zip(columns, row))
+    try:
+        return dict(row)
+    except Exception:
+        return {}
+
+def _query_active_mail_accounts(db, db_type):
+    """查询启用的邮箱账号，用于自动轮询"""
+    if db_type == 'sqlite':
+        rows = db.execute('''
+            SELECT id, email, server, port, protocol, ssl
+            FROM mail_accounts
+            WHERE status = 1
+            ORDER BY id ASC
+        ''').fetchall()
+        return [dict(row) for row in rows]
+
+    cursor = db.cursor()
+    try:
+        cursor.execute('''
+            SELECT id, email, server, port, protocol, ssl
+            FROM mail_accounts
+            WHERE status = 1
+            ORDER BY id ASC
+        ''')
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        return [_row_to_dict(row, columns) for row in rows]
+    finally:
+        cursor.close()
+
+def _run_mail_fetcher(email_address, limit=None):
+    """调用现有邮件获取器，返回JSON结果"""
+    fetch_limit = min(max(safe_int(limit, MAIL_POLL_FETCH_LIMIT), 1), 50)
+    script_args = [
+        sys.executable,
+        os.path.join(os.path.dirname(__file__), 'python', 'mail_fetcher.py'),
+        email_address,
+        '--admin-access',
+        '--limit', str(fetch_limit),
+        '--folder', 'INBOX'
+    ]
+
+    try:
+        result = subprocess.run(
+            script_args,
+            capture_output=True,
+            text=True,
+            timeout=MAIL_POLL_TIMEOUT
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            'success': False,
+            'message': f'邮件获取超时（超过{MAIL_POLL_TIMEOUT}秒）'
+        }
+
+    if result.returncode != 0:
+        return {
+            'success': False,
+            'message': result.stderr.strip() or '邮件获取器执行失败'
+        }
+
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return {
+            'success': False,
+            'message': '邮件服务响应格式错误'
+        }
+
+def _extract_mail_items(response_data):
+    """兼容单封和多封邮件响应"""
+    if not isinstance(response_data, dict):
+        return []
+    mails = response_data.get('mails')
+    if isinstance(mails, list):
+        return [mail for mail in mails if isinstance(mail, dict)]
+    mail = response_data.get('mail')
+    if isinstance(mail, dict):
+        return [mail]
+    return []
+
+def _normalize_mail_received_at(mail):
+    received_at = (mail.get('date') or '').strip()
+    if not received_at or received_at == '未知':
+        return None
+    return received_at
+
+def _mail_log_exists(db, db_type, email_address, mail):
+    """判断邮件日志是否已存在，优先使用Message-ID去重"""
+    message_id = (mail.get('message_id') or '').strip()[:255]
+    subject = (mail.get('subject') or '').strip()
+    mail_from = (mail.get('from') or mail.get('from_email') or '').strip()
+    received_at = _normalize_mail_received_at(mail) or ''
+
+    if message_id:
+        where_clause = 'email = ? AND message_id = ?'
+        params = [email_address, message_id]
+    else:
+        where_clause = "email = ? AND mail_subject = ? AND mail_from = ? AND COALESCE(received_at, '') = ?"
+        params = [email_address, subject, mail_from, received_at]
+
+    if db_type == 'sqlite':
+        return db.execute(f'SELECT id FROM mail_logs WHERE {where_clause} LIMIT 1', params).fetchone() is not None
+
+    cursor = db.cursor()
+    try:
+        cursor.execute(f'SELECT id FROM mail_logs WHERE {where_clause.replace("?", "%s")} LIMIT 1', params)
+        return cursor.fetchone() is not None
+    finally:
+        cursor.close()
+
+def _insert_mail_log(db, db_type, email_address, mail, source, user_ip='', user_agent=''):
+    """写入一条收件日志，存在则跳过"""
+    if _mail_log_exists(db, db_type, email_address, mail):
+        return False
+
+    now = get_beijing_time()
+    message_id = (mail.get('message_id') or '').strip()[:255]
+    subject = (mail.get('subject') or '(无主题)').strip()
+    mail_from = (mail.get('from') or mail.get('from_email') or '').strip()
+    mail_to = (mail.get('to') or email_address).strip()
+    received_at = _normalize_mail_received_at(mail)
+    folder = (mail.get('folder') or 'inbox').strip().lower()
+
+    params = [
+        email_address, subject, mail_from, mail_to, received_at,
+        'received', '', user_ip, user_agent, now, message_id, folder, source
+    ]
+
+    sql = '''
+        INSERT INTO mail_logs
+        (email, mail_subject, mail_from, mail_to, received_at, status, error_message,
+         ip_address, user_agent, created_at, message_id, folder, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    '''
+
+    if db_type == 'sqlite':
+        db.execute(sql, params)
+    else:
+        cursor = db.cursor()
+        try:
+            cursor.execute(sql.replace('?', '%s'), params)
+        finally:
+            cursor.close()
+    return True
+
+def _insert_mail_error_log(db, db_type, email_address, error_message, source, user_ip='', user_agent=''):
+    """写入一条取件失败日志"""
+    now = get_beijing_time()
+    normalized_error = (error_message or '未知错误')[:1000]
+
+    find_sql = '''
+        SELECT id FROM mail_logs
+        WHERE email = ? AND status = 'failed' AND source = ? AND error_message = ?
+        ORDER BY id DESC
+        LIMIT 1
+    '''
+    update_sql = '''
+        UPDATE mail_logs
+        SET mail_to = ?, ip_address = ?, user_agent = ?, created_at = ?
+        WHERE id = ?
+    '''
+
+    if db_type == 'sqlite':
+        existing = db.execute(find_sql, (email_address, source, normalized_error)).fetchone()
+        if existing:
+            db.execute(update_sql, (email_address, user_ip, user_agent, now, existing['id']))
+            return
+    else:
+        cursor = db.cursor()
+        try:
+            cursor.execute(find_sql.replace('?', '%s'), (email_address, source, normalized_error))
+            existing = cursor.fetchone()
+            if existing:
+                existing_id = existing[0] if not isinstance(existing, dict) else existing['id']
+                cursor.execute(update_sql.replace('?', '%s'), (email_address, user_ip, user_agent, now, existing_id))
+                return
+        finally:
+            cursor.close()
+
+    params = [
+        email_address, '', '', email_address, None, 'failed',
+        normalized_error, user_ip, user_agent, now, '', 'inbox', source
+    ]
+    sql = '''
+        INSERT INTO mail_logs
+        (email, mail_subject, mail_from, mail_to, received_at, status, error_message,
+         ip_address, user_agent, created_at, message_id, folder, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    '''
+
+    if db_type == 'sqlite':
+        db.execute(sql, params)
+    else:
+        cursor = db.cursor()
+        try:
+            cursor.execute(sql.replace('?', '%s'), params)
+        finally:
+            cursor.close()
+
+def log_mail_fetch_result(db, db_type, email_address, response_data, source, user_ip='', user_agent=''):
+    """把邮件获取结果落到mail_logs，返回新增数量"""
+    if not response_data.get('success'):
+        _insert_mail_error_log(db, db_type, email_address, response_data.get('message', '邮件获取失败'), source, user_ip, user_agent)
+        return 0
+
+    inserted_count = 0
+    for mail in _extract_mail_items(response_data):
+        if _insert_mail_log(db, db_type, email_address, mail, source, user_ip, user_agent):
+            inserted_count += 1
+    return inserted_count
+
+def run_mail_poll_once(source='auto_poll', lock_acquired=False):
+    """执行一次邮箱自动轮询"""
+    acquired = lock_acquired or MAIL_POLLER_RUN_LOCK.acquire(blocking=False)
+    if not acquired:
+        return {
+            'success': False,
+            'message': '邮件轮询正在运行中',
+            'running': True
+        }
+
+    started_at = get_beijing_time()
+    _set_mail_poller_state(
+        running=True,
+        last_started_at=started_at,
+        last_message='正在轮询邮箱...'
+    )
+
+    checked_count = 0
+    new_count = 0
+    failed_count = 0
+
+    try:
+        poll_interval = MAIL_POLL_DEFAULT_INTERVAL
+        with app.app_context():
+            db = get_db()
+            db_type = app.config['DATABASE_TYPE']
+            poll_interval = _get_mail_poll_interval()
+            accounts = _query_active_mail_accounts(db, db_type)
+
+            for account in accounts:
+                email_address = account.get('email', '').strip()
+                if not email_address:
+                    continue
+
+                checked_count += 1
+                response_data = _run_mail_fetcher(email_address, MAIL_POLL_FETCH_LIMIT)
+                try:
+                    if response_data.get('success'):
+                        new_count += log_mail_fetch_result(db, db_type, email_address, response_data, source)
+                    else:
+                        failed_count += 1
+                        _insert_mail_error_log(
+                            db,
+                            db_type,
+                            email_address,
+                            response_data.get('message', '邮件获取失败'),
+                            source
+                        )
+                    db.commit()
+                except Exception as log_error:
+                    failed_count += 1
+                    try:
+                        db.rollback()
+                    except Exception:
+                        pass
+                    logger.error("写入收件日志失败: %s", log_error)
+
+        message = f'轮询完成：检查 {checked_count} 个邮箱，新增 {new_count} 封，失败 {failed_count} 个'
+        _set_mail_poller_state(
+            running=False,
+            last_finished_at=get_beijing_time(),
+            last_message=message,
+            last_checked_count=checked_count,
+            last_new_count=new_count,
+            last_failed_count=failed_count,
+            interval=poll_interval
+        )
+        logger.info(message)
+        return {
+            'success': True,
+            'message': message,
+            'checked_count': checked_count,
+            'new_count': new_count,
+            'failed_count': failed_count
+        }
+    except Exception as e:
+        failed_message = f'邮件轮询失败: {str(e)}'
+        logger.error(failed_message)
+        _set_mail_poller_state(
+            running=False,
+            last_finished_at=get_beijing_time(),
+            last_message=failed_message,
+            last_checked_count=checked_count,
+            last_new_count=new_count,
+            last_failed_count=max(failed_count, 1)
+        )
+        return {
+            'success': False,
+            'message': failed_message,
+            'checked_count': checked_count,
+            'new_count': new_count,
+            'failed_count': max(failed_count, 1)
+        }
+    finally:
+        MAIL_POLLER_RUN_LOCK.release()
+
+def _mail_poll_loop():
+    """后台邮件轮询循环"""
+    while True:
+        try:
+            with app.app_context():
+                interval = _get_mail_poll_interval()
+            _set_mail_poller_state(interval=interval)
+            run_mail_poll_once(source='auto_poll')
+            time.sleep(interval)
+        except Exception as e:
+            logger.error("邮件轮询线程异常: %s", e)
+            _set_mail_poller_state(
+                running=False,
+                last_finished_at=get_beijing_time(),
+                last_message=f'邮件轮询线程异常: {str(e)}'
+            )
+            time.sleep(MAIL_POLL_DEFAULT_INTERVAL)
+
+def start_mail_poller():
+    """启动邮件自动轮询线程"""
+    global MAIL_POLLER_STARTED, MAIL_POLLER_THREAD
+
+    if os.environ.get('MAIL_AUTO_POLL', '1') == '0':
+        _set_mail_poller_state(
+            started=False,
+            running=False,
+            last_message='邮件自动轮询已通过环境变量关闭'
+        )
+        return False
+
+    if MAIL_POLLER_STARTED:
+        return True
+
+    MAIL_POLLER_STARTED = True
+    MAIL_POLLER_THREAD = threading.Thread(target=_mail_poll_loop, name='mail-auto-poller', daemon=True)
+    MAIL_POLLER_THREAD.start()
+    _set_mail_poller_state(
+        started=True,
+        last_message='邮件自动轮询已启动',
+        interval=MAIL_POLL_DEFAULT_INTERVAL
+    )
+    logger.info("Mail auto poller started")
+    return True
+
+def trigger_mail_poll_once(source='manual_poll'):
+    """异步触发一次邮件轮询"""
+    if not MAIL_POLLER_RUN_LOCK.acquire(blocking=False):
+        return False, '邮件轮询正在运行中'
+
+    thread = threading.Thread(
+        target=run_mail_poll_once,
+        kwargs={'source': source, 'lock_acquired': True},
+        name='mail-manual-poll',
+        daemon=True
+    )
+    thread.start()
+    return True, '已开始后台轮询，请稍后刷新日志'
 
 @app.context_processor
 def inject_system_title():
@@ -2373,13 +2888,17 @@ def api_get_mail():
                         # 记录管理员访问日志
                         user_ip = request.environ.get('HTTP_X_FORWARDED_FOR') or request.environ.get('REMOTE_ADDR') or 'unknown'
                         admin_username = 'master_key' if master_key_valid else session.get('admin_username', 'unknown')
+                        user_agent = request.headers.get('User-Agent', 'unknown')
+                        log_mail_fetch_result(db, db_type, email, response_data, 'admin_manual', user_ip, user_agent)
+                        mail_items = _extract_mail_items(response_data)
+                        first_subject = mail_items[0].get('subject', '无主题') if mail_items else '无主题'
                         
                         if db_type == 'sqlite':
                             db.execute('''
                                 INSERT INTO admin_mail_logs (admin_username, email, user_ip, action, result, created_at)
                                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                             ''', (admin_username, email, user_ip, 'admin_get_mail', 
-                                  f'管理员获取邮件: {response_data.get("mail", {}).get("subject", "无主题")}'))
+                                  f'管理员获取邮件: {first_subject}'))
                             db.commit()
                         else:
                             cursor = db.cursor()
@@ -2387,7 +2906,7 @@ def api_get_mail():
                                 INSERT INTO admin_mail_logs (admin_username, email, user_ip, action, result, created_at)
                                 VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                             ''', (admin_username, email, user_ip, 'admin_get_mail', 
-                                  f'管理员获取邮件: {response_data.get("mail", {}).get("subject", "无主题")}'))
+                                  f'管理员获取邮件: {first_subject}'))
                             db.commit()
                     
                     return jsonify(response_data)
@@ -2521,6 +3040,20 @@ def api_get_mail():
                 if result.returncode == 0:
                     # 解析JSON输出
                     response_data = json.loads(result.stdout)
+                    if response_data.get('success'):
+                        fetch_user_ip = request.environ.get('HTTP_X_FORWARDED_FOR') or request.environ.get('REMOTE_ADDR') or 'unknown'
+                        fetch_user_agent = request.headers.get('User-Agent', 'unknown')
+                        logged_mail_count = log_mail_fetch_result(
+                            db,
+                            db_type,
+                            email,
+                            response_data,
+                            'card_preview' if preview_only else 'card_api',
+                            fetch_user_ip,
+                            fetch_user_agent
+                        )
+                        if preview_only and logged_mail_count:
+                            db.commit()
                     
                     # 如果邮件获取成功，处理卡密信息
                     if response_data.get('success') and response_data.get('mail'):
@@ -3118,6 +3651,200 @@ def _add_mailbox(db, data):
         })
 
 
+EMAIL_IMPORT_RE = re.compile(r'[\w.!#$%&\'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}', re.IGNORECASE)
+UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+
+IMPORT_FIELD_ALIASES = {
+    'email': {'email', 'mail', '邮箱', '账号', '帐号', 'account'},
+    'username': {'username', 'user', 'login', '登录名', '用户名'},
+    'password': {'password', 'pass', 'pwd', '密码', '授权码'},
+    'client_id': {'client_id', 'clientid', 'client', 'app_id', 'appid', 'application_id', '应用id'},
+    'refresh_token': {'refresh_token', 'refreshtoken', 'refresh', 'token', '刷新令牌'},
+    'remarks': {'remarks', 'remark', 'note', 'notes', '备注'}
+}
+
+
+def _clean_import_value(value):
+    """清理批量导入字段，兼容 BOM 和包裹引号。"""
+    if value is None:
+        return ''
+    cleaned = str(value).strip().lstrip('\ufeff')
+    if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in ('"', "'"):
+        cleaned = cleaned[1:-1].strip()
+    return cleaned
+
+
+def _canonical_import_key(key):
+    normalized = re.sub(r'[\s\-]+', '_', _clean_import_value(key).lower())
+    while '__' in normalized:
+        normalized = normalized.replace('__', '_')
+    for canonical, aliases in IMPORT_FIELD_ALIASES.items():
+        if normalized in aliases:
+            return canonical
+    return ''
+
+
+def _looks_like_refresh_token(value):
+    value = _clean_import_value(value)
+    if len(value) >= 80:
+        return True
+    return value.startswith(('M.C', '0.A', '1//')) and len(value) >= 30
+
+
+def _split_import_line(line):
+    """按常见批量格式切分一行，优先使用更明确的分隔符。"""
+    if '----' in line:
+        return [_clean_import_value(part) for part in line.split('----')]
+    if '\t' in line:
+        return [_clean_import_value(part) for part in line.split('\t')]
+
+    for delimiter in ('|', ',', ';'):
+        if delimiter in line:
+            try:
+                return [_clean_import_value(part) for part in next(csv.reader([line], delimiter=delimiter))]
+            except Exception:
+                return [_clean_import_value(part) for part in line.split(delimiter)]
+
+    email_match = EMAIL_IMPORT_RE.search(line)
+    if email_match:
+        email = email_match.group(0)
+        tail = line[email_match.end():].strip()
+        if tail.startswith(':'):
+            return [email] + [_clean_import_value(part) for part in tail[1:].split(':')]
+
+    return [_clean_import_value(part) for part in re.split(r'\s+', line) if part.strip()]
+
+
+def _parse_key_value_import_line(line):
+    """解析 JSON 或 key=value/key:value 形式的导入行。"""
+    stripped = line.strip()
+    parsed = {}
+
+    if stripped.startswith('{') and stripped.endswith('}'):
+        try:
+            payload = json.loads(stripped)
+            if isinstance(payload, dict):
+                for key, value in payload.items():
+                    canonical = _canonical_import_key(key)
+                    if canonical:
+                        parsed[canonical] = _clean_import_value(value)
+        except Exception:
+            parsed = {}
+
+    if parsed:
+        return parsed
+
+    pattern = re.compile(r'([\w\u4e00-\u9fff\-]+)\s*[:=]\s*("[^"]*"|\'[^\']*\'|[^\s,;|]+)')
+    for key, value in pattern.findall(line):
+        canonical = _canonical_import_key(key)
+        if canonical:
+            parsed[canonical] = _clean_import_value(value)
+
+    return parsed
+
+
+def parse_mailbox_import_line(line):
+    """尽可能识别单行邮箱导入内容。"""
+    raw_line = _clean_import_value(line)
+    if not raw_line:
+        return None, '空行'
+
+    parsed = _parse_key_value_import_line(raw_line)
+    tokens = _split_import_line(raw_line)
+
+    email_match = EMAIL_IMPORT_RE.search(parsed.get('email', '') or raw_line)
+    email = _clean_import_value(email_match.group(0)) if email_match else ''
+    if not email:
+        return None, '未识别到邮箱地址'
+
+    email_index = -1
+    for index, token in enumerate(tokens):
+        if EMAIL_IMPORT_RE.fullmatch(token):
+            email_index = index
+            break
+        if email in token:
+            email_index = index
+            break
+
+    username = parsed['username'] if parsed.get('username') and '@' not in parsed.get('username', '') else email
+    password = parsed.get('password', '')
+    client_id = parsed.get('client_id', '')
+    refresh_token = parsed.get('refresh_token', '')
+    remarks = parsed.get('remarks', '')
+    used_indexes = set()
+    if email_index >= 0:
+        used_indexes.add(email_index)
+
+    use_token_fallback = not bool(password)
+    ordered_tokens = [] if parsed and not use_token_fallback else [
+        (index, token) for index, token in enumerate(tokens) if token and index not in used_indexes
+    ]
+
+    if not password:
+        if email_index >= 0:
+            for index, token in ordered_tokens:
+                if index > email_index:
+                    password = token
+                    used_indexes.add(index)
+                    break
+        if not password and ordered_tokens:
+            index, token = ordered_tokens[0]
+            password = token
+            used_indexes.add(index)
+
+    for index, token in ordered_tokens:
+        if index in used_indexes:
+            continue
+        if not client_id and UUID_RE.fullmatch(token):
+            client_id = token
+            used_indexes.add(index)
+            continue
+        if not refresh_token and _looks_like_refresh_token(token):
+            refresh_token = token
+            used_indexes.add(index)
+            continue
+
+    extra_parts = []
+    for index, token in ordered_tokens:
+        if index in used_indexes:
+            continue
+        if not client_id and UUID_RE.fullmatch(token):
+            client_id = token
+        elif not refresh_token and _looks_like_refresh_token(token):
+            refresh_token = token
+        else:
+            extra_parts.append(token)
+
+    if not password:
+        return None, '未识别到密码或授权码'
+
+    if extra_parts:
+        extra_text = ' | '.join(extra_parts)
+        remarks = f'{remarks} | {extra_text}' if remarks else extra_text
+
+    auth_type = 'oauth' if client_id and refresh_token else 'password'
+    if auth_type == 'oauth' and not remarks:
+        remarks = 'OAuth登录'
+
+    return {
+        'email': email,
+        'username': username,
+        'password': password,
+        'auth_type': auth_type,
+        'oauth_client_id': client_id,
+        'oauth_refresh_token': refresh_token,
+        'remarks': remarks
+    }, ''
+
+
+def merge_mailbox_remarks(default_remarks, parsed_remarks):
+    default_remarks = _clean_import_value(default_remarks)
+    parsed_remarks = _clean_import_value(parsed_remarks)
+    if default_remarks and parsed_remarks:
+        return f'{default_remarks} | {parsed_remarks}'
+    return default_remarks or parsed_remarks
+
+
 def _batch_add_mailbox(db, data):
     """批量添加邮箱"""
     batch_content = data.get('batch_content', '').strip()
@@ -3139,7 +3866,8 @@ def _batch_add_mailbox(db, data):
             'message': '请填写批量内容和服务器信息'
         })
     
-    # 解析批量内容（格式：账号----密码）
+    # 解析批量内容，兼容：账号----密码、账号----密码----client_id----refresh_token、
+    # 账号:密码、账号|密码、账号,密码、JSON、key=value 等常见格式。
     lines = batch_content.split('\n')
     success_count = 0
     error_count = 0
@@ -3151,21 +3879,21 @@ def _batch_add_mailbox(db, data):
         line = line.strip()
         if not line:
             continue
-            
-        if '----' not in line:
-            error_count += 1
-            errors.append(f'格式错误：{line}')
-            continue
         
         try:
-            email, password = line.split('----', 1)
-            email = email.strip()
-            password = password.strip()
-            
-            if not email or not password:
+            parsed_account, parse_error = parse_mailbox_import_line(line)
+            if not parsed_account:
                 error_count += 1
-                errors.append(f'账号或密码为空：{line}')
+                errors.append(f'{parse_error}：{line[:120]}')
                 continue
+
+            email = parsed_account['email']
+            username = parsed_account.get('username') or email
+            password = parsed_account['password']
+            auth_type = parsed_account.get('auth_type') or 'password'
+            oauth_client_id = parsed_account.get('oauth_client_id') or ''
+            oauth_refresh_token = parsed_account.get('oauth_refresh_token') or ''
+            row_remarks = merge_mailbox_remarks(remarks, parsed_account.get('remarks', ''))
             
             # 检查该邮箱在哪些分组中已存在（当前分组）
             existing_in_group = False
@@ -3233,16 +3961,16 @@ def _batch_add_mailbox(db, data):
             now = get_beijing_time()
             if db_type == 'sqlite':
                 db.execute('''
-                    INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (email, email, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, now, now))
+                    INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, row_remarks, auth_type, oauth_client_id, oauth_refresh_token, now, now))
                 mailbox_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
             else:
                 cursor = db.cursor()
                 cursor.execute('''
-                    INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ''', (email, email, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, now, now))
+                    INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, row_remarks, auth_type, oauth_client_id, oauth_refresh_token, now, now))
                 mailbox_id = cursor.lastrowid
             
             # If group_id is provided and valid, create the mapping
@@ -7615,15 +8343,108 @@ def api_admin_process_expired_cards():
             'message': f'处理过期卡密失败: {str(e)}'
         })
 
-@app.route('/admin/api/mail-logs')
+@app.route('/admin/api/mail-logs', methods=['GET', 'POST'])
 @admin_required
 def api_admin_mail_logs():
-    """收件日志 API（Stub实现）"""
-    return jsonify({
-        'success': True,
-        'message': '收件日志功能正在开发中',
-        'data': []
-    })
+    """收件日志 API"""
+    db = get_db()
+    db_type = app.config['DATABASE_TYPE']
+
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        action = data.get('action', 'poll_now')
+
+        if action != 'poll_now':
+            return jsonify({
+                'success': False,
+                'message': '未知操作'
+            }), 400
+
+        started, message = trigger_mail_poll_once(source='manual_poll')
+        return jsonify({
+            'success': started,
+            'message': message,
+            'poller': get_mail_poller_state()
+        }), 202 if started else 409
+
+    try:
+        page = max(safe_int(request.args.get('page', 1), 1), 1)
+        per_page = min(max(safe_int(request.args.get('per_page', 30), 30), 1), 200)
+        search = request.args.get('search', '').strip()
+        status_filter = request.args.get('status', '').strip()
+        offset = (page - 1) * per_page
+
+        where_parts = []
+        params = []
+        if search:
+            where_parts.append('(email LIKE ? OR mail_subject LIKE ? OR mail_from LIKE ? OR error_message LIKE ?)')
+            search_param = f'%{search}%'
+            params.extend([search_param, search_param, search_param, search_param])
+
+        if status_filter in ('received', 'processed', 'failed'):
+            where_parts.append('status = ?')
+            params.append(status_filter)
+
+        where_clause = f"WHERE {' AND '.join(where_parts)}" if where_parts else ''
+
+        if db_type == 'sqlite':
+            count_row = db.execute(f'SELECT COUNT(*) as count FROM mail_logs {where_clause}', params).fetchone()
+            total = count_row['count']
+            rows = db.execute(f'''
+                SELECT id, email, mail_subject, mail_from, mail_to, received_at, status,
+                       error_message, ip_address, user_agent, created_at, message_id, folder, source
+                FROM mail_logs
+                {where_clause}
+                ORDER BY id DESC
+                LIMIT ? OFFSET ?
+            ''', params + [per_page, offset]).fetchall()
+            logs = [dict(row) for row in rows]
+            stat_rows = db.execute('SELECT status, COUNT(*) as count FROM mail_logs GROUP BY status').fetchall()
+            stats = {row['status']: row['count'] for row in stat_rows}
+        else:
+            cursor = db.cursor()
+            try:
+                where_mysql = where_clause.replace('?', '%s')
+                cursor.execute(f'SELECT COUNT(*) as count FROM mail_logs {where_mysql}', params)
+                total = cursor.fetchone()[0]
+                cursor.execute(f'''
+                    SELECT id, email, mail_subject, mail_from, mail_to, received_at, status,
+                           error_message, ip_address, user_agent, created_at, message_id, folder, source
+                    FROM mail_logs
+                    {where_mysql}
+                    ORDER BY id DESC
+                    LIMIT {per_page} OFFSET {offset}
+                ''', params)
+                columns = [desc[0] for desc in cursor.description]
+                logs = [_row_to_dict(row, columns) for row in cursor.fetchall()]
+                cursor.execute('SELECT status, COUNT(*) as count FROM mail_logs GROUP BY status')
+                stats = {row[0]: row[1] for row in cursor.fetchall()}
+            finally:
+                cursor.close()
+
+        return jsonify({
+            'success': True,
+            'data': logs,
+            'stats': {
+                'total': sum(stats.values()),
+                'received': stats.get('received', 0),
+                'failed': stats.get('failed', 0),
+                'processed': stats.get('processed', 0)
+            },
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': (total + per_page - 1) // per_page
+            },
+            'poller': get_mail_poller_state()
+        })
+    except Exception as e:
+        logger.error(f"Get mail logs error: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'获取收件日志失败: {str(e)}'
+        }), 500
 
 @app.route('/admin/api/system-config', methods=['GET', 'POST'])
 @admin_required
@@ -8267,6 +9088,9 @@ if __name__ == '__main__':
     # 初始化数据库
     with app.app_context():
         init_db()
+
+    # 启动邮件自动轮询
+    start_mail_poller()
     
     # 启动应用（端口8005）
     port = int(os.environ.get('PORT', 8005))

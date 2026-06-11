@@ -92,13 +92,17 @@ if not check_dependencies():
     sys.exit(1)
 
 class ProxyMailFetcher:
-    def __init__(self, server, port, username, password, protocol='imap', use_ssl=True):
+    def __init__(self, server, port, username, password, protocol='imap', use_ssl=True,
+                 auth_type='password', oauth_client_id='', oauth_refresh_token=''):
         self.server = server
         self.port = port
         self.username = username
         self.password = password
         self.protocol = protocol.lower()
         self.use_ssl = use_ssl
+        self.auth_type = (auth_type or 'password').lower()
+        self.oauth_client_id = oauth_client_id or ''
+        self.oauth_refresh_token = oauth_refresh_token or ''
         self.connection = None
         self.proxy_enabled = False
         self.proxy_info = None
@@ -124,6 +128,64 @@ class ProxyMailFetcher:
             return True
         import time
         return (time.time() - self._last_connection_time) > self._connection_timeout
+
+    def _has_oauth_credentials(self):
+        return self.auth_type == 'oauth' and bool(self.oauth_client_id and self.oauth_refresh_token)
+
+    def _fetch_oauth_access_token(self):
+        """用 refresh token 换取 Outlook IMAP XOAUTH2 access token。"""
+        if not self._has_oauth_credentials():
+            raise Exception("OAuth配置不完整，缺少client_id或refresh_token")
+
+        try:
+            import requests
+            response = requests.post(
+                'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+                data={
+                    'client_id': self.oauth_client_id,
+                    'refresh_token': self.oauth_refresh_token,
+                    'grant_type': 'refresh_token',
+                    'scope': 'https://outlook.office.com/IMAP.AccessAsUser.All offline_access'
+                },
+                timeout=20
+            )
+        except Exception as e:
+            raise Exception(f"OAuth令牌请求失败: {str(e)}")
+
+        try:
+            payload = response.json()
+        except Exception:
+            payload = {}
+
+        if response.status_code >= 400 or not payload.get('access_token'):
+            error_text = payload.get('error_description') or payload.get('error') or response.text[:200]
+            raise Exception(f"OAuth令牌获取失败: {error_text}")
+
+        return payload['access_token']
+
+    def _authenticate_imap(self):
+        """根据账号类型选择普通密码登录或 XOAUTH2 登录。"""
+        if self._has_oauth_credentials():
+            try:
+                logger.info("Attempting XOAUTH2 authentication")
+                access_token = self._fetch_oauth_access_token()
+                auth_string = f"user={self.username}\x01auth=Bearer {access_token}\x01\x01"
+                self.connection.authenticate('XOAUTH2', lambda _: auth_string.encode('utf-8'))
+                logger.info("XOAUTH2 authentication successful")
+                return
+            except imaplib.IMAP4.error as e:
+                raise Exception(f"OAuth登录失败: {str(e)}")
+            except Exception as e:
+                raise Exception(f"OAuth登录失败: {str(e)}")
+
+        try:
+            self.connection.login(self.username, self.password)
+            logger.info("Login successful")
+        except imaplib.IMAP4.error as e:
+            error_msg = str(e).lower()
+            if "authentication" in error_msg or "login" in error_msg or "invalid" in error_msg:
+                raise Exception("邮箱用户名或密码错误，请检查登录凭据")
+            raise Exception(f"登录失败: {str(e)}")
         
     def _check_proxy_status(self):
         """Check proxy configuration from database - 优化版本"""
@@ -518,15 +580,9 @@ class ProxyMailFetcher:
                 
                 # Authenticate with the mail server through the proxy tunnel
                 try:
-                    logger.info("Attempting login through HTTP proxy tunnel")
-                    self.connection.login(self.username, self.password)
-                    logger.info("Login successful through HTTP proxy")
-                except imaplib.IMAP4.error as e:
-                    error_msg = str(e).lower()
-                    if "authentication" in error_msg or "login" in error_msg or "invalid" in error_msg:
-                        raise Exception("邮箱用户名或密码错误，请检查登录凭据")
-                    else:
-                        raise Exception(f"通过HTTP代理登录失败: {str(e)}")
+                    logger.info("Attempting authentication through HTTP proxy tunnel")
+                    self._authenticate_imap()
+                    logger.info("Authentication successful through HTTP proxy")
                 except Exception as e:
                     raise Exception(f"HTTP代理隧道登录失败: {str(e)}")
                 
@@ -618,14 +674,10 @@ class ProxyMailFetcher:
                 
                 # Login with better error handling
                 try:
-                    self.connection.login(self.username, self.password)
-                    logger.info("Login successful")
-                except imaplib.IMAP4.error as e:
-                    error_msg = str(e).lower()
-                    if "authentication" in error_msg or "login" in error_msg or "invalid" in error_msg:
-                        raise Exception("邮箱用户名或密码错误，请检查登录凭据")
-                    else:
-                        raise Exception(f"登录失败: {str(e)}")
+                    self._authenticate_imap()
+                    logger.info("Authentication successful")
+                except Exception as e:
+                    raise e
                 
                 # Select INBOX
                 try:
@@ -1375,7 +1427,10 @@ def main():
                 account_dict['username'],
                 account_dict['password'],
                 account_dict['protocol'],
-                bool(account_dict['ssl'])
+                bool(account_dict['ssl']),
+                account_dict.get('auth_type', 'password'),
+                account_dict.get('oauth_client_id', ''),
+                account_dict.get('oauth_refresh_token', '')
             )
             
             if test_mode:

@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS mail_accounts (
     send_protocol TEXT DEFAULT 'smtp',
     send_ssl INTEGER NOT NULL DEFAULT 1,
     remarks TEXT DEFAULT '',
+    auth_type TEXT DEFAULT 'password',
+    oauth_client_id TEXT DEFAULT '',
+    oauth_refresh_token TEXT DEFAULT '',
     status INTEGER DEFAULT 1,  -- 1: 正常, 0: 禁用
     last_test DATETIME DEFAULT NULL,  -- 最后测试时间
     test_result TEXT DEFAULT '',  -- 测试结果
@@ -137,6 +140,9 @@ CREATE TABLE IF NOT EXISTS mail_logs (
     error_message TEXT DEFAULT '',
     ip_address TEXT DEFAULT '',
     user_agent TEXT DEFAULT '',
+    message_id TEXT DEFAULT '',
+    folder TEXT DEFAULT 'inbox',
+    source TEXT DEFAULT 'manual',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -252,4 +258,3 @@ CREATE INDEX IF NOT EXISTS idx_mailbox_groups_parent ON mailbox_groups(parent_id
 CREATE INDEX IF NOT EXISTS idx_mailbox_group_mappings_mailbox ON mailbox_group_mappings(mailbox_id);
 CREATE INDEX IF NOT EXISTS idx_mailbox_group_mappings_group ON mailbox_group_mappings(group_id);
 CREATE INDEX IF NOT EXISTS idx_mailbox_group_mappings_group_mailbox ON mailbox_group_mappings(group_id, mailbox_id);
-

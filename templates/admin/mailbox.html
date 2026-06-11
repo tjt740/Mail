@@ -21,7 +21,7 @@
         --motion-slow: 320ms;
         --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
         --transition: all var(--motion-base) var(--motion-ease);
-        --receive-sidebar-width: 140px; /* narrower nav to keep modal list area wider */
+        --receive-sidebar-width: 220px;
     }
 
     @keyframes panelEnter {
@@ -399,7 +399,68 @@
     }
     
     .checkbox-group input[type="checkbox"] {
-        width: auto;
+        width: 18px;
+        height: 18px;
+        accent-color: #4f8a5b;
+        flex: 0 0 auto;
+    }
+
+    .checkbox-group label {
+        margin: 0;
+        color: #374151;
+        font-weight: 500;
+        line-height: 1.2;
+    }
+
+    .batch-add-modal .modal-content {
+        max-width: 760px;
+    }
+
+    .batch-add-modal .modal-body {
+        padding: 24px 28px;
+    }
+
+    .batch-content-textarea {
+        width: 100%;
+        min-height: 210px;
+        padding: 12px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        line-height: 1.45;
+        resize: vertical;
+    }
+
+    .batch-hint {
+        display: block;
+        margin-top: 8px;
+        color: #6b7280;
+        line-height: 1.5;
+    }
+
+    .batch-two-col {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+
+    .batch-protocol-grid {
+        display: grid;
+        grid-template-columns: minmax(150px, 1fr) minmax(130px, 0.8fr) minmax(170px, 0.9fr);
+        gap: 16px;
+        align-items: end;
+    }
+
+    .batch-toggle-group {
+        min-height: 46px;
+        display: flex;
+        align-items: center;
+        padding-bottom: 2px;
+    }
+
+    .batch-toggle-group .checkbox-group {
+        min-height: 46px;
     }
     
     /* Table Styles */
@@ -516,12 +577,17 @@
         border-radius: 10px;
         color: white;
         font-weight: 500;
+        line-height: 1.45;
+        max-width: min(520px, calc(100vw - 40px));
+        max-height: 180px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         transform: translateX(450px);
         opacity: 0;
         transition: all 0.3s ease;
         position: relative;
-        overflow: hidden;
+        overflow: auto;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
     }
     
     .toast.show {
@@ -743,14 +809,14 @@
     }
 
     #mailboxTable {
-        min-width: 1220px;
+        min-width: 980px;
         table-layout: fixed;
         margin-top: 0;
         transition: min-width var(--motion-base) var(--motion-ease);
     }
 
     #mailboxTable.server-column-visible {
-        min-width: 1450px;
+        min-width: 1120px;
     }
 
     .mailbox-col-select {
@@ -767,11 +833,11 @@
     }
 
     .mailbox-col-email {
-        width: 460px;
+        width: 260px;
     }
 
     .mailbox-col-server {
-        width: 230px;
+        width: 240px;
     }
 
     .mailbox-col-created_at {
@@ -779,7 +845,7 @@
     }
 
     .mailbox-col-remarks {
-        width: 110px;
+        width: 190px;
     }
 
     .mailbox-col-actions {
@@ -794,17 +860,20 @@
     .mailbox-email-cell {
         cursor: copy;
         color: #1f2937;
-        overflow: visible;
-        text-overflow: clip;
+        overflow: hidden;
+        text-overflow: ellipsis;
         transition: var(--transition);
     }
 
     .mailbox-email-text {
-        display: inline-block;
-        max-width: none;
+        display: block;
+        max-width: 100%;
         padding: 4px 8px;
         margin: -4px -8px;
         border-radius: 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
     }
 
@@ -928,45 +997,55 @@
     }
 
     .receive-modal .modal-content {
-        max-width: 1600px;
-        width: 98%;
-        max-height: 98vh; /* Increased from 95vh */
+        max-width: 1180px;
+        width: min(1180px, calc(100vw - 48px));
+        max-height: 88vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
 
     .receive-body {
         display: grid;
         grid-template-columns: var(--receive-sidebar-width) 1fr;
-        gap: 16px;
-        min-height: 700px; /* Increased from 600px for taller modal */
-        max-height: calc(98vh - 100px); /* Increased vh from 95% to 98%, reduced offset from 140px to 100px */
+        gap: 18px;
+        min-height: 0;
+        height: min(660px, calc(88vh - 78px));
+        overflow: hidden;
+        background: #fbfaf7;
     }
 
     .receive-sidebar {
         background: #f8fafc;
+        border: 1px solid #edf2f7;
         border-radius: 12px;
-        padding: 14px;
+        padding: 16px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        position: sticky;
-        top: 0;
-        align-self: flex-start;
+        gap: 12px;
+        align-self: stretch;
+        min-height: 0;
     }
 
     .receive-mailbox-label {
-        font-size: 13px;
+        font-size: 12px;
         color: #6b7280;
+        margin-bottom: 4px;
     }
 
     .receive-mailbox-value {
         font-weight: 600;
         color: #1f2937;
         word-break: break-all;
+        max-height: 72px;
+        overflow: auto;
+        line-height: 1.35;
     }
 
     .receive-sidebar .btn {
         width: 100%;
         justify-content: center;
+        min-height: 42px;
     }
 
     .receive-tab {
@@ -985,20 +1064,63 @@
     }
 
     .receive-tab.active {
-        background: rgba(102, 126, 234, 0.12);
+        background: rgba(201, 100, 66, 0.10);
         border-color: var(--primary-color);
-        color: #4f46e5;
+        color: var(--primary-color);
     }
 
     .receive-main {
         background: #fff;
         border-radius: 12px;
-        padding: 14px;
+        border: 1px solid #edf2f7;
+        padding: 0;
         display: flex;
         flex-direction: column;
-        gap: 12px;
         min-height: 0;
-        max-height: var(--scroll-card-max-height);
+        overflow: hidden;
+    }
+
+    #receiveListView {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+    }
+
+    .receive-error-panel {
+        margin: 14px 14px 0;
+        border: 1px solid #fecaca;
+        border-left: 4px solid #dc2626;
+        border-radius: 10px;
+        background: #fef2f2;
+        color: #7f1d1d;
+        overflow: hidden;
+    }
+
+    .receive-error-title {
+        padding: 10px 12px 6px;
+        font-weight: 700;
+    }
+
+    .receive-error-detail {
+        padding: 0 12px 12px;
+        color: #991b1b;
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 150px;
+        overflow: auto;
+    }
+
+    .receive-info-panel {
+        margin: 14px 14px 0;
+        border: 1px solid #bfdbfe;
+        border-left: 4px solid #2563eb;
+        border-radius: 10px;
+        background: #eff6ff;
+        color: #1e3a8a;
+        padding: 10px 12px;
+        font-size: 13px;
     }
 
     .receive-toolbar {
@@ -1421,11 +1543,14 @@
         
         .receive-body {
             grid-template-columns: 1fr;
+            height: min(720px, calc(90vh - 78px));
+            overflow: auto;
         }
 
         .receive-sidebar {
             flex-direction: row;
             flex-wrap: wrap;
+            align-self: auto;
         }
 
         .receive-tab {
@@ -1523,15 +1648,24 @@
         }
 
         #mailboxTable {
-            min-width: 1220px;
+            min-width: 980px;
         }
 
         #mailboxTable.server-column-visible {
-            min-width: 1450px;
+            min-width: 1120px;
         }
         
         .form-row {
             flex-direction: column;
+        }
+
+        .batch-two-col,
+        .batch-protocol-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .batch-add-modal .modal-body {
+            padding: 20px;
         }
         
         .pagination-container {
@@ -1816,6 +1950,10 @@
                 <button class="receive-tab" data-folder="trash" onclick="switchReceiveFolder('trash')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 垃圾箱</button>
             </div>
             <div class="receive-main">
+                <div id="receiveErrorPanel" class="receive-error-panel is-hidden">
+                    <div class="receive-error-title" id="receiveErrorTitle">收件失败</div>
+                    <div class="receive-error-detail" id="receiveErrorDetail"></div>
+                </div>
                 <div id="receiveListView">
                     <table class="receive-table">
                         <thead>
@@ -1963,7 +2101,7 @@
 </div>
 
 <!-- 批量添加邮箱模态框 -->
-<div id="batchAddModal" class="modal">
+<div id="batchAddModal" class="modal batch-add-modal">
     <div class="modal-content">
         <div class="modal-header">
             <h3 class="modal-title">批量添加邮箱</h3>
@@ -1974,14 +2112,14 @@
                 <!-- 批量邮箱内容一行 -->
                 <div class="form-group">
                     <label for="batchContent">批量邮箱内容 *</label>
-                    <textarea id="batchContent" name="batch_content" rows="10" 
-                              placeholder="格式：账号----密码（每行一个）&#10;例如：&#10;user1@example.com----password1&#10;user2@example.com----password2"
-                              style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: monospace;"></textarea>
-                    <small style="color: #6b7280;">请按照"账号----密码"的格式填写，每行一个账号</small>
+                    <textarea id="batchContent" class="batch-content-textarea" name="batch_content" rows="10"
+                              placeholder="每行一个，自动识别多种格式：&#10;user@example.com----password&#10;user@example.com----password----client_id----refresh_token&#10;user@example.com:password&#10;user@example.com|password&#10;user@example.com,password&#10;email=user@example.com password=password client_id=... refresh_token=..."
+                              oninput="autoFillBatchRequiredFields()"></textarea>
+                    <small class="batch-hint">支持 ----、冒号、竖线、逗号、制表符、空格、JSON 和 key=value；Outlook OAuth 会自动识别 client_id 与 refresh_token。粘贴邮箱后会按邮箱域名自动填收发服务器。</small>
                 </div>
                 
                 <!-- 选择服务器和收件服务器一行 -->
-                <div class="form-row">
+                <div class="form-row batch-two-col">
                     <div class="form-group">
                         <label for="batchServerSelect">选择服务器</label>
                         <select id="batchServerSelect" onchange="selectBatchServer()">
@@ -1996,7 +2134,7 @@
                 </div>
                 
                 <!-- 分组和发件服务器 -->
-                <div class="form-row">
+                <div class="form-row batch-two-col">
                     <div class="form-group">
                         <label for="batchGroupSelect">分组</label>
                         <select id="batchGroupSelect">
@@ -2011,7 +2149,7 @@
                 </div>
                 
                 <!-- 协议和端口一行 -->
-                <div class="form-row">
+                <div class="form-row batch-protocol-grid">
                     <div class="form-group">
                         <label for="batchProtocol">收件协议 *</label>
                         <select id="batchProtocol" name="protocol" onchange="updateBatchPortByProtocol()">
@@ -2024,7 +2162,7 @@
                         <input type="number" id="batchPort" name="port" required 
                                placeholder="例: 993">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group batch-toggle-group">
                         <div class="checkbox-group">
                             <input type="checkbox" id="batchSsl" name="ssl" checked onchange="updateBatchPortBySSL()">
                             <label for="batchSsl">收件启用SSL</label>
@@ -2032,7 +2170,7 @@
                     </div>
                 </div>
                 
-                <div class="form-row">
+                <div class="form-row batch-protocol-grid">
                     <div class="form-group">
                         <label for="batchSendProtocol">发件协议 *</label>
                         <select id="batchSendProtocol" name="send_protocol" onchange="updateBatchSendPortByProtocol()">
@@ -2045,7 +2183,7 @@
                         <input type="number" id="batchSendPort" name="send_port" required 
                                placeholder="例: 465">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group batch-toggle-group">
                         <div class="checkbox-group">
                             <input type="checkbox" id="batchSendSsl" name="send_ssl" checked onchange="updateBatchSendPortBySSL()">
                             <label for="batchSendSsl">发件启用SSL</label>
@@ -2155,8 +2293,8 @@
 {% block scripts %}
 <script>
     const SIDEBAR_COLLAPSE_KEY = 'adminSidebarCollapsed';
-    const MAILBOX_GROUP_PANEL_KEY = 'mailboxGroupPanelCollapsed';
-    const MAILBOX_COLUMN_STORAGE_KEY = 'mailboxTableVisibleColumnsV2';
+    const MAILBOX_GROUP_PANEL_KEY = 'mailboxGroupPanelCollapsedV2';
+    const MAILBOX_COLUMN_STORAGE_KEY = 'mailboxTableVisibleColumnsV3';
 
     function getStoredPreference(key) {
         try {
@@ -2328,8 +2466,8 @@
         { key: 'id', label: '序号ID', required: true, defaultVisible: true },
         { key: 'group', label: '分组', defaultVisible: false },
         { key: 'email', label: '邮箱地址', required: true, defaultVisible: true },
-        { key: 'server', label: '服务器（收/发）', defaultVisible: false },
-        { key: 'created_at', label: '添加时间', defaultVisible: true },
+        { key: 'server', label: '收/发信息', defaultVisible: true },
+        { key: 'created_at', label: '添加时间', defaultVisible: false },
         { key: 'remarks', label: '备注', defaultVisible: true },
         { key: 'actions', label: '操作', required: true, defaultVisible: true }
     ];
@@ -2342,6 +2480,7 @@
     let groupFormMode = 'add';
     let contextTargetGroupId = null;
     let collapsedGroups = {};
+    let batchAutoFilledPresetKey = '';
     const GROUP_COLLAPSE_STORAGE_KEY = 'mailboxGroupCollapseState';
     const TOP_LEVEL_LABEL = '主分组';
     const RECEIVE_STORE_KEY = 'mailboxReceiveStore';
@@ -2357,11 +2496,98 @@
         mails: [],
         activeMail: null
     };
+    const BATCH_PROVIDER_PRESETS = [
+        {
+            key: 'outlook',
+            domains: ['outlook.com', 'hotmail.com', 'live.com', 'msn.com'],
+            server: 'outlook.office365.com',
+            port: 993,
+            protocol: 'imap',
+            ssl: true,
+            sendServer: 'smtp.office365.com',
+            sendPort: 587,
+            sendProtocol: 'smtp_starttls',
+            sendSsl: false
+        },
+        {
+            key: 'gmail',
+            domains: ['gmail.com', 'googlemail.com'],
+            server: 'imap.gmail.com',
+            port: 993,
+            protocol: 'imap',
+            ssl: true,
+            sendServer: 'smtp.gmail.com',
+            sendPort: 587,
+            sendProtocol: 'smtp_starttls',
+            sendSsl: false
+        },
+        {
+            key: 'qq',
+            domains: ['qq.com'],
+            server: 'imap.qq.com',
+            port: 993,
+            protocol: 'imap',
+            ssl: true,
+            sendServer: 'smtp.qq.com',
+            sendPort: 465,
+            sendProtocol: 'smtp',
+            sendSsl: true
+        },
+        {
+            key: '163',
+            domains: ['163.com'],
+            server: 'imap.163.com',
+            port: 993,
+            protocol: 'imap',
+            ssl: true,
+            sendServer: 'smtp.163.com',
+            sendPort: 465,
+            sendProtocol: 'smtp',
+            sendSsl: true
+        },
+        {
+            key: '126',
+            domains: ['126.com'],
+            server: 'imap.126.com',
+            port: 993,
+            protocol: 'imap',
+            ssl: true,
+            sendServer: 'smtp.126.com',
+            sendPort: 465,
+            sendProtocol: 'smtp',
+            sendSsl: true
+        },
+        {
+            key: 'yeah',
+            domains: ['yeah.net'],
+            server: 'imap.yeah.net',
+            port: 993,
+            protocol: 'imap',
+            ssl: true,
+            sendServer: 'smtp.yeah.net',
+            sendPort: 465,
+            sendProtocol: 'smtp',
+            sendSsl: true
+        },
+        {
+            key: 'yahoo',
+            domains: ['yahoo.com', 'ymail.com', 'rocketmail.com'],
+            server: 'imap.mail.yahoo.com',
+            port: 993,
+            protocol: 'imap',
+            ssl: true,
+            sendServer: 'smtp.mail.yahoo.com',
+            sendPort: 465,
+            sendProtocol: 'smtp',
+            sendSsl: true
+        }
+    ];
 
     // 页面加载时初始化
     document.addEventListener('DOMContentLoaded', function() {
         initGroups();
         bindGroupPanelEvents();
+        initBatchAutoFillEvents();
         loadServers();
         loadMailboxes();
         
@@ -3406,6 +3632,7 @@
         if (label) {
             label.textContent = mailbox ? mailbox.email : `ID ${mailboxId}`;
         }
+        setReceiveError('');
         document.getElementById('receiveModal').classList.add('show');
         updateReceiveTabActive();
         // Removed status text display - only use Toast notifications per requirements
@@ -3415,6 +3642,7 @@
     function closeReceiveModal() {
         document.getElementById('receiveModal').classList.remove('show');
         receiveState.activeMail = null;
+        setReceiveError('');
     }
 
     function switchReceiveFolder(folder) {
@@ -3463,6 +3691,96 @@
         const useProxy = connectionType === 'proxy' || (proxyData && proxyData.enabled);
         return `${text} ${useProxy ? '(代理)' : '(直连)'}`;
     }
+
+    async function readJsonResponse(response) {
+        if (response.redirected && response.url.includes('/admin/login')) {
+            return {
+                success: false,
+                message: '登录状态已失效，请刷新页面后重新登录'
+            };
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            return {
+                success: false,
+                message: response.status === 401 || response.url.includes('/admin/login')
+                    ? '登录状态已失效，请刷新页面后重新登录'
+                    : `接口返回异常（HTTP ${response.status}）`
+            };
+        }
+
+        return response.json();
+    }
+
+    function getTestButton(id) {
+        if (id) {
+            return document.querySelector(`.mailbox-actions .btn-small[data-action="test"][data-mailbox-id="${id}"]`);
+        }
+        return document.getElementById('testBtn');
+    }
+
+    function setTestingState(button, isTesting) {
+        if (!button) return;
+        if (isTesting) {
+            button.dataset.originalText = button.textContent;
+            button.textContent = '测试中...';
+            button.disabled = true;
+        } else {
+            button.textContent = button.dataset.originalText || '测试';
+            button.disabled = false;
+        }
+    }
+
+    function summarizeMailboxTestMessage(message) {
+        const text = String(message || '邮箱连接测试失败');
+        if (text.includes('AADSTS70000') || text.includes('service abuse mode')) {
+            return '测试失败：Microsoft OAuth 拒绝该账号，账号处于 service abuse mode';
+        }
+        if (text.includes('OAuth令牌获取失败')) {
+            return '测试失败：OAuth 令牌获取失败';
+        }
+        if (text.includes('AUTHENTICATE failed')) {
+            return '测试失败：邮箱认证失败，请检查密码、授权码或 OAuth 数据';
+        }
+        if (text.includes('登录状态已失效')) {
+            return text;
+        }
+        return text.length > 90 ? `${text.slice(0, 90)}...` : text;
+    }
+
+    function summarizeReceiveError(message) {
+        const text = String(message || '获取邮件失败');
+        if (text.includes('AADSTS70000') || text.includes('service abuse mode')) {
+            return 'Microsoft OAuth 拒绝该账号登录，账号处于 service abuse mode';
+        }
+        if (text.includes('OAuth令牌获取失败')) {
+            return 'OAuth 令牌获取失败';
+        }
+        if (text.includes('AUTHENTICATE failed')) {
+            return '邮箱认证失败';
+        }
+        if (text.includes('SSL连接失败')) {
+            return 'SSL 连接失败';
+        }
+        return text.length > 42 ? `${text.slice(0, 42)}...` : text;
+    }
+
+    function setReceiveError(message, title = '收件失败') {
+        const panel = document.getElementById('receiveErrorPanel');
+        const titleEl = document.getElementById('receiveErrorTitle');
+        const detailEl = document.getElementById('receiveErrorDetail');
+        if (!panel || !titleEl || !detailEl) return;
+        const text = String(message || '').trim();
+        if (!text) {
+            panel.classList.add('is-hidden');
+            detailEl.textContent = '';
+            return;
+        }
+        titleEl.textContent = title;
+        detailEl.textContent = text;
+        panel.classList.remove('is-hidden');
+    }
     
     async function fetchMailboxMails() {
         if (!receiveState.mailboxId) return;
@@ -3475,6 +3793,7 @@
         // Get custom email count from input (default 10, max 100)
         const emailCountInput = document.getElementById('emailCountInput');
         const emailLimit = emailCountInput ? Math.min(Math.max(parseInt(emailCountInput.value) || 10, 1), 100) : 10;
+        setReceiveError('');
         
         // Show loading toast that persists - will be manually removed on completion
         const loadingToastId = showToast('正在收取邮件，请稍候...', 'info', 0); // 0 duration = persistent
@@ -3550,6 +3869,7 @@
                 receiveState.mails = allMails;
                 receiveState.page = 1;
                 receiveState.activeMail = null;
+                setReceiveError('');
                 
                 // Remove loading toast
                 removeToast(loadingToastId);
@@ -3581,14 +3901,16 @@
                 removeToast(loadingToastId);
                 // Error occurred
                 const errorMessage = appendConnectionInfo(data.message || '获取邮件失败', data.proxy, data.connection);
-                showToast(errorMessage, 'error');
+                setReceiveError(errorMessage, summarizeReceiveError(errorMessage));
+                showToast('收件失败，详情已显示在弹窗内', 'error', 4500);
             }
         } catch (error) {
             console.error('收取邮件出错:', error);
             // Remove loading toast
             removeToast(loadingToastId);
             // Only use Toast notification - removed on-page status per requirements
-            showToast('网络错误，请稍后重试', 'error');
+            setReceiveError('网络错误，请稍后重试', '网络错误');
+            showToast('网络错误，详情已显示在弹窗内', 'error', 4500);
         }
     }
 
@@ -3811,8 +4133,83 @@
         document.getElementById('mailboxModal').classList.add('show');
     }
     
+    function inferBatchProviderPreset(content) {
+        const matches = (content || '').match(/[\w.!#$%&'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}/g) || [];
+        if (!matches.length) return null;
+
+        const domainCounts = {};
+        matches.forEach(email => {
+            const domain = email.split('@').pop().toLowerCase();
+            domainCounts[domain] = (domainCounts[domain] || 0) + 1;
+        });
+
+        let bestPreset = null;
+        let bestCount = 0;
+        for (const preset of BATCH_PROVIDER_PRESETS) {
+            const count = preset.domains.reduce((sum, domain) => sum + (domainCounts[domain] || 0), 0);
+            if (count > bestCount) {
+                bestPreset = preset;
+                bestCount = count;
+            }
+        }
+        return bestPreset;
+    }
+
+    function canReplaceBatchRequiredFields() {
+        const receiveServer = document.getElementById('batchServer').value.trim();
+        const sendServer = document.getElementById('batchSendServer').value.trim();
+        return (!receiveServer && !sendServer) || Boolean(batchAutoFilledPresetKey);
+    }
+
+    function applyBatchProviderPreset(preset) {
+        if (!preset || !canReplaceBatchRequiredFields()) return false;
+
+        document.getElementById('batchServerSelect').value = '';
+        document.getElementById('batchServer').value = preset.server;
+        document.getElementById('batchProtocol').value = preset.protocol;
+        document.getElementById('batchSsl').checked = preset.ssl;
+        document.getElementById('batchPort').value = preset.port;
+        document.getElementById('batchSendServer').value = preset.sendServer;
+        document.getElementById('batchSendProtocol').value = preset.sendProtocol;
+        document.getElementById('batchSendSsl').checked = preset.sendSsl;
+        document.getElementById('batchSendPort').value = preset.sendPort;
+        batchAutoFilledPresetKey = preset.key;
+        return true;
+    }
+
+    function autoFillBatchRequiredFields() {
+        const content = document.getElementById('batchContent')?.value || '';
+        const preset = inferBatchProviderPreset(content);
+        applyBatchProviderPreset(preset);
+    }
+
+    function initBatchAutoFillEvents() {
+        const manualFields = [
+            'batchServer',
+            'batchPort',
+            'batchProtocol',
+            'batchSsl',
+            'batchSendServer',
+            'batchSendPort',
+            'batchSendProtocol',
+            'batchSendSsl'
+        ];
+        manualFields.forEach(id => {
+            const element = document.getElementById(id);
+            if (!element || element.dataset.batchAutoFillBound === '1') return;
+            element.dataset.batchAutoFillBound = '1';
+            const eventName = element.type === 'checkbox' || element.tagName === 'SELECT' ? 'change' : 'input';
+            element.addEventListener(eventName, () => {
+                if (document.activeElement === element) {
+                    batchAutoFilledPresetKey = '';
+                }
+            });
+        });
+    }
+
     // 显示批量添加模态框
     function showBatchAddModal() {
+        batchAutoFilledPresetKey = '';
         document.getElementById('batchAddForm').reset();
         document.getElementById('batchSsl').checked = true;
         document.getElementById('batchSendSsl').checked = true;
@@ -3883,6 +4280,7 @@
     // 测试邮箱连接
     async function testMailbox(id = null) {
         const targetId = id || document.getElementById('mailboxId').value;
+        const testButton = getTestButton(targetId);
         
         if (!targetId) {
             // 如果没有ID，使用当前表单数据进行测试
@@ -3910,6 +4308,7 @@
             }
             
             try {
+                setTestingState(testButton, true);
                 const response = await fetch('/admin/api/mailbox', {
                     method: 'POST',
                     headers: {
@@ -3918,21 +4317,24 @@
                     body: JSON.stringify(testData)
                 });
                 
-                const data = await response.json();
+                const data = await readJsonResponse(response);
                 
                 if (data.success) {
                     showToast('邮箱连接测试成功', 'success');
                 } else {
-                    showToast(data.message || '邮箱连接测试失败', 'error');
+                    showToast(summarizeMailboxTestMessage(data.message), 'error');
                 }
             } catch (error) {
                 console.error('测试邮箱失败:', error);
-                showToast('网络错误，请稍后重试', 'error');
+                showToast(error.message || '测试请求失败，请检查服务是否正常运行', 'error');
+            } finally {
+                setTestingState(testButton, false);
             }
             return;
         }
         
         try {
+            setTestingState(testButton, true);
             const response = await fetch('/admin/api/mailbox', {
                 method: 'POST',
                 headers: {
@@ -3944,16 +4346,18 @@
                 })
             });
             
-            const data = await response.json();
+            const data = await readJsonResponse(response);
             
             if (data.success) {
                 showToast('邮箱连接测试成功', 'success');
             } else {
-                showToast(data.message || '邮箱连接测试失败', 'error');
+                showToast(summarizeMailboxTestMessage(data.message), 'error');
             }
         } catch (error) {
             console.error('测试邮箱失败:', error);
-            showToast('网络错误，请稍后重试', 'error');
+            showToast(error.message || '测试请求失败，请检查服务是否正常运行', 'error');
+        } finally {
+            setTestingState(testButton, false);
         }
     }
     
@@ -4132,6 +4536,7 @@
     
     // 批量添加邮箱
     async function saveBatchMailboxes() {
+        autoFillBatchRequiredFields();
         const form = document.getElementById('batchAddForm');
         const formData = new FormData(form);
         
@@ -4184,11 +4589,9 @@
                 if (group_id) {
                     const lines = data.batch_content.split('\n');
                     for (const line of lines) {
-                        if (line.trim() && line.includes('----')) {
-                            const email = line.split('----')[0].trim();
-                            if (email) {
-                                mailboxGroupMap[email] = group_id;
-                            }
+                        const emailMatch = line.match(/[\w.!#$%&'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}/);
+                        if (emailMatch) {
+                            mailboxGroupMap[emailMatch[0]] = group_id;
                         }
                     }
                 }
@@ -4459,6 +4862,7 @@
     function selectBatchServer() {
         const select = document.getElementById('batchServerSelect');
         const serverId = select.value;
+        batchAutoFilledPresetKey = '';
         
         if (serverId) {
             const server = servers.find(s => s.id == serverId);

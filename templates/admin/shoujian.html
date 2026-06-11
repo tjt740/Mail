@@ -275,6 +275,496 @@
         margin-bottom: 20px;
         color: var(--primary-color);
     }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(140px, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+
+    .stat-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 14px 16px;
+        background: #fff;
+    }
+
+    .stat-label {
+        font-size: 13px;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .log-toolbar {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) 160px auto auto;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+        color: #374151;
+        background: #fff;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+    }
+
+    .btn {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        white-space: nowrap;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: #fff;
+    }
+
+    .btn-secondary {
+        background: #f1f5f9;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+    }
+
+    .btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
+    .poller-status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        padding: 12px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #475569;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+
+    .log-message {
+        display: none;
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin-bottom: 14px;
+        font-size: 14px;
+    }
+
+    .log-message.show {
+        display: block;
+    }
+
+    .log-message.success {
+        color: #065f46;
+        background: #d1fae5;
+        border: 1px solid #a7f3d0;
+    }
+
+    .log-message.error {
+        color: #991b1b;
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+    }
+
+    .log-message.info {
+        color: #1e40af;
+        background: #dbeafe;
+        border: 1px solid #bfdbfe;
+    }
+
+    .table-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .logs-accordion {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .log-group {
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .log-group-summary {
+        width: 100%;
+        display: grid;
+        grid-template-columns: minmax(280px, 1fr) auto auto minmax(150px, auto);
+        gap: 16px;
+        align-items: center;
+        padding: 14px 16px;
+        border: 0;
+        background: #fff;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        appearance: none;
+    }
+
+    .log-group-summary:hover {
+        background: #f8fafc;
+    }
+
+    .log-group.is-expanded .log-group-summary {
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .log-group-main {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+    }
+
+    .log-group-chevron {
+        color: #64748b;
+        font-size: 13px;
+        transition: transform 0.2s ease;
+    }
+
+    .log-group.is-expanded .log-group-chevron {
+        transform: rotate(90deg);
+    }
+
+    .log-group-email {
+        overflow: hidden;
+        color: #1e293b;
+        font-size: 15px;
+        font-weight: 800;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .log-group-preview,
+    .log-group-small {
+        overflow: hidden;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.45;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .log-group-counts {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: flex-end;
+    }
+
+    .log-count-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 4px 9px;
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .log-count-badge.success {
+        color: #065f46;
+        background: #d1fae5;
+    }
+
+    .log-count-badge.failed {
+        color: #991b1b;
+        background: #fee2e2;
+    }
+
+    .log-group-latest {
+        color: #334155;
+        font-size: 13px;
+        font-weight: 700;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .log-group-body {
+        overflow-x: auto;
+        background: #fff;
+    }
+
+    .log-group:not(.is-expanded) .log-group-body {
+        display: none;
+    }
+
+    .logs-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        background: #fff;
+    }
+
+    .group-logs-table {
+        min-width: 980px;
+    }
+
+    .logs-table th,
+    .logs-table td {
+        padding: 11px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        text-align: left;
+        vertical-align: top;
+        font-size: 13px;
+    }
+
+    .logs-table th {
+        background: #fff;
+        color: #475569;
+        font-weight: 700;
+    }
+
+    .logs-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .group-col-id {
+        width: 64px;
+    }
+
+    .group-col-folder {
+        width: 88px;
+    }
+
+    .group-col-person {
+        width: 170px;
+    }
+
+    .group-col-time {
+        width: 156px;
+    }
+
+    .group-col-status {
+        width: 92px;
+    }
+
+    .group-col-source {
+        width: 106px;
+    }
+
+    .group-col-action {
+        width: 82px;
+    }
+
+    .logs-table th.group-col-action,
+    .logs-table td.group-col-action {
+        text-align: right;
+    }
+
+    .mail-log-email,
+    .mail-log-title,
+    .mail-log-summary,
+    .mail-log-meta {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mail-log-email {
+        color: #1e293b;
+        font-weight: 700;
+    }
+
+    .mail-log-folder {
+        color: #64748b;
+        font-size: 12px;
+        margin-top: 2px;
+    }
+
+    .mail-subject-cell {
+        color: #1e293b;
+        min-width: 0;
+    }
+
+    .mail-log-title {
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .mail-log-summary {
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .muted {
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .status-badge,
+    .source-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .status-received {
+        color: #065f46;
+        background: #d1fae5;
+    }
+
+    .status-failed {
+        color: #991b1b;
+        background: #fee2e2;
+    }
+
+    .status-processed {
+        color: #1e40af;
+        background: #dbeafe;
+    }
+
+    .source-badge {
+        color: #475569;
+        background: #f1f5f9;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: #64748b;
+        padding: 32px 16px;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    .detail-btn {
+        padding: 7px 10px;
+        font-size: 13px;
+    }
+
+    .log-detail-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        z-index: 3000;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+    }
+
+    .log-detail-modal.show {
+        display: flex;
+    }
+
+    .log-detail-content {
+        width: min(760px, 100%);
+        max-height: min(760px, 86vh);
+        overflow: hidden;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .log-detail-header {
+        padding: 18px 22px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+    }
+
+    .log-detail-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    .log-detail-close {
+        border: none;
+        background: #f1f5f9;
+        color: #475569;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .log-detail-body {
+        padding: 18px 22px 22px;
+        overflow: auto;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 120px minmax(0, 1fr);
+        gap: 10px 14px;
+        font-size: 14px;
+    }
+
+    .detail-label {
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .detail-value {
+        color: #1e293b;
+        word-break: break-word;
+        white-space: pre-wrap;
+    }
+
+    .detail-error {
+        padding: 12px;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        background: #fef2f2;
+        color: #991b1b;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        line-height: 1.5;
+    }
     
     /* Mobile menu toggle - default hidden */
     .mobile-menu-toggle {
@@ -315,6 +805,39 @@
         
         .mobile-menu-toggle {
             display: block !important;
+        }
+
+        .stats-row {
+            grid-template-columns: repeat(2, minmax(120px, 1fr));
+        }
+
+        .log-toolbar {
+            grid-template-columns: 1fr;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        .logs-table {
+            min-width: 860px;
+        }
+
+        .log-group-summary {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .log-group-counts {
+            justify-content: flex-start;
+        }
+
+        .log-group-latest {
+            text-align: left;
+        }
+
+        .group-logs-table {
+            min-width: 980px;
         }
 
         .sidebar-toggle {
@@ -420,17 +943,69 @@
                 <h2 class="card-title">邮件收件日志</h2>
             </div>
             <div class="card-body">
-                <div class="feature-intro">
-                    <div class="feature-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span></div>
-                    <h3>收件日志系统</h3>
-                    <p>实时记录所有邮件收取操作和处理结果</p>
-                    <p>详细记录邮件获取时间、状态、错误信息等</p>
-                    <p>支持按邮箱、时间、状态等条件筛选查询</p>
-                    <p>提供邮件收取成功率统计和趋势分析</p>
-                    <p>功能完善中，敬请期待...</p>
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-label">日志总数</div>
+                        <div class="stat-value" id="statTotal">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">成功收取</div>
+                        <div class="stat-value" id="statReceived">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">失败记录</div>
+                        <div class="stat-value" id="statFailed">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">轮询间隔</div>
+                        <div class="stat-value" id="statInterval">-</div>
+                    </div>
+                </div>
+
+                <div class="log-toolbar">
+                    <input type="text" class="form-control" id="logSearch" placeholder="搜索邮箱、主题、发件人">
+                    <select class="form-control" id="statusFilter">
+                        <option value="">全部状态</option>
+                        <option value="received">成功</option>
+                        <option value="failed">失败</option>
+                        <option value="processed">已处理</option>
+                    </select>
+                    <button class="btn btn-secondary" type="button" onclick="loadMailLogs(1)">查询</button>
+                    <button class="btn btn-primary" type="button" id="pollNowBtn" onclick="triggerMailPoll()">立即轮询</button>
+                </div>
+
+                <div class="poller-status" id="pollerStatus">
+                    <span>状态：-</span>
+                    <span>最近开始：-</span>
+                    <span>最近结束：-</span>
+                    <span>结果：-</span>
+                </div>
+
+                <div class="log-message" id="logMessage"></div>
+
+                <div class="table-wrapper">
+                    <div class="logs-accordion" id="mailLogsAccordion">
+                        <div class="empty-state">加载中...</div>
+                    </div>
+                </div>
+
+                <div class="pagination">
+                    <button class="btn btn-secondary" type="button" id="prevPageBtn" onclick="changeMailLogPage(-1)">上一页</button>
+                    <span id="paginationInfo">第 1 / 1 页</span>
+                    <button class="btn btn-secondary" type="button" id="nextPageBtn" onclick="changeMailLogPage(1)">下一页</button>
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="log-detail-modal" id="logDetailModal" onclick="handleLogDetailBackdrop(event)">
+    <div class="log-detail-content" role="dialog" aria-modal="true" aria-labelledby="logDetailTitle">
+        <div class="log-detail-header">
+            <h3 class="log-detail-title" id="logDetailTitle">收件日志详情</h3>
+            <button class="log-detail-close" type="button" onclick="closeLogDetailModal()" aria-label="关闭">&times;</button>
+        </div>
+        <div class="log-detail-body" id="logDetailBody"></div>
     </div>
 </div>
 {% endblock %}
@@ -510,10 +1085,435 @@
         sidebar.classList.remove('mobile-open');
         overlay.classList.remove('show');
     }
+
+    let currentLogPage = 1;
+    let totalLogPages = 1;
+    let currentMailLogs = [];
+    let expandedMailLogGroups = new Set();
+    let hasInitializedLogGroups = false;
+    const LOGS_PER_PAGE = 30;
+    const LOG_REFRESH_INTERVAL_MS = 15000;
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function setLogMessage(message, type = 'info') {
+        const el = document.getElementById('logMessage');
+        if (!el) return;
+        el.textContent = message;
+        el.className = `log-message show ${type}`;
+        if (message) {
+            window.clearTimeout(setLogMessage.timer);
+            setLogMessage.timer = window.setTimeout(() => {
+                el.className = 'log-message';
+                el.textContent = '';
+            }, 5000);
+        }
+    }
+
+    function getStatusLabel(status) {
+        const labels = {
+            received: '成功',
+            failed: '失败',
+            processed: '已处理'
+        };
+        return labels[status] || status || '-';
+    }
+
+    function getSourceLabel(source) {
+        const labels = {
+            auto_poll: '自动轮询',
+            manual_poll: '手动轮询',
+            admin_manual: '后台取件',
+            card_api: '卡密接口',
+            card_preview: '卡密预览',
+            manual: '手动'
+        };
+        return labels[source] || source || '-';
+    }
+
+    function summarizeLog(log) {
+        if (log.error_message) {
+            return log.error_message.length > 90 ? `${log.error_message.slice(0, 90)}...` : log.error_message;
+        }
+        const from = log.mail_from ? `发件人: ${log.mail_from}` : '';
+        const receivedAt = log.received_at ? `收件时间: ${log.received_at}` : '';
+        return [from, receivedAt].filter(Boolean).join(' / ') || '暂无更多摘要';
+    }
+
+    function getLogGroupKey(log) {
+        return String(log?.email || '-').toLowerCase();
+    }
+
+    function getGroupFolderLabel(group) {
+        const folders = [...new Set(group.logs.map(log => log.folder || 'inbox'))];
+        if (folders.length <= 2) return folders.join(', ');
+        return `${folders.slice(0, 2).join(', ')} +${folders.length - 2}`;
+    }
+
+    function buildMailLogGroups(logs) {
+        const groups = new Map();
+        logs.forEach(log => {
+            const key = getLogGroupKey(log);
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    key,
+                    email: log.email || '-',
+                    logs: [],
+                    counts: {
+                        total: 0,
+                        received: 0,
+                        failed: 0,
+                        processed: 0
+                    }
+                });
+            }
+
+            const group = groups.get(key);
+            group.logs.push(log);
+            group.counts.total += 1;
+            if (group.counts[log.status] !== undefined) {
+                group.counts[log.status] += 1;
+            }
+        });
+
+        return Array.from(groups.values());
+    }
+
+    function syncExpandedLogGroups(groups) {
+        const keys = new Set(groups.map(group => group.key));
+        if (!hasInitializedLogGroups) {
+            expandedMailLogGroups = new Set(groups.slice(0, 1).map(group => group.key));
+            hasInitializedLogGroups = true;
+            return;
+        }
+
+        expandedMailLogGroups = new Set([...expandedMailLogGroups].filter(key => keys.has(key)));
+    }
+
+    function getGroupPreview(group) {
+        const latest = group.logs[0] || {};
+        const title = latest.mail_subject || '(无主题)';
+        const summary = summarizeLog(latest);
+        return `${title} · ${summary}`;
+    }
+
+    function renderGroupCountBadges(group) {
+        const counts = group.counts;
+        return `
+            <span class="log-count-badge">共 ${escapeHtml(counts.total)} 条</span>
+            <span class="log-count-badge success">成功 ${escapeHtml(counts.received + counts.processed)}</span>
+            <span class="log-count-badge failed">失败 ${escapeHtml(counts.failed)}</span>
+        `;
+    }
+
+    function renderGroupLogRow(log) {
+        const statusClass = `status-${escapeHtml(log.status || 'received')}`;
+        const summary = summarizeLog(log);
+        return `
+            <tr>
+                <td class="group-col-id">${escapeHtml(log.id)}</td>
+                <td class="group-col-folder"><div class="mail-log-folder">${escapeHtml(log.folder || 'inbox')}</div></td>
+                <td class="mail-subject-cell">
+                    <div class="mail-log-title" title="${escapeHtml(log.mail_subject || '(无主题)')}">${escapeHtml(log.mail_subject || '(无主题)')}</div>
+                    <div class="mail-log-summary" title="${escapeHtml(summary)}">${escapeHtml(summary)}</div>
+                </td>
+                <td class="group-col-person"><div class="mail-log-meta" title="${escapeHtml(log.mail_from || '-')}">${escapeHtml(log.mail_from || '-')}</div></td>
+                <td class="group-col-time"><div class="mail-log-meta">${escapeHtml(log.received_at || '-')}</div></td>
+                <td class="group-col-status"><span class="status-badge ${statusClass}">${escapeHtml(getStatusLabel(log.status))}</span></td>
+                <td class="group-col-source"><span class="source-badge">${escapeHtml(getSourceLabel(log.source))}</span></td>
+                <td class="group-col-time"><div class="mail-log-meta">${escapeHtml(log.created_at || '-')}</div></td>
+                <td class="group-col-action"><button class="btn btn-secondary detail-btn" type="button" onclick="openLogDetailModal('${escapeHtml(log.id)}')">详情</button></td>
+            </tr>
+        `;
+    }
+
+    function getErrorAdvice(errorMessage) {
+        const text = errorMessage || '';
+        if (!text) return '';
+        if (text.includes('AUTHENTICATE failed') || text.includes('登录失败')) {
+            return '检查邮箱密码/授权码是否正确，确认邮箱已开启 IMAP，并确认账号没有触发安全拦截。';
+        }
+        if (text.includes('UNEXPECTED_EOF_WHILE_READING') || text.includes('SSL连接失败')) {
+            return '检查收件服务器端口和 SSL 开关是否匹配；常见 IMAP SSL 使用 993，STARTTLS 或非 SSL 配置不要使用隐式 SSL。';
+        }
+        if (text.includes('连接超时') || text.toLowerCase().includes('timeout')) {
+            return '检查服务器地址、端口、网络连通性和代理配置。';
+        }
+        if (text.includes('DNS解析失败')) {
+            return '检查服务器域名是否填写正确，或当前网络是否能解析该域名。';
+        }
+        return '根据完整错误检查邮箱账号、授权码、服务器地址、端口、SSL 和代理配置。';
+    }
+
+    function getLogById(logId) {
+        return currentMailLogs.find(log => String(log.id) === String(logId));
+    }
+
+    function renderDetailRow(label, value, className = '') {
+        return `
+            <div class="detail-label">${escapeHtml(label)}</div>
+            <div class="detail-value ${className}">${escapeHtml(value || '-')}</div>
+        `;
+    }
+
+    function openLogDetailModal(logId) {
+        const log = getLogById(logId);
+        if (!log) return;
+
+        const modal = document.getElementById('logDetailModal');
+        const body = document.getElementById('logDetailBody');
+        if (!modal || !body) return;
+
+        body.innerHTML = `
+            <div class="detail-grid">
+                ${renderDetailRow('ID', log.id)}
+                ${renderDetailRow('邮箱', log.email)}
+                ${renderDetailRow('文件夹', log.folder || 'inbox')}
+                ${renderDetailRow('主题', log.mail_subject || '(无主题)')}
+                ${renderDetailRow('发件人', log.mail_from)}
+                ${renderDetailRow('收件人', log.mail_to)}
+                ${renderDetailRow('收件时间', log.received_at)}
+                ${renderDetailRow('状态', getStatusLabel(log.status))}
+                ${renderDetailRow('来源', getSourceLabel(log.source))}
+                ${renderDetailRow('记录时间', log.created_at)}
+                ${renderDetailRow('Message-ID', log.message_id)}
+                ${renderDetailRow('IP', log.ip_address)}
+                ${renderDetailRow('User-Agent', log.user_agent)}
+                ${log.error_message ? renderDetailRow('处理建议', getErrorAdvice(log.error_message)) : ''}
+                ${log.error_message ? renderDetailRow('错误详情', log.error_message, 'detail-error') : ''}
+            </div>
+        `;
+        modal.classList.add('show');
+    }
+
+    function closeLogDetailModal() {
+        const modal = document.getElementById('logDetailModal');
+        if (modal) modal.classList.remove('show');
+    }
+
+    function handleLogDetailBackdrop(event) {
+        if (event.target && event.target.id === 'logDetailModal') {
+            closeLogDetailModal();
+        }
+    }
+
+    function updateStats(stats, poller) {
+        document.getElementById('statTotal').textContent = stats?.total ?? 0;
+        document.getElementById('statReceived').textContent = stats?.received ?? 0;
+        document.getElementById('statFailed').textContent = stats?.failed ?? 0;
+        const interval = poller?.interval ? `${poller.interval}s` : '-';
+        document.getElementById('statInterval').textContent = interval;
+    }
+
+    function updatePollerStatus(poller) {
+        const el = document.getElementById('pollerStatus');
+        if (!el) return;
+        const statusText = poller?.running ? '运行中' : (poller?.started ? '空闲' : '未启动');
+        el.innerHTML = `
+            <span>状态：${escapeHtml(statusText)}</span>
+            <span>最近开始：${escapeHtml(poller?.last_started_at || '-')}</span>
+            <span>最近结束：${escapeHtml(poller?.last_finished_at || '-')}</span>
+            <span>结果：${escapeHtml(poller?.last_message || '-')}</span>
+        `;
+        const pollBtn = document.getElementById('pollNowBtn');
+        if (pollBtn) {
+            pollBtn.disabled = Boolean(poller?.running);
+            pollBtn.textContent = poller?.running ? '轮询中...' : '立即轮询';
+        }
+    }
+
+    function renderMailLogs(logs) {
+        const accordion = document.getElementById('mailLogsAccordion');
+        if (!accordion) return;
+        currentMailLogs = Array.isArray(logs) ? logs : [];
+        if (currentMailLogs.length === 0) {
+            accordion.innerHTML = '<div class="empty-state">暂无收件日志</div>';
+            return;
+        }
+
+        const groups = buildMailLogGroups(currentMailLogs);
+        syncExpandedLogGroups(groups);
+
+        accordion.innerHTML = groups.map(group => {
+            const isExpanded = expandedMailLogGroups.has(group.key);
+            const latest = group.logs[0] || {};
+            return `
+                <section class="log-group ${isExpanded ? 'is-expanded' : ''}" data-group-key="${escapeHtml(group.key)}">
+                    <button class="log-group-summary" type="button" aria-expanded="${isExpanded ? 'true' : 'false'}">
+                        <div class="log-group-main">
+                            <span class="log-group-chevron">›</span>
+                            <div>
+                                <div class="log-group-email" title="${escapeHtml(group.email)}">${escapeHtml(group.email)}</div>
+                                <div class="log-group-preview" title="${escapeHtml(getGroupPreview(group))}">${escapeHtml(getGroupPreview(group))}</div>
+                            </div>
+                        </div>
+                        <div class="log-group-small">文件夹：${escapeHtml(getGroupFolderLabel(group))}</div>
+                        <div class="log-group-counts">${renderGroupCountBadges(group)}</div>
+                        <div class="log-group-latest">${escapeHtml(latest.created_at || '-')}</div>
+                    </button>
+                    <div class="log-group-body">
+                        <table class="logs-table group-logs-table">
+                            <thead>
+                                <tr>
+                                    <th class="group-col-id">ID</th>
+                                    <th class="group-col-folder">文件夹</th>
+                                    <th>主题 / 摘要</th>
+                                    <th class="group-col-person">发件人</th>
+                                    <th class="group-col-time">收件时间</th>
+                                    <th class="group-col-status">状态</th>
+                                    <th class="group-col-source">来源</th>
+                                    <th class="group-col-time">记录时间</th>
+                                    <th class="group-col-action">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${group.logs.map(renderGroupLogRow).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            `;
+        }).join('');
+    }
+
+    function toggleLogGroup(groupEl) {
+        if (!groupEl) return;
+        const key = groupEl.dataset.groupKey;
+        const shouldExpand = !groupEl.classList.contains('is-expanded');
+        groupEl.classList.toggle('is-expanded', shouldExpand);
+        const summary = groupEl.querySelector('.log-group-summary');
+        if (summary) summary.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
+        if (shouldExpand) {
+            expandedMailLogGroups.add(key);
+        } else {
+            expandedMailLogGroups.delete(key);
+        }
+    }
+
+    function updatePagination(pagination) {
+        currentLogPage = pagination?.page || 1;
+        totalLogPages = Math.max(pagination?.pages || 1, 1);
+        document.getElementById('paginationInfo').textContent = `第 ${currentLogPage} / ${totalLogPages} 页`;
+        document.getElementById('prevPageBtn').disabled = currentLogPage <= 1;
+        document.getElementById('nextPageBtn').disabled = currentLogPage >= totalLogPages;
+    }
+
+    async function loadMailLogs(page = currentLogPage, showError = true) {
+        const params = new URLSearchParams({
+            page: String(page),
+            per_page: String(LOGS_PER_PAGE)
+        });
+        const search = document.getElementById('logSearch')?.value.trim();
+        const status = document.getElementById('statusFilter')?.value;
+        if (search) params.set('search', search);
+        if (status) params.set('status', status);
+
+        try {
+            const response = await fetch(`/admin/api/mail-logs?${params.toString()}`);
+            if (response.redirected && response.url.includes('/admin/login')) {
+                window.location.href = response.url;
+                return;
+            }
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                if (showError) setLogMessage('登录状态已失效，请重新登录', 'error');
+                return;
+            }
+            const data = await response.json();
+            if (!data.success) {
+                if (showError) setLogMessage(data.message || '获取收件日志失败', 'error');
+                return;
+            }
+
+            updateStats(data.stats, data.poller);
+            updatePollerStatus(data.poller);
+            renderMailLogs(data.data || []);
+            updatePagination(data.pagination || {});
+        } catch (error) {
+            console.error('加载收件日志失败:', error);
+            if (showError) setLogMessage('网络错误，请稍后重试', 'error');
+        }
+    }
+
+    function changeMailLogPage(delta) {
+        const nextPage = Math.min(Math.max(currentLogPage + delta, 1), totalLogPages);
+        if (nextPage !== currentLogPage) {
+            loadMailLogs(nextPage);
+        }
+    }
+
+    async function triggerMailPoll() {
+        const btn = document.getElementById('pollNowBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '启动中...';
+        }
+
+        try {
+            const response = await fetch('/admin/api/mail-logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'poll_now' })
+            });
+            if (response.redirected && response.url.includes('/admin/login')) {
+                window.location.href = response.url;
+                return;
+            }
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                setLogMessage('登录状态已失效，请重新登录', 'error');
+                return;
+            }
+            const data = await response.json();
+            setLogMessage(data.message || (data.success ? '已开始轮询' : '轮询启动失败'), data.success ? 'success' : 'error');
+            updatePollerStatus(data.poller);
+            window.setTimeout(() => loadMailLogs(currentLogPage, false), 1500);
+        } catch (error) {
+            console.error('触发轮询失败:', error);
+            setLogMessage('网络错误，请稍后重试', 'error');
+        } finally {
+            await loadMailLogs(currentLogPage, false);
+        }
+    }
     
     // Close mobile menu when clicking on navigation items
     document.addEventListener('DOMContentLoaded', function() {
         initSidebarCollapse();
+        loadMailLogs(1);
+        window.setInterval(() => loadMailLogs(currentLogPage, false), LOG_REFRESH_INTERVAL_MS);
+
+        const searchInput = document.getElementById('logSearch');
+        if (searchInput) {
+            searchInput.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    loadMailLogs(1);
+                }
+            });
+        }
+
+        const statusFilter = document.getElementById('statusFilter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', function() {
+                loadMailLogs(1);
+            });
+        }
+
+        const logsAccordion = document.getElementById('mailLogsAccordion');
+        if (logsAccordion) {
+            logsAccordion.addEventListener('click', function(event) {
+                const summary = event.target.closest('.log-group-summary');
+                if (!summary || !logsAccordion.contains(summary)) return;
+                toggleLogGroup(summary.closest('.log-group'));
+            });
+        }
+
         const navItems = document.querySelectorAll('.nav-item');
         navItems.forEach(item => {
             item.addEventListener('click', function() {
@@ -530,6 +1530,12 @@
                 closeMobileMenu();
             }
             handleSidebarResize();
+        });
+
+        window.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeLogDetailModal();
+            }
         });
     });
 
