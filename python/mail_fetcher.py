@@ -16,10 +16,11 @@ import imaplib
 import socks
 import http.client
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.header import decode_header
+from urllib.parse import quote
 import logging
 
 # Setup logging
@@ -100,9 +101,10 @@ class ProxyMailFetcher:
         self.password = password
         self.protocol = protocol.lower()
         self.use_ssl = use_ssl
-        self.auth_type = (auth_type or 'password').lower()
+        self.auth_type = self._normalize_auth_type(auth_type)
         self.oauth_client_id = oauth_client_id or ''
         self.oauth_refresh_token = oauth_refresh_token or ''
+        self.graph_access_token = ''
         self.connection = None
         self.proxy_enabled = False
         self.proxy_info = None
@@ -114,6 +116,15 @@ class ProxyMailFetcher:
         
         # Check and configure proxy settings
         self._check_proxy_status()
+
+    def _normalize_auth_type(self, auth_type):
+        normalized = str(auth_type or 'password').strip().lower()
+        normalized = normalized.replace('-', '_').replace(' ', '_')
+        if normalized in ('graph', 'graph_api', 'msgraph', 'microsoft_graph', 'microsoftgraph'):
+            return 'graph'
+        if normalized in ('oauth', 'oauth2', 'xoauth2'):
+            return 'oauth'
+        return normalized or 'password'
         
     def _get_cache_key(self):
         """生成连接缓存键"""
@@ -132,6 +143,31 @@ class ProxyMailFetcher:
     def _has_oauth_credentials(self):
         return self.auth_type == 'oauth' and bool(self.oauth_client_id and self.oauth_refresh_token)
 
+    def _has_graph_credentials(self):
+        return self.auth_type == 'graph' and bool(self.oauth_client_id and self.oauth_refresh_token)
+
+    def _get_requests_proxy_config(self):
+        if not self.proxy_enabled or not self.proxy_info:
+            return None
+
+        proxy_type = self.proxy_info.get('type')
+        scheme = 'socks5h' if proxy_type == 'socks5' else 'http'
+        host = self.proxy_info.get('host', '')
+        port = self.proxy_info.get('port', 0)
+        username = self.proxy_info.get('username') or ''
+        password = self.proxy_info.get('password') or ''
+        if not host or not port:
+            return None
+
+        auth = ''
+        if username and password:
+            auth = f"{quote(str(username))}:{quote(str(password))}@"
+        proxy_url = f"{scheme}://{auth}{host}:{port}"
+        return {
+            'http': proxy_url,
+            'https': proxy_url
+        }
+
     def _fetch_oauth_access_token(self):
         """用 refresh token 换取 Outlook IMAP XOAUTH2 access token。"""
         if not self._has_oauth_credentials():
@@ -147,6 +183,7 @@ class ProxyMailFetcher:
                     'grant_type': 'refresh_token',
                     'scope': 'https://outlook.office.com/IMAP.AccessAsUser.All offline_access'
                 },
+                proxies=self._get_requests_proxy_config(),
                 timeout=20
             )
         except Exception as e:
@@ -162,6 +199,47 @@ class ProxyMailFetcher:
             raise Exception(f"OAuth令牌获取失败: {error_text}")
 
         return payload['access_token']
+
+    def _fetch_graph_access_token(self):
+        """用 refresh token 换取 Microsoft Graph access token。"""
+        if not self._has_graph_credentials():
+            raise Exception("Graph API配置不完整，缺少client_id或refresh_token")
+
+        scopes = [
+            'https://graph.microsoft.com/Mail.Read offline_access',
+            'https://graph.microsoft.com/.default offline_access'
+        ]
+        last_error = ''
+
+        for scope in scopes:
+            try:
+                import requests
+                response = requests.post(
+                    'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+                    data={
+                        'client_id': self.oauth_client_id,
+                        'refresh_token': self.oauth_refresh_token,
+                        'grant_type': 'refresh_token',
+                        'scope': scope
+                    },
+                    proxies=self._get_requests_proxy_config(),
+                    timeout=20
+                )
+            except Exception as e:
+                last_error = str(e)
+                continue
+
+            try:
+                payload = response.json()
+            except Exception:
+                payload = {}
+
+            if response.status_code < 400 and payload.get('access_token'):
+                return payload['access_token']
+
+            last_error = payload.get('error_description') or payload.get('error') or response.text[:200]
+
+        raise Exception(f"Graph API令牌获取失败: {last_error}")
 
     def _authenticate_imap(self):
         """根据账号类型选择普通密码登录或 XOAUTH2 登录。"""
@@ -268,6 +346,12 @@ class ProxyMailFetcher:
         """Connect to mail server"""
         connection_method = "未知"
         try:
+            if self.auth_type == 'graph':
+                connection_method = "Graph API"
+                logger.info("Connecting through Microsoft Graph API")
+                self.graph_access_token = self._fetch_graph_access_token()
+                return True
+
             if self.proxy_enabled:
                 connection_method = f"代理 ({self.proxy_info['type']} - {self.proxy_info['name']})"
                 logger.info(f"Attempting connection with proxy: {self.proxy_info['name']} ({self.proxy_info['type']})")
@@ -730,6 +814,213 @@ class ProxyMailFetcher:
     def close(self):
         """Close the connection (alias for disconnect)"""
         self.disconnect()
+
+    def _graph_folder_id(self, folder):
+        lower = (folder or 'inbox').strip().lower()
+        if 'junk' in lower or 'spam' in lower:
+            return 'junkemail'
+        if 'trash' in lower or 'deleted' in lower:
+            return 'deleteditems'
+        return 'inbox'
+
+    def _normalize_graph_folder_name(self, folder_id):
+        lower = (folder_id or '').lower()
+        if lower in ('deleteditems', 'junkemail') or 'deleted' in lower or 'junk' in lower:
+            return 'trash'
+        return 'inbox'
+
+    def _graph_request(self, path, params=None):
+        if not self.graph_access_token:
+            self.graph_access_token = self._fetch_graph_access_token()
+
+        try:
+            import requests
+            url = f"https://graph.microsoft.com/v1.0/{path.lstrip('/')}"
+            response = requests.get(
+                url,
+                headers={
+                    'Authorization': f'Bearer {self.graph_access_token}',
+                    'Accept': 'application/json'
+                },
+                params=params or {},
+                proxies=self._get_requests_proxy_config(),
+                timeout=25
+            )
+        except Exception as e:
+            raise Exception(f"Graph API请求失败: {str(e)}")
+
+        try:
+            payload = response.json()
+        except Exception:
+            payload = {}
+
+        if response.status_code >= 400:
+            error_info = payload.get('error') if isinstance(payload, dict) else {}
+            error_message = ''
+            if isinstance(error_info, dict):
+                error_message = error_info.get('message') or error_info.get('code') or ''
+            error_message = error_message or response.text[:300]
+            raise Exception(f"Graph API请求失败: {error_message}")
+
+        return payload
+
+    def _format_graph_datetime(self, value):
+        if not value:
+            return '未知'
+        try:
+            normalized = value.replace('Z', '+00:00')
+            parsed = datetime.fromisoformat(normalized)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            beijing_tz = timezone(timedelta(hours=8))
+            return parsed.astimezone(beijing_tz).strftime('%Y-%m-%d %H:%M:%S')
+        except Exception:
+            return value
+
+    def _format_graph_sender(self, sender):
+        email_address = (sender or {}).get('emailAddress') or {}
+        name = email_address.get('name') or ''
+        address = email_address.get('address') or ''
+        if name and address and name.lower() != address.lower():
+            return f"{name} <{address}>", address
+        if address:
+            return address, address
+        return name or '未知', address or '未知'
+
+    def _format_graph_recipients(self, recipients):
+        addresses = []
+        for recipient in recipients or []:
+            email_address = (recipient or {}).get('emailAddress') or {}
+            address = email_address.get('address') or ''
+            if address:
+                addresses.append(address)
+        return ', '.join(addresses) if addresses else '未知'
+
+    def _parse_graph_message(self, message, folder_id):
+        sender_display, sender_email = self._format_graph_sender(message.get('from'))
+        body = message.get('body') or {}
+        body_type = str(body.get('contentType') or 'text').lower()
+        if body_type not in ('html', 'text'):
+            body_type = 'text'
+
+        return {
+            'subject': message.get('subject') or '',
+            'from': sender_display,
+            'from_email': sender_email,
+            'to': self._format_graph_recipients(message.get('toRecipients')),
+            'date': self._format_graph_datetime(message.get('receivedDateTime')),
+            'message_id': message.get('id') or '',
+            'body_type': body_type,
+            'body': body.get('content') or message.get('bodyPreview') or '无法读取邮件内容',
+            'images': [],
+            'attachments': [],
+            'folder': self._normalize_graph_folder_name(folder_id)
+        }
+
+    def _graph_message_matches_filters(self, mail_info, sender_filter, keyword_filter):
+        normalized_senders = []
+        for sender in sender_filter or []:
+            sender_clean = str(sender).strip().lower()
+            if sender_clean:
+                normalized_senders.append(sender_clean)
+
+        if normalized_senders:
+            from_email = (mail_info.get('from_email') or mail_info.get('from') or '').lower()
+            if not any(allowed in from_email or from_email == allowed for allowed in normalized_senders):
+                return False
+
+        keywords = []
+        keyword_filter = str(keyword_filter or '').strip()
+        if keyword_filter:
+            keywords = [kw.strip().lower() for kw in keyword_filter.split(',') if kw.strip()]
+
+        if keywords:
+            subject = (mail_info.get('subject') or '').lower()
+            if not any(keyword in subject for keyword in keywords):
+                return False
+
+        return True
+
+    def _get_latest_mail_graph(self, filter_params=None):
+        filter_params = filter_params or {}
+        days_filter = filter_params.get('days_filter')
+        sender_filter = filter_params.get('sender_filter', [])
+        keyword_filter = filter_params.get('keyword_filter', '')
+        email_index = filter_params.get('index', 0)
+        email_limit = filter_params.get('limit', 1)
+        folder_id = self._graph_folder_id(filter_params.get('folder') or 'inbox')
+
+        top = min(max(email_index + email_limit + 30, 25), 100)
+        params = {
+            '$top': str(top),
+            '$orderby': 'receivedDateTime desc',
+            '$select': 'id,subject,from,toRecipients,receivedDateTime,body,bodyPreview,hasAttachments'
+        }
+
+        if days_filter:
+            try:
+                days = max(int(days_filter), 1)
+                since = datetime.now(timezone.utc) - timedelta(days=days)
+                params['$filter'] = f"receivedDateTime ge {since.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+            except Exception:
+                pass
+
+        try:
+            payload = self._graph_request(f"me/mailFolders/{folder_id}/messages", params)
+            messages = payload.get('value') if isinstance(payload, dict) else []
+            messages = messages if isinstance(messages, list) else []
+            mails = [
+                self._parse_graph_message(message, folder_id)
+                for message in messages
+                if isinstance(message, dict)
+            ]
+            available_mails = [
+                mail for mail in mails
+                if self._graph_message_matches_filters(mail, sender_filter, keyword_filter)
+            ]
+
+            if not available_mails:
+                return {
+                    'success': True,
+                    'message': '邮箱中没有符合条件的邮件',
+                    'mail': None
+                }
+
+            if email_index >= len(available_mails):
+                return {
+                    'success': True,
+                    'message': '没有更多邮件',
+                    'mail': None
+                }
+
+            if email_limit == 1:
+                mail_info = available_mails[email_index]
+                filter_info = []
+                if days_filter:
+                    filter_info.append(f"最近{days_filter}天内")
+                if sender_filter:
+                    filter_info.append(f"发件人: {', '.join(sender_filter)}")
+                if keyword_filter:
+                    filter_info.append(f"关键词: {keyword_filter}")
+                if filter_info:
+                    mail_info['filter_applied'] = '; '.join(filter_info)
+                return {
+                    'success': True,
+                    'mail': mail_info
+                }
+
+            selected_mails = available_mails[email_index:email_index + email_limit]
+            return {
+                'success': True,
+                'mails': selected_mails,
+                'total_count': len(available_mails),
+                'fetched_count': len(selected_mails)
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'Graph API获取邮件失败: {str(e)}'
+            }
                 
     def get_latest_mail_filtered(self, filter_params=None):
         """Get emails from the mailbox with filtering support
@@ -746,6 +1037,9 @@ class ProxyMailFetcher:
         Returns:
             dict with success, message, and mail/mails data
         """
+        if self.auth_type == 'graph':
+            return self._get_latest_mail_graph(filter_params)
+
         if not self.connection:
             raise Exception("未连接到邮件服务器")
         
@@ -1236,6 +1530,36 @@ class ProxyMailFetcher:
         connection_method = "直连"
         if self.proxy_enabled:
             connection_method = f"代理 ({self.proxy_info['type']} - {self.proxy_info['name']})"
+
+        if self.auth_type == 'graph':
+            diagnostics['server_info'] = 'Microsoft Graph API'
+            diagnostics['protocol_info'] = 'Graph API OAuth2'
+            try:
+                logger.info(f"Starting Graph API connection test via {connection_method}...")
+                self.connect()
+                diagnostics['token_status'] = '✅ Graph API令牌获取成功'
+                self._graph_request(
+                    'me/mailFolders/inbox/messages',
+                    {
+                        '$top': '1',
+                        '$select': 'id,subject,receivedDateTime'
+                    }
+                )
+                diagnostics['mailbox_access'] = '✅ Graph API邮箱访问正常'
+                return {
+                    'success': True,
+                    'message': f'✅ Graph API收件测试成功！(通过{connection_method})',
+                    'diagnostics': diagnostics
+                }
+            except Exception as e:
+                error_message = str(e)
+                diagnostics['connection_test'] = f'❌ Graph API测试失败: {error_message}'
+                return {
+                    'success': False,
+                    'message': f'❌ Graph API收件测试失败: {error_message}',
+                    'diagnostics': diagnostics,
+                    'error_type': 'graph_api_error'
+                }
         
         try:
             logger.info(f"Starting connection test via {connection_method}...")

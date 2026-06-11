@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS mail_accounts (
     auth_type TEXT DEFAULT 'password',
     oauth_client_id TEXT DEFAULT '',
     oauth_refresh_token TEXT DEFAULT '',
+    created_by_admin TEXT DEFAULT '',
     status INTEGER DEFAULT 1,  -- 1: 正常, 0: 禁用
     last_test DATETIME DEFAULT NULL,  -- 最后测试时间
     test_result TEXT DEFAULT '',  -- 测试结果
@@ -143,6 +144,9 @@ CREATE TABLE IF NOT EXISTS mail_logs (
     message_id TEXT DEFAULT '',
     folder TEXT DEFAULT 'inbox',
     source TEXT DEFAULT 'manual',
+    admin_username TEXT DEFAULT '',
+    mail_body_type TEXT DEFAULT 'text',
+    mail_body TEXT DEFAULT '',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

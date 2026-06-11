@@ -41,6 +41,7 @@
     --shadow: 0 4px 16px rgba(40, 35, 28, 0.07);
     --shadow-lg: 0 12px 32px rgba(40, 35, 28, 0.10);
     --transition: all 0.2s ease;
+    --select-arrow: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%236E6C64' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
     --font-sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont,
         "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
@@ -78,6 +79,9 @@ html, body {
     letter-spacing: 0.01em;
 }
 .nav-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
     color: var(--sidebar-text) !important;
     border-left: 3px solid transparent !important;
     border-radius: 0 !important;
@@ -86,7 +90,7 @@ html, body {
     transform: none !important;
 }
 .nav-item::before { display: none !important; }
-.nav-item i { opacity: 0.95; }
+.nav-item i { opacity: 0.95; margin-right: 0 !important; }
 .nav-item:hover {
     color: var(--sidebar-text-active) !important;
     background: rgba(255, 255, 255, 0.06) !important;
@@ -100,6 +104,10 @@ html, body {
     transform: none !important;
 }
 body.sidebar-collapsed .sidebar-logo::after { content: "" !important; }
+body.sidebar-collapsed .nav-item {
+    justify-content: center !important;
+    gap: 0 !important;
+}
 
 /* ---------------------------------------------------------------- header */
 .header {
@@ -112,6 +120,9 @@ body.sidebar-collapsed .sidebar-logo::after { content: "" !important; }
 
 .sidebar-toggle,
 .mobile-menu-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     color: var(--text-muted) !important;
     border-color: var(--border) !important;
     background: var(--surface) !important;
@@ -148,7 +159,13 @@ body.sidebar-collapsed .sidebar-logo::after { content: "" !important; }
     border-bottom: 1px solid var(--border) !important;
 }
 .card-title,
-.modal-title { color: var(--text) !important; font-weight: 600 !important; }
+.modal-title {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    color: var(--text) !important;
+    font-weight: 600 !important;
+}
 
 /* stat cards */
 .stat-card { border-left: 3px solid var(--primary-color) !important; }
@@ -160,6 +177,10 @@ body.sidebar-collapsed .sidebar-logo::after { content: "" !important; }
 button.btn,
 .login-btn,
 .folder-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 7px !important;
     border-radius: var(--radius-sm) !important;
     font-weight: 500 !important;
     letter-spacing: 0 !important;
@@ -251,6 +272,78 @@ select {
     transition: var(--transition) !important;
     box-shadow: none !important;
 }
+
+select {
+    min-height: 38px !important;
+    padding: 8px 34px 8px 12px !important;
+    font: inherit !important;
+    font-weight: 400 !important;
+    line-height: 1.35 !important;
+    cursor: pointer !important;
+    text-overflow: ellipsis !important;
+}
+
+select:not([multiple]) {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-color: var(--surface) !important;
+    background-image: var(--select-arrow) !important;
+    background-repeat: no-repeat !important;
+    background-position: right 11px center !important;
+    background-size: 16px 16px !important;
+    padding-right: 34px !important;
+}
+
+select:hover {
+    border-color: rgba(201, 100, 66, 0.45) !important;
+    background-color: var(--surface) !important;
+}
+
+select:disabled {
+    opacity: 0.62 !important;
+    cursor: not-allowed !important;
+    background-color: var(--surface-3) !important;
+}
+
+select option {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    font-family: var(--font-sans) !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
+    padding: 10px 12px !important;
+}
+
+select option:hover {
+    background: var(--surface-3) !important;
+    color: var(--text) !important;
+}
+
+select option:checked {
+    background: var(--surface-3) !important;
+    color: var(--text) !important;
+    font-weight: 400 !important;
+}
+
+select option:disabled {
+    color: var(--text-muted) !important;
+    background: var(--surface-2) !important;
+}
+
+select::-ms-expand {
+    display: none;
+}
+
+.i18n-switcher select,
+.i18n-switcher--header select {
+    min-height: 0 !important;
+    padding: 0 !important;
+    background-color: transparent !important;
+    background-image: none !important;
+}
+
 .form-control:focus,
 .form-group input:focus,
 input:focus,
@@ -324,6 +417,8 @@ table th,
     color: var(--text-muted) !important;
     font-weight: 600 !important;
     text-transform: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
     position: sticky;
     top: 0;
     z-index: 1;
@@ -344,7 +439,14 @@ td.wrap, th.wrap, .cell-wrap { white-space: normal !important; }
 }
 .table-container,
 .scroll-card-body .table-container { overflow: auto !important; }
-.pagination-container { background: var(--surface) !important; }
+.mail-panel .table-container {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+.pagination-container {
+    background: var(--surface) !important;
+    justify-content: flex-end !important;
+}
 
 /* --------------------------------------------------------------- badges */
 .status-badge {
@@ -403,19 +505,113 @@ body > .container .header { background: transparent !important; border: 0 !impor
 
 /* --------------------------------------------------------- antd icons */
 .anticon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1em;
-    height: 1em;
-    line-height: 0;
-    vertical-align: -0.125em;
-    fill: currentColor;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 auto !important;
+    width: 1em !important;
+    height: 1em !important;
+    line-height: 1 !important;
+    vertical-align: -0.12em !important;
+    fill: currentColor !important;
 }
-.anticon svg { width: 1em; height: 1em; display: block; fill: currentColor; }
-/* icons used inside nav <i> wrappers should not be italic-shifted */
-.nav-item i { font-style: normal; display: inline-flex; align-items: center; }
-.nav-item i .anticon { width: 1.05em; height: 1.05em; }
+.anticon svg {
+    width: 1em !important;
+    height: 1em !important;
+    display: block !important;
+    fill: currentColor !important;
+}
+
+/* Shared icon alignment across nav, buttons, headings, and generated HTML. */
+.sidebar-logo,
+.nav-item,
+.btn,
+button.btn,
+.login-btn,
+.logout-btn,
+.page-btn,
+.folder-btn,
+.receive-tab,
+.theme-toggle,
+.password-toggle,
+.toggle-visibility,
+.sidebar-toggle,
+.mobile-menu-toggle,
+.card-title,
+.modal-title,
+.action-btn,
+.btn-small,
+.btn-sm {
+    align-items: center !important;
+}
+
+.sidebar-logo,
+.logout-btn,
+.page-btn,
+.receive-tab,
+.theme-toggle,
+.password-toggle,
+.toggle-visibility,
+.action-btn,
+.btn-small,
+.btn-sm {
+    display: inline-flex !important;
+    justify-content: center !important;
+    gap: 7px !important;
+}
+
+.sidebar-logo {
+    width: 100% !important;
+}
+
+.nav-item i,
+.btn i,
+button i,
+.action-btn i {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 auto !important;
+    width: 1.25em !important;
+    height: 1.25em !important;
+    margin: 0 !important;
+    font-style: normal !important;
+    line-height: 1 !important;
+    text-align: center !important;
+}
+
+.nav-item .anticon,
+.sidebar-logo .anticon,
+.btn .anticon,
+button .anticon,
+.logout-btn .anticon,
+.page-btn .anticon,
+.folder-btn .anticon,
+.receive-tab .anticon,
+.card-title .anticon,
+.modal-title .anticon,
+.theme-toggle .anticon,
+.password-toggle .anticon,
+.toggle-visibility .anticon,
+.action-btn .anticon,
+.btn-small .anticon,
+.btn-sm .anticon {
+    margin: 0 !important;
+    transform: none !important;
+}
+
+.sidebar-toggle .anticon,
+.mobile-menu-toggle .anticon,
+.theme-toggle .anticon,
+.password-toggle .anticon,
+.toggle-visibility .anticon {
+    font-size: 18px !important;
+}
+
+.nav-item i .anticon {
+    width: 1.05em !important;
+    height: 1.05em !important;
+}
 
 /* =====================================================================
    Responsive: mobile + small desktop screens
@@ -462,6 +658,7 @@ body.dark-mode {
     --text-muted: #A8A59B;
     --border: #45443F;
     --border-strong: #524F49;
+    --select-arrow: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23A8A59B' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background: var(--app-bg) !important;
     color: var(--text) !important;
 }
@@ -471,5 +668,8 @@ body.dark-mode .modal-content { color: var(--text) !important; }
 body.dark-mode .form-control,
 body.dark-mode input,
 body.dark-mode textarea,
-body.dark-mode select { background: var(--surface-2) !important; color: var(--text) !important; }
+body.dark-mode select { background-color: var(--surface-2) !important; color: var(--text) !important; }
+body.dark-mode select:not([multiple]) { background-image: var(--select-arrow) !important; }
+body.dark-mode .i18n-switcher select,
+body.dark-mode .i18n-switcher--header select { background-image: none !important; }
 body.dark-mode .login-header h1 { -webkit-text-fill-color: var(--primary-color) !important; }

@@ -170,6 +170,190 @@
             '(无主题)': '(No subject)',
             '(邮件内容为空)': '(Mail body is empty)',
 
+            '批量复制': 'Batch Copy',
+            '批量分组': 'Batch Group',
+            '管理员：': 'Admin:',
+            '当前分组：': 'Current Group:',
+            '邮箱：': 'Mailboxes:',
+            '已选：': 'Selected:',
+            '选择': 'Select',
+            '上级分组': 'Parent Group',
+            '分组名称': 'Group Name',
+            '输入分组名称': 'Enter group name',
+            '添加分组': 'Add Group',
+            '添加下级分组': 'Add Child Group',
+            '编辑分组': 'Edit Group',
+            '已选择邮箱': 'Selected Mailboxes',
+            '目标分组': 'Target Group',
+            '应用分组': 'Apply Group',
+            '发送邮件': 'Send Mail',
+            '昵称': 'Nickname',
+            '收件人看到的发件人昵称（可选）': 'Sender nickname shown to recipients (optional)',
+            '主题': 'Subject',
+            '正文': 'Body',
+            '邮件主题': 'Mail subject',
+            '邮件正文': 'Mail body',
+            '当前邮箱': 'Current Mailbox',
+            '收取': 'Fetch',
+            '封': 'messages',
+            '收取邮件': 'Fetch Mail',
+            '收件失败': 'Fetch Failed',
+            '返回列表': 'Back to List',
+            '图片': 'Images',
+            '邮箱账号': 'Mailbox Account',
+            '邮箱密码': 'Mailbox Password',
+            '邮箱密码或授权码': 'Mailbox password or app password',
+            '选择服务器': 'Select Server',
+            '选择已有服务器或手动输入': 'Select an existing server or enter manually',
+            '收件服务器地址': 'Incoming Server',
+            '发件服务器地址': 'Outgoing Server',
+            '收件协议': 'Incoming Protocol',
+            '发件协议': 'Outgoing Protocol',
+            '收件端口': 'Incoming Port',
+            '发件端口': 'Outgoing Port',
+            '收件启用SSL': 'Incoming SSL',
+            '发件启用SSL': 'Outgoing SSL',
+            '输入备注信息': 'Enter notes',
+            '自动识别邮箱内容': 'Auto-detect Mailbox Content',
+            '输入新分组名，回车添加': 'Enter a new group name, press Enter to add',
+            '可直接新增分组，添加后会自动选中。': 'You can add a group here; it will be selected automatically.',
+            '批量添加': 'Batch Add',
+            '编辑备注': 'Edit Notes',
+            '备注内容': 'Note Content',
+            '服务器地址管理': 'Server Address Management',
+            '服务器名称': 'Server Name',
+            '添加服务器': 'Add Server',
+            '更新服务器': 'Update Server',
+            '已添加的服务器': 'Saved Servers',
+            '批量删除选中': 'Delete Selected',
+            '暂无服务器配置': 'No server configurations',
+            '收/发信息': 'Incoming/Outgoing',
+            '检测状态': 'Check Status',
+            '添加人': 'Added By',
+            '最后修改时间': 'Last Updated',
+            '未检测': 'Not Checked',
+            '邮箱正常': 'Mailbox OK',
+            '邮箱异常': 'Mailbox Error',
+            '历史数据': 'Legacy Data',
+            '全部添加人': 'All Added By',
+            '按检测状态筛选': 'Filter by check status',
+            '按添加人筛选': 'Filter by added by',
+            '尚未检测': 'Not checked yet',
+            '收：': 'In:',
+            '发：': 'Out:',
+            '更多': 'More',
+            '点击复制邮箱': 'Click to copy mailbox',
+            '暂无邮箱账号': 'No mailbox accounts',
+            '每页': 'Per page',
+            '上一页': 'Previous',
+            '下一页': 'Next',
+            '加载邮箱列表失败': 'Failed to load mailbox list',
+            '请填写分组名称': 'Please enter a group name',
+            '分组添加成功': 'Group added',
+            '分组添加失败': 'Failed to add group',
+            '分组更新成功': 'Group updated',
+            '分组更新失败': 'Failed to update group',
+            '分组删除成功': 'Group deleted',
+            '分组删除失败': 'Failed to delete group',
+            '分组分配失败': 'Failed to assign group',
+            '确定要删除该分组及其子分组吗？': 'Delete this group and its child groups?',
+            '登录状态已失效，请刷新页面后重新登录': 'Login expired. Refresh and sign in again.',
+            '测试中...': 'Testing...',
+            '测试失败：Microsoft OAuth 拒绝该账号，账号处于 service abuse mode': 'Test failed: Microsoft OAuth rejected this account because it is in service abuse mode',
+            '测试失败：OAuth 令牌获取失败': 'Test failed: OAuth token request failed',
+            '测试失败：邮箱认证失败，请检查密码、授权码或 OAuth 数据': 'Test failed: mailbox authentication failed. Check password, app password, or OAuth data',
+            'Microsoft OAuth 拒绝该账号登录，账号处于 service abuse mode': 'Microsoft OAuth rejected this account because it is in service abuse mode',
+            'OAuth 令牌获取失败': 'OAuth token request failed',
+            '邮箱认证失败': 'Mailbox authentication failed',
+            'SSL 连接失败': 'SSL connection failed',
+            '未找到邮箱信息': 'Mailbox not found',
+            '所有邮件已存在，未发现新邮件': 'All mail already exists. No new mail found.',
+            '邮箱中暂无新邮件': 'No new mail in this mailbox',
+            '收件失败，详情已显示在弹窗内': 'Fetch failed. Details are shown in the modal.',
+            '网络错误，详情已显示在弹窗内': 'Network error. Details are shown in the modal.',
+            '请填写完整的邮箱信息后再测试': 'Complete mailbox information before testing',
+            '邮箱连接测试成功': 'Mailbox connection test passed',
+            '测试请求失败，请检查服务是否正常运行': 'Test request failed. Check whether the service is running.',
+            '请填写收件人地址': 'Please enter recipient address',
+            '发送成功': 'Sent successfully',
+            '发送失败': 'Send failed',
+            '确定要删除这个邮箱账号吗？': 'Delete this mailbox account?',
+            '邮箱删除成功': 'Mailbox deleted',
+            '删除失败': 'Delete failed',
+            '请填写完整的收/发件服务器信息': 'Complete incoming and outgoing server information',
+            '保存成功': 'Saved',
+            '保存失败': 'Save failed',
+            '请填写所有必需字段': 'Please fill in all required fields',
+            '批量添加成功': 'Batch add succeeded',
+            '批量添加失败': 'Batch add failed',
+            '邮箱地址为空': 'Mailbox address is empty',
+            '选中的邮箱不存在': 'Selected mailboxes do not exist',
+            '请选择要分组的邮箱': 'Select mailboxes to group',
+            '请选择要删除的邮箱': 'Select mailboxes to delete',
+            '批量删除成功': 'Batch delete succeeded',
+            '批量删除失败': 'Batch delete failed',
+            '请填写完整的服务器信息': 'Complete server information',
+            '服务器保存成功': 'Server saved',
+            '服务器保存失败': 'Failed to save server',
+            '确定要删除这个服务器配置吗？': 'Delete this server configuration?',
+            '服务器删除成功': 'Server deleted',
+            '请选择要删除的服务器': 'Select servers to delete',
+            '获取邮箱信息失败': 'Failed to get mailbox information',
+            '邮箱ID缺失': 'Mailbox ID is missing',
+            '备注保存成功': 'Notes saved',
+
+            '邮件收件日志': 'Mail Receiving Logs',
+            '日志总数': 'Total Logs',
+            '成功收取': 'Successful Fetches',
+            '失败记录': 'Failed Records',
+            '轮询间隔': 'Polling Interval',
+            '关键词：邮箱、主题、发件人、正文': 'Keywords: mailbox, subject, sender, body',
+            '全部状态': 'All Statuses',
+            '已处理': 'Processed',
+            '全部管理员': 'All Admins',
+            '查询': 'Search',
+            '清空': 'Clear',
+            '立即查询': 'Query Now',
+            '批量邮箱筛选：每行或逗号分隔多个邮箱': 'Batch mailbox filter: one per line or comma-separated',
+            '批量主题筛选：每行或逗号分隔多个关键词': 'Batch subject filter: one per line or comma-separated',
+            '批量发件人筛选：每行或逗号分隔多个发件人': 'Batch sender filter: one per line or comma-separated',
+            '最近开始': 'Last Started',
+            '最近结束': 'Last Finished',
+            '结果': 'Result',
+            '收件日志详情': 'Mail Log Details',
+            '自动轮询': 'Auto Poll',
+            '手动轮询': 'Manual Poll',
+            '后台取件': 'Admin Fetch',
+            '卡密接口': 'Card API',
+            '卡密预览': 'Card Preview',
+            '手动': 'Manual',
+            '验证码': 'Code',
+            '管理员': 'Admin',
+            '主题 / 摘要': 'Subject / Summary',
+            '收件时间': 'Received At',
+            '详情': 'Details',
+            '最后查询': 'Last Query',
+            '暂无收件日志': 'No mail logs',
+            '日志ID': 'Log ID',
+            '收件邮箱': 'Mailbox',
+            '来源': 'Source',
+            '记录': 'Recorded',
+            '邮件正文': 'Mail Body',
+            '处理建议': 'Advice',
+            '错误详情': 'Error Details',
+            '检查邮箱密码/授权码是否正确，确认邮箱已开启 IMAP，并确认账号没有触发安全拦截。': 'Check the mailbox password/app password, confirm IMAP is enabled, and make sure the account is not blocked by a security check.',
+            '检查收件服务器端口和 SSL 开关是否匹配；常见 IMAP SSL 使用 993，STARTTLS 或非 SSL 配置不要使用隐式 SSL。': 'Check that the incoming server port matches the SSL setting. IMAP SSL commonly uses 993; STARTTLS or non-SSL should not use implicit SSL.',
+            '检查服务器地址、端口、网络连通性和代理配置。': 'Check server address, port, network connectivity, and proxy settings.',
+            '检查服务器域名是否填写正确，或当前网络是否能解析该域名。': 'Check whether the server domain is correct and resolvable from the current network.',
+            '根据完整错误检查邮箱账号、授权码、服务器地址、端口、SSL 和代理配置。': 'Check mailbox account, app password, server address, port, SSL, and proxy settings based on the full error.',
+            '这条是收取失败记录，没有实际邮件正文。请查看下方错误详情。': 'This is a failed fetch record and has no actual mail body. See the error details below.',
+            '这条记录没有保存正文。重新收取或轮询成功后，这里会显示实际邮件内容。': 'This record has no saved body. After a successful fetch or poll, the actual mail content will appear here.',
+            '登录状态已失效，请重新登录': 'Login expired. Please sign in again.',
+            '获取收件日志失败': 'Failed to load mail logs',
+            '启动中...': 'Starting...',
+            '已开始轮询': 'Polling started',
+            '轮询启动失败': 'Failed to start polling',
+
             'API取件页面': 'API Mail Fetch Page',
             '此卡密不存在': 'This card key does not exist',
             '请检查卡密是否正确，或联系管理员获取有效卡密': 'Please check the card key or contact the administrator',
@@ -334,6 +518,189 @@
             '(无主题)': '(Không có tiêu đề)',
             '(邮件内容为空)': '(Nội dung thư trống)',
 
+            '批量复制': 'Sao chép hàng loạt',
+            '批量分组': 'Phân nhóm hàng loạt',
+            '管理员：': 'Quản trị:',
+            '当前分组：': 'Nhóm hiện tại:',
+            '邮箱：': 'Hộp thư:',
+            '已选：': 'Đã chọn:',
+            '选择': 'Chọn',
+            '上级分组': 'Nhóm cha',
+            '分组名称': 'Tên nhóm',
+            '输入分组名称': 'Nhập tên nhóm',
+            '添加分组': 'Thêm nhóm',
+            '添加下级分组': 'Thêm nhóm con',
+            '编辑分组': 'Sửa nhóm',
+            '已选择邮箱': 'Hộp thư đã chọn',
+            '目标分组': 'Nhóm đích',
+            '应用分组': 'Áp dụng nhóm',
+            '发送邮件': 'Gửi thư',
+            '昵称': 'Biệt danh',
+            '收件人看到的发件人昵称（可选）': 'Biệt danh người gửi hiển thị cho người nhận (tùy chọn)',
+            '主题': 'Tiêu đề',
+            '正文': 'Nội dung',
+            '邮件主题': 'Tiêu đề thư',
+            '邮件正文': 'Nội dung thư',
+            '当前邮箱': 'Hộp thư hiện tại',
+            '收取': 'Lấy',
+            '封': 'thư',
+            '收取邮件': 'Lấy thư',
+            '收件失败': 'Lấy thư thất bại',
+            '返回列表': 'Quay lại danh sách',
+            '图片': 'Hình ảnh',
+            '邮箱账号': 'Tài khoản hộp thư',
+            '邮箱密码': 'Mật khẩu hộp thư',
+            '邮箱密码或授权码': 'Mật khẩu hộp thư hoặc mã ứng dụng',
+            '选择服务器': 'Chọn máy chủ',
+            '选择已有服务器或手动输入': 'Chọn máy chủ đã có hoặc nhập thủ công',
+            '收件服务器地址': 'Máy chủ nhận',
+            '发件服务器地址': 'Máy chủ gửi',
+            '收件协议': 'Giao thức nhận',
+            '发件协议': 'Giao thức gửi',
+            '收件端口': 'Cổng nhận',
+            '发件端口': 'Cổng gửi',
+            '收件启用SSL': 'Bật SSL nhận',
+            '发件启用SSL': 'Bật SSL gửi',
+            '输入备注信息': 'Nhập ghi chú',
+            '自动识别邮箱内容': 'Tự nhận diện nội dung hộp thư',
+            '输入新分组名，回车添加': 'Nhập tên nhóm mới, nhấn Enter để thêm',
+            '可直接新增分组，添加后会自动选中。': 'Có thể thêm nhóm tại đây; sau khi thêm sẽ tự chọn.',
+            '批量添加': 'Thêm hàng loạt',
+            '编辑备注': 'Sửa ghi chú',
+            '备注内容': 'Nội dung ghi chú',
+            '服务器地址管理': 'Quản lý địa chỉ máy chủ',
+            '服务器名称': 'Tên máy chủ',
+            '添加服务器': 'Thêm máy chủ',
+            '更新服务器': 'Cập nhật máy chủ',
+            '已添加的服务器': 'Máy chủ đã lưu',
+            '批量删除选中': 'Xóa mục đã chọn',
+            '暂无服务器配置': 'Chưa có cấu hình máy chủ',
+            '收/发信息': 'Thông tin nhận/gửi',
+            '检测状态': 'Trạng thái kiểm tra',
+            '添加人': 'Người thêm',
+            '最后修改时间': 'Sửa lần cuối',
+            '未检测': 'Chưa kiểm tra',
+            '邮箱正常': 'Hộp thư bình thường',
+            '邮箱异常': 'Hộp thư lỗi',
+            '历史数据': 'Dữ liệu cũ',
+            '全部添加人': 'Tất cả người thêm',
+            '按检测状态筛选': 'Lọc theo trạng thái kiểm tra',
+            '按添加人筛选': 'Lọc theo người thêm',
+            '尚未检测': 'Chưa kiểm tra',
+            '收：': 'Nhận:',
+            '发：': 'Gửi:',
+            '更多': 'Thêm',
+            '点击复制邮箱': 'Bấm để sao chép hộp thư',
+            '暂无邮箱账号': 'Chưa có tài khoản hộp thư',
+            '每页': 'Mỗi trang',
+            '上一页': 'Trang trước',
+            '下一页': 'Trang sau',
+            '加载邮箱列表失败': 'Tải danh sách hộp thư thất bại',
+            '请填写分组名称': 'Vui lòng nhập tên nhóm',
+            '分组添加成功': 'Đã thêm nhóm',
+            '分组添加失败': 'Thêm nhóm thất bại',
+            '分组更新成功': 'Đã cập nhật nhóm',
+            '分组更新失败': 'Cập nhật nhóm thất bại',
+            '分组删除成功': 'Đã xóa nhóm',
+            '分组删除失败': 'Xóa nhóm thất bại',
+            '分组分配失败': 'Gán nhóm thất bại',
+            '确定要删除该分组及其子分组吗？': 'Xóa nhóm này và các nhóm con?',
+            '登录状态已失效，请刷新页面后重新登录': 'Phiên đăng nhập hết hạn. Vui lòng tải lại và đăng nhập lại.',
+            '测试中...': 'Đang kiểm tra...',
+            '测试失败：Microsoft OAuth 拒绝该账号，账号处于 service abuse mode': 'Kiểm tra thất bại: Microsoft OAuth từ chối tài khoản vì đang ở chế độ service abuse',
+            '测试失败：OAuth 令牌获取失败': 'Kiểm tra thất bại: lấy token OAuth thất bại',
+            '测试失败：邮箱认证失败，请检查密码、授权码或 OAuth 数据': 'Kiểm tra thất bại: xác thực hộp thư thất bại. Kiểm tra mật khẩu, mã ứng dụng hoặc dữ liệu OAuth',
+            'Microsoft OAuth 拒绝该账号登录，账号处于 service abuse mode': 'Microsoft OAuth từ chối đăng nhập vì tài khoản ở chế độ service abuse',
+            'OAuth 令牌获取失败': 'Lấy token OAuth thất bại',
+            '邮箱认证失败': 'Xác thực hộp thư thất bại',
+            'SSL 连接失败': 'Kết nối SSL thất bại',
+            '未找到邮箱信息': 'Không tìm thấy hộp thư',
+            '所有邮件已存在，未发现新邮件': 'Tất cả thư đã tồn tại. Không có thư mới.',
+            '邮箱中暂无新邮件': 'Hộp thư chưa có thư mới',
+            '收件失败，详情已显示在弹窗内': 'Lấy thư thất bại. Chi tiết đã hiển thị trong cửa sổ.',
+            '网络错误，详情已显示在弹窗内': 'Lỗi mạng. Chi tiết đã hiển thị trong cửa sổ.',
+            '请填写完整的邮箱信息后再测试': 'Vui lòng điền đầy đủ thông tin hộp thư trước khi kiểm tra',
+            '邮箱连接测试成功': 'Kiểm tra kết nối hộp thư thành công',
+            '测试请求失败，请检查服务是否正常运行': 'Yêu cầu kiểm tra thất bại. Vui lòng kiểm tra dịch vụ có đang chạy không.',
+            '请填写收件人地址': 'Vui lòng nhập địa chỉ người nhận',
+            '发送成功': 'Gửi thành công',
+            '发送失败': 'Gửi thất bại',
+            '确定要删除这个邮箱账号吗？': 'Xóa tài khoản hộp thư này?',
+            '邮箱删除成功': 'Đã xóa hộp thư',
+            '删除失败': 'Xóa thất bại',
+            '请填写完整的收/发件服务器信息': 'Vui lòng điền đầy đủ thông tin máy chủ nhận/gửi',
+            '保存成功': 'Đã lưu',
+            '保存失败': 'Lưu thất bại',
+            '请填写所有必需字段': 'Vui lòng điền tất cả mục bắt buộc',
+            '批量添加成功': 'Thêm hàng loạt thành công',
+            '批量添加失败': 'Thêm hàng loạt thất bại',
+            '邮箱地址为空': 'Địa chỉ hộp thư trống',
+            '选中的邮箱不存在': 'Hộp thư đã chọn không tồn tại',
+            '请选择要分组的邮箱': 'Vui lòng chọn hộp thư cần phân nhóm',
+            '请选择要删除的邮箱': 'Vui lòng chọn hộp thư cần xóa',
+            '批量删除成功': 'Xóa hàng loạt thành công',
+            '批量删除失败': 'Xóa hàng loạt thất bại',
+            '请填写完整的服务器信息': 'Vui lòng điền đầy đủ thông tin máy chủ',
+            '服务器保存成功': 'Đã lưu máy chủ',
+            '服务器保存失败': 'Lưu máy chủ thất bại',
+            '确定要删除这个服务器配置吗？': 'Xóa cấu hình máy chủ này?',
+            '服务器删除成功': 'Đã xóa máy chủ',
+            '请选择要删除的服务器': 'Vui lòng chọn máy chủ cần xóa',
+            '获取邮箱信息失败': 'Lấy thông tin hộp thư thất bại',
+            '邮箱ID缺失': 'Thiếu ID hộp thư',
+            '备注保存成功': 'Đã lưu ghi chú',
+
+            '邮件收件日志': 'Nhật ký nhận thư',
+            '日志总数': 'Tổng nhật ký',
+            '成功收取': 'Lấy thành công',
+            '失败记录': 'Bản ghi thất bại',
+            '轮询间隔': 'Khoảng poll',
+            '关键词：邮箱、主题、发件人、正文': 'Từ khóa: hộp thư, tiêu đề, người gửi, nội dung',
+            '全部状态': 'Tất cả trạng thái',
+            '已处理': 'Đã xử lý',
+            '全部管理员': 'Tất cả quản trị',
+            '查询': 'Tìm',
+            '清空': 'Xóa',
+            '立即查询': 'Truy vấn ngay',
+            '批量邮箱筛选：每行或逗号分隔多个邮箱': 'Lọc hộp thư hàng loạt: mỗi dòng một hộp thư hoặc phân tách bằng dấu phẩy',
+            '批量主题筛选：每行或逗号分隔多个关键词': 'Lọc tiêu đề hàng loạt: mỗi dòng một từ khóa hoặc phân tách bằng dấu phẩy',
+            '批量发件人筛选：每行或逗号分隔多个发件人': 'Lọc người gửi hàng loạt: mỗi dòng một người gửi hoặc phân tách bằng dấu phẩy',
+            '最近开始': 'Bắt đầu gần nhất',
+            '最近结束': 'Kết thúc gần nhất',
+            '结果': 'Kết quả',
+            '收件日志详情': 'Chi tiết nhật ký nhận thư',
+            '自动轮询': 'Tự động poll',
+            '手动轮询': 'Poll thủ công',
+            '后台取件': 'Quản trị lấy thư',
+            '卡密接口': 'API mã',
+            '卡密预览': 'Xem trước mã',
+            '手动': 'Thủ công',
+            '验证码': 'Mã xác minh',
+            '管理员': 'Quản trị',
+            '主题 / 摘要': 'Tiêu đề / Tóm tắt',
+            '收件时间': 'Thời gian nhận',
+            '详情': 'Chi tiết',
+            '最后查询': 'Truy vấn cuối',
+            '暂无收件日志': 'Chưa có nhật ký nhận thư',
+            '日志ID': 'ID nhật ký',
+            '收件邮箱': 'Hộp thư nhận',
+            '来源': 'Nguồn',
+            '记录': 'Bản ghi',
+            '处理建议': 'Gợi ý xử lý',
+            '错误详情': 'Chi tiết lỗi',
+            '检查邮箱密码/授权码是否正确，确认邮箱已开启 IMAP，并确认账号没有触发安全拦截。': 'Kiểm tra mật khẩu/mã ứng dụng, xác nhận IMAP đã bật và tài khoản không bị chặn bảo mật.',
+            '检查收件服务器端口和 SSL 开关是否匹配；常见 IMAP SSL 使用 993，STARTTLS 或非 SSL 配置不要使用隐式 SSL。': 'Kiểm tra cổng máy chủ nhận có khớp với SSL không. IMAP SSL thường dùng 993; STARTTLS hoặc không SSL không nên dùng SSL ẩn.',
+            '检查服务器地址、端口、网络连通性和代理配置。': 'Kiểm tra địa chỉ máy chủ, cổng, kết nối mạng và cấu hình proxy.',
+            '检查服务器域名是否填写正确，或当前网络是否能解析该域名。': 'Kiểm tra tên miền máy chủ có đúng và mạng hiện tại có phân giải được không.',
+            '根据完整错误检查邮箱账号、授权码、服务器地址、端口、SSL 和代理配置。': 'Dựa trên lỗi đầy đủ để kiểm tra tài khoản hộp thư, mã ứng dụng, địa chỉ máy chủ, cổng, SSL và proxy.',
+            '这条是收取失败记录，没有实际邮件正文。请查看下方错误详情。': 'Đây là bản ghi lấy thất bại nên không có nội dung thư. Xem chi tiết lỗi bên dưới.',
+            '这条记录没有保存正文。重新收取或轮询成功后，这里会显示实际邮件内容。': 'Bản ghi này chưa lưu nội dung. Sau khi lấy hoặc poll thành công, nội dung thư sẽ hiển thị tại đây.',
+            '登录状态已失效，请重新登录': 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.',
+            '获取收件日志失败': 'Tải nhật ký nhận thư thất bại',
+            '启动中...': 'Đang khởi động...',
+            '已开始轮询': 'Đã bắt đầu poll',
+            '轮询启动失败': 'Khởi động poll thất bại',
+
             'API取件页面': 'Trang lấy thư API',
             '此卡密不存在': 'Mã này không tồn tại',
             '请检查卡密是否正确，或联系管理员获取有效卡密': 'Vui lòng kiểm tra mã hoặc liên hệ quản trị viên',
@@ -369,6 +736,12 @@
             return lang === 'vi' ? `Xin chào, ${match[1]}` : `Welcome, ${match[1]}`;
         }
 
+        if (text.startsWith('每行一个邮箱，自动识别多种格式：')) {
+            return lang === 'vi'
+                ? 'Mỗi dòng một hộp thư, tự nhận diện nhiều định dạng:\nuser@example.com----password\nuser@hotmail.com----password----client_id----refresh_token----Graph API\nemail=user@example.com password=password client_id=... refresh_token=... auth_type=graph\nHỗ trợ ---- / dấu hai chấm / gạch dọc / dấu phẩy / JSON / key=value / Graph API'
+                : 'One mailbox per line. Multiple formats are auto-detected:\nuser@example.com----password\nuser@hotmail.com----password----client_id----refresh_token----Graph API\nemail=user@example.com password=password client_id=... refresh_token=... auth_type=graph\nSupports ---- / colon / pipe / comma / JSON / key=value / Graph API';
+        }
+
         match = text.match(/^共\s*(\d+)\s*条记录，第\s*(\d+)\s*页，共\s*(\d+)\s*页$/);
         if (match) {
             return lang === 'vi'
@@ -383,9 +756,51 @@
                 : `Total ${match[1]} mails, page ${match[2]} / ${match[3]}`;
         }
 
+        match = text.match(/^共\s*(\d+)\s*个邮箱，第\s*(\d+)\s*\/\s*(\d+)\s*页$/);
+        if (match) {
+            return lang === 'vi'
+                ? `Tổng ${match[1]} hộp thư, trang ${match[2]} / ${match[3]}`
+                : `Total ${match[1]} mailboxes, page ${match[2]} / ${match[3]}`;
+        }
+
+        match = text.match(/^共\s*(\d+)\s*条$/);
+        if (match) {
+            return lang === 'vi' ? `Tổng ${match[1]}` : `Total ${match[1]}`;
+        }
+
+        match = text.match(/^成功\s*(\d+)$/);
+        if (match) {
+            return lang === 'vi' ? `Thành công ${match[1]}` : `Success ${match[1]}`;
+        }
+
+        match = text.match(/^失败\s*(\d+)$/);
+        if (match) {
+            return lang === 'vi' ? `Thất bại ${match[1]}` : `Failed ${match[1]}`;
+        }
+
         match = text.match(/^(\d+)\s*条$/);
         if (match) {
             return lang === 'vi' ? `${match[1]} mục` : `${match[1]} items`;
+        }
+
+        match = text.match(/^(\d+)\s*个邮箱$/);
+        if (match) {
+            return lang === 'vi' ? `${match[1]} hộp thư` : `${match[1]} mailboxes`;
+        }
+
+        match = text.match(/^批量复制\s*\((\d+)\)$/);
+        if (match) {
+            return lang === 'vi' ? `Sao chép hàng loạt (${match[1]})` : `Batch Copy (${match[1]})`;
+        }
+
+        match = text.match(/^批量删除\s*\((\d+)\)$/);
+        if (match) {
+            return lang === 'vi' ? `Xóa hàng loạt (${match[1]})` : `Batch Delete (${match[1]})`;
+        }
+
+        match = text.match(/^批量分组\s*\((\d+)\)$/);
+        if (match) {
+            return lang === 'vi' ? `Phân nhóm hàng loạt (${match[1]})` : `Batch Group (${match[1]})`;
         }
 
         match = text.match(/^成功获取\s*(\d+)\s*封邮件$/);
@@ -400,6 +815,85 @@
             return lang === 'vi'
                 ? `Lấy thư thành công! Số lần còn lại: ${match[1]}`
                 : `Mail fetched successfully! Remaining uses: ${match[1]}`;
+        }
+
+        match = text.match(/^成功收取\s*(\d+)\s*封新邮件$/);
+        if (match) {
+            return lang === 'vi'
+                ? `Đã lấy thành công ${match[1]} thư mới`
+                : `Successfully fetched ${match[1]} new mails`;
+        }
+
+        match = text.match(/^开始检测批量导入的\s*(\d+)\s*个邮箱\.\.\.$/);
+        if (match) {
+            return lang === 'vi'
+                ? `Bắt đầu kiểm tra ${match[1]} hộp thư vừa nhập...`
+                : `Checking ${match[1]} imported mailboxes...`;
+        }
+
+        match = text.match(/^批量导入检测完成：成功\s*(\d+)\s*个，失败\s*(\d+)\s*个$/);
+        if (match) {
+            return lang === 'vi'
+                ? `Kiểm tra sau nhập hoàn tất: thành công ${match[1]}, thất bại ${match[2]}`
+                : `Import check completed: ${match[1]} succeeded, ${match[2]} failed`;
+        }
+
+        match = text.match(/^批量分组完成：成功\s*(\d+)\s*个(?:，失败\s*(\d+)\s*个)?$/);
+        if (match) {
+            const failed = match[2] || '0';
+            return lang === 'vi'
+                ? `Phân nhóm hàng loạt hoàn tất: thành công ${match[1]}${match[2] ? `, thất bại ${failed}` : ''}`
+                : `Batch group completed: ${match[1]} succeeded${match[2] ? `, ${failed} failed` : ''}`;
+        }
+
+        match = text.match(/^已复制：(.+)$/);
+        if (match) {
+            return lang === 'vi' ? `Đã sao chép: ${match[1]}` : `Copied: ${match[1]}`;
+        }
+
+        match = text.match(/^已复制\s*(\d+)\s*个邮箱$/);
+        if (match) {
+            return lang === 'vi' ? `Đã sao chép ${match[1]} hộp thư` : `Copied ${match[1]} mailboxes`;
+        }
+
+        match = text.match(/^分组“(.+)”已存在，不能重复添加。?$/);
+        if (match) {
+            return lang === 'vi'
+                ? `Nhóm "${match[1]}" đã tồn tại, không thể thêm trùng.`
+                : `Group "${match[1]}" already exists.`;
+        }
+
+        match = text.match(/^分组名称可用，点击添加后会自动选中。$/);
+        if (match) {
+            return lang === 'vi'
+                ? 'Tên nhóm khả dụng; sau khi thêm sẽ tự chọn.'
+                : 'Group name is available and will be selected after adding.';
+        }
+
+        match = text.match(/^已添加并选中分组“(.+)”。$/);
+        if (match) {
+            return lang === 'vi'
+                ? `Đã thêm và chọn nhóm "${match[1]}".`
+                : `Added and selected group "${match[1]}".`;
+        }
+
+        match = text.match(/^确定要删除选中的\s*(\d+)\s*个邮箱账号吗？$/);
+        if (match) {
+            return lang === 'vi'
+                ? `Xóa ${match[1]} tài khoản hộp thư đã chọn?`
+                : `Delete ${match[1]} selected mailbox accounts?`;
+        }
+
+        match = text.match(/^确定要删除选中的\s*(\d+)\s*个服务器配置吗？$/);
+        if (match) {
+            return lang === 'vi'
+                ? `Xóa ${match[1]} cấu hình máy chủ đã chọn?`
+                : `Delete ${match[1]} selected server configurations?`;
+        }
+
+        match = text.match(/^接口返回异常（HTTP\s*(\d+)）$/);
+        if (match) {
+            return lang === 'vi' ? `Phản hồi API bất thường (HTTP ${match[1]})` : `Unexpected API response (HTTP ${match[1]})`;
         }
 
         match = text.match(/^管理员\s*(.+)\s*已删除$/);
@@ -461,7 +955,7 @@
     }
 
     function translateAttributes(element) {
-        const attrs = ['placeholder', 'title', 'aria-label', 'alt'];
+        const attrs = ['placeholder', 'title', 'aria-label', 'alt', 'data-label'];
         if (shouldTranslateValue(element)) {
             attrs.push('value');
         }

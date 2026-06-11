@@ -168,6 +168,50 @@
                 max-width: none;
             }
         }
+        @media (max-width: 1024px) {
+            .header {
+                min-width: 0;
+            }
+            .header-actions {
+                min-width: 0;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 8px;
+            }
+            .i18n-switcher--header {
+                height: 38px;
+                min-height: 38px;
+                min-width: 86px;
+            }
+            .logout-btn {
+                min-height: 38px;
+            }
+        }
+        @media (max-width: 560px) {
+            .header {
+                height: auto;
+                min-height: 64px;
+                align-items: flex-start;
+                padding-top: 10px !important;
+                padding-bottom: 10px !important;
+                gap: 8px;
+            }
+            .header-left {
+                min-width: 0;
+            }
+            .header-title {
+                max-width: 44vw;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .header-actions {
+                flex: 1 1 auto;
+            }
+            .header-actions .user-info {
+                display: none;
+            }
+        }
         /* Shared table scroll helpers */
         .scroll-card-body {
             display: flex;
@@ -238,7 +282,7 @@
     <script>
         (function() {
             try {
-                const MOBILE_BREAKPOINT = 768;
+                const MOBILE_BREAKPOINT = 1024;
                 const saved = localStorage.getItem('adminSidebarCollapsed');
                 const collapsed = saved === null ? true : (saved === '1' || saved === 'true'); // accept legacy '1'/'0' and boolean strings
                 const shouldCollapse = window.innerWidth > MOBILE_BREAKPOINT && collapsed;

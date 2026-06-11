@@ -284,10 +284,44 @@
     }
 
     .stat-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         padding: 14px 16px;
         background: #fff;
+    }
+
+    .stat-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        color: #c96442;
+        background: #f3e6df;
+    }
+
+    .stat-card.success .stat-icon {
+        color: #047857;
+        background: #d1fae5;
+    }
+
+    .stat-card.failed .stat-icon {
+        color: #b91c1c;
+        background: #fee2e2;
+    }
+
+    .stat-card.interval .stat-icon {
+        color: #1d4ed8;
+        background: #dbeafe;
+    }
+
+    .stat-content {
+        min-width: 0;
     }
 
     .stat-label {
@@ -304,10 +338,23 @@
 
     .log-toolbar {
         display: grid;
-        grid-template-columns: minmax(220px, 1fr) 160px auto auto;
+        grid-template-columns: minmax(220px, 1fr) 160px 160px auto auto auto;
         gap: 12px;
         align-items: center;
         margin-bottom: 16px;
+    }
+
+    .bulk-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(180px, 1fr));
+        gap: 10px;
+        margin: -4px 0 16px;
+    }
+
+    .bulk-filter {
+        min-height: 42px;
+        resize: vertical;
+        line-height: 1.45;
     }
 
     .form-control {
@@ -348,22 +395,105 @@
         border: 1px solid #e2e8f0;
     }
 
+    .btn-danger {
+        background: #bc4b3c;
+        color: #fff;
+    }
+
     .btn:disabled {
         opacity: 0.55;
         cursor: not-allowed;
     }
 
     .poller-status {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px 18px;
-        padding: 12px 14px;
+        display: grid;
+        grid-template-columns: minmax(130px, 0.75fr) minmax(230px, 1.15fr) minmax(230px, 1.15fr) minmax(280px, 1.45fr);
+        gap: 10px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+
+    .poller-status-item {
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 8px;
+        align-items: center;
+        min-height: 46px;
+        padding: 10px 12px;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         background: #f8fafc;
         color: #475569;
-        font-size: 13px;
-        margin-bottom: 16px;
+    }
+
+    .poller-status-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .poller-status-label {
+        display: block;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.2;
+    }
+
+    .poller-status-value {
+        display: block;
+        overflow: visible;
+        color: #1e293b;
+        font-weight: 700;
+        line-height: 1.35;
+        text-overflow: clip;
+        white-space: nowrap;
+    }
+
+    .poller-status-item.result .poller-status-value {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .poller-status-item.running {
+        border-color: #bfdbfe;
+        background: #eff6ff;
+    }
+
+    .poller-status-item.running .poller-status-icon {
+        color: #1d4ed8;
+    }
+
+    .poller-status-item.idle {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+    }
+
+    .poller-status-item.idle .poller-status-icon {
+        color: #047857;
+    }
+
+    .poller-status-item.pending .poller-status-icon {
+        color: #64748b;
+    }
+
+    .poller-status-item.time .poller-status-icon {
+        color: #c96442;
+    }
+
+    .poller-status-item.result {
+        border-color: #fed7aa;
+        background: #fff7ed;
+    }
+
+    .poller-status-item.result .poller-status-icon {
+        color: #c2410c;
     }
 
     .log-message {
@@ -418,7 +548,7 @@
     .log-group-summary {
         width: 100%;
         display: grid;
-        grid-template-columns: minmax(280px, 1fr) auto auto minmax(150px, auto);
+        grid-template-columns: minmax(360px, 1fr) minmax(180px, auto) minmax(260px, auto);
         gap: 16px;
         align-items: center;
         padding: 14px 16px;
@@ -507,12 +637,61 @@
         background: #fee2e2;
     }
 
-    .log-group-latest {
+    .log-group-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        align-items: flex-start;
+        min-width: 180px;
+    }
+
+    .log-group-meta-label {
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.25;
+    }
+
+    .log-group-meta-value {
+        overflow: hidden;
+        max-width: 220px;
         color: #334155;
         font-size: 13px;
-        font-weight: 700;
-        text-align: right;
+        font-weight: 600;
+        line-height: 1.35;
+        text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .log-group-admin,
+    .log-group-code {
+        display: inline-flex;
+        align-items: center;
+        max-width: 180px;
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .log-group-admin {
+        color: #334155;
+        background: #f1f5f9;
+    }
+
+    .log-group-code {
+        padding: 0;
+        color: #334155;
+        background: transparent;
+        font-family: inherit;
+        font-weight: 500;
+    }
+
+    .verification-code-tag {
+        color: inherit;
+        font: inherit;
+        letter-spacing: 0;
     }
 
     .log-group-body {
@@ -532,7 +711,7 @@
     }
 
     .group-logs-table {
-        min-width: 980px;
+        min-width: 860px;
     }
 
     .logs-table th,
@@ -558,10 +737,6 @@
         width: 64px;
     }
 
-    .group-col-folder {
-        width: 88px;
-    }
-
     .group-col-person {
         width: 170px;
     }
@@ -574,8 +749,12 @@
         width: 92px;
     }
 
-    .group-col-source {
-        width: 106px;
+    .group-col-code {
+        width: 116px;
+    }
+
+    .group-col-admin {
+        width: 118px;
     }
 
     .group-col-action {
@@ -599,12 +778,6 @@
     .mail-log-email {
         color: #1e293b;
         font-weight: 700;
-    }
-
-    .mail-log-folder {
-        color: #64748b;
-        font-size: 12px;
-        margin-top: 2px;
     }
 
     .mail-subject-cell {
@@ -672,6 +845,62 @@
         margin-top: 14px;
         color: #64748b;
         font-size: 14px;
+    }
+
+    @media (max-width: 1180px) {
+        .stats-row {
+            grid-template-columns: repeat(2, minmax(180px, 1fr));
+        }
+
+        .log-toolbar {
+            grid-template-columns: minmax(260px, 1fr) minmax(150px, 180px) minmax(150px, 180px);
+        }
+
+        .log-toolbar .btn {
+            width: 100%;
+        }
+
+        .bulk-filter-grid {
+            grid-template-columns: repeat(2, minmax(220px, 1fr));
+        }
+
+        .poller-status {
+            grid-template-columns: repeat(2, minmax(240px, 1fr));
+        }
+
+        .log-group-summary {
+            grid-template-columns: minmax(320px, 1fr) minmax(180px, auto);
+        }
+
+        .log-group-counts {
+            grid-column: 1 / -1;
+            justify-content: flex-end;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .log-toolbar {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .log-toolbar .log-filter-control,
+        .bulk-filter-grid,
+        .poller-status,
+        .log-group-summary {
+            grid-template-columns: 1fr;
+        }
+
+        .log-toolbar .log-filter-control {
+            grid-column: 1 / -1;
+        }
+
+        .bulk-filter-grid {
+            display: grid;
+        }
+
+        .log-group-counts {
+            justify-content: flex-start;
+        }
     }
 
     .detail-btn {
@@ -756,6 +985,51 @@
         white-space: pre-wrap;
     }
 
+    .mail-detail-card {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .mail-detail-header {
+        padding-bottom: 14px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .mail-detail-subject {
+        margin-bottom: 8px;
+        color: #0f172a;
+        font-size: 20px;
+        font-weight: 800;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .mail-detail-meta-line {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .mail-detail-meta-grid {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 9px 12px;
+        padding: 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #f8fafc;
+        font-size: 13px;
+    }
+
+    .mail-detail-section-title {
+        color: #334155;
+        font-size: 14px;
+        font-weight: 800;
+    }
+
     .detail-error {
         padding: 12px;
         border: 1px solid #fecaca;
@@ -764,6 +1038,33 @@
         color: #991b1b;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
         line-height: 1.5;
+    }
+
+    .detail-mail-body {
+        min-height: 180px;
+        max-height: 420px;
+        overflow: auto;
+        padding: 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+        color: #1e293b;
+        line-height: 1.6;
+    }
+
+    .detail-mail-body.is-empty {
+        display: flex;
+        align-items: center;
+        min-height: 96px;
+        color: #64748b;
+        background: #f8fafc;
+    }
+
+    .detail-mail-body iframe {
+        width: 100%;
+        min-height: 360px;
+        border: 0;
+        background: #fff;
     }
     
     /* Mobile menu toggle - default hidden */
@@ -815,6 +1116,14 @@
             grid-template-columns: 1fr;
         }
 
+        .bulk-filter-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .poller-status {
+            grid-template-columns: 1fr;
+        }
+
         .table-wrapper {
             overflow-x: auto;
         }
@@ -832,12 +1141,22 @@
             justify-content: flex-start;
         }
 
-        .log-group-latest {
-            text-align: left;
+        .log-group-meta {
+            align-items: flex-start;
+            min-width: 0;
+        }
+
+        .log-group-meta-value {
+            max-width: 100%;
         }
 
         .group-logs-table {
-            min-width: 980px;
+            min-width: 860px;
+        }
+
+        .pagination {
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .sidebar-toggle {
@@ -866,6 +1185,84 @@
 
         body.sidebar-collapsed .sidebar-logo::after {
             display: none;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .content {
+            padding: 12px !important;
+        }
+
+        .stats-row {
+            grid-template-columns: 1fr;
+        }
+
+        .table-wrapper,
+        .log-group-body {
+            overflow-x: hidden;
+        }
+
+        .group-logs-table,
+        .group-logs-table tbody,
+        .group-logs-table tr,
+        .group-logs-table td {
+            display: block;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        .group-logs-table thead {
+            display: none;
+        }
+
+        .group-logs-table tbody {
+            display: grid;
+            gap: 10px;
+        }
+
+        .group-logs-table tr {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fff;
+        }
+
+        .group-logs-table td {
+            display: grid;
+            grid-template-columns: 86px minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
+            padding: 5px 0 !important;
+            border-bottom: 0 !important;
+            white-space: normal !important;
+        }
+
+        .group-logs-table td::before {
+            content: attr(data-label);
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+
+        .mail-subject-cell .mail-log-title,
+        .mail-subject-cell .mail-log-summary,
+        .mail-log-meta {
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        .log-detail-modal {
+            padding: 12px;
+        }
+
+        .log-detail-header,
+        .log-detail-body {
+            padding-left: 14px;
+            padding-right: 14px;
+        }
+
+        .mail-detail-meta-grid {
+            grid-template-columns: 1fr;
         }
     }
     
@@ -945,40 +1342,73 @@
             <div class="card-body">
                 <div class="stats-row">
                     <div class="stat-card">
-                        <div class="stat-label">日志总数</div>
-                        <div class="stat-value" id="statTotal">0</div>
+                        <span class="stat-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-file-text"></use></svg></span></span>
+                        <div class="stat-content">
+                            <div class="stat-label">日志总数</div>
+                            <div class="stat-value" id="statTotal">0</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">成功收取</div>
-                        <div class="stat-value" id="statReceived">0</div>
+                    <div class="stat-card success">
+                        <span class="stat-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-check-circle"></use></svg></span></span>
+                        <div class="stat-content">
+                            <div class="stat-label">成功收取</div>
+                            <div class="stat-value" id="statReceived">0</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">失败记录</div>
-                        <div class="stat-value" id="statFailed">0</div>
+                    <div class="stat-card failed">
+                        <span class="stat-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-exclamation-circle"></use></svg></span></span>
+                        <div class="stat-content">
+                            <div class="stat-label">失败记录</div>
+                            <div class="stat-value" id="statFailed">0</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">轮询间隔</div>
-                        <div class="stat-value" id="statInterval">-</div>
+                    <div class="stat-card interval">
+                        <span class="stat-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-sync"></use></svg></span></span>
+                        <div class="stat-content">
+                            <div class="stat-label">轮询间隔</div>
+                            <div class="stat-value" id="statInterval">-</div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="log-toolbar">
-                    <input type="text" class="form-control" id="logSearch" placeholder="搜索邮箱、主题、发件人">
+                    <input type="text" class="form-control log-filter-control" id="logSearch" placeholder="关键词：邮箱、主题、发件人、正文">
                     <select class="form-control" id="statusFilter">
                         <option value="">全部状态</option>
                         <option value="received">成功</option>
                         <option value="failed">失败</option>
                         <option value="processed">已处理</option>
                     </select>
-                    <button class="btn btn-secondary" type="button" onclick="loadMailLogs(1)">查询</button>
-                    <button class="btn btn-primary" type="button" id="pollNowBtn" onclick="triggerMailPoll()">立即轮询</button>
+                    <select class="form-control" id="adminFilter">
+                        <option value="">全部管理员</option>
+                    </select>
+                    <button class="btn btn-secondary" type="button" onclick="loadMailLogs(1)"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 查询</button>
+                    <button class="btn btn-secondary" type="button" onclick="clearLogFilters()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-clear"></use></svg></span> 清空</button>
+                    <button class="btn btn-primary" type="button" id="pollNowBtn" onclick="triggerMailPoll()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-sync"></use></svg></span> 立即查询</button>
+                </div>
+                <div class="bulk-filter-grid">
+                    <textarea class="form-control bulk-filter log-filter-control" id="emailFilters" rows="2" placeholder="批量邮箱筛选：每行或逗号分隔多个邮箱"></textarea>
+                    <textarea class="form-control bulk-filter log-filter-control" id="subjectFilters" rows="2" placeholder="批量主题筛选：每行或逗号分隔多个关键词"></textarea>
+                    <textarea class="form-control bulk-filter log-filter-control" id="senderFilters" rows="2" placeholder="批量发件人筛选：每行或逗号分隔多个发件人"></textarea>
                 </div>
 
                 <div class="poller-status" id="pollerStatus">
-                    <span>状态：-</span>
-                    <span>最近开始：-</span>
-                    <span>最近结束：-</span>
-                    <span>结果：-</span>
+                    <div class="poller-status-item pending">
+                        <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-info-circle"></use></svg></span></span>
+                        <span><span class="poller-status-label">状态</span><span class="poller-status-value">-</span></span>
+                    </div>
+                    <div class="poller-status-item time">
+                        <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-rocket"></use></svg></span></span>
+                        <span><span class="poller-status-label">最近开始</span><span class="poller-status-value">-</span></span>
+                    </div>
+                    <div class="poller-status-item time">
+                        <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-check"></use></svg></span></span>
+                        <span><span class="poller-status-label">最近结束</span><span class="poller-status-value">-</span></span>
+                    </div>
+                    <div class="poller-status-item result">
+                        <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-file-text"></use></svg></span></span>
+                        <span><span class="poller-status-label">结果</span><span class="poller-status-value">-</span></span>
+                    </div>
                 </div>
 
                 <div class="log-message" id="logMessage"></div>
@@ -1013,6 +1443,7 @@
 {% block scripts %}
 <script>
     const SIDEBAR_COLLAPSE_KEY = 'adminSidebarCollapsed';
+    const ADMIN_MOBILE_BREAKPOINT = 1024;
 
     function updateSidebarToggleButton() {
         const btn = document.getElementById('sidebarToggle');
@@ -1024,7 +1455,7 @@
     }
 
     function applySidebarState(collapsed) {
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth <= ADMIN_MOBILE_BREAKPOINT) {
             document.body.classList.remove('sidebar-collapsed');
             updateSidebarToggleButton();
             return;
@@ -1053,7 +1484,7 @@
         const saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY);
         const shouldCollapse = saved === null ? true : saved === '1';
         applySidebarState(shouldCollapse);
-        if (window.innerWidth > 768) {
+        if (window.innerWidth > ADMIN_MOBILE_BREAKPOINT) {
             closeMobileMenu();
         }
     }
@@ -1138,23 +1569,81 @@
         return labels[source] || source || '-';
     }
 
+    function getMailBodyPlainText(log) {
+        const body = log?.mail_body || '';
+        if (!body) return '';
+        if ((log.mail_body_type || '').toLowerCase() === 'html') {
+            const doc = new DOMParser().parseFromString(body, 'text/html');
+            return (doc.body?.textContent || '').replace(/\s+/g, ' ').trim();
+        }
+        return String(body).replace(/\s+/g, ' ').trim();
+    }
+
+    function getMailBodyPreview(log, maxLength = 100) {
+        const text = getMailBodyPlainText(log);
+        if (!text) return '';
+        return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+    }
+
+    function getLogAdmin(log) {
+        return log?.mailbox_created_by_admin || log?.admin_username || '-';
+    }
+
+    function extractVerificationCode(log) {
+        if (!log || log.status === 'failed') return '';
+        const parts = [
+            log?.mail_subject || '',
+            getMailBodyPlainText(log)
+        ].filter(Boolean);
+        const text = parts.join(' ').replace(/\s+/g, ' ').trim();
+        if (!text) return '';
+
+        const hasCodeKeyword = /(验证码|驗證碼|校验码|驗證|验证|动态码|安全码|确认码|登入码|登录码|verification|security|one[-\s]?time|otp|passcode|code)/i.test(text);
+        if (!hasCodeKeyword) return '';
+
+        const contextPatterns = [
+            /(?:验证码|驗證碼|校验码|动态码|安全码|确认码|登入码|登录码)[^\dA-Z]{0,24}([A-Z0-9]{4,8})/i,
+            /(?:verification|security|one[-\s]?time|otp|passcode|code)[^A-Z0-9]{0,24}([A-Z0-9]{4,8})/i,
+            /([A-Z0-9]{4,8})[^A-Z0-9]{0,18}(?:验证码|驗證碼|校验码|verification|security|otp|code)/i
+        ];
+        for (const pattern of contextPatterns) {
+            const match = text.match(pattern);
+            if (match?.[1] && /\d/.test(match[1])) return match[1].toUpperCase();
+        }
+
+        const fallback = text.match(/(?:^|[^0-9A-Z])([0-9]{4,8})(?=$|[^0-9A-Z])/i);
+        return fallback?.[1] || '';
+    }
+
+    function getGroupLatestVerificationCode(group) {
+        for (const log of group.logs || []) {
+            const code = extractVerificationCode(log);
+            if (code) return code;
+        }
+        return '';
+    }
+
+    function renderVerificationCode(value) {
+        return value
+            ? escapeHtml(value)
+            : '<span class="muted">--</span>';
+    }
+
     function summarizeLog(log) {
         if (log.error_message) {
             return log.error_message.length > 90 ? `${log.error_message.slice(0, 90)}...` : log.error_message;
         }
+        const bodyPreview = getMailBodyPreview(log, 110);
+        if (bodyPreview) {
+            return bodyPreview;
+        }
         const from = log.mail_from ? `发件人: ${log.mail_from}` : '';
         const receivedAt = log.received_at ? `收件时间: ${log.received_at}` : '';
-        return [from, receivedAt].filter(Boolean).join(' / ') || '暂无更多摘要';
+        return [from, receivedAt].filter(Boolean).join(' / ') || '暂无正文，重新收取后可查看邮件内容';
     }
 
     function getLogGroupKey(log) {
-        return String(log?.email || '-').toLowerCase();
-    }
-
-    function getGroupFolderLabel(group) {
-        const folders = [...new Set(group.logs.map(log => log.folder || 'inbox'))];
-        if (folders.length <= 2) return folders.join(', ');
-        return `${folders.slice(0, 2).join(', ')} +${folders.length - 2}`;
+        return String(log?.email || '-').trim().toLowerCase();
     }
 
     function buildMailLogGroups(logs) {
@@ -1166,6 +1655,8 @@
                     key,
                     email: log.email || '-',
                     logs: [],
+                    mailboxCreatedAt: log.mailbox_created_at || '',
+                    mailboxAdmin: getLogAdmin(log),
                     counts: {
                         total: 0,
                         received: 0,
@@ -1176,6 +1667,12 @@
             }
 
             const group = groups.get(key);
+            if (!group.mailboxCreatedAt && log.mailbox_created_at) {
+                group.mailboxCreatedAt = log.mailbox_created_at;
+            }
+            if ((!group.mailboxAdmin || group.mailboxAdmin === '-') && getLogAdmin(log) !== '-') {
+                group.mailboxAdmin = getLogAdmin(log);
+            }
             group.logs.push(log);
             group.counts.total += 1;
             if (group.counts[log.status] !== undefined) {
@@ -1183,13 +1680,18 @@
             }
         });
 
-        return Array.from(groups.values());
+        return Array.from(groups.values()).sort((a, b) => {
+            const aTime = new Date(a.mailboxCreatedAt || a.logs[0]?.created_at || 0).getTime() || 0;
+            const bTime = new Date(b.mailboxCreatedAt || b.logs[0]?.created_at || 0).getTime() || 0;
+            if (aTime !== bTime) return bTime - aTime;
+            return Number(b.logs[0]?.id || 0) - Number(a.logs[0]?.id || 0);
+        });
     }
 
     function syncExpandedLogGroups(groups) {
         const keys = new Set(groups.map(group => group.key));
         if (!hasInitializedLogGroups) {
-            expandedMailLogGroups = new Set(groups.slice(0, 1).map(group => group.key));
+            expandedMailLogGroups = new Set();
             hasInitializedLogGroups = true;
             return;
         }
@@ -1213,23 +1715,27 @@
         `;
     }
 
+    function getGroupLastQueryTime(group) {
+        return group.logs?.[0]?.created_at || group.logs?.[0]?.received_at || '-';
+    }
+
     function renderGroupLogRow(log) {
         const statusClass = `status-${escapeHtml(log.status || 'received')}`;
         const summary = summarizeLog(log);
+        const code = extractVerificationCode(log);
         return `
             <tr>
-                <td class="group-col-id">${escapeHtml(log.id)}</td>
-                <td class="group-col-folder"><div class="mail-log-folder">${escapeHtml(log.folder || 'inbox')}</div></td>
-                <td class="mail-subject-cell">
+                <td class="group-col-id" data-label="ID">${escapeHtml(log.id)}</td>
+                <td class="mail-subject-cell" data-label="主题 / 摘要">
                     <div class="mail-log-title" title="${escapeHtml(log.mail_subject || '(无主题)')}">${escapeHtml(log.mail_subject || '(无主题)')}</div>
                     <div class="mail-log-summary" title="${escapeHtml(summary)}">${escapeHtml(summary)}</div>
                 </td>
-                <td class="group-col-person"><div class="mail-log-meta" title="${escapeHtml(log.mail_from || '-')}">${escapeHtml(log.mail_from || '-')}</div></td>
-                <td class="group-col-time"><div class="mail-log-meta">${escapeHtml(log.received_at || '-')}</div></td>
-                <td class="group-col-status"><span class="status-badge ${statusClass}">${escapeHtml(getStatusLabel(log.status))}</span></td>
-                <td class="group-col-source"><span class="source-badge">${escapeHtml(getSourceLabel(log.source))}</span></td>
-                <td class="group-col-time"><div class="mail-log-meta">${escapeHtml(log.created_at || '-')}</div></td>
-                <td class="group-col-action"><button class="btn btn-secondary detail-btn" type="button" onclick="openLogDetailModal('${escapeHtml(log.id)}')">详情</button></td>
+                <td class="group-col-person" data-label="发件人"><div class="mail-log-meta" title="${escapeHtml(log.mail_from || '-')}">${escapeHtml(log.mail_from || '-')}</div></td>
+                <td class="group-col-time" data-label="收件时间"><div class="mail-log-meta">${escapeHtml(log.received_at || '-')}</div></td>
+                <td class="group-col-status" data-label="状态"><span class="status-badge ${statusClass}">${escapeHtml(getStatusLabel(log.status))}</span></td>
+                <td class="group-col-code" data-label="验证码">${renderVerificationCode(code)}</td>
+                <td class="group-col-admin" data-label="管理员"><div class="mail-log-meta" title="${escapeHtml(getLogAdmin(log))}">${escapeHtml(getLogAdmin(log))}</div></td>
+                <td class="group-col-action" data-label="操作"><button class="btn btn-secondary detail-btn" type="button" onclick="openLogDetailModal('${escapeHtml(log.id)}')">详情</button></td>
             </tr>
         `;
     }
@@ -1263,6 +1769,13 @@
         `;
     }
 
+    function renderMailDetailMeta(label, value) {
+        return `
+            <div class="detail-label">${escapeHtml(label)}</div>
+            <div class="detail-value">${escapeHtml(value || '-')}</div>
+        `;
+    }
+
     function openLogDetailModal(logId) {
         const log = getLogById(logId);
         if (!log) return;
@@ -1270,27 +1783,64 @@
         const modal = document.getElementById('logDetailModal');
         const body = document.getElementById('logDetailBody');
         if (!modal || !body) return;
+        const verificationCode = extractVerificationCode(log);
 
         body.innerHTML = `
-            <div class="detail-grid">
-                ${renderDetailRow('ID', log.id)}
-                ${renderDetailRow('邮箱', log.email)}
-                ${renderDetailRow('文件夹', log.folder || 'inbox')}
-                ${renderDetailRow('主题', log.mail_subject || '(无主题)')}
-                ${renderDetailRow('发件人', log.mail_from)}
-                ${renderDetailRow('收件人', log.mail_to)}
-                ${renderDetailRow('收件时间', log.received_at)}
-                ${renderDetailRow('状态', getStatusLabel(log.status))}
-                ${renderDetailRow('来源', getSourceLabel(log.source))}
-                ${renderDetailRow('记录时间', log.created_at)}
-                ${renderDetailRow('Message-ID', log.message_id)}
-                ${renderDetailRow('IP', log.ip_address)}
-                ${renderDetailRow('User-Agent', log.user_agent)}
+            <div class="mail-detail-card">
+                <div class="mail-detail-header">
+                    <div class="mail-detail-subject">${escapeHtml(log.mail_subject || '(无主题)')}</div>
+                    <div class="mail-detail-meta-line">
+                        <span>状态：${escapeHtml(getStatusLabel(log.status))}</span>
+                        <span>来源：${escapeHtml(getSourceLabel(log.source))}</span>
+                        <span>记录：${escapeHtml(log.created_at || '-')}</span>
+                    </div>
+                </div>
+                <div class="mail-detail-meta-grid">
+                    ${renderMailDetailMeta('日志ID', log.id)}
+                    ${renderMailDetailMeta('收件邮箱', log.email)}
+                    ${renderMailDetailMeta('发件人', log.mail_from)}
+                    ${renderMailDetailMeta('收件人', log.mail_to)}
+                    ${renderMailDetailMeta('收件时间', log.received_at)}
+                    ${renderMailDetailMeta('验证码', verificationCode || '-')}
+                    ${renderMailDetailMeta('管理员', getLogAdmin(log))}
+                    ${renderMailDetailMeta('Message-ID', log.message_id)}
+                    ${renderMailDetailMeta('IP', log.ip_address)}
+                    ${renderMailDetailMeta('User-Agent', log.user_agent)}
+                </div>
+                <div class="mail-detail-section-title">邮件正文</div>
+                <div class="detail-mail-body" id="detailMailBodyContent"></div>
                 ${log.error_message ? renderDetailRow('处理建议', getErrorAdvice(log.error_message)) : ''}
                 ${log.error_message ? renderDetailRow('错误详情', log.error_message, 'detail-error') : ''}
             </div>
         `;
+        renderMailBodyContent(log);
         modal.classList.add('show');
+    }
+
+    function renderMailBodyContent(log) {
+        const container = document.getElementById('detailMailBodyContent');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const body = log.mail_body || '';
+        if (!body) {
+            container.classList.add('is-empty');
+            container.textContent = log.error_message
+                ? '这条是收取失败记录，没有实际邮件正文。请查看下方错误详情。'
+                : '这条记录没有保存正文。重新收取或轮询成功后，这里会显示实际邮件内容。';
+            return;
+        }
+
+        container.classList.remove('is-empty');
+        if ((log.mail_body_type || '').toLowerCase() === 'html') {
+            const frame = document.createElement('iframe');
+            frame.setAttribute('sandbox', '');
+            frame.srcdoc = body;
+            container.appendChild(frame);
+        } else {
+            container.textContent = body;
+            container.style.whiteSpace = 'pre-wrap';
+        }
     }
 
     function closeLogDetailModal() {
@@ -1316,16 +1866,31 @@
         const el = document.getElementById('pollerStatus');
         if (!el) return;
         const statusText = poller?.running ? '运行中' : (poller?.started ? '空闲' : '未启动');
+        const statusClass = poller?.running ? 'running' : (poller?.started ? 'idle' : 'pending');
         el.innerHTML = `
-            <span>状态：${escapeHtml(statusText)}</span>
-            <span>最近开始：${escapeHtml(poller?.last_started_at || '-')}</span>
-            <span>最近结束：${escapeHtml(poller?.last_finished_at || '-')}</span>
-            <span>结果：${escapeHtml(poller?.last_message || '-')}</span>
+            <div class="poller-status-item ${statusClass}">
+                <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="${poller?.running ? '#ai-sync' : '#ai-info-circle'}"></use></svg></span></span>
+                <span><span class="poller-status-label">状态</span><span class="poller-status-value">${escapeHtml(statusText)}</span></span>
+            </div>
+            <div class="poller-status-item time">
+                <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-rocket"></use></svg></span></span>
+                <span><span class="poller-status-label">最近开始</span><span class="poller-status-value">${escapeHtml(poller?.last_started_at || '-')}</span></span>
+            </div>
+            <div class="poller-status-item time">
+                <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-check"></use></svg></span></span>
+                <span><span class="poller-status-label">最近结束</span><span class="poller-status-value">${escapeHtml(poller?.last_finished_at || '-')}</span></span>
+            </div>
+            <div class="poller-status-item result">
+                <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-file-text"></use></svg></span></span>
+                <span><span class="poller-status-label">结果</span><span class="poller-status-value" title="${escapeHtml(poller?.last_message || '-')}">${escapeHtml(poller?.last_message || '-')}</span></span>
+            </div>
         `;
         const pollBtn = document.getElementById('pollNowBtn');
         if (pollBtn) {
             pollBtn.disabled = Boolean(poller?.running);
-            pollBtn.textContent = poller?.running ? '轮询中...' : '立即轮询';
+            pollBtn.innerHTML = poller?.running
+                ? '<span class="anticon"><svg aria-hidden="true"><use href="#ai-sync"></use></svg></span> 查询中...'
+                : '<span class="anticon"><svg aria-hidden="true"><use href="#ai-sync"></use></svg></span> 立即查询';
         }
     }
 
@@ -1343,7 +1908,7 @@
 
         accordion.innerHTML = groups.map(group => {
             const isExpanded = expandedMailLogGroups.has(group.key);
-            const latest = group.logs[0] || {};
+            const lastQueryTime = getGroupLastQueryTime(group);
             return `
                 <section class="log-group ${isExpanded ? 'is-expanded' : ''}" data-group-key="${escapeHtml(group.key)}">
                     <button class="log-group-summary" type="button" aria-expanded="${isExpanded ? 'true' : 'false'}">
@@ -1354,22 +1919,23 @@
                                 <div class="log-group-preview" title="${escapeHtml(getGroupPreview(group))}">${escapeHtml(getGroupPreview(group))}</div>
                             </div>
                         </div>
-                        <div class="log-group-small">文件夹：${escapeHtml(getGroupFolderLabel(group))}</div>
+                        <div class="log-group-meta">
+                            <span class="log-group-meta-label">最后查询</span>
+                            <span class="log-group-meta-value" title="${escapeHtml(lastQueryTime)}">${escapeHtml(lastQueryTime)}</span>
+                        </div>
                         <div class="log-group-counts">${renderGroupCountBadges(group)}</div>
-                        <div class="log-group-latest">${escapeHtml(latest.created_at || '-')}</div>
                     </button>
                     <div class="log-group-body">
                         <table class="logs-table group-logs-table">
                             <thead>
                                 <tr>
                                     <th class="group-col-id">ID</th>
-                                    <th class="group-col-folder">文件夹</th>
                                     <th>主题 / 摘要</th>
                                     <th class="group-col-person">发件人</th>
                                     <th class="group-col-time">收件时间</th>
                                     <th class="group-col-status">状态</th>
-                                    <th class="group-col-source">来源</th>
-                                    <th class="group-col-time">记录时间</th>
+                                    <th class="group-col-code">验证码</th>
+                                    <th class="group-col-admin">管理员</th>
                                     <th class="group-col-action">操作</th>
                                 </tr>
                             </thead>
@@ -1400,9 +1966,36 @@
     function updatePagination(pagination) {
         currentLogPage = pagination?.page || 1;
         totalLogPages = Math.max(pagination?.pages || 1, 1);
-        document.getElementById('paginationInfo').textContent = `第 ${currentLogPage} / ${totalLogPages} 页`;
+        const totalEmails = pagination?.total ?? 0;
+        document.getElementById('paginationInfo').textContent = `共 ${totalEmails} 个邮箱，第 ${currentLogPage} / ${totalLogPages} 页`;
         document.getElementById('prevPageBtn').disabled = currentLogPage <= 1;
         document.getElementById('nextPageBtn').disabled = currentLogPage >= totalLogPages;
+    }
+
+    function populateAdminFilter(options = []) {
+        const select = document.getElementById('adminFilter');
+        if (!select) return;
+        const currentValue = select.value;
+        const uniqueOptions = Array.from(new Set((options || []).filter(Boolean)));
+        select.innerHTML = [
+            '<option value="">全部管理员</option>',
+            ...uniqueOptions.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+        ].join('');
+        if (uniqueOptions.includes(currentValue)) {
+            select.value = currentValue;
+        }
+    }
+
+    function clearLogFilters() {
+        ['logSearch', 'emailFilters', 'subjectFilters', 'senderFilters'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        const status = document.getElementById('statusFilter');
+        if (status) status.value = '';
+        const admin = document.getElementById('adminFilter');
+        if (admin) admin.value = '';
+        loadMailLogs(1);
     }
 
     async function loadMailLogs(page = currentLogPage, showError = true) {
@@ -1412,8 +2005,16 @@
         });
         const search = document.getElementById('logSearch')?.value.trim();
         const status = document.getElementById('statusFilter')?.value;
+        const admin = document.getElementById('adminFilter')?.value;
+        const emailFilters = document.getElementById('emailFilters')?.value.trim();
+        const subjectFilters = document.getElementById('subjectFilters')?.value.trim();
+        const senderFilters = document.getElementById('senderFilters')?.value.trim();
         if (search) params.set('search', search);
         if (status) params.set('status', status);
+        if (admin) params.set('admin', admin);
+        if (emailFilters) params.set('email_filters', emailFilters);
+        if (subjectFilters) params.set('subject_filters', subjectFilters);
+        if (senderFilters) params.set('sender_filters', senderFilters);
 
         try {
             const response = await fetch(`/admin/api/mail-logs?${params.toString()}`);
@@ -1434,6 +2035,7 @@
 
             updateStats(data.stats, data.poller);
             updatePollerStatus(data.poller);
+            populateAdminFilter(data.admin_options || []);
             renderMailLogs(data.data || []);
             updatePagination(data.pagination || {});
         } catch (error) {
@@ -1453,7 +2055,7 @@
         const btn = document.getElementById('pollNowBtn');
         if (btn) {
             btn.disabled = true;
-            btn.textContent = '启动中...';
+            btn.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-sync"></use></svg></span> 启动中...';
         }
 
         try {
@@ -1505,6 +2107,21 @@
             });
         }
 
+        const adminFilter = document.getElementById('adminFilter');
+        if (adminFilter) {
+            adminFilter.addEventListener('change', function() {
+                loadMailLogs(1);
+            });
+        }
+
+        document.querySelectorAll('.bulk-filter').forEach(filter => {
+            filter.addEventListener('keydown', function(event) {
+                if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                    loadMailLogs(1);
+                }
+            });
+        });
+
         const logsAccordion = document.getElementById('mailLogsAccordion');
         if (logsAccordion) {
             logsAccordion.addEventListener('click', function(event) {
@@ -1518,7 +2135,7 @@
         navItems.forEach(item => {
             item.addEventListener('click', function() {
                 // Close mobile menu when navigating
-                if (window.innerWidth <= 768) {
+                if (window.innerWidth <= ADMIN_MOBILE_BREAKPOINT) {
                     closeMobileMenu();
                 }
             });
@@ -1526,7 +2143,7 @@
         
         // Close mobile menu on window resize if screen becomes large
         window.addEventListener('resize', function() {
-            if (window.innerWidth > 768) {
+            if (window.innerWidth > ADMIN_MOBILE_BREAKPOINT) {
                 closeMobileMenu();
             }
             handleSidebarResize();
