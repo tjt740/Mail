@@ -21,6 +21,7 @@ import socket
 import ssl
 import errno
 import re
+import html
 from contextlib import contextmanager
 from email.message import EmailMessage
 from email.utils import formataddr
@@ -531,6 +532,9 @@ def init_db():
             
             # 数据库迁移：为mail_accounts表添加发件相关字段
             migrate_mail_accounts_table(db, db_type)
+
+            # 创建卡密多邮箱绑定表，并迁移旧的单邮箱绑定字段
+            create_card_email_bindings_table(db, db_type)
             
             # 数据库迁移：移除email字段的UNIQUE约束以支持邮箱多分组
             migrate_remove_email_unique_constraint(db, db_type)
@@ -1098,6 +1102,73 @@ def migrate_cards_table(db, db_type):
         
     except Exception as e:
         logger.error(f"Error during cards table migration: {e}")
+
+def create_card_email_bindings_table(db, db_type):
+    """创建卡密-邮箱多对多绑定表，并把旧 bound_email_id 数据迁移进去"""
+    try:
+        if db_type == 'sqlite':
+            db.execute('''
+                CREATE TABLE IF NOT EXISTS card_email_bindings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    card_id INTEGER NOT NULL,
+                    mailbox_id INTEGER NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(card_id, mailbox_id),
+                    FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+                    FOREIGN KEY (mailbox_id) REFERENCES mail_accounts(id) ON DELETE CASCADE
+                )
+            ''')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_card_email_bindings_card ON card_email_bindings(card_id)')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_card_email_bindings_mailbox ON card_email_bindings(mailbox_id)')
+            db.execute('''
+                INSERT OR IGNORE INTO card_email_bindings (card_id, mailbox_id, created_at)
+                SELECT id, bound_email_id, CURRENT_TIMESTAMP
+                FROM cards
+                WHERE bound_email_id IS NOT NULL
+            ''')
+        elif db_type == 'mysql':
+            cursor = db.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS card_email_bindings (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    card_id INT NOT NULL,
+                    mailbox_id INT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_card_mailbox (card_id, mailbox_id),
+                    INDEX idx_card_email_bindings_card (card_id),
+                    INDEX idx_card_email_bindings_mailbox (mailbox_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ''')
+            cursor.execute('''
+                INSERT IGNORE INTO card_email_bindings (card_id, mailbox_id, created_at)
+                SELECT id, bound_email_id, CURRENT_TIMESTAMP
+                FROM cards
+                WHERE bound_email_id IS NOT NULL
+            ''')
+        elif db_type == 'postgresql':
+            cursor = db.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS card_email_bindings (
+                    id SERIAL PRIMARY KEY,
+                    card_id INTEGER NOT NULL,
+                    mailbox_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(card_id, mailbox_id)
+                )
+            ''')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_card_email_bindings_card ON card_email_bindings(card_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_card_email_bindings_mailbox ON card_email_bindings(mailbox_id)')
+            cursor.execute('''
+                INSERT INTO card_email_bindings (card_id, mailbox_id, created_at)
+                SELECT id, bound_email_id, CURRENT_TIMESTAMP
+                FROM cards
+                WHERE bound_email_id IS NOT NULL
+                ON CONFLICT (card_id, mailbox_id) DO NOTHING
+            ''')
+        db.commit()
+        logger.info("Card email bindings table migration completed")
+    except Exception as e:
+        logger.error(f"Error creating card_email_bindings table: {e}")
 
 def migrate_mail_accounts_table(db, db_type):
     """迁移mail_accounts表，添加发件服务器、备注和认证相关字段"""
@@ -3060,15 +3131,28 @@ def api_get_mail():
                         'message': '卡密使用次数已用完'
                     })
                 
-                # 如果卡密绑定了邮箱，检查邮箱是否匹配
-                if card_info['bound_email_id'] and card_info['bound_email']:
-                    if email != card_info['bound_email']:
+                # 如果卡密绑定了邮箱，检查邮箱是否匹配（支持多邮箱绑定）
+                bound_mailboxes = fetch_card_bound_mailboxes(
+                    db,
+                    db_type,
+                    card_info.get('id'),
+                    card_info.get('bound_email_id')
+                )
+                bound_emails = [m.get('email') for m in bound_mailboxes if m.get('email')]
+                if bound_emails:
+                    bound_email_lookup = {addr.lower(): addr for addr in bound_emails}
+                    matched_bound_email = bound_email_lookup.get(email.lower())
+                    if not matched_bound_email:
+                        allowed_preview = '、'.join(bound_emails[:5])
+                        if len(bound_emails) > 5:
+                            allowed_preview += f' 等 {len(bound_emails)} 个邮箱'
                         return jsonify({
                             'success': False,
-                            'message': f'此卡密只能用于邮箱: {card_info["bound_email"]}'
+                            'message': f'此卡密只能用于绑定邮箱: {allowed_preview}'
                         })
                     # 使用绑定邮箱信息直接获取邮件
                     use_bound_email = True
+                    card_info['bound_email'] = matched_bound_email
                 else:
                     # 如果没有绑定邮箱，需要在数据库中查找邮箱配置
                     use_bound_email = False
@@ -4192,6 +4276,8 @@ def _edit_mailbox(db, data):
     send_ssl_flag = data.get('send_ssl')
     send_ssl = 1 if (send_ssl_flag if send_ssl_flag is not None else data.get('ssl')) else 0
     send_port = normalize_smtp_port(data.get('send_port'), send_protocol, send_ssl == 1)
+    should_update_operator = 'created_by_admin' in data
+    created_by_admin = str(data.get('created_by_admin') or '').strip()
     remarks = data.get('remarks', '').strip()
     group_id = data.get('group_id')  # Get group_id from request
     
@@ -4199,19 +4285,29 @@ def _edit_mailbox(db, data):
         db_type = app.config['DATABASE_TYPE']
         now = get_beijing_time()
         if db_type == 'sqlite':
-            db.execute('''
+            operator_sql = ', created_by_admin=?' if should_update_operator else ''
+            params = [email, email, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks]
+            if should_update_operator:
+                params.append(created_by_admin)
+            params.extend([now, account_id])
+            db.execute(f'''
                 UPDATE mail_accounts 
-                SET email=?, username=?, password=?, server=?, port=?, protocol=?, ssl=?, send_server=?, send_port=?, send_protocol=?, send_ssl=?, remarks=?, updated_at=?
+                SET email=?, username=?, password=?, server=?, port=?, protocol=?, ssl=?, send_server=?, send_port=?, send_protocol=?, send_ssl=?, remarks=?{operator_sql}, updated_at=?
                 WHERE id=?
-            ''', (email, email, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, now, account_id))
+            ''', params)
             db.commit()
         else:
             cursor = db.cursor()
-            cursor.execute('''
+            operator_sql = ', created_by_admin=%s' if should_update_operator else ''
+            params = [email, email, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks]
+            if should_update_operator:
+                params.append(created_by_admin)
+            params.extend([now, account_id])
+            cursor.execute(f'''
                 UPDATE mail_accounts 
-                SET email=%s, username=%s, password=%s, server=%s, port=%s, protocol=%s, ssl=%s, send_server=%s, send_port=%s, send_protocol=%s, send_ssl=%s, remarks=%s, updated_at=%s
+                SET email=%s, username=%s, password=%s, server=%s, port=%s, protocol=%s, ssl=%s, send_server=%s, send_port=%s, send_protocol=%s, send_ssl=%s, remarks=%s{operator_sql}, updated_at=%s
                 WHERE id=%s
-            ''', (email, email, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, now, account_id))
+            ''', params)
             db.commit()
         
         # Update group mapping if group_id is provided
@@ -6125,6 +6221,139 @@ def api_admin_proxy_config():
                 'message': f'操作失败: {str(e)}'
             })
 
+def normalize_mailbox_id_list(value):
+    """把前端传入的单个/多个邮箱ID统一清洗成去重后的整数列表"""
+    if value is None or value == '':
+        return []
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return []
+        try:
+            parsed = json.loads(stripped)
+            if isinstance(parsed, list):
+                value = parsed
+            else:
+                value = [parsed]
+        except Exception:
+            value = re.split(r'[\s,，;；]+', stripped)
+    elif not isinstance(value, (list, tuple, set)):
+        value = [value]
+
+    result = []
+    seen = set()
+    for item in value:
+        try:
+            mailbox_id = int(item)
+        except (TypeError, ValueError):
+            continue
+        if mailbox_id > 0 and mailbox_id not in seen:
+            seen.add(mailbox_id)
+            result.append(mailbox_id)
+    return result
+
+def fetch_card_bound_mailboxes(db, db_type, card_id, legacy_bound_email_id=None):
+    """读取某张卡密绑定的邮箱列表，兼容旧 cards.bound_email_id 字段"""
+    if not card_id:
+        return []
+
+    rows = []
+    try:
+        if db_type == 'sqlite':
+            rows = db.execute('''
+                SELECT m.id, m.email, m.server
+                FROM card_email_bindings ceb
+                JOIN mail_accounts m ON m.id = ceb.mailbox_id
+                WHERE ceb.card_id = ?
+                ORDER BY ceb.id ASC
+            ''', (card_id,)).fetchall()
+            mailboxes = [dict(row) for row in rows]
+        else:
+            cursor = db.cursor()
+            cursor.execute('''
+                SELECT m.id, m.email, m.server
+                FROM card_email_bindings ceb
+                JOIN mail_accounts m ON m.id = ceb.mailbox_id
+                WHERE ceb.card_id = %s
+                ORDER BY ceb.id ASC
+            ''', (card_id,))
+            result_rows = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+            mailboxes = [_row_to_dict(row, columns) for row in result_rows]
+    except Exception as e:
+        logger.warning(f"Failed to fetch card email bindings for card {card_id}: {e}")
+        mailboxes = []
+
+    if legacy_bound_email_id and not any(str(m.get('id')) == str(legacy_bound_email_id) for m in mailboxes):
+        try:
+            if db_type == 'sqlite':
+                legacy = db.execute('SELECT id, email, server FROM mail_accounts WHERE id = ?', (legacy_bound_email_id,)).fetchone()
+                if legacy:
+                    mailboxes.insert(0, dict(legacy))
+            else:
+                cursor = db.cursor()
+                cursor.execute('SELECT id, email, server FROM mail_accounts WHERE id = %s', (legacy_bound_email_id,))
+                legacy = cursor.fetchone()
+                if legacy:
+                    columns = [desc[0] for desc in cursor.description]
+                    mailboxes.insert(0, _row_to_dict(legacy, columns))
+        except Exception as e:
+            logger.warning(f"Failed to fetch legacy bound mailbox {legacy_bound_email_id}: {e}")
+
+    deduped = []
+    seen = set()
+    for mailbox in mailboxes:
+        mailbox_id = mailbox.get('id')
+        if mailbox_id in seen:
+            continue
+        seen.add(mailbox_id)
+        deduped.append(mailbox)
+    return deduped
+
+def attach_card_bound_mailboxes(db, db_type, cards):
+    """给卡密列表附加 bound_email_ids / bound_emails 字段"""
+    for card in cards:
+        mailboxes = fetch_card_bound_mailboxes(db, db_type, card.get('id'), card.get('bound_email_id'))
+        if not mailboxes and card.get('bound_email'):
+            mailboxes = [{
+                'id': card.get('bound_email_id'),
+                'email': card.get('bound_email'),
+                'server': card.get('server') or ''
+            }]
+        card['bound_email_ids'] = [m.get('id') for m in mailboxes if m.get('id') is not None]
+        card['bound_emails'] = [m.get('email') for m in mailboxes if m.get('email')]
+        card['bound_mailboxes'] = mailboxes
+        card['bound_email'] = card['bound_emails'][0] if card['bound_emails'] else None
+    return cards
+
+def replace_card_email_bindings(db, db_type, card_id, mailbox_ids):
+    """用新的邮箱ID列表替换某张卡密的所有绑定，并同步旧 bound_email_id 字段"""
+    primary_mailbox_id = mailbox_ids[0] if mailbox_ids else None
+    if db_type == 'sqlite':
+        db.execute('DELETE FROM card_email_bindings WHERE card_id = ?', (card_id,))
+        for mailbox_id in mailbox_ids:
+            db.execute('''
+                INSERT OR IGNORE INTO card_email_bindings (card_id, mailbox_id, created_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+            ''', (card_id, mailbox_id))
+        db.execute('UPDATE cards SET bound_email_id = ? WHERE id = ?', (primary_mailbox_id, card_id))
+    else:
+        cursor = db.cursor()
+        cursor.execute('DELETE FROM card_email_bindings WHERE card_id = %s', (card_id,))
+        for mailbox_id in mailbox_ids:
+            if db_type == 'mysql':
+                cursor.execute('''
+                    INSERT IGNORE INTO card_email_bindings (card_id, mailbox_id, created_at)
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
+                ''', (card_id, mailbox_id))
+            else:
+                cursor.execute('''
+                    INSERT INTO card_email_bindings (card_id, mailbox_id, created_at)
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (card_id, mailbox_id) DO NOTHING
+                ''', (card_id, mailbox_id))
+        cursor.execute('UPDATE cards SET bound_email_id = %s WHERE id = %s', (primary_mailbox_id, card_id))
+
 @app.route('/admin/api/cards', methods=['GET', 'POST', 'DELETE'])
 @admin_required
 def api_admin_cards():
@@ -6171,6 +6400,7 @@ def api_admin_cards():
                 LIMIT ? OFFSET ?
             """
             cards = db.execute(sql, params + [per_page, offset]).fetchall()
+            card_dicts = [dict(card) for card in cards]
         else:
             cursor = db.cursor()
             placeholder = '%s'
@@ -6198,10 +6428,17 @@ def api_admin_cards():
             """
             cursor.execute(sql, params)
             cards = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+            card_dicts = [
+                dict(card) if isinstance(card, dict) else dict(zip(columns, card))
+                for card in cards
+            ]
+
+        attach_card_bound_mailboxes(db, db_type, card_dicts)
         
         return jsonify({
             'success': True,
-            'data': [dict(card) for card in cards],
+            'data': card_dicts,
             'pagination': {
                 'page': page,
                 'per_page': per_page,
@@ -6537,6 +6774,9 @@ def _edit_card(db, data):
     expired_at = data.get('expired_at')
     remarks = data.get('remarks', '')
     bound_email_id = data.get('bound_email_id')
+    bound_email_ids = normalize_mailbox_id_list(data.get('bound_email_ids'))
+    if not bound_email_ids and bound_email_id:
+        bound_email_ids = normalize_mailbox_id_list(bound_email_id)
     email_days_filter = data.get('email_days_filter', 7)
     sender_filter = data.get('sender_filter', '')
     keyword_filter = data.get('keyword_filter', '')
@@ -6550,19 +6790,32 @@ def _edit_card(db, data):
     try:
         now = get_beijing_time()  # 使用北京时间
         
-        # 验证bound_email_id是否有效（如果提供）
-        if bound_email_id:
+        # 验证绑定邮箱是否有效（如果提供）
+        if bound_email_ids:
             if app.config['DATABASE_TYPE'] == 'sqlite':
-                email_exists = db.execute('SELECT id FROM mail_accounts WHERE id = ?', (bound_email_id,)).fetchone()
+                placeholders = ','.join(['?'] * len(bound_email_ids))
+                email_rows = db.execute(
+                    f'SELECT id FROM mail_accounts WHERE id IN ({placeholders})',
+                    bound_email_ids
+                ).fetchall()
+                existing_email_ids = {int(row['id']) for row in email_rows}
             else:
                 cursor = db.cursor()
-                cursor.execute('SELECT id FROM mail_accounts WHERE id = %s', (bound_email_id,))
-                email_exists = cursor.fetchone()
+                placeholders = ','.join(['%s'] * len(bound_email_ids))
+                cursor.execute(
+                    f'SELECT id FROM mail_accounts WHERE id IN ({placeholders})',
+                    bound_email_ids
+                )
+                existing_email_ids = {
+                    int(row['id'] if isinstance(row, dict) else row[0])
+                    for row in cursor.fetchall()
+                }
             
-            if not email_exists:
+            missing_email_ids = [mid for mid in bound_email_ids if mid not in existing_email_ids]
+            if missing_email_ids:
                 return jsonify({
                     'success': False,
-                    'message': '指定的邮箱不存在'
+                    'message': f'指定的邮箱不存在: {", ".join(map(str, missing_email_ids))}'
                 })
         
         if app.config['DATABASE_TYPE'] == 'sqlite':
@@ -6580,7 +6833,8 @@ def _edit_card(db, data):
                 SET usage_limit = ?, expired_at = ?, remarks = ?, 
                     bound_email_id = ?, email_days_filter = ?, sender_filter = ?, keyword_filter = ?, updated_at = ?
                 WHERE id = ?
-            ''', (usage_limit, expired_at, remarks, bound_email_id, email_days_filter, sender_filter, keyword_filter, now, card_id))
+            ''', (usage_limit, expired_at, remarks, bound_email_ids[0] if bound_email_ids else None, email_days_filter, sender_filter, keyword_filter, now, card_id))
+            replace_card_email_bindings(db, app.config['DATABASE_TYPE'], card_id, bound_email_ids)
             db.commit()
         else:
             cursor = db.cursor()
@@ -6599,7 +6853,8 @@ def _edit_card(db, data):
                 SET usage_limit = %s, expired_at = %s, remarks = %s, 
                     bound_email_id = %s, email_days_filter = %s, sender_filter = %s, keyword_filter = %s, updated_at = %s
                 WHERE id = %s
-            ''', (usage_limit, expired_at, remarks, bound_email_id, email_days_filter, sender_filter, keyword_filter, now, card_id))
+            ''', (usage_limit, expired_at, remarks, bound_email_ids[0] if bound_email_ids else None, email_days_filter, sender_filter, keyword_filter, now, card_id))
+            replace_card_email_bindings(db, app.config['DATABASE_TYPE'], card_id, bound_email_ids)
             db.commit()
         
         return jsonify({
@@ -6616,9 +6871,11 @@ def _edit_card(db, data):
 def _bind_email_to_card(db, data):
     """绑定邮箱到卡密"""
     card_id = data.get('card_id')
-    email_id = data.get('email_id')
+    email_ids = normalize_mailbox_id_list(data.get('email_ids'))
+    if not email_ids:
+        email_ids = normalize_mailbox_id_list(data.get('email_id'))
     
-    if not card_id or not email_id:
+    if not card_id or not email_ids:
         return jsonify({
             'success': False,
             'message': '请提供卡密ID和邮箱ID'
@@ -6628,13 +6885,21 @@ def _bind_email_to_card(db, data):
         # 验证卡密和邮箱是否存在
         if app.config['DATABASE_TYPE'] == 'sqlite':
             card = db.execute('SELECT * FROM cards WHERE id = ?', (card_id,)).fetchone()
-            email = db.execute('SELECT * FROM mail_accounts WHERE id = ?', (email_id,)).fetchone()
+            placeholders = ','.join(['?'] * len(email_ids))
+            email_rows = db.execute(f'SELECT id, email FROM mail_accounts WHERE id IN ({placeholders})', email_ids).fetchall()
+            email_map = {int(row['id']): row['email'] for row in email_rows}
         else:
             cursor = db.cursor()
             cursor.execute('SELECT * FROM cards WHERE id = %s', (card_id,))
             card = cursor.fetchone()
-            cursor.execute('SELECT * FROM mail_accounts WHERE id = %s', (email_id,))
-            email = cursor.fetchone()
+            placeholders = ','.join(['%s'] * len(email_ids))
+            cursor.execute(f'SELECT id, email FROM mail_accounts WHERE id IN ({placeholders})', email_ids)
+            email_map = {}
+            for row in cursor.fetchall():
+                if isinstance(row, dict):
+                    email_map[int(row['id'])] = row['email']
+                else:
+                    email_map[int(row[0])] = row[1]
         
         if not card:
             return jsonify({
@@ -6642,30 +6907,19 @@ def _bind_email_to_card(db, data):
                 'message': '卡密不存在'
             })
         
-        if not email:
+        missing_email_ids = [email_id for email_id in email_ids if email_id not in email_map]
+        if missing_email_ids:
             return jsonify({
                 'success': False,
-                'message': '邮箱不存在'
+                'message': f'邮箱不存在: {", ".join(map(str, missing_email_ids))}'
             })
         
-        # 更新卡密备注，记录绑定的邮箱
-        if app.config['DATABASE_TYPE'] == 'sqlite':
-            email_dict = dict(email)
-            new_remarks = f"绑定邮箱: {email_dict['email']}"
-            db.execute('UPDATE cards SET remarks = ? WHERE id = ?', (new_remarks, card_id))
-            db.commit()
-        else:
-            cursor = db.cursor()
-            # 获取邮箱信息
-            cursor.execute('SELECT email FROM mail_accounts WHERE id = %s', (email_id,))
-            email_address = cursor.fetchone()[0]
-            new_remarks = f"绑定邮箱: {email_address}"
-            cursor.execute('UPDATE cards SET remarks = %s WHERE id = %s', (new_remarks, card_id))
-            db.commit()
+        replace_card_email_bindings(db, app.config['DATABASE_TYPE'], card_id, email_ids)
+        db.commit()
         
         return jsonify({
             'success': True,
-            'message': '邮箱绑定成功'
+            'message': f'邮箱绑定成功，共绑定 {len(email_ids)} 个邮箱'
         })
         
     except Exception as e:
@@ -6677,7 +6931,7 @@ def _bind_email_to_card(db, data):
 @app.route('/admin/api/cards/<int:card_id>/available-emails', methods=['GET'])
 @admin_required
 def api_admin_card_available_emails(card_id):
-    """获取指定卡密可绑定的邮箱列表（排除已绑定的邮箱）- 支持分页和搜索"""
+    """获取指定卡密可绑定的邮箱列表 - 支持分页和搜索"""
     db = get_db()
     db_type = app.config['DATABASE_TYPE']
     
@@ -6698,27 +6952,24 @@ def api_admin_card_available_emails(card_id):
         
         offset = (page - 1) * per_page
         
-        # 构建查询条件 - 使用NOT EXISTS优化，比NOT IN性能更好
+        current_bound_mailboxes = fetch_card_bound_mailboxes(db, db_type, card_id)
+        current_bound_ids = {int(m['id']) for m in current_bound_mailboxes if m.get('id') is not None}
+
+        # 构建查询条件
         where_clause = ""
-        params = [card_id]
+        params = []
         
         if search:
             where_clause = "AND (m.email LIKE ? OR m.server LIKE ? OR m.remarks LIKE ?)"
             search_param = f"%{search}%"
             params.extend([search_param, search_param, search_param])
         
-        # 使用优化的查询 - 使用NOT EXISTS代替NOT IN以提升性能
         if db_type == 'sqlite':
             # 获取总数
             count_sql = f"""
                 SELECT COUNT(*) as count 
                 FROM mail_accounts m
                 WHERE m.status = 1 
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM cards 
-                    WHERE bound_email_id = m.id AND bound_email_id IS NOT NULL AND id != ?
-                )
                 {where_clause}
             """
             count_result = db.execute(count_sql, params).fetchone()
@@ -6730,11 +6981,6 @@ def api_admin_card_available_emails(card_id):
                        m.send_server, m.send_port, m.remarks, m.status
                 FROM mail_accounts m
                 WHERE m.status = 1 
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM cards 
-                    WHERE bound_email_id = m.id AND bound_email_id IS NOT NULL AND id != ?
-                )
                 {where_clause}
                 ORDER BY m.id ASC 
                 LIMIT ? OFFSET ?
@@ -6751,11 +6997,6 @@ def api_admin_card_available_emails(card_id):
                 SELECT COUNT(*) as count 
                 FROM mail_accounts m
                 WHERE m.status = 1 
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM cards 
-                    WHERE bound_email_id = m.id AND bound_email_id IS NOT NULL AND id != {placeholder}
-                )
                 {where_mysql}
             """
             cursor.execute(count_sql, params)
@@ -6767,11 +7008,6 @@ def api_admin_card_available_emails(card_id):
                        m.send_server, m.send_port, m.remarks, m.status
                 FROM mail_accounts m
                 WHERE m.status = 1 
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM cards 
-                    WHERE bound_email_id = m.id AND bound_email_id IS NOT NULL AND id != {placeholder}
-                )
                 {where_mysql}
                 ORDER BY m.id ASC 
                 LIMIT {per_page} OFFSET {offset}
@@ -6779,7 +7015,13 @@ def api_admin_card_available_emails(card_id):
             cursor.execute(sql, params)
             results = cursor.fetchall()
             columns = [desc[0] for desc in cursor.description]
-            available_emails = [dict(zip(columns, row)) for row in results]
+            available_emails = [_row_to_dict(row, columns) for row in results]
+
+        for email in available_emails:
+            try:
+                email['selected'] = int(email.get('id')) in current_bound_ids
+            except (TypeError, ValueError):
+                email['selected'] = False
         
         return jsonify({
             'success': True,
@@ -6911,28 +7153,59 @@ def api_admin_generate_card_api_page(card_key):
 </html>"""
             return error_content, 404, {'Content-Type': 'text/html; charset=utf-8'}
         
-        # 检查卡密是否已绑定邮箱且邮箱仍然存在
-        # bound_email_id might still have a value even if the mailbox was deleted
-        # So we need to check if the email field (from LEFT JOIN) is not None
-        has_bound_email = card_result.get('bound_email_id') is not None and card_result.get('email') is not None
-        bound_email = card_result.get('email') if has_bound_email else None
+        # 检查卡密是否已绑定邮箱且邮箱仍然存在（支持多邮箱绑定）
+        bound_mailboxes = fetch_card_bound_mailboxes(
+            db,
+            db_type,
+            card_result.get('id'),
+            card_result.get('bound_email_id')
+        )
+        bound_emails = [m.get('email') for m in bound_mailboxes if m.get('email')]
+        has_bound_email = len(bound_emails) > 0
+        bound_email = bound_emails[0] if has_bound_email else None
+        bound_emails_json = json.dumps(
+            [{'id': m.get('id'), 'email': m.get('email')} for m in bound_mailboxes if m.get('email')],
+            ensure_ascii=False
+        ).replace('</', '<\\/')
         
         # 根据绑定状态生成不同的API页面内容
         if has_bound_email:
-            # 已绑定邮箱：显示绑定的邮箱、复制按钮和获取邮件按钮
-            input_section = f"""
-            <div class="bound-email-section">
-                <div class="email-display-row">
-                    <div class="email-info">
-                        <span class="email-label">绑定邮箱：</span>
-                        <span class="email-address" id="boundEmailAddress">{bound_email}</span>
+            if len(bound_emails) == 1:
+                safe_bound_email = html.escape(bound_email, quote=True)
+                input_section = f"""
+                <div class="bound-email-section">
+                    <div class="email-display-row">
+                        <div class="email-info">
+                            <span class="email-label">绑定邮箱：</span>
+                            <span class="email-address" id="boundEmailAddress">{safe_bound_email}</span>
+                        </div>
+                        <button class="copy-btn" onclick="copyEmail()" title="复制邮箱地址">
+                            复制
+                        </button>
+                        <button class="get-mail-btn" onclick="getMail()">获取邮件</button>
                     </div>
-                    <button class="copy-btn" onclick="copyEmail()" title="复制邮箱地址">
-                        复制
-                    </button>
-                    <button class="get-mail-btn" onclick="getMail()">获取邮件</button>
-                </div>
-            </div>"""
+                </div>"""
+            else:
+                options_html = ''.join(
+                    f'<option value="{html.escape(email, quote=True)}">{html.escape(email)}</option>'
+                    for email in bound_emails
+                )
+                input_section = f"""
+                <div class="bound-email-section">
+                    <div class="email-display-row">
+                        <div class="email-info email-info-select">
+                            <span class="email-label">绑定邮箱：</span>
+                            <select id="boundEmailSelect" class="bound-email-select">
+                                {options_html}
+                            </select>
+                        </div>
+                        <button class="copy-btn" onclick="copyEmail()" title="复制当前邮箱地址">
+                            复制
+                        </button>
+                        <button class="get-mail-btn" onclick="getMail()">获取邮件</button>
+                    </div>
+                    <p class="info-text" style="margin-top: 10px;">此卡密已绑定 {len(bound_emails)} 个邮箱，请选择要查询的邮箱。</p>
+                </div>"""
         else:
             # 未绑定邮箱：页面仅有输入框和"获取邮件"按钮
             input_section = f"""
@@ -7128,6 +7401,22 @@ def api_admin_generate_card_api_page(card_key):
             border-radius: 6px;
             font-family: 'Courier New', monospace;
             font-size: 14px;
+        }}
+
+        .email-info-select {{
+            align-items: center;
+            gap: 12px;
+        }}
+
+        .bound-email-select {{
+            min-width: 280px;
+            flex: 1;
+            padding: 11px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+            color: #111827;
+            font-size: 15px;
         }}
         
         .info-text {{
@@ -7637,12 +7926,26 @@ def api_admin_generate_card_api_page(card_key):
     
     <script>
         // 检查是否已绑定邮箱
-        const hasBoundEmail = {str(has_bound_email).lower()};
-        const boundEmail = "{bound_email if bound_email else ''}";
+        const boundEmails = {bound_emails_json};
+        const hasBoundEmail = boundEmails.length > 0;
+        const boundEmail = boundEmails.length === 1 ? boundEmails[0].email : "";
+
+        function getSelectedBoundEmail() {{
+            if (!hasBoundEmail) return "";
+            const select = document.getElementById('boundEmailSelect');
+            if (select) {{
+                return select.value.trim();
+            }}
+            return boundEmail;
+        }}
         
         // 复制邮箱地址功能
         function copyEmail() {{
-            const email = document.getElementById('boundEmailAddress').textContent;
+            const email = getSelectedBoundEmail();
+            if (!email) {{
+                showToast('请选择邮箱地址', 'error');
+                return;
+            }}
             
             // 创建临时文本区域
             const textArea = document.createElement('textarea');
@@ -7720,8 +8023,12 @@ def api_admin_generate_card_api_page(card_key):
             let email;
             
             if (hasBoundEmail) {{
-                // 已绑定邮箱，直接使用绑定的邮箱
-                email = boundEmail;
+                // 已绑定邮箱，使用当前选中的绑定邮箱
+                email = getSelectedBoundEmail();
+                if (!email) {{
+                    showToast('请选择邮箱地址', 'error');
+                    return;
+                }}
             }} else {{
                 // 未绑定邮箱，从输入框获取
                 const emailInput = document.getElementById('emailInput');

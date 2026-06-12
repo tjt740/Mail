@@ -1066,6 +1066,49 @@
         text-align: center;
         flex-shrink: 0;
     }
+
+    .bound-email-picker {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .selected-email-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+        min-height: 24px;
+    }
+
+    .selected-email-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 100%;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #334155;
+        font-size: 12px;
+        line-height: 1.2;
+    }
+
+    .selected-email-tag button {
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .email-selection-footer-info {
+        margin-right: auto;
+        color: #64748b;
+        font-size: 14px;
+    }
     
     .email-list-item {
         padding: 12px 15px;
@@ -1078,6 +1121,10 @@
     
     .email-list-item:hover {
         background: #f9fafb;
+    }
+
+    .email-list-item.selected {
+        background: #f0fdf4;
     }
     
     .email-list-item:last-child {
@@ -1123,6 +1170,20 @@
     
     .email-list-item-select-btn:hover {
         background: var(--secondary-color);
+    }
+
+    .email-list-item-select-btn.selected {
+        background: #4f8a5b;
+    }
+
+    @media (max-width: 768px) {
+        .bound-email-picker {
+            grid-template-columns: 1fr;
+        }
+
+        .bound-email-picker .btn {
+            width: 100%;
+        }
     }
 
 </style>
@@ -1407,11 +1468,13 @@
                     <div class="form-group">
                         <label class="form-label">绑定邮箱</label>
                         <input type="hidden" name="bound_email_id" id="editBoundEmailId">
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <input type="text" class="form-control" id="editBoundEmailDisplay" readonly placeholder="点击选择按钮选择邮箱" style="flex: 1; cursor: pointer;" onclick="openEmailSelectionModal()">
+                        <input type="hidden" name="bound_email_ids" id="editBoundEmailIds">
+                        <div class="bound-email-picker">
+                            <input type="text" class="form-control" id="editBoundEmailDisplay" readonly placeholder="点击选择按钮选择一个或多个邮箱" style="cursor: pointer;" onclick="openEmailSelectionModal()">
                             <button type="button" class="btn btn-primary" onclick="openEmailSelectionModal()" style="white-space: nowrap;">选择邮箱</button>
                             <button type="button" class="btn btn-danger" onclick="clearEmailSelection()" style="white-space: nowrap;">清除</button>
                         </div>
+                        <div class="selected-email-tags" id="selectedEmailTags"></div>
                     </div>
                     
                     <div class="form-group">
@@ -1479,7 +1542,9 @@
                 </div>
             </div>
             <div class="modal-footer">
+                <div class="email-selection-footer-info" id="emailSelectionFooterInfo">已选择 0 个邮箱</div>
                 <button type="button" class="btn btn-secondary" onclick="closeModal('emailSelectionModal')">取消</button>
+                <button type="button" class="btn btn-primary" onclick="confirmEmailSelection()">确定选择</button>
             </div>
         </div>
     </div>
@@ -1962,9 +2027,13 @@
 
     // 从卡密数据中获取绑定邮箱信息
     function getBoundEmailInfo(card) {
+        if (Array.isArray(card.bound_emails) && card.bound_emails.length > 0) {
+            return card.bound_emails;
+        }
+
         // 优先使用后端返回的bound_email字段（实际邮箱地址）
         if (card.bound_email) {
-            return card.bound_email;
+            return [card.bound_email];
         }
         
         // 兼容性：如果有绑定邮箱ID但没有邮箱地址，尝试从下拉框中查找
@@ -1973,24 +2042,27 @@
             if (emailSelect) {
                 for (let option of emailSelect.options) {
                     if (option.value == card.bound_email_id) {
-                        return option.textContent.split(' ')[0]; // 只返回邮箱地址部分
+                        return [option.textContent.split(' ')[0]]; // 只返回邮箱地址部分
                     }
                 }
             }
             // 如果找不到对应的邮箱（可能已被删除），显示为未绑定状态
-            return '-';
+            return [];
         }
         
         // 兼容旧版本的备注绑定方式
-        return getBoundEmail(card.remarks);
+        const legacyEmail = getBoundEmail(card.remarks);
+        return legacyEmail ? [legacyEmail] : [];
     }
 
     // 渲染绑定邮箱单元格（带复制按钮）
     function renderBoundEmailCell(card) {
-        const email = getBoundEmailInfo(card);
-        if (!email || email === '-') return '-';
+        const emails = getBoundEmailInfo(card);
+        if (!emails || emails.length === 0) return '-';
+        const title = emails.join('，');
+        const display = emails.length > 1 ? `${emails[0]} +${emails.length - 1}` : emails[0];
         return `<div style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;">
-            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(email)}">${escapeHtml(email)}</span>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(title)}">${escapeHtml(display)}</span>
             <button class="btn btn-sm" onclick="copyBoundEmail(${card.id})"
                     title="复制邮箱" style="padding: 2px 6px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; font-size: 11px;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span></button>
         </div>`;
@@ -2000,9 +2072,9 @@
     function copyBoundEmail(cardId) {
         const card = allCards.find(c => c.id === cardId);
         if (!card) return;
-        const email = getBoundEmailInfo(card);
-        if (email && email !== '-') {
-            copyToClipboard(email);
+        const emails = getBoundEmailInfo(card);
+        if (emails && emails.length) {
+            copyToClipboard(emails.join('\n'));
         }
     }
 
@@ -2455,22 +2527,7 @@
             });
         }
         
-        // 更新编辑弹窗中的选择器
-        const editEmailSelect = document.getElementById('editBoundEmailId');
-        if (editEmailSelect) {
-            const currentValue = editEmailSelect.value; // 保存当前值
-            editEmailSelect.innerHTML = '<option value="">请选择邮箱账号</option>';
-            emails.forEach(email => {
-                const option = document.createElement('option');
-                option.value = email.id;
-                option.textContent = `${email.email} (${email.server})`;
-                editEmailSelect.appendChild(option);
-            });
-            // 恢复当前值（如果还存在）
-            if (currentValue) {
-                editEmailSelect.value = currentValue;
-            }
-        }
+        // 编辑弹窗现在使用多邮箱选择器，隐藏字段由选择器状态同步。
     }
     
     // 全局变量用于存储邮箱和分组数据
@@ -2478,6 +2535,70 @@
     let allMailboxGroups = [];
     let allMailboxGroupMappings = [];
     let collapsedGroupsInModal = {}; // 跟踪模态框中折叠的分组
+    let selectedMailboxBindings = new Map();
+    let currentRenderedMailboxes = [];
+
+    function setSelectedMailboxBindingsFromCard(card) {
+        selectedMailboxBindings = new Map();
+        const ids = Array.isArray(card.bound_email_ids)
+            ? card.bound_email_ids
+            : (card.bound_email_id ? [card.bound_email_id] : []);
+        const emails = Array.isArray(card.bound_emails)
+            ? card.bound_emails
+            : (card.bound_email ? [card.bound_email] : []);
+        ids.forEach((id, index) => {
+            const mailboxId = parseInt(id, 10);
+            if (mailboxId) {
+                selectedMailboxBindings.set(mailboxId, emails[index] || `邮箱ID ${mailboxId}`);
+            }
+        });
+        updateBoundEmailDisplay();
+    }
+
+    function getSelectedBoundEmailIds() {
+        return Array.from(selectedMailboxBindings.keys());
+    }
+
+    function updateBoundEmailDisplay() {
+        const ids = getSelectedBoundEmailIds();
+        const emails = Array.from(selectedMailboxBindings.values());
+        const idInput = document.getElementById('editBoundEmailId');
+        const idsInput = document.getElementById('editBoundEmailIds');
+        const display = document.getElementById('editBoundEmailDisplay');
+        const tags = document.getElementById('selectedEmailTags');
+        if (idInput) idInput.value = ids[0] || '';
+        if (idsInput) idsInput.value = ids.join(',');
+        if (display) {
+            display.value = emails.length
+                ? `已选择 ${emails.length} 个邮箱：${emails.slice(0, 3).join('，')}${emails.length > 3 ? '...' : ''}`
+                : '';
+        }
+        if (tags) {
+            tags.innerHTML = emails.length ? emails.map((email, index) => {
+                const id = ids[index];
+                return `<span class="selected-email-tag" title="${escapeHtml(email)}">
+                    <span>${escapeHtml(email)}</span>
+                    <button type="button" onclick="removeSelectedEmail(${id})" aria-label="移除 ${escapeHtml(email)}">×</button>
+                </span>`;
+            }).join('') : '<span style="color:#94a3b8; font-size:12px;">未绑定邮箱</span>';
+        }
+        renderSelectedEmailSummary();
+    }
+
+    function renderSelectedEmailSummary() {
+        const footerInfo = document.getElementById('emailSelectionFooterInfo');
+        if (footerInfo) {
+            footerInfo.textContent = `已选择 ${selectedMailboxBindings.size} 个邮箱`;
+        }
+    }
+
+    function removeSelectedEmail(mailboxId) {
+        selectedMailboxBindings.delete(parseInt(mailboxId, 10));
+        updateBoundEmailDisplay();
+        if (document.getElementById('emailSelectionModal')?.classList.contains('show')) {
+            renderEmailList(currentRenderedMailboxes);
+        }
+    }
 
     // 打开邮箱选择模态框（优化版 - 按需加载）
     async function openEmailSelectionModal() {
@@ -2489,8 +2610,7 @@
                 return;
             }
             
-            // Load groups and available emails for this card
-            // Note: available-emails endpoint filters out bound mailboxes, so the result set is typically much smaller
+            // Load groups and mailboxes for this card
             const [groupsResponse, availableEmailsResponse] = await Promise.all([
                 fetch('/admin/api/mailbox-groups'),
                 fetch(`/admin/api/cards/${cardId}/available-emails?per_page=10000`)
@@ -2500,10 +2620,17 @@
             const availableEmailsData = await availableEmailsResponse.json();
             
             if (groupsData.success && availableEmailsData.success) {
-                // Store available emails only (excluding bound ones)
+                // Store all selectable emails
                 allMailboxes = availableEmailsData.data || [];
                 allMailboxGroups = groupsData.groups || [];
                 allMailboxGroupMappings = groupsData.mappings || [];
+
+                allMailboxes.forEach(mailbox => {
+                    const mailboxId = parseInt(mailbox.id, 10);
+                    if (mailbox.selected && mailboxId && !selectedMailboxBindings.has(mailboxId)) {
+                        selectedMailboxBindings.set(mailboxId, mailbox.email);
+                    }
+                });
                 
                 // Check if we hit the page limit and warn user
                 if (availableEmailsData.pagination && 
@@ -2511,10 +2638,10 @@
                     showToast('注意：可用邮箱数量较多，可能未完全加载。请使用搜索功能。', 'warning');
                 }
                 
-                // Filter mappings to only include available mailboxes
-                const availableMailboxIds = new Set(allMailboxes.map(m => m.id));
+                // Filter mappings to only include loaded mailboxes
+                const availableMailboxIds = new Set(allMailboxes.map(m => String(m.id)));
                 allMailboxGroupMappings = allMailboxGroupMappings.filter(m => 
-                    availableMailboxIds.has(m.mailbox_id)
+                    availableMailboxIds.has(String(m.mailbox_id))
                 );
                 
                 // 初始化所有分组为折叠状态
@@ -2523,12 +2650,11 @@
                     collapsedGroupsInModal[group.id] = true;
                 });
                 
+                selectedGroupIdInModal = 'ALL';
                 renderEmailGroups();
                 document.getElementById('emailSelectionModal').classList.add('show');
-                
-                // 显示提示信息
-                const emailListContainer = document.getElementById('emailListContainer');
-                emailListContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: #6b7280;"><div style="font-size: 16px; margin-bottom: 10px;"><span class=\"anticon\"><svg aria-hidden=\"true\"><use href=\"#ai-bulb\"></use></svg></span> 选择邮箱</div><div>请使用搜索框搜索邮箱，或点击左侧分组查看可用邮箱列表</div><div style="margin-top: 10px; font-size: 14px; color: #ef4444;">注意：已绑定到其他卡密的邮箱不会显示</div></div>';
+                renderSelectedEmailSummary();
+                selectGroupInModal('ALL');
             } else {
                 showToast('加载邮箱数据失败', 'error');
             }
@@ -2552,7 +2678,7 @@
         // 创建分组ID到邮箱数量的映射（不加载实际邮箱数据）
         const groupMailboxCount = new Map();
         allMailboxGroupMappings.forEach(mapping => {
-            const groupId = mapping.group_id;
+            const groupId = String(mapping.group_id);
             groupMailboxCount.set(groupId, (groupMailboxCount.get(groupId) || 0) + 1);
         });
         
@@ -2561,7 +2687,7 @@
         
         // 添加"所有分组"选项 - 点击时加载所有邮箱
         const allGroupItem = document.createElement('div');
-        allGroupItem.className = 'group-list-item active';
+        allGroupItem.className = selectedGroupIdInModal === 'ALL' ? 'group-list-item active' : 'group-list-item';
         allGroupItem.dataset.groupId = 'ALL';
         allGroupItem.textContent = `所有分组`;
         allGroupItem.onclick = function() {
@@ -2571,7 +2697,7 @@
         
         // 添加"未分组"选项
         const ungroupedItem = document.createElement('div');
-        ungroupedItem.className = 'group-list-item';
+        ungroupedItem.className = selectedGroupIdInModal === 'UNGROUPED' ? 'group-list-item active' : 'group-list-item';
         ungroupedItem.dataset.groupId = 'UNGROUPED';
         ungroupedItem.textContent = `未分组`;
         ungroupedItem.onclick = function() {
@@ -2580,7 +2706,7 @@
         groupsListContainer.appendChild(ungroupedItem);
         
         // 渲染根级分组
-        const rootGroups = allMailboxGroups.filter(g => !g.parent_id || g.parent_id === null);
+        const rootGroups = allMailboxGroups.filter(g => !g.parent_id || g.parent_id === null || String(g.parent_id) === '0');
         rootGroups.forEach(group => {
             renderGroupInList(groupsListContainer, group, groupMailboxCount, 0);
         });
@@ -2588,14 +2714,15 @@
     
     // 递归渲染分组列表项 - 优化版（只显示计数）
     function renderGroupInList(container, group, groupMailboxCount, level) {
-        const mailboxCount = groupMailboxCount.get(group.id) || 0;
-        const subGroups = allMailboxGroups.filter(g => g.parent_id === group.id);
+        const groupIdText = String(group.id);
+        const mailboxCount = groupMailboxCount.get(groupIdText) || 0;
+        const subGroups = allMailboxGroups.filter(g => String(g.parent_id) === groupIdText);
         const hasChildren = subGroups.length > 0;
         
         // 递归计算总邮箱数
         function countTotalMailboxes(groupId) {
-            const directCount = groupMailboxCount.get(groupId) || 0;
-            const children = allMailboxGroups.filter(g => g.parent_id === groupId);
+            const directCount = groupMailboxCount.get(String(groupId)) || 0;
+            const children = allMailboxGroups.filter(g => String(g.parent_id) === String(groupId));
             const childrenCount = children.reduce((sum, child) => sum + countTotalMailboxes(child.id), 0);
             return directCount + childrenCount;
         }
@@ -2607,8 +2734,8 @@
         
         // 创建分组项
         const groupItem = document.createElement('div');
-        groupItem.className = level > 0 ? 'group-list-item subgroup-item' : 'group-list-item';
-        groupItem.dataset.groupId = group.id;
+        groupItem.className = `${level > 0 ? 'group-list-item subgroup-item' : 'group-list-item'}${String(selectedGroupIdInModal) === groupIdText ? ' active' : ''}`;
+        groupItem.dataset.groupId = groupIdText;
         
         // 添加展开/折叠按钮
         const toggle = document.createElement('span');
@@ -2677,24 +2804,26 @@
                 mailboxes = allMailboxes;
             } else if (groupId === 'UNGROUPED') {
                 // 显示未分组的可用邮箱
-                const groupedIds = new Set(allMailboxGroupMappings.map(m => m.mailbox_id));
-                mailboxes = allMailboxes.filter(m => !groupedIds.has(m.id));
+                const groupedIds = new Set(allMailboxGroupMappings.map(m => String(m.mailbox_id)));
+                mailboxes = allMailboxes.filter(m => !groupedIds.has(String(m.id)));
             } else {
                 // 显示特定分组的可用邮箱
                 // 获取该分组及所有子分组的ID
                 function getAllSubGroupIds(gid) {
-                    const subGroups = allMailboxGroups.filter(g => g.parent_id === gid);
-                    let ids = [gid];
+                    const gidText = String(gid);
+                    const subGroups = allMailboxGroups.filter(g => String(g.parent_id) === gidText);
+                    let ids = [gidText];
                     subGroups.forEach(sg => {
                         ids = ids.concat(getAllSubGroupIds(sg.id));
                     });
                     return ids;
                 }
                 const groupIds = getAllSubGroupIds(groupId);
+                const groupIdSet = new Set(groupIds.map(String));
                 const mailboxIds = new Set(allMailboxGroupMappings
-                    .filter(m => groupIds.includes(m.group_id))
-                    .map(m => m.mailbox_id));
-                mailboxes = allMailboxes.filter(m => mailboxIds.has(m.id));
+                    .filter(m => groupIdSet.has(String(m.group_id)))
+                    .map(m => String(m.mailbox_id)));
+                mailboxes = allMailboxes.filter(m => mailboxIds.has(String(m.id)));
             }
             
             renderEmailList(mailboxes);
@@ -2708,10 +2837,11 @@
     function renderEmailList(mailboxes) {
         const container = document.getElementById('emailListContainer');
         if (!container) return;
+        currentRenderedMailboxes = mailboxes || [];
         
         container.innerHTML = '';
         
-        if (mailboxes.length === 0) {
+        if (currentRenderedMailboxes.length === 0) {
             container.innerHTML = '<div style="padding: 20px; text-align: center; color: #6b7280;">该分组暂无邮箱</div>';
             return;
         }
@@ -2738,9 +2868,11 @@
         container.appendChild(header);
         
         // 创建邮箱列表项
-        mailboxes.forEach(mailbox => {
+        currentRenderedMailboxes.forEach(mailbox => {
+            const mailboxId = parseInt(mailbox.id, 10);
+            const isSelected = selectedMailboxBindings.has(mailboxId);
             const item = document.createElement('div');
-            item.className = 'email-list-item';
+            item.className = `email-list-item${isSelected ? ' selected' : ''}`;
             item.dataset.email = mailbox.email;
             item.dataset.id = mailbox.id;
             
@@ -2758,8 +2890,8 @@
             
             // 选择按钮
             const selectBtn = document.createElement('button');
-            selectBtn.className = 'email-list-item-select-btn';
-            selectBtn.textContent = '选择';
+            selectBtn.className = `email-list-item-select-btn${isSelected ? ' selected' : ''}`;
+            selectBtn.textContent = isSelected ? '已选择' : '选择';
             selectBtn.dataset.mailboxId = mailbox.id;
             selectBtn.dataset.mailboxEmail = mailbox.email;
             selectBtn.onclick = function() {
@@ -2780,11 +2912,30 @@
     async function openQuickBindEmailModal(cardId) {
         quickBindMode = true;
         document.getElementById('editCardId').value = cardId;
+        const card = allCards.find(c => c.id === cardId);
+        if (card) {
+            setSelectedMailboxBindingsFromCard(card);
+        } else {
+            selectedMailboxBindings = new Map();
+            updateBoundEmailDisplay();
+        }
         await openEmailSelectionModal();
     }
 
     // 选择邮箱
     function selectEmail(mailboxId, emailAddress) {
+        mailboxId = parseInt(mailboxId, 10);
+        if (!mailboxId) return;
+        if (selectedMailboxBindings.has(mailboxId)) {
+            selectedMailboxBindings.delete(mailboxId);
+        } else {
+            selectedMailboxBindings.set(mailboxId, emailAddress);
+        }
+        renderSelectedEmailSummary();
+        renderEmailList(currentRenderedMailboxes);
+    }
+
+    function confirmEmailSelection() {
         if (quickBindMode) {
             // 快速绑定模式：直接调用 API 保存并刷新列表
             const cardId = parseInt(document.getElementById('editCardId').value);
@@ -2800,7 +2951,8 @@
                 usage_limit: card.usage_limit,
                 expired_at: card.expired_at || null,
                 remarks: getCardRemarks(card.remarks) || '',
-                bound_email_id: mailboxId,
+                bound_email_id: getSelectedBoundEmailIds()[0] || null,
+                bound_email_ids: getSelectedBoundEmailIds(),
                 email_days_filter: card.email_days_filter || 1,
                 keyword_filter: card.keyword_filter || ''
             };
@@ -2812,7 +2964,7 @@
             .then(response => response.json())
             .then(resp => {
                 if (resp.success) {
-                    showToast('邮箱绑定成功', 'success');
+                    showToast(`邮箱绑定成功，共绑定 ${selectedMailboxBindings.size} 个邮箱`, 'success');
                     closeModal('emailSelectionModal');
                     refreshCardList();
                 } else {
@@ -2828,17 +2980,19 @@
             });
         } else {
             // 普通模式：填充编辑表单
-            document.getElementById('editBoundEmailId').value = mailboxId;
-            document.getElementById('editBoundEmailDisplay').value = emailAddress;
+            updateBoundEmailDisplay();
             closeModal('emailSelectionModal');
-            showToast('邮箱已选择', 'success');
+            showToast(`已选择 ${selectedMailboxBindings.size} 个邮箱`, 'success');
         }
     }
     
     // 清除邮箱选择
     function clearEmailSelection() {
-        document.getElementById('editBoundEmailId').value = '';
-        document.getElementById('editBoundEmailDisplay').value = '';
+        selectedMailboxBindings.clear();
+        updateBoundEmailDisplay();
+        if (document.getElementById('emailSelectionModal')?.classList.contains('show')) {
+            renderEmailList(currentRenderedMailboxes);
+        }
         showToast('已清除邮箱选择', 'success');
     }
     
@@ -2910,8 +3064,7 @@
         document.getElementById('editUsageLimit').value = card.usage_limit || 1;
         document.getElementById('editExpiredAt').value = card.expired_at || '';
         document.getElementById('editRemarks').value = getCardRemarks(card.remarks) || '';
-        document.getElementById('editBoundEmailId').value = card.bound_email_id || '';
-        document.getElementById('editBoundEmailDisplay').value = card.bound_email || '';
+        setSelectedMailboxBindingsFromCard(card);
         document.getElementById('editEmailDaysFilter').value = card.email_days_filter || 1;
         document.getElementById('editKeywordFilter').value = card.keyword_filter || '';
         
@@ -2943,7 +3096,8 @@
             usage_limit: parseInt(formData.get('usage_limit')),
             expired_at: expired_at,
             remarks: formData.get('remarks') || '',
-            bound_email_id: formData.get('bound_email_id') ? parseInt(formData.get('bound_email_id')) : null,
+            bound_email_id: getSelectedBoundEmailIds()[0] || null,
+            bound_email_ids: getSelectedBoundEmailIds(),
             email_days_filter: parseInt(formData.get('email_days_filter')) || 1,
             keyword_filter: formData.get('keyword_filter') || ''
         };
