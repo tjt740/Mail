@@ -90,6 +90,7 @@
             '复制失败，请手动复制': 'Copy failed, please copy manually',
             '邮箱地址已复制': 'Email address copied',
             '已复制邮箱地址': 'Email address copied',
+            '复制邮箱': 'Copy Mailbox',
             '请选择要复制的邮箱': 'Please select mailboxes to copy',
 
             '系统概览': 'System Overview',
@@ -456,6 +457,7 @@
             '复制失败，请手动复制': 'Sao chép thất bại, vui lòng sao chép thủ công',
             '邮箱地址已复制': 'Đã sao chép địa chỉ email',
             '已复制邮箱地址': 'Đã sao chép địa chỉ email',
+            '复制邮箱': 'Sao chép hộp thư',
             '请选择要复制的邮箱': 'Vui lòng chọn hộp thư cần sao chép',
 
             '系统概览': 'Tổng quan hệ thống',

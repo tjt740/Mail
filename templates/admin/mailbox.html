@@ -1248,8 +1248,17 @@
         vertical-align: middle;
     }
 
+    .mailbox-email-content {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        min-width: 0;
+    }
+
     .mailbox-email-text {
         display: block;
+        flex: 1 1 auto;
+        min-width: 0;
         max-width: 100%;
         padding: 4px 8px;
         margin: -4px -8px;
@@ -1263,7 +1272,27 @@
         transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
     }
 
-    .mailbox-email-cell:hover .mailbox-email-text {
+    .mailbox-email-copy {
+        flex: 0 0 auto;
+        width: 28px;
+        height: 28px;
+        border: 1px solid var(--border, #e7e4db);
+        border-radius: 8px;
+        background: #fff;
+        color: #6b7280;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: copy;
+        transition: var(--transition);
+    }
+
+    .mailbox-email-copy .anticon {
+        font-size: 14px;
+    }
+
+    .mailbox-email-cell:hover .mailbox-email-text,
+    .mailbox-email-copy:hover {
         color: var(--primary-color);
         background: rgba(201, 100, 66, 0.08) !important;
         box-shadow: inset 0 -2px 0 rgba(201, 100, 66, 0.42);
@@ -1478,6 +1507,39 @@
         max-height: 72px;
         overflow: auto;
         line-height: 1.35;
+    }
+
+    .receive-mailbox-copy-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .receive-mailbox-copy-row .receive-mailbox-value {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .receive-copy-btn {
+        flex: 0 0 auto;
+        width: 34px;
+        height: 34px;
+        border: 1px solid #e5e7eb;
+        border-radius: 9px;
+        background: #fff;
+        color: #6b7280;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: copy;
+        transition: var(--transition);
+    }
+
+    .receive-copy-btn:hover {
+        color: var(--primary-color);
+        border-color: var(--primary-color);
+        background: rgba(201, 100, 66, 0.08);
     }
 
     .receive-sidebar .btn {
@@ -2898,7 +2960,12 @@
             <div class="receive-sidebar">
                 <div>
                     <div class="receive-mailbox-label">当前邮箱</div>
-                    <div class="receive-mailbox-value" id="receiveMailboxLabel">-</div>
+                    <div class="receive-mailbox-copy-row">
+                        <div class="receive-mailbox-value" id="receiveMailboxLabel">-</div>
+                        <button class="receive-copy-btn" type="button" onclick="copyCurrentReceiveMailbox()" title="复制邮箱" aria-label="复制邮箱">
+                            <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span>
+                        </button>
+                    </div>
                 </div>
                 <div>
                     <div class="receive-mailbox-label">收取<span id="emailCountDisplay">10</span>封</div>
@@ -3914,7 +3981,14 @@
             case 'group':
                 return `<td class="mailbox-col-group" data-label="${label}">${escapeHtml(getMailboxGroupName(mailbox))}</td>`;
             case 'email':
-                return `<td class="mailbox-col-email mailbox-email-cell" data-label="${label}" data-email="${escapeAttribute(mailbox.email)}" data-mailbox-id="${mailbox.id}" title="点击复制邮箱"><span class="mailbox-email-text">${escapeHtml(mailbox.email)}</span></td>`;
+                return `<td class="mailbox-col-email mailbox-email-cell" data-label="${label}" data-email="${escapeAttribute(mailbox.email)}" data-mailbox-id="${mailbox.id}" title="点击复制邮箱">
+                    <span class="mailbox-email-content">
+                        <span class="mailbox-email-text">${escapeHtml(mailbox.email)}</span>
+                        <button class="mailbox-email-copy" type="button" title="复制邮箱" aria-label="复制邮箱">
+                            <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span>
+                        </button>
+                    </span>
+                </td>`;
             case 'created_by_admin': {
                 const ownerName = getMailboxOwnerName(mailbox);
                 const isUnknown = !String(mailbox.created_by_admin || '').trim();
@@ -5167,6 +5241,7 @@
         const label = document.getElementById('receiveMailboxLabel');
         if (label) {
             label.textContent = mailbox ? mailbox.email : `ID ${mailboxId}`;
+            label.dataset.email = mailbox ? mailbox.email : '';
         }
         setReceiveError('');
         document.getElementById('receiveModal').classList.add('show');
@@ -6273,6 +6348,12 @@
         } else {
             showToast('复制失败，请手动复制', 'error');
         }
+    }
+
+    async function copyCurrentReceiveMailbox() {
+        const label = document.getElementById('receiveMailboxLabel');
+        const email = label?.dataset.email || label?.textContent || '';
+        await copyMailboxEmail(email, receiveState.mailboxId);
     }
 
     async function copySelectedMailboxes() {
