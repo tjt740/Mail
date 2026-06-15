@@ -337,18 +337,58 @@
     }
 
     .log-toolbar {
-        display: grid;
-        grid-template-columns: minmax(220px, 1fr) 160px 160px auto auto auto;
+        display: flex;
+        flex-wrap: wrap;
         gap: 12px;
         align-items: center;
         margin-bottom: 16px;
+    }
+
+    .log-toolbar .log-search-input {
+        flex: 1 1 280px;
+        min-width: 200px;
+    }
+
+    .log-toolbar select.form-control {
+        flex: 0 1 170px;
+        min-width: 140px;
+    }
+
+    .log-toolbar-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-left: auto;
+    }
+
+    .bulk-filter-toggle.active {
+        background: rgba(102, 126, 234, 0.12);
+        color: var(--primary-color);
+    }
+
+    .bulk-filter-toggle .toggle-caret {
+        display: inline-block;
+        margin-left: 6px;
+        font-size: 11px;
+        transition: transform 0.2s ease;
+    }
+
+    .bulk-filter-toggle.active .toggle-caret {
+        transform: rotate(180deg);
+    }
+
+    .bulk-filter-panel {
+        margin: -4px 0 16px;
+    }
+
+    .bulk-filter-panel[hidden] {
+        display: none;
     }
 
     .bulk-filter-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(180px, 1fr));
         gap: 10px;
-        margin: -4px 0 16px;
     }
 
     .bulk-filter {
@@ -862,14 +902,6 @@
             grid-template-columns: repeat(2, minmax(180px, 1fr));
         }
 
-        .log-toolbar {
-            grid-template-columns: minmax(260px, 1fr) minmax(150px, 180px) minmax(150px, 180px);
-        }
-
-        .log-toolbar .btn {
-            width: 100%;
-        }
-
         .bulk-filter-grid {
             grid-template-columns: repeat(2, minmax(220px, 1fr));
         }
@@ -889,23 +921,28 @@
     }
 
     @media (max-width: 900px) {
-        .log-toolbar {
-            grid-template-columns: 1fr 1fr;
+        .log-toolbar .log-search-input {
+            flex: 1 1 100%;
         }
 
-        .log-toolbar .log-filter-control,
+        .log-toolbar select.form-control {
+            flex: 1 1 calc(50% - 6px);
+        }
+
+        .log-toolbar-actions {
+            margin-left: 0;
+            width: 100%;
+        }
+
+        .log-toolbar-actions .btn {
+            flex: 1 1 auto;
+            justify-content: center;
+        }
+
         .bulk-filter-grid,
         .poller-status,
         .log-group-summary {
             grid-template-columns: 1fr;
-        }
-
-        .log-toolbar .log-filter-control {
-            grid-column: 1 / -1;
-        }
-
-        .bulk-filter-grid {
-            display: grid;
         }
 
         .log-group-counts {
@@ -1173,10 +1210,6 @@
             grid-template-columns: repeat(2, minmax(120px, 1fr));
         }
 
-        .log-toolbar {
-            grid-template-columns: 1fr;
-        }
-
         .bulk-filter-grid {
             grid-template-columns: 1fr;
         }
@@ -1437,7 +1470,7 @@
                 </div>
 
                 <div class="log-toolbar">
-                    <input type="text" class="form-control log-filter-control" id="logSearch" placeholder="关键词：邮箱、主题、发件人、正文">
+                    <input type="text" class="form-control log-filter-control log-search-input" id="logSearch" placeholder="关键词：邮箱、主题、发件人、正文">
                     <select class="form-control" id="statusFilter">
                         <option value="">全部状态</option>
                         <option value="received">成功</option>
@@ -1447,14 +1480,19 @@
                     <select class="form-control" id="adminFilter">
                         <option value="">全部管理员</option>
                     </select>
-                    <button class="btn btn-secondary" type="button" onclick="loadMailLogs(1)"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 查询</button>
-                    <button class="btn btn-secondary" type="button" onclick="clearLogFilters()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-clear"></use></svg></span> 清空</button>
-                    <button class="btn btn-primary" type="button" id="pollNowBtn" onclick="triggerMailPoll()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-sync"></use></svg></span> 立即查询</button>
+                    <div class="log-toolbar-actions">
+                        <button class="btn btn-secondary" type="button" onclick="loadMailLogs(1)"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 查询</button>
+                        <button class="btn btn-secondary" type="button" onclick="clearLogFilters()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-clear"></use></svg></span> 清空</button>
+                        <button class="btn btn-secondary bulk-filter-toggle" type="button" id="bulkFilterToggle" aria-expanded="false" aria-controls="bulkFilterPanel" onclick="toggleBulkFilter()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量筛选<span class="toggle-caret">▾</span></button>
+                        <button class="btn btn-primary" type="button" id="pollNowBtn" onclick="triggerMailPoll()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-sync"></use></svg></span> 立即查询</button>
+                    </div>
                 </div>
-                <div class="bulk-filter-grid">
-                    <textarea class="form-control bulk-filter log-filter-control" id="emailFilters" rows="2" placeholder="批量邮箱筛选：每行或逗号分隔多个邮箱"></textarea>
-                    <textarea class="form-control bulk-filter log-filter-control" id="subjectFilters" rows="2" placeholder="批量主题筛选：每行或逗号分隔多个关键词"></textarea>
-                    <textarea class="form-control bulk-filter log-filter-control" id="senderFilters" rows="2" placeholder="批量发件人筛选：每行或逗号分隔多个发件人"></textarea>
+                <div class="bulk-filter-panel" id="bulkFilterPanel" hidden>
+                    <div class="bulk-filter-grid">
+                        <textarea class="form-control bulk-filter log-filter-control" id="emailFilters" rows="2" placeholder="批量邮箱筛选：每行或逗号分隔多个邮箱"></textarea>
+                        <textarea class="form-control bulk-filter log-filter-control" id="subjectFilters" rows="2" placeholder="批量主题筛选：每行或逗号分隔多个关键词"></textarea>
+                        <textarea class="form-control bulk-filter log-filter-control" id="senderFilters" rows="2" placeholder="批量发件人筛选：每行或逗号分隔多个发件人"></textarea>
+                    </div>
                 </div>
 
                 <div class="poller-status" id="pollerStatus">
@@ -2125,6 +2163,22 @@
         }
     }
 
+    function toggleBulkFilter(force) {
+        const panel = document.getElementById('bulkFilterPanel');
+        const toggle = document.getElementById('bulkFilterToggle');
+        if (!panel) return;
+        const expand = typeof force === 'boolean' ? force : panel.hasAttribute('hidden');
+        if (expand) {
+            panel.removeAttribute('hidden');
+        } else {
+            panel.setAttribute('hidden', '');
+        }
+        if (toggle) {
+            toggle.classList.toggle('active', expand);
+            toggle.setAttribute('aria-expanded', String(expand));
+        }
+    }
+
     function clearLogFilters() {
         ['logSearch', 'emailFilters', 'subjectFilters', 'senderFilters'].forEach(id => {
             const el = document.getElementById(id);
@@ -2249,10 +2303,17 @@
         loadMailLogs(1);
         window.setInterval(() => loadMailLogs(currentLogPage, false), LOG_REFRESH_INTERVAL_MS);
 
+        function debouncedSearch() {
+            window.clearTimeout(debouncedSearch.timer);
+            debouncedSearch.timer = window.setTimeout(() => loadMailLogs(1), 350);
+        }
+
         const searchInput = document.getElementById('logSearch');
         if (searchInput) {
+            searchInput.addEventListener('input', debouncedSearch);
             searchInput.addEventListener('keydown', function(event) {
                 if (event.key === 'Enter') {
+                    window.clearTimeout(debouncedSearch.timer);
                     loadMailLogs(1);
                 }
             });
@@ -2273,8 +2334,10 @@
         }
 
         document.querySelectorAll('.bulk-filter').forEach(filter => {
+            filter.addEventListener('input', debouncedSearch);
             filter.addEventListener('keydown', function(event) {
                 if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                    window.clearTimeout(debouncedSearch.timer);
                     loadMailLogs(1);
                 }
             });
