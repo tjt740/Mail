@@ -94,7 +94,7 @@ if not check_dependencies():
 
 class ProxyMailFetcher:
     def __init__(self, server, port, username, password, protocol='imap', use_ssl=True,
-                 auth_type='password', oauth_client_id='', oauth_refresh_token=''):
+                 auth_type='password', oauth_client_id='', oauth_refresh_token='', fast_mode=False):
         self.server = server
         self.port = port
         self.username = username
@@ -104,6 +104,7 @@ class ProxyMailFetcher:
         self.auth_type = self._normalize_auth_type(auth_type)
         self.oauth_client_id = oauth_client_id or ''
         self.oauth_refresh_token = oauth_refresh_token or ''
+        self.fast_mode = bool(fast_mode)
         self.graph_access_token = ''
         self.connection = None
         self.proxy_enabled = False
@@ -708,26 +709,28 @@ class ProxyMailFetcher:
             socket.setdefaulttimeout(30)  # 30 second timeout
             
             try:
-                # Test basic connectivity first
-                logger.info(f"Testing connectivity to {self.server}:{self.port}")
-                test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                test_socket.settimeout(10)
-                
-                try:
-                    test_result = test_socket.connect_ex((self.server, self.port))
-                    test_socket.close()
-                    
-                    if test_result != 0:
-                        raise Exception(f"无法连接到邮件服务器 {self.server}:{self.port} (错误码: {test_result})")
-                        
-                except socket.gaierror as e:
-                    raise Exception(f"无法解析邮件服务器地址 {self.server}: {str(e)}")
-                except socket.timeout:
-                    raise Exception(f"连接邮件服务器 {self.server}:{self.port} 超时")
-                except Exception as e:
-                    raise Exception(f"网络连接测试失败: {str(e)}")
-                
-                logger.info("Basic connectivity test passed")
+                if not self.fast_mode:
+                    # Test basic connectivity first for explicit diagnostics. Normal fetches skip
+                    # this because the IMAP connection itself performs the same network work.
+                    logger.info(f"Testing connectivity to {self.server}:{self.port}")
+                    test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    test_socket.settimeout(10)
+
+                    try:
+                        test_result = test_socket.connect_ex((self.server, self.port))
+                        test_socket.close()
+
+                        if test_result != 0:
+                            raise Exception(f"无法连接到邮件服务器 {self.server}:{self.port} (错误码: {test_result})")
+
+                    except socket.gaierror as e:
+                        raise Exception(f"无法解析邮件服务器地址 {self.server}: {str(e)}")
+                    except socket.timeout:
+                        raise Exception(f"连接邮件服务器 {self.server}:{self.port} 超时")
+                    except Exception as e:
+                        raise Exception(f"网络连接测试失败: {str(e)}")
+
+                    logger.info("Basic connectivity test passed")
                 
                 # Create IMAP connection
                 logger.info(f"Establishing IMAP connection to {self.server}:{self.port} (SSL: {self.use_ssl})")
@@ -1235,28 +1238,42 @@ class ProxyMailFetcher:
                 # Multiple emails mode
                 emails = []
                 end_index = min(email_index + email_limit, len(available_mail_ids))
-                
-                for i in range(email_index, end_index):
+                selected_ids = available_mail_ids[email_index:end_index]
+                raw_messages_by_id = {}
+
+                if selected_ids:
                     try:
-                        target_id = available_mail_ids[i]
-                        
-                        # Fetch the message data
-                        status, msg_data = self.connection.fetch(target_id, '(RFC822)')
-                        
-                        if status != 'OK':
-                            continue
-                        
-                        # Parse the email
-                        raw_email = msg_data[0][1]
+                        message_set = b','.join(selected_ids).decode('ascii')
+                        status, msg_data = self.connection.fetch(message_set, '(RFC822)')
+                        if status == 'OK':
+                            for item in msg_data or []:
+                                if not isinstance(item, tuple) or len(item) < 2 or not item[1]:
+                                    continue
+                                prefix = item[0] if isinstance(item[0], bytes) else str(item[0]).encode('ascii', errors='ignore')
+                                sequence_id = prefix.split(b' ', 1)[0]
+                                if sequence_id:
+                                    raw_messages_by_id[sequence_id] = item[1]
+                    except Exception as e:
+                        logger.warning(f"Batch email fetch failed, falling back to single fetches: {e}")
+
+                for target_id in selected_ids:
+                    try:
+                        raw_email = raw_messages_by_id.get(target_id)
+                        if raw_email is None:
+                            status, msg_data = self.connection.fetch(target_id, '(RFC822)')
+                            if status != 'OK' or not msg_data or not isinstance(msg_data[0], tuple):
+                                continue
+                            raw_email = msg_data[0][1]
+
                         email_message = email.message_from_bytes(raw_email)
-                        
+
                         # Extract email information
                         mail_info = self._parse_email(email_message)
                         mail_info['folder'] = normalize_folder_name(selected_folder)
                         emails.append(mail_info)
-                        
+
                     except Exception as e:
-                        logger.warning(f"Error fetching email {i}: {e}")
+                        logger.warning(f"Error fetching email {target_id}: {e}")
                         continue
                 
                 return {
@@ -1754,7 +1771,8 @@ def main():
                 bool(account_dict['ssl']),
                 account_dict.get('auth_type', 'password'),
                 account_dict.get('oauth_client_id', ''),
-                account_dict.get('oauth_refresh_token', '')
+                account_dict.get('oauth_refresh_token', ''),
+                fast_mode=not test_mode
             )
             
             if test_mode:

@@ -733,6 +733,16 @@
         background: #f8fafc;
     }
 
+    .logs-table tbody tr.mail-log-row {
+        cursor: pointer;
+    }
+
+    .logs-table tbody tr.mail-log-row:focus {
+        outline: 2px solid rgba(102, 126, 234, 0.45);
+        outline-offset: -2px;
+        background: #f8fafc;
+    }
+
     .group-col-id {
         width: 64px;
     }
@@ -901,6 +911,10 @@
         .log-group-counts {
             justify-content: flex-start;
         }
+
+        .mail-detail-meta-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
 
     .detail-btn {
@@ -924,8 +938,9 @@
     }
 
     .log-detail-content {
-        width: min(760px, 100%);
-        max-height: min(760px, 86vh);
+        width: min(980px, calc(100vw - 48px));
+        height: min(820px, calc(100vh - 48px));
+        max-height: calc(100vh - 48px);
         overflow: hidden;
         background: #fff;
         border-radius: 8px;
@@ -963,7 +978,9 @@
     }
 
     .log-detail-body {
-        padding: 18px 22px 22px;
+        flex: 1;
+        min-height: 0;
+        padding: 14px 18px 18px;
         overflow: auto;
     }
 
@@ -988,20 +1005,21 @@
     .mail-detail-card {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        min-height: 100%;
+        gap: 10px;
     }
 
     .mail-detail-header {
-        padding-bottom: 14px;
+        padding-bottom: 10px;
         border-bottom: 1px solid #e5e7eb;
     }
 
     .mail-detail-subject {
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         color: #0f172a;
-        font-size: 20px;
+        font-size: 17px;
         font-weight: 800;
-        line-height: 1.35;
+        line-height: 1.3;
         word-break: break-word;
     }
 
@@ -1015,18 +1033,53 @@
 
     .mail-detail-meta-grid {
         display: grid;
-        grid-template-columns: 96px minmax(0, 1fr);
-        gap: 9px 12px;
-        padding: 12px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px 10px;
+        overflow: visible;
+        padding: 8px 10px;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
-        background: #f8fafc;
-        font-size: 13px;
+        background: #fff;
+        font-size: 12px;
+    }
+
+    .mail-detail-meta-item {
+        display: flex;
+        align-items: flex-start;
+        min-width: 0;
+        gap: 6px;
+        line-height: 1.35;
+        white-space: normal;
+    }
+
+    .mail-detail-meta-item .detail-label {
+        flex: 0 0 auto;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .mail-detail-meta-item .detail-value {
+        overflow: visible;
+        min-width: 0;
+        color: #1e293b;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        white-space: normal;
+    }
+
+    .mail-detail-meta-item.is-wide {
+        grid-column: auto;
+    }
+
+    .mail-detail-meta-item.is-code .detail-value {
+        font-weight: 800;
     }
 
     .mail-detail-section-title {
         color: #334155;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 800;
     }
 
@@ -1041,8 +1094,9 @@
     }
 
     .detail-mail-body {
+        flex: 1;
         min-height: 180px;
-        max-height: 420px;
+        max-height: none;
         overflow: auto;
         padding: 12px;
         border: 1px solid #e5e7eb;
@@ -1050,6 +1104,11 @@
         background: #fff;
         color: #1e293b;
         line-height: 1.6;
+    }
+
+    .detail-mail-body.has-frame {
+        display: flex;
+        padding: 0;
     }
 
     .detail-mail-body.is-empty {
@@ -1061,8 +1120,10 @@
     }
 
     .detail-mail-body iframe {
+        display: block;
+        flex: 1;
         width: 100%;
-        min-height: 360px;
+        min-height: 0;
         border: 0;
         background: #fff;
     }
@@ -1263,6 +1324,10 @@
 
         .mail-detail-meta-grid {
             grid-template-columns: 1fr;
+        }
+
+        .mail-detail-meta-item.is-wide {
+            grid-column: auto;
         }
     }
     
@@ -1524,6 +1589,8 @@
     let hasInitializedLogGroups = false;
     const LOGS_PER_PAGE = 30;
     const LOG_REFRESH_INTERVAL_MS = 15000;
+    let isLoadingMailLogs = false;
+    let mailLogsAbortController = null;
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -1570,7 +1637,7 @@
     }
 
     function getMailBodyPlainText(log) {
-        const body = log?.mail_body || '';
+        const body = log?.mail_body || log?.mail_body_preview || '';
         if (!body) return '';
         if ((log.mail_body_type || '').toLowerCase() === 'html') {
             const doc = new DOMParser().parseFromString(body, 'text/html');
@@ -1661,7 +1728,8 @@
                         total: 0,
                         received: 0,
                         failed: 0,
-                        processed: 0
+                        processed: 0,
+                        shown: 0
                     }
                 });
             }
@@ -1674,9 +1742,19 @@
                 group.mailboxAdmin = getLogAdmin(log);
             }
             group.logs.push(log);
-            group.counts.total += 1;
-            if (group.counts[log.status] !== undefined) {
-                group.counts[log.status] += 1;
+            group.counts.shown += 1;
+
+            const serverTotal = Number(log.email_log_total);
+            if (Number.isFinite(serverTotal) && serverTotal > 0) {
+                group.counts.total = serverTotal;
+                group.counts.received = Number(log.email_received_count) || 0;
+                group.counts.processed = Number(log.email_processed_count) || 0;
+                group.counts.failed = Number(log.email_failed_count) || 0;
+            } else {
+                group.counts.total += 1;
+                if (group.counts[log.status] !== undefined) {
+                    group.counts[log.status] += 1;
+                }
             }
         });
 
@@ -1708,10 +1786,14 @@
 
     function renderGroupCountBadges(group) {
         const counts = group.counts;
+        const shownBadge = counts.shown < counts.total
+            ? `<span class="log-count-badge">显示最近 ${escapeHtml(counts.shown)} 条</span>`
+            : '';
         return `
             <span class="log-count-badge">共 ${escapeHtml(counts.total)} 条</span>
             <span class="log-count-badge success">成功 ${escapeHtml(counts.received + counts.processed)}</span>
             <span class="log-count-badge failed">失败 ${escapeHtml(counts.failed)}</span>
+            ${shownBadge}
         `;
     }
 
@@ -1724,7 +1806,7 @@
         const summary = summarizeLog(log);
         const code = extractVerificationCode(log);
         return `
-            <tr>
+            <tr class="mail-log-row" data-log-id="${escapeHtml(log.id)}" tabindex="0" role="button" aria-label="查看收件日志 ${escapeHtml(log.id)} 详情">
                 <td class="group-col-id" data-label="ID">${escapeHtml(log.id)}</td>
                 <td class="mail-subject-cell" data-label="主题 / 摘要">
                     <div class="mail-log-title" title="${escapeHtml(log.mail_subject || '(无主题)')}">${escapeHtml(log.mail_subject || '(无主题)')}</div>
@@ -1735,7 +1817,7 @@
                 <td class="group-col-status" data-label="状态"><span class="status-badge ${statusClass}">${escapeHtml(getStatusLabel(log.status))}</span></td>
                 <td class="group-col-code" data-label="验证码">${renderVerificationCode(code)}</td>
                 <td class="group-col-admin" data-label="管理员"><div class="mail-log-meta" title="${escapeHtml(getLogAdmin(log))}">${escapeHtml(getLogAdmin(log))}</div></td>
-                <td class="group-col-action" data-label="操作"><button class="btn btn-secondary detail-btn" type="button" onclick="openLogDetailModal('${escapeHtml(log.id)}')">详情</button></td>
+                <td class="group-col-action" data-label="操作"><button class="btn btn-secondary detail-btn" type="button" data-log-detail-id="${escapeHtml(log.id)}">详情</button></td>
             </tr>
         `;
     }
@@ -1762,6 +1844,16 @@
         return currentMailLogs.find(log => String(log.id) === String(logId));
     }
 
+    function mergeMailLogDetail(detail) {
+        if (!detail) return detail;
+        const index = currentMailLogs.findIndex(log => String(log.id) === String(detail.id));
+        if (index >= 0) {
+            currentMailLogs[index] = { ...currentMailLogs[index], ...detail };
+            return currentMailLogs[index];
+        }
+        return detail;
+    }
+
     function renderDetailRow(label, value, className = '') {
         return `
             <div class="detail-label">${escapeHtml(label)}</div>
@@ -1769,15 +1861,16 @@
         `;
     }
 
-    function renderMailDetailMeta(label, value) {
+    function renderMailDetailMeta(label, value, className = '') {
         return `
-            <div class="detail-label">${escapeHtml(label)}</div>
-            <div class="detail-value">${escapeHtml(value || '-')}</div>
+            <div class="mail-detail-meta-item ${className}">
+                <span class="detail-label">${escapeHtml(label)}:</span>
+                <span class="detail-value" title="${escapeHtml(value || '-')}">${escapeHtml(value || '-')}</span>
+            </div>
         `;
     }
 
-    function openLogDetailModal(logId) {
-        const log = getLogById(logId);
+    function renderLogDetail(log, options = {}) {
         if (!log) return;
 
         const modal = document.getElementById('logDetailModal');
@@ -1798,14 +1891,10 @@
                 <div class="mail-detail-meta-grid">
                     ${renderMailDetailMeta('日志ID', log.id)}
                     ${renderMailDetailMeta('收件邮箱', log.email)}
-                    ${renderMailDetailMeta('发件人', log.mail_from)}
-                    ${renderMailDetailMeta('收件人', log.mail_to)}
+                    ${renderMailDetailMeta('发件人', log.mail_from, 'is-wide')}
                     ${renderMailDetailMeta('收件时间', log.received_at)}
-                    ${renderMailDetailMeta('验证码', verificationCode || '-')}
+                    ${renderMailDetailMeta('验证码', verificationCode || '-', 'is-code')}
                     ${renderMailDetailMeta('管理员', getLogAdmin(log))}
-                    ${renderMailDetailMeta('Message-ID', log.message_id)}
-                    ${renderMailDetailMeta('IP', log.ip_address)}
-                    ${renderMailDetailMeta('User-Agent', log.user_agent)}
                 </div>
                 <div class="mail-detail-section-title">邮件正文</div>
                 <div class="detail-mail-body" id="detailMailBodyContent"></div>
@@ -1813,14 +1902,64 @@
                 ${log.error_message ? renderDetailRow('错误详情', log.error_message, 'detail-error') : ''}
             </div>
         `;
-        renderMailBodyContent(log);
+        if (options.loading) {
+            const container = document.getElementById('detailMailBodyContent');
+            if (container) {
+                container.classList.add('is-empty');
+                container.textContent = '正在加载完整邮件正文...';
+            }
+        } else {
+            renderMailBodyContent(log);
+        }
         modal.classList.add('show');
+    }
+
+    async function fetchMailLogDetail(logId) {
+        const response = await fetch(`/admin/api/mail-logs/${encodeURIComponent(logId)}`);
+        if (response.redirected && response.url.includes('/admin/login')) {
+            window.location.href = response.url;
+            return null;
+        }
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            throw new Error('登录状态已失效，请重新登录');
+        }
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.message || '获取收件日志详情失败');
+        }
+        return mergeMailLogDetail(data.data);
+    }
+
+    async function openLogDetailModal(logId) {
+        const existingLog = getLogById(logId);
+        if (!existingLog) return;
+
+        if (existingLog.mail_body !== undefined) {
+            renderLogDetail(existingLog);
+            return;
+        }
+
+        renderLogDetail(existingLog, { loading: true });
+        try {
+            const detailLog = await fetchMailLogDetail(logId);
+            if (detailLog) renderLogDetail(detailLog);
+        } catch (error) {
+            console.error('加载收件日志详情失败:', error);
+            const container = document.getElementById('detailMailBodyContent');
+            if (container) {
+                container.classList.add('is-empty');
+                container.textContent = error.message || '加载详情失败，请稍后重试';
+            }
+        }
     }
 
     function renderMailBodyContent(log) {
         const container = document.getElementById('detailMailBodyContent');
         if (!container) return;
         container.innerHTML = '';
+        container.classList.remove('is-empty', 'has-frame');
+        container.style.whiteSpace = '';
 
         const body = log.mail_body || '';
         if (!body) {
@@ -1831,8 +1970,8 @@
             return;
         }
 
-        container.classList.remove('is-empty');
         if ((log.mail_body_type || '').toLowerCase() === 'html') {
+            container.classList.add('has-frame');
             const frame = document.createElement('iframe');
             frame.setAttribute('sandbox', '');
             frame.srcdoc = body;
@@ -1999,6 +2138,17 @@
     }
 
     async function loadMailLogs(page = currentLogPage, showError = true) {
+        if (isLoadingMailLogs) {
+            if (!showError) return;
+            if (mailLogsAbortController) {
+                mailLogsAbortController.abort();
+            }
+        }
+
+        const controller = new AbortController();
+        mailLogsAbortController = controller;
+        isLoadingMailLogs = true;
+
         const params = new URLSearchParams({
             page: String(page),
             per_page: String(LOGS_PER_PAGE)
@@ -2017,7 +2167,9 @@
         if (senderFilters) params.set('sender_filters', senderFilters);
 
         try {
-            const response = await fetch(`/admin/api/mail-logs?${params.toString()}`);
+            const response = await fetch(`/admin/api/mail-logs?${params.toString()}`, {
+                signal: controller.signal
+            });
             if (response.redirected && response.url.includes('/admin/login')) {
                 window.location.href = response.url;
                 return;
@@ -2039,8 +2191,14 @@
             renderMailLogs(data.data || []);
             updatePagination(data.pagination || {});
         } catch (error) {
+            if (error.name === 'AbortError') return;
             console.error('加载收件日志失败:', error);
             if (showError) setLogMessage('网络错误，请稍后重试', 'error');
+        } finally {
+            if (mailLogsAbortController === controller) {
+                mailLogsAbortController = null;
+                isLoadingMailLogs = false;
+            }
         }
     }
 
@@ -2125,9 +2283,33 @@
         const logsAccordion = document.getElementById('mailLogsAccordion');
         if (logsAccordion) {
             logsAccordion.addEventListener('click', function(event) {
+                const detailButton = event.target.closest('[data-log-detail-id]');
+                if (detailButton && logsAccordion.contains(detailButton)) {
+                    event.stopPropagation();
+                    openLogDetailModal(detailButton.dataset.logDetailId);
+                    return;
+                }
+
+                const logRow = event.target.closest('.mail-log-row');
+                if (logRow && logsAccordion.contains(logRow)) {
+                    openLogDetailModal(logRow.dataset.logId);
+                    return;
+                }
+
                 const summary = event.target.closest('.log-group-summary');
                 if (!summary || !logsAccordion.contains(summary)) return;
                 toggleLogGroup(summary.closest('.log-group'));
+            });
+
+            logsAccordion.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                if (event.target.closest('button, a, input, select, textarea')) return;
+
+                const logRow = event.target.closest('.mail-log-row');
+                if (!logRow || !logsAccordion.contains(logRow)) return;
+
+                event.preventDefault();
+                openLogDetailModal(logRow.dataset.logId);
             });
         }
 

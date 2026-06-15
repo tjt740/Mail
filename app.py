@@ -23,6 +23,7 @@ import errno
 import re
 import html
 from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.message import EmailMessage
 from email.utils import formataddr
 from datetime import datetime, timezone, timedelta
@@ -36,6 +37,8 @@ logger = logging.getLogger(__name__)
 # Columns used for fast mailbox listing (avoid fetching large blobs/passwords)
 FAST_MAILBOX_COLUMNS = "id, email, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, status, remarks, created_by_admin, last_test, test_result, created_at, updated_at"
 MAIL_LOG_BODY_MAX_LENGTH = 200000
+MAIL_LOG_LIST_BODY_PREVIEW_LENGTH = 1200
+MAIL_LOG_LIST_PER_EMAIL_LIMIT = 30
 
 # EAI error code constant (Name or service not known)
 # This is not a standard errno, but an EAI (getaddrinfo) error code
@@ -193,6 +196,8 @@ MAIL_POLL_MIN_INTERVAL = 30
 MAIL_POLL_DEFAULT_INTERVAL = 300
 MAIL_POLL_FETCH_LIMIT = min(max(safe_int(os.environ.get('MAIL_POLL_FETCH_LIMIT'), 5), 1), 50)
 MAIL_POLL_TIMEOUT = min(max(safe_int(os.environ.get('MAIL_POLL_TIMEOUT'), 45), 10), 180)
+MAIL_POLL_WORKERS = min(max(safe_int(os.environ.get('MAIL_POLL_WORKERS'), 4), 1), 10)
+MAIL_POLL_DAYS_FILTER = min(max(safe_int(os.environ.get('MAIL_POLL_DAYS_FILTER'), 7), 1), 90)
 MAIL_POLLER_STARTED = False
 MAIL_POLLER_THREAD = None
 MAIL_POLLER_RUN_LOCK = threading.Lock()
@@ -2478,6 +2483,7 @@ def _run_mail_fetcher(email_address, limit=None):
         email_address,
         '--admin-access',
         '--limit', str(fetch_limit),
+        '--days-filter', str(MAIL_POLL_DAYS_FILTER),
         '--folder', 'INBOX'
     ]
 
@@ -2724,36 +2730,60 @@ def run_mail_poll_once(source='auto_poll', lock_acquired=False, admin_username='
             db = get_db()
             db_type = app.config['DATABASE_TYPE']
             poll_interval = _get_mail_poll_interval()
-            accounts = _query_active_mail_accounts(db, db_type)
+            accounts = [
+                account for account in _query_active_mail_accounts(db, db_type)
+                if account.get('email', '').strip()
+            ]
+            checked_count = len(accounts)
+            worker_count = min(MAIL_POLL_WORKERS, max(checked_count, 1))
 
-            for account in accounts:
+            def fetch_account(account):
                 email_address = account.get('email', '').strip()
-                if not email_address:
-                    continue
+                return email_address, _run_mail_fetcher(email_address, MAIL_POLL_FETCH_LIMIT)
 
-                checked_count += 1
-                response_data = _run_mail_fetcher(email_address, MAIL_POLL_FETCH_LIMIT)
-                try:
-                    if response_data.get('success'):
-                        new_count += log_mail_fetch_result(db, db_type, email_address, response_data, source, admin_username=actor_username)
-                    else:
-                        failed_count += 1
-                        _insert_mail_error_log(
-                            db,
-                            db_type,
-                            email_address,
-                            response_data.get('message', '邮件获取失败'),
-                            source,
-                            admin_username=actor_username
-                        )
-                    db.commit()
-                except Exception as log_error:
-                    failed_count += 1
+            with ThreadPoolExecutor(max_workers=worker_count) as executor:
+                futures = [executor.submit(fetch_account, account) for account in accounts]
+                completed_count = 0
+                for future in as_completed(futures):
+                    completed_count += 1
                     try:
-                        db.rollback()
-                    except Exception:
-                        pass
-                    logger.error("写入收件日志失败: %s", log_error)
+                        email_address, response_data = future.result()
+                    except Exception as fetch_error:
+                        email_address = ''
+                        response_data = {
+                            'success': False,
+                            'message': f'邮件获取任务异常: {str(fetch_error)}'
+                        }
+
+                    _set_mail_poller_state(
+                        last_message=f'正在轮询邮箱... {completed_count}/{checked_count}'
+                    )
+
+                    if not email_address:
+                        failed_count += 1
+                        continue
+
+                    try:
+                        if response_data.get('success'):
+                            new_count += log_mail_fetch_result(db, db_type, email_address, response_data, source, admin_username=actor_username)
+                        else:
+                            failed_count += 1
+                            _insert_mail_error_log(
+                                db,
+                                db_type,
+                                email_address,
+                                response_data.get('message', '邮件获取失败'),
+                                source,
+                                admin_username=actor_username
+                            )
+                        db.commit()
+                    except Exception as log_error:
+                        failed_count += 1
+                        try:
+                            db.rollback()
+                        except Exception:
+                            pass
+                        logger.error("写入收件日志失败: %s", log_error)
 
         message = f'轮询完成：检查 {checked_count} 个邮箱，新增 {new_count} 封，失败 {failed_count} 个'
         _set_mail_poller_state(
@@ -8973,14 +9003,30 @@ def api_admin_mail_logs():
                 key_where_parts = where_parts + [f'{email_key_sql} IN ({key_placeholders})']
                 key_where_clause = f"WHERE {' AND '.join(key_where_parts)}"
                 rows = db.execute(f'''
-                    SELECT l.id, l.email, l.mail_subject, l.mail_from, l.mail_to, l.received_at, l.status,
-                           l.error_message, l.ip_address, l.user_agent, l.created_at, l.message_id, l.folder, l.source,
-                           l.admin_username, l.mail_body_type, l.mail_body,
-                           ma.mailbox_created_at, ma.mailbox_created_by_admin
-                    {from_logs_sql}
-                    {key_where_clause}
-                    ORDER BY COALESCE(ma.mailbox_created_at, l.created_at) DESC, l.id DESC
-                ''', params + email_keys).fetchall()
+                    WITH ranked_logs AS (
+                        SELECT {email_key_sql} AS email_key,
+                               l.id, l.email, l.mail_subject, l.mail_from, l.mail_to, l.received_at, l.status,
+                               l.error_message, l.ip_address, l.user_agent, l.created_at, l.message_id, l.folder, l.source,
+                               l.admin_username, l.mail_body_type,
+                               SUBSTR(COALESCE(l.mail_body, ''), 1, {MAIL_LOG_LIST_BODY_PREVIEW_LENGTH}) AS mail_body_preview,
+                               CASE
+                                   WHEN LENGTH(COALESCE(l.mail_body, '')) > {MAIL_LOG_LIST_BODY_PREVIEW_LENGTH} THEN 1
+                                   ELSE 0
+                               END AS mail_body_truncated,
+                               ma.mailbox_created_at, ma.mailbox_created_by_admin,
+                               COUNT(*) OVER (PARTITION BY {email_key_sql}) AS email_log_total,
+                               SUM(CASE WHEN l.status = 'received' THEN 1 ELSE 0 END) OVER (PARTITION BY {email_key_sql}) AS email_received_count,
+                               SUM(CASE WHEN l.status = 'processed' THEN 1 ELSE 0 END) OVER (PARTITION BY {email_key_sql}) AS email_processed_count,
+                               SUM(CASE WHEN l.status = 'failed' THEN 1 ELSE 0 END) OVER (PARTITION BY {email_key_sql}) AS email_failed_count,
+                               ROW_NUMBER() OVER (PARTITION BY {email_key_sql} ORDER BY l.id DESC) AS row_num
+                        {from_logs_sql}
+                        {key_where_clause}
+                    )
+                    SELECT *
+                    FROM ranked_logs
+                    WHERE row_num <= ?
+                    ORDER BY COALESCE(mailbox_created_at, created_at) DESC, id DESC
+                ''', params + email_keys + [MAIL_LOG_LIST_PER_EMAIL_LIMIT]).fetchall()
                 logs = [dict(row) for row in rows]
             stat_rows = db.execute('SELECT status, COUNT(*) as count FROM mail_logs GROUP BY status').fetchall()
             stats = {row['status']: row['count'] for row in stat_rows}
@@ -9029,14 +9075,30 @@ def api_admin_mail_logs():
                     key_where_parts = where_parts_mysql + [f'{email_key_sql} IN ({key_placeholders})']
                     key_where_clause = f"WHERE {' AND '.join(key_where_parts)}"
                     cursor.execute(f'''
-                        SELECT l.id, l.email, l.mail_subject, l.mail_from, l.mail_to, l.received_at, l.status,
-                               l.error_message, l.ip_address, l.user_agent, l.created_at, l.message_id, l.folder, l.source,
-                               l.admin_username, l.mail_body_type, l.mail_body,
-                               ma.mailbox_created_at, ma.mailbox_created_by_admin
-                        {from_logs_sql}
-                        {key_where_clause}
-                        ORDER BY COALESCE(ma.mailbox_created_at, l.created_at) DESC, l.id DESC
-                    ''', params + email_keys)
+                        WITH ranked_logs AS (
+                            SELECT {email_key_sql} AS email_key,
+                                   l.id, l.email, l.mail_subject, l.mail_from, l.mail_to, l.received_at, l.status,
+                                   l.error_message, l.ip_address, l.user_agent, l.created_at, l.message_id, l.folder, l.source,
+                                   l.admin_username, l.mail_body_type,
+                                   SUBSTRING(COALESCE(l.mail_body, ''), 1, {MAIL_LOG_LIST_BODY_PREVIEW_LENGTH}) AS mail_body_preview,
+                                   CASE
+                                       WHEN CHAR_LENGTH(COALESCE(l.mail_body, '')) > {MAIL_LOG_LIST_BODY_PREVIEW_LENGTH} THEN 1
+                                       ELSE 0
+                                   END AS mail_body_truncated,
+                                   ma.mailbox_created_at, ma.mailbox_created_by_admin,
+                                   COUNT(*) OVER (PARTITION BY {email_key_sql}) AS email_log_total,
+                                   SUM(CASE WHEN l.status = 'received' THEN 1 ELSE 0 END) OVER (PARTITION BY {email_key_sql}) AS email_received_count,
+                                   SUM(CASE WHEN l.status = 'processed' THEN 1 ELSE 0 END) OVER (PARTITION BY {email_key_sql}) AS email_processed_count,
+                                   SUM(CASE WHEN l.status = 'failed' THEN 1 ELSE 0 END) OVER (PARTITION BY {email_key_sql}) AS email_failed_count,
+                                   ROW_NUMBER() OVER (PARTITION BY {email_key_sql} ORDER BY l.id DESC) AS row_num
+                            {from_logs_sql}
+                            {key_where_clause}
+                        )
+                        SELECT *
+                        FROM ranked_logs
+                        WHERE row_num <= %s
+                        ORDER BY COALESCE(mailbox_created_at, created_at) DESC, id DESC
+                    ''', params + email_keys + [MAIL_LOG_LIST_PER_EMAIL_LIMIT])
                     columns = [desc[0] for desc in cursor.description]
                     logs = [_row_to_dict(row, columns) for row in cursor.fetchall()]
                 cursor.execute('SELECT status, COUNT(*) as count FROM mail_logs GROUP BY status')
@@ -9080,6 +9142,79 @@ def api_admin_mail_logs():
         return jsonify({
             'success': False,
             'message': f'获取收件日志失败: {str(e)}'
+        }), 500
+
+@app.route('/admin/api/mail-logs/<int:log_id>', methods=['GET'])
+@admin_required
+def api_admin_mail_log_detail(log_id):
+    """单条收件日志详情 API，按需返回完整正文。"""
+    db = get_db()
+    db_type = app.config['DATABASE_TYPE']
+
+    mailbox_meta_sql = '''
+        (
+            SELECT a.email AS mailbox_email,
+                   LOWER(COALESCE(NULLIF(TRIM(a.email), ''), '-')) AS email_key,
+                   a.created_at AS mailbox_created_at,
+                   a.created_by_admin AS mailbox_created_by_admin
+            FROM mail_accounts a
+            INNER JOIN (
+                SELECT LOWER(COALESCE(NULLIF(TRIM(email), ''), '-')) AS email_key,
+                       MAX(id) AS latest_mailbox_id
+                FROM mail_accounts
+                GROUP BY LOWER(COALESCE(NULLIF(TRIM(email), ''), '-'))
+            ) latest_mailbox ON a.id = latest_mailbox.latest_mailbox_id
+        ) ma
+    '''
+    email_key_sql = "LOWER(COALESCE(NULLIF(TRIM(l.email), ''), '-'))"
+
+    try:
+        if db_type == 'sqlite':
+            row = db.execute(f'''
+                SELECT l.id, l.email, l.mail_subject, l.mail_from, l.mail_to, l.received_at, l.status,
+                       l.error_message, l.ip_address, l.user_agent, l.created_at, l.message_id, l.folder, l.source,
+                       l.admin_username, l.mail_body_type, l.mail_body,
+                       ma.mailbox_created_at, ma.mailbox_created_by_admin
+                FROM mail_logs l
+                LEFT JOIN {mailbox_meta_sql} ON ma.email_key = {email_key_sql}
+                WHERE l.id = ?
+                LIMIT 1
+            ''', (log_id,)).fetchone()
+            log = dict(row) if row else None
+        else:
+            cursor = db.cursor()
+            try:
+                cursor.execute(f'''
+                    SELECT l.id, l.email, l.mail_subject, l.mail_from, l.mail_to, l.received_at, l.status,
+                           l.error_message, l.ip_address, l.user_agent, l.created_at, l.message_id, l.folder, l.source,
+                           l.admin_username, l.mail_body_type, l.mail_body,
+                           ma.mailbox_created_at, ma.mailbox_created_by_admin
+                    FROM mail_logs l
+                    LEFT JOIN {mailbox_meta_sql} ON ma.email_key = {email_key_sql}
+                    WHERE l.id = %s
+                    LIMIT 1
+                ''', (log_id,))
+                row = cursor.fetchone()
+                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+                log = _row_to_dict(row, columns) if row else None
+            finally:
+                cursor.close()
+
+        if not log:
+            return jsonify({
+                'success': False,
+                'message': '收件日志不存在'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': log
+        })
+    except Exception as e:
+        logger.error(f"Get mail log detail error: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'获取收件日志详情失败: {str(e)}'
         }), 500
 
 @app.route('/admin/api/system-config', methods=['GET', 'POST'])
