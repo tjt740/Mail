@@ -363,6 +363,17 @@
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
     }
+
+    /* 批量删除按钮：橙红/警示橙，与普通删除(红)区分 */
+    #batchDeleteBtn {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        color: white;
+    }
+
+    #batchDeleteBtn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(249, 115, 22, 0.3);
+    }
     
     .btn-success {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -4149,6 +4160,7 @@
         selectedMailboxes.clear();
         const selectAll = document.getElementById('selectAll');
         if (selectAll) selectAll.checked = false;
+        updateBatchDeleteButton();
 
         const safePage = Math.max(1, Math.min(page, Math.max(1, Math.ceil(sortedMailboxes.length / perPage))));
         const start = (safePage - 1) * perPage;
