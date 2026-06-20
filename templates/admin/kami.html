@@ -325,10 +325,28 @@
         font-size: 12px;
     }
     
+    .kami-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        margin-bottom: 20px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        white-space: nowrap;
+    }
+
     .btn-group {
         display: flex;
         gap: 10px;
         margin-bottom: 20px;
+    }
+
+    .kami-toolbar .btn-group {
+        flex: 0 0 auto;
+        align-items: center;
+        flex-wrap: nowrap;
+        margin-bottom: 0;
     }
     
     /* Search Controls Styles */
@@ -340,6 +358,16 @@
         gap: 20px;
         flex-wrap: nowrap; /* Prevent wrapping unless specifically needed */
     }
+
+    .kami-toolbar .search-controls {
+        flex: 1 1 520px;
+        justify-content: flex-end;
+        min-width: 420px;
+        max-width: 650px;
+        margin: 0 0 0 auto;
+        gap: 0;
+        flex-wrap: nowrap !important;
+    }
     
     .search-box {
         display: flex;
@@ -347,6 +375,11 @@
         flex: 1;
         max-width: 550px; /* Increased from 400px for longer search box */
         min-width: 0; /* Allow shrinking */
+    }
+
+    .kami-toolbar .search-box {
+        width: 100%;
+        max-width: none;
     }
     
     .search-box input {
@@ -371,6 +404,76 @@
     .search-box input::placeholder {
         color: #9ca3af;
         font-style: italic;
+    }
+
+    .kami-toolbar .btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        height: 44px;
+        padding: 0 18px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    .kami-toolbar .btn i {
+        display: inline-flex;
+        line-height: 1;
+    }
+
+    .kami-toolbar .btn-primary {
+        background: #c76442 !important;
+        background-image: none !important;
+        border: 1px solid #c76442 !important;
+        color: #fff !important;
+    }
+
+    .kami-toolbar .btn-success {
+        background: #4f7f5c !important;
+        background-image: none !important;
+        border: 1px solid #4f7f5c !important;
+        color: #fff !important;
+    }
+
+    .kami-toolbar .btn-danger {
+        background: #b94a3d !important;
+        background-image: none !important;
+        border: 1px solid #b94a3d !important;
+        color: #fff !important;
+    }
+
+    .kami-toolbar .btn-secondary,
+    .kami-toolbar .btn-clear {
+        background: #fff !important;
+        background-image: none !important;
+        border: 1px solid #d9d5c9 !important;
+        color: #3f3b34 !important;
+    }
+
+    .kami-toolbar .btn-search {
+        background: #3f5f54 !important;
+        background-image: none !important;
+        border: 1px solid #3f5f54 !important;
+        color: #fff !important;
+    }
+
+    .kami-toolbar .btn:hover {
+        filter: brightness(0.96);
+        box-shadow: 0 1px 3px rgba(40, 35, 28, 0.08) !important;
+    }
+
+    .kami-toolbar .btn-secondary:hover,
+    .kami-toolbar .btn-clear:hover {
+        background: #f5f4ee !important;
+        filter: none;
+    }
+
+    .kami-toolbar .search-box input {
+        height: 44px;
+        box-shadow: none !important;
     }
     
     .page-controls select {
@@ -848,6 +951,22 @@
         .content {
             padding: 20px;
         }
+
+        .kami-toolbar {
+            flex-wrap: wrap;
+            overflow-x: visible;
+        }
+
+        .kami-toolbar .search-controls {
+            flex-basis: 100%;
+            min-width: 0;
+            max-width: none;
+            margin-left: 0;
+        }
+
+        .kami-toolbar .search-box input {
+            min-width: 0;
+        }
         
         .mobile-menu-toggle {
             display: block !important;
@@ -1269,30 +1388,32 @@
                 <h2 class="card-title">卡密管理</h2>
             </div>
             <div class="card-body scroll-card-body">
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="showGenerateModal()">
-                        <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span></i> 生成卡密
-                    </button>
-                    <button class="btn btn-success" onclick="showBatchGenerateModal()">
-                        <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span></i> 批量生成卡密
-                    </button>
-                    <button class="btn btn-secondary" onclick="showRecycleBinModal()">
-                        <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span></i> 回收站
-                    </button>
-                    <button class="btn btn-danger" onclick="batchDeleteCards()" style="display: none;" id="batchDeleteBtn">
-                        <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span></i> 批量删除
-                    </button>
-                    <button class="btn btn-secondary" onclick="refreshCardList()">
-                        <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-reload"></use></svg></span></i> 刷新
-                    </button>
-                </div>
+                <div class="kami-toolbar">
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="showGenerateModal()">
+                            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span></i> 生成卡密
+                        </button>
+                        <button class="btn btn-success" onclick="showBatchGenerateModal()">
+                            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span></i> 批量生成卡密
+                        </button>
+                        <button class="btn btn-secondary" onclick="showRecycleBinModal()">
+                            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span></i> 回收站
+                        </button>
+                        <button class="btn btn-danger" onclick="batchDeleteCards()" style="display: none;" id="batchDeleteBtn">
+                            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span></i> 批量删除
+                        </button>
+                        <button class="btn btn-secondary" onclick="refreshCardList()">
+                            <i><span class="anticon"><svg aria-hidden="true"><use href="#ai-reload"></use></svg></span></i> 刷新
+                        </button>
+                    </div>
 
-                <!-- 搜索和分页控制 -->
-                <div class="search-controls">
-                    <div class="search-box">
-                        <input type="text" id="searchInput" placeholder="搜索卡密..." onkeyup="searchCards()">
-                        <button class="btn btn-primary" onclick="searchCards()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 搜索</button>
-                        <button class="btn btn-danger" onclick="clearSearch()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 清除</button>
+                    <!-- 搜索和分页控制 -->
+                    <div class="search-controls">
+                        <div class="search-box">
+                            <input type="text" id="searchInput" placeholder="搜索卡密..." onkeyup="searchCards()">
+                            <button class="btn btn-search" onclick="searchCards()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 搜索</button>
+                            <button class="btn btn-clear" onclick="clearSearch()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 清除</button>
+                        </div>
                     </div>
                 </div>
 

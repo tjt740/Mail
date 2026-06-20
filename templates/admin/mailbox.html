@@ -1475,34 +1475,38 @@
     }
 
     .receive-modal .modal-content {
-        max-width: 1180px;
-        width: min(1180px, calc(100vw - 48px));
-        max-height: 88vh;
+        max-width: 1360px;
+        width: min(1360px, calc(100vw - 40px));
+        max-height: 90vh;
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        background: #fffdf9;
     }
 
     .receive-body {
         display: grid;
-        grid-template-columns: var(--receive-sidebar-width) 1fr;
-        gap: 18px;
+        grid-template-columns: 238px minmax(0, 1fr);
+        gap: 20px;
         min-height: 0;
-        height: min(660px, calc(88vh - 78px));
+        height: min(720px, calc(90vh - 78px));
         overflow: hidden;
-        background: #fbfaf7;
+        background:
+            radial-gradient(circle at 0 0, rgba(201, 100, 66, 0.10), transparent 28%),
+            #fbfaf7;
     }
 
     .receive-sidebar {
-        background: #f8fafc;
-        border: 1px solid #edf2f7;
-        border-radius: 12px;
-        padding: 16px;
+        background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+        border: 1px solid #e9e2d6;
+        border-radius: 18px;
+        padding: 18px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 14px;
         align-self: stretch;
         min-height: 0;
+        box-shadow: 0 18px 38px rgba(92, 72, 52, 0.08);
     }
 
     .receive-mailbox-label {
@@ -1512,12 +1516,13 @@
     }
 
     .receive-mailbox-value {
-        font-weight: 600;
+        font-weight: 700;
         color: #1f2937;
         word-break: break-all;
         max-height: 72px;
         overflow: auto;
         line-height: 1.35;
+        font-size: 16px;
     }
 
     .receive-mailbox-copy-row {
@@ -1545,50 +1550,212 @@
         justify-content: center;
         cursor: copy;
         transition: var(--transition);
+        transform: translateZ(0);
     }
 
     .receive-copy-btn:hover {
         color: var(--primary-color);
         border-color: var(--primary-color);
         background: rgba(201, 100, 66, 0.08);
+        transform: translateY(-1px) scale(1.03);
+        box-shadow: 0 10px 24px rgba(201, 100, 66, 0.14);
+    }
+
+    .receive-copy-btn:active {
+        transform: scale(0.96);
     }
 
     .receive-sidebar .btn {
         width: 100%;
         justify-content: center;
-        min-height: 42px;
+        min-height: 46px;
+        border-radius: 12px;
+    }
+
+    .receive-fetch-btn {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+        gap: 8px;
+        box-shadow: 0 12px 24px rgba(201, 100, 66, 0.18);
+        transition:
+            transform 180ms ease,
+            box-shadow 180ms ease,
+            background 180ms ease;
+    }
+
+    .receive-fetch-btn::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.26) 45%, transparent 72%);
+        opacity: 0;
+        transform: translateX(-120%);
+        pointer-events: none;
+    }
+
+    .receive-fetch-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 30px rgba(201, 100, 66, 0.24);
+    }
+
+    .receive-fetch-btn:active:not(:disabled) {
+        transform: translateY(0) scale(0.985);
+    }
+
+    .receive-fetch-btn.is-loading {
+        opacity: 1;
+        cursor: progress;
+        background: linear-gradient(135deg, #c95f3f 0%, #d87548 100%);
+        box-shadow: 0 16px 34px rgba(201, 100, 66, 0.30);
+    }
+
+    .receive-fetch-btn.is-loading::after {
+        opacity: 1;
+        animation: receiveButtonSweep 1.35s ease-in-out infinite;
+    }
+
+    .receive-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.42);
+        border-top-color: #fff;
+        border-radius: 999px;
+        animation: receiveSpin 0.75s linear infinite;
+    }
+
+    .receive-loading-dots::after {
+        content: '';
+        display: inline-block;
+        width: 18px;
+        text-align: left;
+        animation: receiveLoadingDots 1.1s steps(4, end) infinite;
     }
 
     .receive-tab {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
         width: 100%;
-        text-align: left;
-        padding: 10px 12px;
-        border-radius: 10px;
-        border: 1px solid #e5e7eb;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid #e8e1d7;
         background: #fff;
         cursor: pointer;
-        transition: var(--transition);
+        overflow: hidden;
+        transition:
+            color 180ms ease,
+            border-color 180ms ease,
+            background 180ms ease,
+            transform 180ms ease,
+            box-shadow 180ms ease;
+        font-weight: 600;
+        transform: translateZ(0);
+    }
+
+    .receive-tab::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(201, 100, 66, 0.14), rgba(201, 100, 66, 0.04));
+        opacity: 0;
+        transform: translateX(-18px);
+        transition: opacity 180ms ease, transform 180ms ease;
+        pointer-events: none;
+    }
+
+    .receive-tab .anticon,
+    .receive-tab svg {
+        position: relative;
+        z-index: 1;
+    }
+
+    .receive-tab > span:not(.anticon) {
+        position: relative;
+        z-index: 1;
     }
 
     .receive-tab:hover {
-        border-color: #cbd5e1;
+        border-color: #d6c7b8;
+        background: #fffaf4;
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(92, 72, 52, 0.08);
     }
 
     .receive-tab.active {
-        background: rgba(201, 100, 66, 0.10);
+        background: #fff8f2;
         border-color: var(--primary-color);
         color: var(--primary-color);
+        box-shadow: 0 12px 24px rgba(201, 100, 66, 0.13);
+    }
+
+    .receive-tab.active::before {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    .receive-tab.active .anticon {
+        animation: receiveTabPop 220ms ease;
+    }
+
+    .receive-tab:active {
+        transform: translateY(0) scale(0.985);
+    }
+
+    @keyframes receiveSpin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @keyframes receiveButtonSweep {
+        0% {
+            transform: translateX(-120%);
+        }
+        58%,
+        100% {
+            transform: translateX(120%);
+        }
+    }
+
+    @keyframes receiveLoadingDots {
+        0% {
+            content: '';
+        }
+        25% {
+            content: '.';
+        }
+        50% {
+            content: '..';
+        }
+        75%,
+        100% {
+            content: '...';
+        }
+    }
+
+    @keyframes receiveTabPop {
+        0% {
+            transform: scale(0.86);
+        }
+        100% {
+            transform: scale(1);
+        }
     }
 
     .receive-main {
         background: #fff;
-        border-radius: 12px;
-        border: 1px solid #edf2f7;
+        border-radius: 18px;
+        border: 1px solid #e9e2d6;
         padding: 0;
         display: flex;
         flex-direction: column;
         min-height: 0;
         overflow: hidden;
+        box-shadow: 0 18px 38px rgba(92, 72, 52, 0.08);
     }
 
     #receiveListView {
@@ -1649,19 +1816,60 @@
 
     .receive-table {
         width: 100%;
+        min-width: 1040px;
         border-collapse: collapse;
         margin-top: 0;
+        table-layout: fixed;
     }
 
     .receive-table th,
     .receive-table td {
-        padding: 10px 12px;
+        padding: 14px 16px;
         text-align: left;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid #eee7dc;
+        vertical-align: middle;
+    }
+
+    .receive-table th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f7f2ea;
+        color: #6b645b;
+        font-weight: 700;
+    }
+
+    .receive-col-index {
+        width: 70px;
+    }
+
+    .receive-col-subject {
+        width: 44%;
+    }
+
+    .receive-col-from {
+        width: 38%;
+    }
+
+    .receive-col-time {
+        width: 180px;
+    }
+
+    .receive-cell {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .receive-missing {
+        color: #a8a29e;
+        font-weight: 500;
     }
 
     .receive-table tr:hover {
-        background: #f8fafc;
+        background: #fffaf4;
         cursor: pointer;
     }
 
@@ -2982,7 +3190,7 @@
                     <div class="receive-mailbox-label">收取<span id="emailCountDisplay">10</span>封</div>
                     <input type="number" id="emailCountInput" min="1" max="100" value="10" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px;" oninput="updateEmailCountDisplay(this.value)">
                 </div>
-                <button class="btn btn-primary" onclick="fetchMailboxMails()">收取邮件</button>
+                <button class="btn btn-primary receive-fetch-btn" id="receiveFetchBtn" onclick="fetchMailboxMails()"><span class="receive-fetch-label">收取邮件</span></button>
                 <button class="receive-tab active" data-folder="inbox" onclick="switchReceiveFolder('inbox')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-download"></use></svg></span> 收件箱</button>
                 <button class="receive-tab" data-folder="trash" onclick="switchReceiveFolder('trash')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 垃圾箱</button>
             </div>
@@ -2995,11 +3203,10 @@
                     <table class="receive-table">
                         <thead>
                             <tr>
-                                <th style="width: 60px;">序号</th>
-                                <th>标题</th>
-                                <th>发件人</th>
-                                <th>收件人</th>
-                                <th>时间</th>
+                                <th class="receive-col-index">序号</th>
+                                <th class="receive-col-subject">标题</th>
+                                <th class="receive-col-from">发件人</th>
+                                <th class="receive-col-time">时间</th>
                             </tr>
                         </thead>
                         <tbody id="receiveTableBody"></tbody>
@@ -3582,7 +3789,9 @@
         perPage: 100,
         page: 1,
         mails: [],
-        activeMail: null
+        activeMail: null,
+        isFetching: false,
+        fetchToken: 0
     };
     const BATCH_PROVIDER_PRESETS = [
         {
@@ -5241,12 +5450,24 @@
         });
     }
 
+    function setReceiveFetchingState(isFetching) {
+        receiveState.isFetching = Boolean(isFetching);
+        const button = document.getElementById('receiveFetchBtn');
+        if (!button) return;
+        button.disabled = receiveState.isFetching;
+        button.classList.toggle('is-loading', receiveState.isFetching);
+        button.innerHTML = receiveState.isFetching
+            ? '<span class="receive-spinner" aria-hidden="true"></span><span class="receive-fetch-label">收取中</span><span class="receive-loading-dots" aria-hidden="true"></span>'
+            : '<span class="receive-fetch-label">收取邮件</span>';
+    }
+
     function openReceiveModal(mailboxId) {
         receiveState.mailboxId = mailboxId;
         receiveState.folder = 'inbox';
         receiveState.page = 1;
         receiveState.perPage = 100;
         receiveState.activeMail = null;
+        receiveState.isFetching = false;
         const store = loadReceiveStore();
         receiveState.mails = store[mailboxId] || [];
         const mailbox = mailboxData.find(item => item.id === mailboxId);
@@ -5260,11 +5481,19 @@
         updateReceiveTabActive();
         // Removed status text display - only use Toast notifications per requirements
         renderReceiveView();
+        setReceiveFetchingState(false);
+        window.setTimeout(() => {
+            if (receiveState.mailboxId === mailboxId && document.getElementById('receiveModal').classList.contains('show')) {
+                fetchMailboxMails({ silentAuto: true });
+            }
+        }, 0);
     }
 
     function closeReceiveModal() {
+        receiveState.fetchToken += 1;
         document.getElementById('receiveModal').classList.remove('show');
         receiveState.activeMail = null;
+        setReceiveFetchingState(false);
         setReceiveError('');
     }
 
@@ -5301,7 +5530,7 @@
 
     // Constants for email fetching
     const MAX_EMAIL_FETCH_ATTEMPTS = 50;
-    const RECEIVE_TABLE_COLUMNS = 5; // Number of columns in receive table: 序号, 标题, 发件人, 收件人, 时间
+    const RECEIVE_TABLE_COLUMNS = 4; // Number of columns in receive table: 序号, 标题, 发件人, 时间
     const EMAIL_FETCH_DELAY_MS = 100; // Delay between email fetch requests in milliseconds
     const MAX_EMAILS_PER_FOLDER = 200; // Maximum emails to fetch per folder (inbox/spam) - not currently used
     const MAX_CONSECUTIVE_DUPLICATES = 3; // Stop fetching if this many consecutive duplicates are found
@@ -5405,9 +5634,13 @@
         panel.classList.remove('is-hidden');
     }
     
-    async function fetchMailboxMails() {
+    async function fetchMailboxMails(options = {}) {
         if (!receiveState.mailboxId) return;
-        const mailbox = mailboxData.find(item => item.id === receiveState.mailboxId);
+        if (receiveState.isFetching) return;
+        const targetMailboxId = receiveState.mailboxId;
+        const fetchToken = receiveState.fetchToken + 1;
+        receiveState.fetchToken = fetchToken;
+        const mailbox = mailboxData.find(item => item.id === targetMailboxId);
         if (!mailbox) {
             showToast('未找到邮箱信息', 'error');
             return;
@@ -5417,12 +5650,13 @@
         const emailCountInput = document.getElementById('emailCountInput');
         const emailLimit = emailCountInput ? Math.min(Math.max(parseInt(emailCountInput.value) || 10, 1), 100) : 10;
         setReceiveError('');
+        setReceiveFetchingState(true);
         
         // Show loading toast that persists - will be manually removed on completion
-        const loadingToastId = showToast('正在收取邮件，请稍候...', 'info', 0); // 0 duration = persistent
+        const loadingToastId = showToast(options.silentAuto ? '正在自动收取邮件，请稍候...' : '正在收取邮件，请稍候...', 'info', 0); // 0 duration = persistent
         
         const store = loadReceiveStore();
-        let allMails = store[receiveState.mailboxId] || [];
+        let allMails = store[targetMailboxId] || [];
         let newMailsCount = 0;
         
         try {
@@ -5440,7 +5674,7 @@
                 })
             });
             
-            const data = await response.json();
+            const data = await readJsonResponse(response);
             
             if (data.success) {
                 // Handle both single email (backward compatibility) and multiple emails response
@@ -5452,8 +5686,8 @@
                 for (const mailData of fetchedMails) {
                     // Create a mail object from the fetched data
                     const mail = {
-                        id: `${receiveState.mailboxId}-${generateUniqueId()}`,
-                        mailboxId: receiveState.mailboxId,
+                        id: `${targetMailboxId}-${generateUniqueId()}`,
+                        mailboxId: targetMailboxId,
                         subject: mailData.subject || '(无主题)',
                         from: mailData.from || 'unknown@example.com',
                         to: mailData.to || mailbox.email,
@@ -5486,54 +5720,68 @@
                 });
                 
                 // Save all mails to store
-                store[receiveState.mailboxId] = allMails;
+                store[targetMailboxId] = allMails;
                 saveReceiveStore(store);
-                
-                receiveState.mails = allMails;
-                receiveState.page = 1;
-                receiveState.activeMail = null;
-                setReceiveError('');
                 
                 // Remove loading toast
                 removeToast(loadingToastId);
-                
-                if (newMailsCount > 0) {
-                    // Only use Toast notification - removed on-page status per requirements
-                    showToast(
-                        appendConnectionInfo(`成功收取 ${newMailsCount} 封新邮件`, proxyInfo, connectionType),
-                        'success'
-                    );
-                } else if (fetchedMails.length > 0) {
-                    // We fetched emails but they were all duplicates
-                    showToast(
-                        appendConnectionInfo('所有邮件已存在，未发现新邮件', proxyInfo, connectionType),
-                        'info'
-                    );
-                } else {
-                    // No emails found
-                    showToast(
-                        appendConnectionInfo('邮箱中暂无新邮件', proxyInfo, connectionType),
-                        'info'
-                    );
+
+                const isCurrentReceiveView = receiveState.mailboxId === targetMailboxId && receiveState.fetchToken === fetchToken;
+                if (isCurrentReceiveView) {
+                    receiveState.mails = allMails;
+                    receiveState.page = 1;
+                    receiveState.activeMail = null;
+                    setReceiveError('');
                 }
                 
-                // Auto-refresh the list view immediately after fetching per requirements
-                renderReceiveView();
+                if (isCurrentReceiveView) {
+                    if (newMailsCount > 0) {
+                        // Only use Toast notification - removed on-page status per requirements
+                        showToast(
+                            appendConnectionInfo(`成功收取 ${newMailsCount} 封新邮件`, proxyInfo, connectionType),
+                            'success'
+                        );
+                    } else if (fetchedMails.length > 0) {
+                        // We fetched emails but they were all duplicates
+                        showToast(
+                            appendConnectionInfo('所有邮件已存在，未发现新邮件', proxyInfo, connectionType),
+                            'info'
+                        );
+                    } else {
+                        // No emails found
+                        showToast(
+                            appendConnectionInfo('邮箱中暂无新邮件', proxyInfo, connectionType),
+                            'info'
+                        );
+                    }
+
+                    // Auto-refresh the list view immediately after fetching per requirements
+                    renderReceiveView();
+                }
             } else {
                 // Remove loading toast
                 removeToast(loadingToastId);
                 // Error occurred
                 const errorMessage = appendConnectionInfo(data.message || '获取邮件失败', data.proxy, data.connection);
-                setReceiveError(errorMessage, summarizeReceiveError(errorMessage));
-                showToast('收件失败，详情已显示在弹窗内', 'error', 4500);
+                if (receiveState.mailboxId === targetMailboxId && receiveState.fetchToken === fetchToken) {
+                    setReceiveError(errorMessage, summarizeReceiveError(errorMessage));
+                    showToast('收件失败，详情已显示在弹窗内', 'error', 4500);
+                }
             }
         } catch (error) {
             console.error('收取邮件出错:', error);
             // Remove loading toast
             removeToast(loadingToastId);
             // Only use Toast notification - removed on-page status per requirements
-            setReceiveError('网络错误，请稍后重试', '网络错误');
-            showToast('网络错误，详情已显示在弹窗内', 'error', 4500);
+            const errorMessage = `无法连接 /api/get_mail：${error.message || '请求失败'}`;
+            if (receiveState.mailboxId === targetMailboxId && receiveState.fetchToken === fetchToken) {
+                setReceiveError(errorMessage, '接口请求失败');
+                showToast('网络错误，详情已显示在弹窗内', 'error', 4500);
+            }
+        } finally {
+            if (receiveState.mailboxId === targetMailboxId && receiveState.fetchToken === fetchToken) {
+                setReceiveFetchingState(false);
+            }
         }
     }
 
@@ -5550,6 +5798,26 @@
         } else {
             renderReceiveList();
         }
+    }
+
+    function normalizeReceiveCellText(value) {
+        const text = value == null ? '' : String(value).trim();
+        const normalized = text.toLowerCase();
+        if (!text || text === '-' || text === '未知' || normalized === 'unknown' || normalized === 'invalid date') {
+            return '';
+        }
+        return text;
+    }
+
+    function renderReceiveCell(value, extraClass = '') {
+        const text = normalizeReceiveCellText(value);
+        if (!text) {
+            return '<span class="receive-cell receive-missing">--</span>';
+        }
+
+        const escaped = escapeHtml(text);
+        const className = ['receive-cell', extraClass].filter(Boolean).join(' ');
+        return `<span class="${className}" title="${escaped}">${escaped}</span>`;
     }
 
     function setReceiveView(showDetail) {
@@ -5590,10 +5858,9 @@
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${serialNumber}</td>
-                        <td>${escapeHtml(mail.subject || '（无主题）')}</td>
-                        <td>${escapeHtml(mail.from || '-')}</td>
-                        <td>${escapeHtml(mail.to || '-')}</td>
-                        <td>${formatDateTime(mail.receivedAt)}</td>
+                        <td>${renderReceiveCell(mail.subject || '（无主题）')}</td>
+                        <td>${renderReceiveCell(mail.from)}</td>
+                        <td>${renderReceiveCell(formatDateTime(mail.receivedAt))}</td>
                     `;
                     row.addEventListener('click', () => openReceiveDetail(mail.id));
                     tbody.appendChild(row);
