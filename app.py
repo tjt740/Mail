@@ -3918,6 +3918,28 @@ def _split_import_line(line):
     return [_clean_import_value(part) for part in re.split(r'\s+', line) if part.strip()]
 
 
+def _is_pipe_graph_oauth_pack(line, tokens, email_index):
+    """识别 email|password|refresh_token|client_id|recovery_email 这类 Outlook 数据包。"""
+    if '|' not in line or email_index < 0 or len(tokens) < 4:
+        return False
+
+    has_refresh_token = False
+    has_client_id = False
+    has_secondary_email = False
+
+    for index, token in enumerate(tokens):
+        if not token or index == email_index:
+            continue
+        if _looks_like_refresh_token(token):
+            has_refresh_token = True
+        elif UUID_RE.fullmatch(token):
+            has_client_id = True
+        elif EMAIL_IMPORT_RE.fullmatch(token):
+            has_secondary_email = True
+
+    return has_refresh_token and has_client_id and has_secondary_email
+
+
 def _parse_key_value_import_line(line):
     """解析 JSON 或 key=value/key:value 形式的导入行。"""
     stripped = line.strip()
@@ -3976,7 +3998,7 @@ def parse_mailbox_import_line(line):
     client_id = parsed.get('client_id', '')
     refresh_token = parsed.get('refresh_token', '')
     remarks = parsed.get('remarks', '')
-    graph_api_requested = _is_graph_api_marker(parsed.get('auth_type', '')) or any(
+    graph_api_requested = _is_graph_api_marker(parsed.get('auth_type', '')) or _is_pipe_graph_oauth_pack(raw_line, tokens, email_index) or any(
         _is_graph_api_marker(token) for token in tokens
     )
     used_indexes = set()

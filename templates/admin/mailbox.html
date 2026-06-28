@@ -1012,8 +1012,8 @@
     }
 
     #mailboxTable {
-        width: max(100%, 1280px);
-        min-width: 1280px;
+        width: var(--mailbox-table-width, 100%);
+        min-width: var(--mailbox-table-min-width, 100%);
         table-layout: fixed;
         margin-top: 0;
     }
@@ -1025,44 +1025,7 @@
     }
 
     .mailbox-col-select {
-        width: 44px;
         text-align: center;
-    }
-
-    .mailbox-col-group {
-        width: 90px;
-    }
-
-    .mailbox-col-email {
-        width: auto;
-    }
-
-    .mailbox-col-server {
-        width: 16%;
-    }
-
-    .mailbox-col-test_status {
-        width: 128px;
-    }
-
-    .mailbox-col-created_by_admin {
-        width: 116px;
-    }
-
-    .mailbox-col-created_at {
-        width: 148px;
-    }
-
-    .mailbox-col-updated_at {
-        width: 184px;
-    }
-
-    .mailbox-col-remarks {
-        width: 152px;
-    }
-
-    .mailbox-col-actions {
-        width: 236px;
     }
 
     #mailboxTable th {
@@ -1238,10 +1201,23 @@
         color: #1f2937;
     }
 
-    .mailbox-col-remarks {
-        overflow: hidden;
-        text-overflow: ellipsis;
+    #mailboxTable td.mailbox-col-remarks {
         padding-left: 18px !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        line-height: 1.45;
+    }
+
+    .mailbox-remarks-text {
+        display: block;
+        max-width: 100%;
+        color: #2f2a24;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .mailbox-col-updated_at {
@@ -1274,11 +1250,11 @@
         padding: 4px 8px;
         margin: -4px -8px;
         border-radius: 8px;
-        overflow: visible;
-        text-overflow: clip;
-        white-space: normal;
-        overflow-wrap: anywhere;
-        word-break: break-word;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
         line-height: 1.45;
         transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
     }
@@ -2649,14 +2625,6 @@
             min-width: 150px;
         }
 
-        .mailbox-col-server,
-        .mailbox-col-updated_at {
-            display: none !important;
-        }
-
-        .mailbox-col-actions {
-            width: 216px;
-        }
     }
     
     /* Responsive */
@@ -2764,10 +2732,6 @@
             justify-content: flex-end;
         }
 
-        .mailbox-col-group,
-        .mailbox-col-remarks {
-            display: none !important;
-        }
     }
 
     @media (max-width: 640px) {
@@ -3057,6 +3021,7 @@
                     <div class="card-body scroll-card-body">
                         <div class="table-container">
                             <table id="mailboxTable">
+                                <colgroup id="mailboxTableColumns"></colgroup>
                                 <thead>
                                     <tr id="mailboxTableHead"></tr>
                                 </thead>
@@ -3381,7 +3346,7 @@
                 <div class="form-group">
                     <label for="batchContent">自动识别邮箱内容 <span class="required-mark">*</span></label>
                     <textarea id="batchContent" class="batch-content-textarea" name="batch_content" rows="10"
-                              placeholder="每行一个邮箱，自动识别多种格式：&#10;user@example.com----password&#10;user@hotmail.com----password----client_id----refresh_token----Graph API&#10;email=user@example.com password=password client_id=... refresh_token=... auth_type=graph&#10;支持 ---- / 冒号 / 竖线 / 逗号 / JSON / key=value / Graph API"
+                              placeholder="每行一个邮箱，自动识别多种格式：&#10;user@example.com----password&#10;user@hotmail.com----password----client_id----refresh_token----Graph API&#10;user@hotmail.com|password|refresh_token|client_id|recovery@example.com&#10;email=user@example.com password=password client_id=... refresh_token=... auth_type=graph&#10;支持 ---- / 冒号 / 竖线 / 逗号 / JSON / key=value / Graph API"
                               oninput="autoFillBatchRequiredFields()"></textarea>
                 </div>
                 
@@ -3613,6 +3578,8 @@
         if (!grid) return;
         grid.classList.toggle('group-panel-collapsed', collapsed);
         updateMailboxGroupPanelControls(collapsed);
+        scheduleMailboxTableLayout();
+        window.setTimeout(scheduleMailboxTableLayout, 260);
     }
 
     function toggleMailboxGroupPanel() {
@@ -3725,6 +3692,7 @@
                 closeMailboxMoreMenus();
             }
         });
+        window.addEventListener('resize', scheduleMailboxTableLayout);
     });
 
     // 全局变量
@@ -3749,16 +3717,16 @@
     const UNGROUPED_GROUP_ID = 'ungrouped';
     const LEGACY_OWNER_FILTER_VALUE = '__legacy_owner__';
     const MAILBOX_COLUMNS = [
-        { key: 'select', label: '', required: true, defaultVisible: true },
-        { key: 'group', label: '分组', defaultVisible: false, sortable: true },
-        { key: 'email', label: '邮箱地址', required: true, defaultVisible: true },
-        { key: 'server', label: '收/发信息', defaultVisible: false, sortable: true },
-        { key: 'test_status', label: '检测状态', defaultVisible: true, filter: 'test_status' },
-        { key: 'created_at', label: '添加时间', defaultVisible: true, sortable: true },
-        { key: 'created_by_admin', label: '操作人', defaultVisible: true, filter: 'owner' },
-        { key: 'updated_at', label: '最后修改时间', defaultVisible: false, sortable: true },
-        { key: 'remarks', label: '备注', defaultVisible: true },
-        { key: 'actions', label: '操作', required: true, defaultVisible: true }
+        { key: 'select', label: '', required: true, defaultVisible: true, minWidth: 44, fixed: true },
+        { key: 'group', label: '分组', defaultVisible: false, sortable: true, minWidth: 96, weight: 0.7 },
+        { key: 'email', label: '邮箱地址', required: true, defaultVisible: true, minWidth: 300, weight: 3.4 },
+        { key: 'server', label: '收/发信息', defaultVisible: false, sortable: true, minWidth: 170, weight: 1.1 },
+        { key: 'test_status', label: '检测状态', defaultVisible: true, filter: 'test_status', minWidth: 126, fixed: true },
+        { key: 'created_at', label: '添加时间', defaultVisible: true, sortable: true, minWidth: 150, fixed: true },
+        { key: 'created_by_admin', label: '操作人', defaultVisible: true, filter: 'owner', minWidth: 126, fixed: true },
+        { key: 'updated_at', label: '最后修改时间', defaultVisible: false, sortable: true, minWidth: 178, fixed: true },
+        { key: 'remarks', label: '备注', defaultVisible: true, minWidth: 150, weight: 1.7, priorityGrow: true },
+        { key: 'actions', label: '操作', required: true, defaultVisible: true, minWidth: 236, fixed: true }
     ];
     const MAILBOX_TEST_STATUS_FILTERS = [
         { value: '', label: '检测状态' },
@@ -3987,6 +3955,76 @@
             .filter(key => visibleKeys.includes(key));
     }
 
+    function getVisibleMailboxColumns() {
+        return getVisibleMailboxColumnKeys()
+            .map(key => MAILBOX_COLUMNS.find(column => column.key === key))
+            .filter(Boolean);
+    }
+
+    function getMailboxTableContainerWidth() {
+        const table = document.getElementById('mailboxTable');
+        const container = table ? table.closest('.table-container') : null;
+        return container ? Math.floor(container.clientWidth) : 0;
+    }
+
+    function applyMailboxTableLayout(visibleColumns = getVisibleMailboxColumns()) {
+        const table = document.getElementById('mailboxTable');
+        if (!table) return;
+
+        let colgroup = document.getElementById('mailboxTableColumns');
+        if (!colgroup) {
+            colgroup = document.createElement('colgroup');
+            colgroup.id = 'mailboxTableColumns';
+            table.insertBefore(colgroup, table.firstChild);
+        }
+
+        const columns = visibleColumns.length ? visibleColumns : getVisibleMailboxColumns();
+        const minTotal = columns.reduce((sum, column) => sum + (column.minWidth || 120), 0);
+        const containerWidth = getMailboxTableContainerWidth();
+        const targetWidth = Math.max(containerWidth, minTotal);
+        const shouldPrioritizeRemarks = columns.length <= 7 && columns.some(column => column.key === 'remarks');
+        const getColumnWeight = column => {
+            const baseWeight = column.weight || 1;
+            if (shouldPrioritizeRemarks && column.key === 'remarks') {
+                return baseWeight * 1.12;
+            }
+            if (shouldPrioritizeRemarks && column.key === 'email') {
+                return baseWeight * 0.98;
+            }
+            return baseWeight;
+        };
+        const flexibleColumns = columns.filter(column => !column.fixed);
+        const flexibleWeight = flexibleColumns.reduce((sum, column) => sum + getColumnWeight(column), 0) || 1;
+        const extraWidth = Math.max(0, targetWidth - minTotal);
+        let roundedTotal = 0;
+
+        colgroup.innerHTML = columns.map((column, index) => {
+            const minWidth = column.minWidth || 120;
+            const growWidth = !column.fixed ? extraWidth * (getColumnWeight(column) / flexibleWeight) : 0;
+            let width = Math.floor(minWidth + growWidth);
+            if (index === columns.length - 1) {
+                width = Math.max(minWidth, targetWidth - roundedTotal);
+            }
+            roundedTotal += width;
+            return `<col class="mailbox-layout-col mailbox-layout-col-${column.key}" style="width: ${width}px;">`;
+        }).join('');
+
+        table.style.setProperty('--mailbox-table-min-width', `${minTotal}px`);
+        table.style.setProperty('--mailbox-table-width', `${Math.max(roundedTotal, targetWidth)}px`);
+    }
+
+    let mailboxTableLayoutFrame = null;
+
+    function scheduleMailboxTableLayout() {
+        if (mailboxTableLayoutFrame) {
+            cancelAnimationFrame(mailboxTableLayoutFrame);
+        }
+        mailboxTableLayoutFrame = requestAnimationFrame(() => {
+            mailboxTableLayoutFrame = null;
+            applyMailboxTableLayout();
+        });
+    }
+
     function saveVisibleMailboxColumns(keys) {
         setStoredPreference(MAILBOX_COLUMN_STORAGE_KEY, JSON.stringify(keys));
     }
@@ -4040,11 +4078,10 @@
         const header = document.getElementById('mailboxTableHead');
         const table = document.getElementById('mailboxTable');
         if (!header || !table) return;
-        const visibleColumns = getVisibleMailboxColumnKeys()
-            .map(key => MAILBOX_COLUMNS.find(column => column.key === key))
-            .filter(Boolean);
+        const visibleColumns = getVisibleMailboxColumns();
 
         table.classList.toggle('server-column-visible', visibleColumns.some(column => column.key === 'server'));
+        applyMailboxTableLayout(visibleColumns);
         header.innerHTML = visibleColumns.map(column => {
             if (column.key === 'select') {
                 return '<th class="mailbox-col-select"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>';
@@ -4231,8 +4268,10 @@
                 return `<td class="mailbox-col-created_at" data-label="${label}">${formatDateTime(mailbox.created_at)}</td>`;
             case 'updated_at':
                 return `<td class="mailbox-col-updated_at" data-label="${label}">${formatDateTime(mailbox.updated_at)}</td>`;
-            case 'remarks':
-                return `<td class="mailbox-col-remarks" data-label="${label}">${escapeHtml(String(mailbox.remarks || '').trim() || '--')}</td>`;
+            case 'remarks': {
+                const remarksText = String(mailbox.remarks || '').trim() || '--';
+                return `<td class="mailbox-col-remarks" data-label="${label}"><span class="mailbox-remarks-text" title="${escapeAttribute(remarksText)}">${escapeHtml(remarksText)}</span></td>`;
+            }
             case 'actions':
                 return `<td class="mailbox-col-actions" data-label="${label}">
                     <div class="mailbox-actions">
@@ -4329,9 +4368,7 @@
     // 渲染邮箱表格
     function renderMailboxTable(mailboxes) {
         const tbody = document.querySelector('#mailboxTable tbody');
-        const visibleColumns = getVisibleMailboxColumnKeys()
-            .map(key => MAILBOX_COLUMNS.find(column => column.key === key))
-            .filter(Boolean);
+        const visibleColumns = getVisibleMailboxColumns();
         renderMailboxTableHeader();
         tbody.innerHTML = '';
         
