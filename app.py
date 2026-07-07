@@ -2322,11 +2322,39 @@ def update_proxy_unified_id(db, table_name, proxy_id, unified_id):
 # 前端页面路由
 # ===============================
 
+def render_react_app(page_title=None, **props):
+    """Render the front-end app while keeping Flask APIs unchanged."""
+    system_title = get_system_config('system_title', '邮件查看系统')
+    resolved_title = page_title or system_title
+    app_props = {
+        'systemTitle': system_title,
+        'pageTitle': resolved_title,
+        'adminUsername': session.get('admin_username', ''),
+        'adminLoginTitle': get_system_config('admin_login_title', '管理员登录'),
+        'path': request.path
+    }
+    app_props.update(props)
+    return render_template(
+        'react_app.html',
+        page_title=resolved_title,
+        app_props=app_props
+    )
+
 @app.route('/')
 def index():
     """前端首页 - 邮件查看"""
     frontend_title = get_system_config('frontend_page_title', '邮件查看系统')
-    return render_template('frontend/index.html', page_title=frontend_title)
+    return render_react_app(page_title=frontend_title)
+
+@app.route('/legacy/')
+def legacy_index():
+    """Legacy public mail viewer embedded by the React shell."""
+    frontend_title = get_system_config('frontend_page_title', '邮件查看系统')
+    return render_template(
+        'frontend/index.html',
+        page_title=frontend_title,
+        embedded=request.args.get('embedded') == '1'
+    )
 
 # ===============================
 # 管理员认证相关路由
@@ -2385,7 +2413,10 @@ def admin_login():
         else:
             error = '请输入用户名和密码'
     
-    return render_template('admin/login.html', error=error, page_title=get_system_config('admin_login_title', '管理员登录'))
+    return render_react_app(
+        page_title=get_system_config('admin_login_title', '管理员登录'),
+        loginError=error
+    )
 
 @app.route('/admin/logout')
 def admin_logout():
@@ -2897,56 +2928,105 @@ def inject_system_title():
 @admin_required
 def admin_home():
     """管理员首页"""
-    account_count = get_account_count()
-    card_count = get_card_count()
-    available_proxy_count = get_available_proxy_count()
-    return render_template('admin/home.html', 
-                         admin_username=session.get('admin_username'),
-                         account_count=account_count,
-                         card_count=card_count,
-                         available_proxy_count=available_proxy_count)
+    return render_react_app(page_title=f'首页 - {get_system_config("system_title", "邮件查看系统")}')
 
 @app.route('/admin/mailbox')
 @admin_required
 def admin_mailbox():
     """邮箱管理页面"""
-    return render_template('admin/mailbox.html',
-                         admin_username=session.get('admin_username'))
+    return render_react_app(page_title=f'邮箱管理 - {get_system_config("system_title", "邮件查看系统")}')
 
 @app.route('/admin/daili')
 @admin_required
 def admin_daili():
     """代理池管理页面"""
-    return render_template('admin/daili.html',
-                         admin_username=session.get('admin_username'))
+    return render_react_app(page_title=f'代理池 - {get_system_config("system_title", "邮件查看系统")}')
 
 @app.route('/admin/kami')
 @admin_required
 def admin_kami():
     """卡密管理页面"""
-    return render_template('admin/kami.html',
-                         admin_username=session.get('admin_username'))
+    return render_react_app(page_title=f'卡密管理 - {get_system_config("system_title", "邮件查看系统")}')
 
 @app.route('/admin/kamirizhi')
 @admin_required
 def admin_kamirizhi():
     """卡密日志页面"""
-    return render_template('admin/kamirizhi.html',
-                         admin_username=session.get('admin_username'))
+    return render_react_app(page_title=f'卡密日志 - {get_system_config("system_title", "邮件查看系统")}')
 
 @app.route('/admin/shoujian')
 @admin_required
 def admin_shoujian():
     """收件日志页面"""
-    return render_template('admin/shoujian.html',
-                         admin_username=session.get('admin_username'))
+    return render_react_app(page_title=f'收件日志 - {get_system_config("system_title", "邮件查看系统")}')
 
 @app.route('/admin/system')
 @admin_required
 def admin_system():
     """系统设置页面"""
+    return render_react_app(page_title=f'系统设置 - {get_system_config("system_title", "邮件查看系统")}')
+
+@app.route('/legacy/admin/home')
+@admin_required
+def legacy_admin_home():
+    """Legacy admin dashboard embedded by the React shell."""
+    account_count = get_account_count()
+    card_count = get_card_count()
+    available_proxy_count = get_available_proxy_count()
+    return render_template('admin/home.html',
+                         admin_username=session.get('admin_username'),
+                         account_count=account_count,
+                         card_count=card_count,
+                         available_proxy_count=available_proxy_count,
+                         embedded=request.args.get('embedded') == '1')
+
+@app.route('/legacy/admin/mailbox')
+@admin_required
+def legacy_admin_mailbox():
+    """Legacy mailbox management page embedded by the React shell."""
+    return render_template('admin/mailbox.html',
+                         admin_username=session.get('admin_username'),
+                         embedded=request.args.get('embedded') == '1')
+
+@app.route('/legacy/admin/daili')
+@admin_required
+def legacy_admin_daili():
+    """Legacy proxy pool page embedded by the React shell."""
+    return render_template('admin/daili.html',
+                         admin_username=session.get('admin_username'),
+                         embedded=request.args.get('embedded') == '1')
+
+@app.route('/legacy/admin/kami')
+@admin_required
+def legacy_admin_kami():
+    """Legacy card management page embedded by the React shell."""
+    return render_template('admin/kami.html',
+                         admin_username=session.get('admin_username'),
+                         embedded=request.args.get('embedded') == '1')
+
+@app.route('/legacy/admin/kamirizhi')
+@admin_required
+def legacy_admin_kamirizhi():
+    """Legacy card logs page embedded by the React shell."""
+    return render_template('admin/kamirizhi.html',
+                         admin_username=session.get('admin_username'),
+                         embedded=request.args.get('embedded') == '1')
+
+@app.route('/legacy/admin/shoujian')
+@admin_required
+def legacy_admin_shoujian():
+    """Legacy mail logs page embedded by the React shell."""
+    return render_template('admin/shoujian.html',
+                         admin_username=session.get('admin_username'),
+                         embedded=request.args.get('embedded') == '1')
+
+@app.route('/legacy/admin/system')
+@admin_required
+def legacy_admin_system():
+    """Legacy system settings page embedded by the React shell."""
     return render_template('admin/system.html',
-                         admin_username=session.get('admin_username'))
+                         admin_username=session.get('admin_username'),
+                         embedded=request.args.get('embedded') == '1')
 
 # ===============================
 # API 接口路由

@@ -5,7 +5,7 @@
 ## 🌟 主要特性
 
 - 🐍 **Python Flask 3.1+**：现代化的 Python Web 框架，易于维护和扩展
-- 🌐 **现代化界面**：响应式设计，完美支持桌面端和移动端访问
+- 🌐 **现代前端界面架构**：后台管理页采用组件化界面，提供统一导航、表格、表单和弹窗交互
 - 📧 **多协议支持**：完整支持 IMAP 和 POP3 协议，可选择 SSL 安全连接
 - 🔧 **完整管理后台**：功能齐全的管理员控制面板，支持所有管理操作
 - 🌐 **代理池支持**：集成 HTTP 和 SOCKS5 代理池，支持代理连接和智能切换
@@ -19,7 +19,7 @@
 ## 🏗️ 技术栈
 
 - **后端**：Python 3.12+、Flask 3.1+、Werkzeug 3.1+
-- **前端**：HTML5、CSS3、JavaScript (ES6+)、响应式设计
+- **前端**：React 19、Ant Design 6、Vite 5、HTML5、CSS3、JavaScript (ES6+)
 - **数据库**：SQLite3 (默认) / MySQL 8.0+ / PostgreSQL 12+
 - **邮件处理**：IMAPClient 3.0+、内置邮件解析器
 - **代理支持**：PySocks、内置代理池管理
@@ -31,6 +31,10 @@
 ```
 mail-915/
 ├── app.py                      # Flask 主应用文件
+├── frontend/                   # 前端工程
+│   ├── src/                    # React 入口与样式
+│   ├── package.json            # Node 前端依赖
+│   └── vite.config.js          # Vite 构建配置，输出到 static/react
 ├── requirements.txt            # Python 依赖包
 ├── Dockerfile                 # Docker 镜像构建文件
 ├── docker-compose.yml         # Docker Compose 配置
@@ -52,6 +56,7 @@ mail-915/
 │   ├── mail_fetcher.py       # 邮件获取器（支持代理）
 │   └── requirements.txt      # 邮件模块依赖
 ├── static/                   # 静态资源文件
+│   ├── react/                # React 构建产物（由 npm run build 生成）
 │   └── img/                  # 图片资源
 │       └── favicons/         # 网站图标
 ├── db/                       # 数据库文件
@@ -140,9 +145,17 @@ cd mail
 # 2. 安装 Python 依赖
 pip install -r requirements.txt
 
-# 3. 启动应用（会自动初始化数据库）
+# 3. 如修改过 React 前端源码，重新构建静态资源
+cd frontend
+npm install
+npm run build
+cd ..
+
+# 4. 启动应用（会自动初始化数据库）
 python app.py
 ```
+
+> 当前 Flask API、数据库和业务逻辑保持不变；后台页面由组件化前端接管，前台取件页保留原有兼容实现。已构建的 `static/react/` 会随代码提交，普通部署不强制要求服务器安装 Node。
 
 ### 访问系统
 

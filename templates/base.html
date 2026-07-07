@@ -234,6 +234,31 @@
             box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.03);
             z-index: 5;
         }
+        {% if embedded %}
+        body.embedded-view {
+            min-height: 100vh !important;
+            padding: 0 !important;
+            overflow: auto !important;
+            background: #ffffff !important;
+        }
+        body.embedded-view .sidebar,
+        body.embedded-view .mobile-overlay,
+        body.embedded-view .main-content > .header,
+        body.embedded-view .i18n-switcher {
+            display: none !important;
+        }
+        body.embedded-view .main-content {
+            margin-left: 0 !important;
+            min-height: 100vh !important;
+            width: 100% !important;
+        }
+        body.embedded-view .content {
+            padding: 16px !important;
+        }
+        body.embedded-view .card {
+            box-shadow: none;
+        }
+        {% endif %}
         /* Tablet/mobile admin layout fixes */
         @media (max-width: 1024px) {
             .sidebar {
@@ -277,7 +302,7 @@
         }
     </style>
 </head>
-<body class="preload">
+<body class="preload{% if embedded %} embedded-view{% endif %}">
     {% include '_icons.html' %}
     <script>
         (function() {

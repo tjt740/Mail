@@ -48,6 +48,11 @@ venv/
 .venv-*/
 .env
 
+# Node / React frontend
+frontend/node_modules/
+frontend/.vite/
+frontend/.cache/
+
 # 测试环境
 test_venv/
 .pytest_cache/
