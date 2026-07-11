@@ -1272,84 +1272,84 @@
     #frontendApp .mail-layout {
         flex: 1 1 auto;
         min-height: 0;
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr);
-        gap: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
         align-items: stretch;
     }
 
     #frontendApp .folder-panel {
-        width: 56px;
-        min-width: 56px;
-        max-width: 220px;
-        min-height: 0;
-        overflow: hidden;
-        padding: 8px !important;
-        border-radius: 12px !important;
-        background: #fff !important;
-        box-shadow: none !important;
-        transition: width 0.18s ease;
-    }
-
-    #frontendApp .folder-panel:not(.is-collapsed) {
-        width: 220px;
-        padding: 12px !important;
-    }
-
-    #frontendApp .folder-toggle {
         width: 100%;
-        min-height: 40px;
-        border: 1px solid var(--border, #e7e4db);
-        border-radius: 10px;
-        background: var(--surface-2, #faf9f5);
-        color: var(--text, #2b2a27);
+        min-width: 0;
+        max-width: none;
+        min-height: 54px;
+        padding: 7px 8px !important;
+        border-radius: 12px !important;
+        border: 1px solid var(--border, #e7e4db) !important;
+        background: var(--surface-2, #faf9f5) !important;
+        box-shadow: none !important;
         display: flex;
+        flex-direction: row;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-        cursor: pointer;
-        font: inherit;
-        font-weight: 600;
+        justify-content: flex-start;
+        gap: 12px;
     }
 
-    #frontendApp .folder-panel:not(.is-collapsed) .folder-toggle {
-        justify-content: space-between;
-        padding: 0 10px;
-    }
-
-    #frontendApp .folder-title-main {
+    #frontendApp .folder-heading {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         min-width: 0;
-    }
-
-    #frontendApp .folder-panel.is-collapsed .folder-title-text,
-    #frontendApp .folder-panel.is-collapsed .folder-toggle-caret,
-    #frontendApp .folder-panel.is-collapsed .folder-list {
-        display: none;
+        padding: 0 8px;
+        color: var(--text-muted, #6e6c64);
+        font-size: 13px;
+        font-weight: 650;
+        white-space: nowrap;
     }
 
     #frontendApp .folder-list {
         display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-top: 10px;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
     }
 
     #frontendApp .folder-btn {
         min-height: 40px;
-        padding: 9px 10px;
+        min-width: 120px;
+        padding: 8px 14px;
         border-radius: 10px;
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 600;
         box-shadow: none !important;
+        justify-content: center;
+        gap: 8px;
     }
 
     #frontendApp .folder-btn.active {
         color: var(--primary-color, #c96442) !important;
         border-color: rgba(201, 100, 66, 0.45) !important;
-        background: rgba(201, 100, 66, 0.08) !important;
+        background: #fff !important;
+        box-shadow: 0 2px 8px rgba(201, 100, 66, 0.12) !important;
+    }
+
+    #frontendApp .folder-count {
+        min-width: 22px;
+        height: 22px;
+        padding: 0 6px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #ece9e1;
+        color: var(--text-muted, #6e6c64);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    #frontendApp .folder-btn.active .folder-count {
+        background: rgba(201, 100, 66, 0.12);
+        color: var(--primary-color, #c96442);
     }
 
     #frontendApp .mail-list-panel {
@@ -1391,14 +1391,48 @@
         height: auto !important;
         max-height: 100%;
         min-height: 0;
+        min-width: 0;
         padding: 16px !important;
         box-shadow: none !important;
         overflow: auto !important;
     }
 
+    #frontendApp .mail-header,
+    #frontendApp .mail-meta,
+    #frontendApp .mail-meta-item {
+        min-width: 0;
+    }
+
+    #frontendApp .mail-subject,
+    #frontendApp .mail-meta-item > span:last-child {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
     #frontendApp .mail-body {
         min-height: 0;
         max-height: none;
+        padding: 12px !important;
+        overflow: hidden !important;
+    }
+
+    #frontendApp .mail-body.mail-body--text {
+        overflow: auto !important;
+    }
+
+    #frontendApp .mail-body.mail-body--html {
+        flex: 0 0 auto;
+    }
+
+    #frontendApp .mail-content-frame {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        height: clamp(420px, 62vh, 760px);
+        border: 0;
+        border-radius: 8px;
+        background: #fff;
     }
 
     @media (max-width: 900px) {
@@ -1446,23 +1480,40 @@
             margin-top: 28px !important;
         }
 
-        #frontendApp .folder-panel {
-            width: 52px;
-            min-width: 52px;
-        }
-
-        #frontendApp .folder-panel:not(.is-collapsed) {
-            width: 170px;
-        }
-
         #frontendApp .mail-table {
             min-width: 820px;
         }
     }
 
     @media (max-width: 560px) {
+        html:has(body.frontend-mail-page),
+        body.frontend-mail-page {
+            height: auto;
+            min-height: 100%;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+        }
+
+        body.frontend-mail-page {
+            padding: 8px !important;
+        }
+
+        body.frontend-mail-page #frontendApp {
+            height: auto;
+            min-height: calc(100vh - 16px);
+            overflow: visible;
+        }
+
+        #frontendApp .frontend-topbar {
+            flex-basis: 40px;
+            min-height: 40px;
+            margin-bottom: 8px;
+        }
+
         #frontendApp .mail-input-card {
+            flex: 0 0 auto;
             padding: 10px !important;
+            overflow: visible;
         }
 
         #frontendApp .query-control-block {
@@ -1479,8 +1530,70 @@
             margin-top: 0 !important;
         }
 
-        #frontendApp .folder-panel:not(.is-collapsed) {
-            width: 144px;
+        #frontendApp .folder-panel {
+            min-height: 0;
+            padding: 6px !important;
+        }
+
+        #frontendApp .folder-heading {
+            display: none;
+        }
+
+        #frontendApp .folder-list {
+            width: 100%;
+            margin: 0;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        #frontendApp .folder-btn {
+            min-width: 0;
+            min-height: 44px;
+            width: 100%;
+            padding: 8px 10px;
+        }
+
+        #frontendApp .mail-layout {
+            min-height: 430px;
+        }
+
+        #frontendApp .mail-list-panel {
+            min-height: 430px !important;
+        }
+
+        #frontendApp .mail-display {
+            padding: 10px !important;
+        }
+
+        #frontendApp .mail-display-actions {
+            margin-bottom: 12px;
+        }
+
+        #frontendApp .mail-subject {
+            font-size: 20px;
+        }
+
+        #frontendApp .mail-meta {
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        #frontendApp .mail-meta-item {
+            align-items: flex-start;
+        }
+
+        #frontendApp .mail-meta-label {
+            flex: 0 0 52px;
+            min-width: 52px;
+        }
+
+        #frontendApp .mail-body {
+            padding: 6px !important;
+        }
+
+        #frontendApp .mail-content-frame {
+            height: max(520px, 68vh);
         }
     }
 </style>
@@ -1522,19 +1635,24 @@
             </div>
         
         <div class="mail-layout">
-            <aside class="folder-panel is-collapsed" id="folderPanel">
-                <button class="folder-toggle" type="button" onclick="toggleFolderPanel()" aria-expanded="false" aria-controls="folderList" title="邮箱文件夹">
-                    <span class="folder-title-main">
-                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span>
-                        <span class="folder-title-text">邮箱文件夹</span>
-                    </span>
-                    <span class="folder-toggle-caret" aria-hidden="true">‹</span>
-                </button>
-                <div class="folder-list" id="folderList">
-                    <button class="folder-btn active" data-folder="inbox" onclick="switchFolder('inbox')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-download"></use></svg></span> 收件箱</button>
-                    <button class="folder-btn" data-folder="trash" onclick="switchFolder('trash')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 垃圾箱</button>
+            <nav class="folder-panel" id="folderPanel" aria-label="邮箱文件夹">
+                <div class="folder-heading">
+                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span>
+                    <span>邮箱文件夹</span>
                 </div>
-            </aside>
+                <div class="folder-list" id="folderList" role="tablist" aria-label="邮件文件夹">
+                    <button class="folder-btn active" type="button" role="tab" aria-selected="true" aria-controls="mailListPanel" data-folder="inbox" onclick="switchFolder('inbox')">
+                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-download"></use></svg></span>
+                        <span>收件箱</span>
+                        <span class="folder-count" id="inboxFolderCount" aria-label="0 封">0</span>
+                    </button>
+                    <button class="folder-btn" type="button" role="tab" aria-selected="false" aria-controls="mailListPanel" data-folder="trash" onclick="switchFolder('trash')">
+                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span>
+                        <span>垃圾箱</span>
+                        <span class="folder-count" id="trashFolderCount" aria-label="0 封">0</span>
+                    </button>
+                </div>
+            </nav>
             <div class="mail-list-panel" id="mailListPanel">
                 <div class="loading" id="loading">正在获取邮件，请稍候...</div>
                 <div class="mail-list-view" id="mailListView">
@@ -1625,6 +1743,24 @@
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             getMail();
         }
+    });
+
+    document.getElementById('folderList')?.addEventListener('keydown', function(e) {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+
+        const tabs = Array.from(this.querySelectorAll('[role="tab"]'));
+        const currentIndex = tabs.indexOf(document.activeElement);
+        if (currentIndex < 0 || tabs.length === 0) return;
+
+        e.preventDefault();
+        let nextIndex = currentIndex;
+        if (e.key === 'Home') nextIndex = 0;
+        if (e.key === 'End') nextIndex = tabs.length - 1;
+        if (e.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        if (e.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+
+        tabs[nextIndex].focus();
+        tabs[nextIndex].click();
     });
     
     function normalizeMailId(value) {
@@ -1757,29 +1893,38 @@
     function switchFolder(folder) {
         mailState.folder = folder;
         document.querySelectorAll('.folder-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.folder === folder);
+            const isActive = btn.dataset.folder === folder;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
         renderMailList();
         if (mailState.activeMailId) {
             const activeMail = mailState.mails.find(item => item.id === mailState.activeMailId);
-            if (activeMail) {
+            if (activeMail && normalizeFolderName(activeMail.folder) === folder) {
                 displayMail(activeMail);
+            } else {
+                closeMailModal(true);
             }
         }
     }
 
-    function toggleFolderPanel(forceExpanded) {
-        const panel = document.getElementById('folderPanel');
-        const toggle = panel?.querySelector('.folder-toggle');
-        if (!panel || !toggle) return;
+    function updateFolderCounts() {
+        const counts = mailState.mails.reduce((result, mail) => {
+            const folder = normalizeFolderName(mail.folder);
+            result[folder] = (result[folder] || 0) + 1;
+            return result;
+        }, { inbox: 0, trash: 0 });
 
-        const shouldExpand = typeof forceExpanded === 'boolean'
-            ? forceExpanded
-            : panel.classList.contains('is-collapsed');
-
-        panel.classList.toggle('is-collapsed', !shouldExpand);
-        toggle.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
-        toggle.setAttribute('title', shouldExpand ? '折叠邮箱文件夹' : '展开邮箱文件夹');
+        const countTargets = {
+            inbox: document.getElementById('inboxFolderCount'),
+            trash: document.getElementById('trashFolderCount')
+        };
+        Object.entries(countTargets).forEach(([folder, element]) => {
+            if (!element) return;
+            const count = counts[folder] || 0;
+            element.textContent = String(count);
+            element.setAttribute('aria-label', `${count} 封`);
+        });
     }
     
     async function getMail() {
@@ -1926,6 +2071,7 @@
     
     function renderMailList() {
         const tbody = document.getElementById('mailTableBody');
+        updateFolderCounts();
         const filtered = mailState.mails.filter(mail => mail.folder === mailState.folder);
         const totalPages = Math.max(1, Math.ceil(filtered.length / mailState.perPage));
         mailState.page = Math.min(mailState.page, totalPages);
@@ -2056,10 +2202,21 @@
         
         const mailBodyElement = document.getElementById('mailBody');
         if (mail.body_type === 'html') {
-            mailBodyElement.innerHTML = mail.body || '(邮件内容为空)';
+            const frame = document.createElement('iframe');
+            frame.className = 'mail-content-frame';
+            frame.title = `邮件正文：${mail.subject || '无主题'}`;
+            frame.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+            frame.setAttribute('referrerpolicy', 'no-referrer');
+            frame.srcdoc = createIsolatedMailDocument(mail.body || '(邮件内容为空)');
+
+            mailBodyElement.replaceChildren(frame);
+            mailBodyElement.classList.add('mail-body--html');
+            mailBodyElement.classList.remove('mail-body--text');
             mailBodyElement.style.whiteSpace = 'normal';
         } else {
             mailBodyElement.textContent = mail.body || '(邮件内容为空)';
+            mailBodyElement.classList.add('mail-body--text');
+            mailBodyElement.classList.remove('mail-body--html');
             mailBodyElement.style.whiteSpace = 'pre-wrap';
         }
         
@@ -2068,6 +2225,66 @@
         
         mailDisplay?.classList.add('is-visible');
         openMailModal();
+    }
+
+    function createIsolatedMailDocument(html) {
+        const documentNode = new DOMParser().parseFromString(String(html || ''), 'text/html');
+
+        documentNode.querySelectorAll('script, iframe, object, embed, form, base, meta[http-equiv="refresh" i]').forEach(node => node.remove());
+        documentNode.querySelectorAll('a').forEach(link => {
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+        });
+
+        const viewport = documentNode.createElement('meta');
+        viewport.name = 'viewport';
+        viewport.content = 'width=device-width, initial-scale=1';
+
+        const responsiveStyle = documentNode.createElement('style');
+        responsiveStyle.textContent = `
+            :root { color-scheme: light; }
+            *, *::before, *::after { box-sizing: border-box !important; }
+            html, body {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow-x: hidden !important;
+                background: #fff;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+            }
+            body { padding: 12px !important; }
+            img, video, svg, canvas {
+                max-width: 100% !important;
+                height: auto !important;
+            }
+            table {
+                width: 100% !important;
+                max-width: 100% !important;
+                table-layout: auto !important;
+                border-collapse: collapse;
+            }
+            td, th, div, p, span, a {
+                max-width: 100% !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+            }
+            pre, code {
+                max-width: 100% !important;
+                white-space: pre-wrap !important;
+                word-break: break-word !important;
+            }
+            a { color: #9a3f26; }
+            @media (max-width: 560px) {
+                body { padding: 8px !important; }
+            }
+        `;
+
+        documentNode.head.prepend(responsiveStyle);
+        documentNode.head.prepend(viewport);
+        return `<!doctype html>${documentNode.documentElement.outerHTML}`;
     }
     
     function displayImages(images) {
