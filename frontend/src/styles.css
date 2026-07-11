@@ -147,12 +147,15 @@ body {
 }
 
 .public-app {
+  height: 100vh;
   min-height: 100vh;
   padding: 0;
+  overflow: hidden;
   background: #f6f3ea;
 }
 
 .public-app .legacy-frame-wrap {
+  height: 100vh;
   min-height: 100vh;
   border: 0;
   border-radius: 0;

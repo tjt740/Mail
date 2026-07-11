@@ -3064,7 +3064,7 @@ def api_get_mail():
             })
             
         email = data.get('email', '').strip()
-        card_key = data.get('card_key', '') or request.headers.get('X-Card-Key', '')
+        card_key = (data.get('card_key', '') or request.headers.get('X-Card-Key', '') or '').strip()
         admin_access = bool(data.get('admin_access', False))
         master_key_input = (data.get('master_key') or '').strip()
         stored_master_key_hash = get_system_config('admin_master_key', '').strip()
@@ -3078,7 +3078,10 @@ def api_get_mail():
             })
         
         # 检查是否为管理员访问
-        is_admin_session = session.get('admin_logged_in', False) and admin_access
+        # An explicitly supplied card must use the card-bound authorization path,
+        # even when the browser also has an administrator session. A valid master
+        # key still takes precedence because it is verified independently.
+        is_admin_session = session.get('admin_logged_in', False) and admin_access and not card_key
         is_admin = is_admin_session or master_key_valid
         
         # Get optional email_index parameter for fetching different emails
@@ -3268,10 +3271,11 @@ def api_get_mail():
                     use_bound_email = False
                 
                 # 调用Python邮件获取器脚本，传递卡密过滤参数
+                fetch_email = card_info.get('bound_email') or email
                 script_args = [
                     sys.executable, 
                     os.path.join(os.path.dirname(__file__), 'python', 'mail_fetcher.py'),
-                    email
+                    fetch_email
                 ]
                 
                 # 添加卡密过滤参数

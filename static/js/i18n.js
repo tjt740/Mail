@@ -136,6 +136,8 @@
             '卡密绑定邮箱': 'Bound Email',
 
             '邮件查看': 'Mail Viewer',
+            '卡密 / 管理员万能秘钥': 'Card Key / Admin Master Key',
+            '请输入卡密或管理员万能秘钥': 'Enter a card key or admin master key',
             '设置后的万能秘钥可免卡密取件': 'A configured master key can fetch mail without a card key',
             '邮箱查询': 'Mailbox Query',
             '请输入邮箱地址 (例: user@example.com)': 'Enter email address (e.g. user@example.com)',
@@ -504,6 +506,8 @@
             '卡密绑定邮箱': 'Email liên kết mã',
 
             '邮件查看': 'Xem thư',
+            '卡密 / 管理员万能秘钥': 'Mã / Khóa tổng quản trị',
+            '请输入卡密或管理员万能秘钥': 'Nhập mã hoặc khóa tổng quản trị',
             '设置后的万能秘钥可免卡密取件': 'Khóa tổng đã đặt có thể lấy thư không cần mã',
             '邮箱查询': 'Truy vấn hộp thư',
             '请输入邮箱地址 (例: user@example.com)': 'Nhập địa chỉ email (ví dụ: user@example.com)',

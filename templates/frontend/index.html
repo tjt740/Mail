@@ -1504,9 +1504,9 @@
     <div class="mail-input-card">
             <div class="control-row">
                 <div class="control-block master-key-block">
-                    <label for="masterKeyInput">管理员万能秘钥</label>
+                    <label for="masterKeyInput">卡密 / 管理员万能秘钥</label>
                     <div class="secure-input">
-                        <input type="text" id="masterKeyInput" class="form-control highlight-input short-master-key" placeholder="设置后的万能秘钥可免卡密取件">
+                        <input type="text" id="masterKeyInput" class="form-control highlight-input short-master-key" placeholder="请输入卡密或管理员万能秘钥">
                     </div>
                 </div>
                 <div class="control-block query-control-block">
@@ -1789,7 +1789,7 @@
         const emailCountInput = document.getElementById('emailCountInput');
         
         const emails = parseEmailsFromInput(emailInput.value);
-        const masterKey = (masterKeyInput?.value || '').trim();
+        const accessKey = (masterKeyInput?.value || '').trim();
         const emailLimit = Math.min(Math.max(parseInt(emailCountInput.value, 10) || 10, 1), 100);
         
         if (emails.length === 0) {
@@ -1813,9 +1813,9 @@
             
             const loginData = await loginResponse.json();
             
-            if (loginData.logged_in) {
+            if (loginData.logged_in && !accessKey) {
                 showToast('已检测到管理员登录状态，免卡密访问', 'info', 3000);
-            } else if (!masterKey) {
+            } else if (!accessKey) {
                 showToast('您尚未登录管理员账户，请使用卡密或万能秘钥访问', 'warning', 4000);
             }
 
@@ -1828,12 +1828,15 @@
                     folder: requestFolder
                 };
 
-                if (masterKey) {
-                    requestData.master_key = masterKey;
+                if (accessKey) {
+                    // The same input accepts either credential. The backend validates
+                    // the master key first and otherwise treats it as a regular card.
+                    requestData.master_key = accessKey;
+                    requestData.card_key = accessKey;
                     requestData.admin_access = true;
                 }
 
-                if (loginData.logged_in) {
+                if (loginData.logged_in && !accessKey) {
                     requestData.admin_access = true;
                 }
 

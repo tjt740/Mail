@@ -1737,7 +1737,17 @@ def main():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        cursor.execute('SELECT * FROM mail_accounts WHERE email = ?', (email_address,))
+        # Email addresses are effectively case-insensitive for account lookup.
+        # The public UI normalizes user input to lowercase while imported mailbox
+        # addresses may retain mixed casing, so an exact SQLite comparison can
+        # incorrectly report that an existing, card-bound mailbox is missing.
+        cursor.execute('''
+            SELECT *
+            FROM mail_accounts
+            WHERE email = ? COLLATE NOCASE OR username = ? COLLATE NOCASE
+            ORDER BY CASE WHEN email = ? THEN 0 ELSE 1 END, id
+            LIMIT 1
+        ''', (email_address, email_address, email_address))
         account = cursor.fetchone()
         
         if not account:
