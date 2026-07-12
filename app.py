@@ -211,8 +211,14 @@ MAIL_POLLER_STATE = {
     'last_checked_count': 0,
     'last_new_count': 0,
     'last_failed_count': 0,
-    'interval': MAIL_POLL_DEFAULT_INTERVAL
+    'interval': MAIL_POLL_DEFAULT_INTERVAL,
+    'auto_poll_enabled': True,
+    'next_run_at': '',
+    'backoff': []
 }
+# 失败退避：连续失败的邮箱按指数跳过若干轮，避免反复空耗子进程与超时
+MAIL_POLL_BACKOFF_LOCK = threading.Lock()
+MAIL_POLL_BACKOFF = {}  # email -> {'failures', 'skip_remaining', 'last_error', 'last_failed_at'}
 
 # 确保数据库目录存在
 os.makedirs(os.path.dirname(app.config['DATABASE']), exist_ok=True)
@@ -2451,6 +2457,31 @@ def get_system_config(key, default_value=''):
         logger.error(f"Failed to get system config for key {key}: {e}")
         return default_value
 
+def set_system_config(db, db_type, key, value, config_type='string', description=''):
+    """写入/更新一条系统配置（三种数据库通用 upsert）"""
+    now = get_beijing_time()
+    if db_type == 'sqlite':
+        db.execute('''
+            INSERT OR REPLACE INTO system_config (config_key, config_value, config_type, description, is_system, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 0, ?, ?)
+        ''', (key, str(value), config_type, description, now, now))
+        db.commit()
+    else:
+        cursor = db.cursor()
+        if db_type == 'mysql':
+            cursor.execute('''
+                INSERT INTO system_config (config_key, config_value, config_type, description, is_system, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, 0, %s, %s)
+                ON DUPLICATE KEY UPDATE config_value=VALUES(config_value), updated_at=VALUES(updated_at)
+            ''', (key, str(value), config_type, description, now, now))
+        else:  # postgresql
+            cursor.execute('''
+                INSERT INTO system_config (config_key, config_value, config_type, description, is_system, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, 0, %s, %s)
+                ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value, updated_at = EXCLUDED.updated_at
+            ''', (key, str(value), config_type, description, now, now))
+        db.commit()
+
 def _set_mail_poller_state(**kwargs):
     """线程安全更新邮件轮询状态"""
     with MAIL_POLLER_STATE_LOCK:
@@ -2465,6 +2496,12 @@ def _get_mail_poll_interval():
     """读取自动轮询间隔，最低30秒"""
     interval = safe_int(get_system_config('mail_check_interval', MAIL_POLL_DEFAULT_INTERVAL), MAIL_POLL_DEFAULT_INTERVAL)
     return max(interval, MAIL_POLL_MIN_INTERVAL)
+
+def _is_mail_auto_poll_enabled():
+    """自动轮询软开关：环境变量硬关 AND 数据库标志。需在 app_context 内调用"""
+    if os.environ.get('MAIL_AUTO_POLL', '1') == '0':
+        return False
+    return get_system_config('mail_auto_poll_enabled', '1') == '1'
 
 def _row_to_dict(row, columns=None):
     if row is None:
@@ -2544,6 +2581,50 @@ def _run_mail_fetcher(email_address, limit=None):
             'success': False,
             'message': '邮件服务响应格式错误'
         }
+
+def _mail_poll_should_skip(email):
+    """若邮箱处于退避期则消耗一个跳过周期并返回 True"""
+    with MAIL_POLL_BACKOFF_LOCK:
+        entry = MAIL_POLL_BACKOFF.get(email)
+        if not entry or entry.get('skip_remaining', 0) <= 0:
+            return False
+        entry['skip_remaining'] -= 1
+        return True
+
+def _mail_poll_record_failure(email, error_message, failure_threshold, max_skip):
+    """记录一次失败；连续失败达到阈值后按指数退避（2,4,8…封顶）"""
+    with MAIL_POLL_BACKOFF_LOCK:
+        entry = MAIL_POLL_BACKOFF.setdefault(email, {
+            'failures': 0, 'skip_remaining': 0, 'last_error': '', 'last_failed_at': ''
+        })
+        entry['failures'] += 1
+        entry['last_error'] = (error_message or '')[:200]
+        entry['last_failed_at'] = get_beijing_time()
+        if entry['failures'] >= failure_threshold:
+            entry['skip_remaining'] = min(2 ** (entry['failures'] - failure_threshold + 1), max_skip)
+
+def _mail_poll_record_success(email):
+    """成功后清除该邮箱的退避状态"""
+    with MAIL_POLL_BACKOFF_LOCK:
+        MAIL_POLL_BACKOFF.pop(email, None)
+
+def _mail_poll_backoff_snapshot():
+    """导出退避状态列表（按连续失败数降序）"""
+    with MAIL_POLL_BACKOFF_LOCK:
+        items = [
+            {'email': email, **entry}
+            for email, entry in MAIL_POLL_BACKOFF.items()
+        ]
+    items.sort(key=lambda item: item.get('failures', 0), reverse=True)
+    return items
+
+def _mail_poll_reset_backoff(email=None):
+    """重置单个或全部邮箱的退避状态"""
+    with MAIL_POLL_BACKOFF_LOCK:
+        if email:
+            MAIL_POLL_BACKOFF.pop(email, None)
+        else:
+            MAIL_POLL_BACKOFF.clear()
 
 def _extract_mail_items(response_data):
     """兼容单封和多封邮件响应"""
@@ -2754,6 +2835,7 @@ def run_mail_poll_once(source='auto_poll', lock_acquired=False, admin_username='
     checked_count = 0
     new_count = 0
     failed_count = 0
+    skipped_count = 0
 
     try:
         poll_interval = MAIL_POLL_DEFAULT_INTERVAL
@@ -2761,10 +2843,28 @@ def run_mail_poll_once(source='auto_poll', lock_acquired=False, admin_username='
             db = get_db()
             db_type = app.config['DATABASE_TYPE']
             poll_interval = _get_mail_poll_interval()
+
+            # 定期清理收件日志（0=关闭时为空操作）
+            retention_deleted = apply_mail_log_retention(db, db_type)
+            if retention_deleted:
+                logger.info("Mail log retention removed %s rows", retention_deleted)
+
+            failure_threshold = max(safe_int(get_system_config('mail_poll_failure_threshold', '3'), 3), 1)
+            backoff_max_skip = max(safe_int(get_system_config('mail_poll_backoff_max_skip', '16'), 16), 1)
+
             accounts = [
                 account for account in _query_active_mail_accounts(db, db_type)
                 if account.get('email', '').strip()
             ]
+            # 自动轮询跳过处于失败退避期的邮箱；手动「立即查询」有意绕过退避（等于重试）
+            if source == 'auto_poll':
+                fetchable = []
+                for account in accounts:
+                    if _mail_poll_should_skip(account.get('email', '').strip()):
+                        skipped_count += 1
+                    else:
+                        fetchable.append(account)
+                accounts = fetchable
             checked_count = len(accounts)
             worker_count = min(MAIL_POLL_WORKERS, max(checked_count, 1))
 
@@ -2796,9 +2896,16 @@ def run_mail_poll_once(source='auto_poll', lock_acquired=False, admin_username='
 
                     try:
                         if response_data.get('success'):
+                            _mail_poll_record_success(email_address)
                             new_count += log_mail_fetch_result(db, db_type, email_address, response_data, source, admin_username=actor_username)
                         else:
                             failed_count += 1
+                            _mail_poll_record_failure(
+                                email_address,
+                                response_data.get('message', '邮件获取失败'),
+                                failure_threshold,
+                                backoff_max_skip
+                            )
                             _insert_mail_error_log(
                                 db,
                                 db_type,
@@ -2817,6 +2924,8 @@ def run_mail_poll_once(source='auto_poll', lock_acquired=False, admin_username='
                         logger.error("写入收件日志失败: %s", log_error)
 
         message = f'轮询完成：检查 {checked_count} 个邮箱，新增 {new_count} 封，失败 {failed_count} 个'
+        if skipped_count:
+            message += f'，跳过 {skipped_count} 个（失败退避）'
         _set_mail_poller_state(
             running=False,
             last_finished_at=get_beijing_time(),
@@ -2824,7 +2933,8 @@ def run_mail_poll_once(source='auto_poll', lock_acquired=False, admin_username='
             last_checked_count=checked_count,
             last_new_count=new_count,
             last_failed_count=failed_count,
-            interval=poll_interval
+            interval=poll_interval,
+            backoff=_mail_poll_backoff_snapshot()
         )
         logger.info(message)
         return {
@@ -2843,7 +2953,8 @@ def run_mail_poll_once(source='auto_poll', lock_acquired=False, admin_username='
             last_message=failed_message,
             last_checked_count=checked_count,
             last_new_count=new_count,
-            last_failed_count=max(failed_count, 1)
+            last_failed_count=max(failed_count, 1),
+            backoff=_mail_poll_backoff_snapshot()
         )
         return {
             'success': False,
@@ -2861,8 +2972,23 @@ def _mail_poll_loop():
         try:
             with app.app_context():
                 interval = _get_mail_poll_interval()
-            _set_mail_poller_state(interval=interval)
+                enabled = _is_mail_auto_poll_enabled()
+
+            if not enabled:
+                # 软开关关闭：短睡眠轮询标志，开启后 ≤30 秒生效，无需重启
+                _set_mail_poller_state(
+                    interval=interval,
+                    auto_poll_enabled=False,
+                    last_message='自动轮询已暂停（可在收件日志页开启）',
+                    next_run_at=''
+                )
+                time.sleep(min(interval, 30))
+                continue
+
+            _set_mail_poller_state(interval=interval, auto_poll_enabled=True)
             run_mail_poll_once(source='auto_poll')
+            next_run = datetime.now(timezone(timedelta(hours=8))) + timedelta(seconds=interval)
+            _set_mail_poller_state(next_run_at=next_run.strftime('%Y-%m-%d %H:%M:%S'))
             time.sleep(interval)
         except Exception as e:
             logger.error("邮件轮询线程异常: %s", e)
@@ -3028,6 +3154,20 @@ def legacy_admin_system():
                          admin_username=session.get('admin_username'),
                          embedded=request.args.get('embedded') == '1')
 
+@app.route('/admin/help')
+@admin_required
+def admin_help():
+    """帮助中心页面（React 壳，iframe 加载 legacy 版）"""
+    return render_react_app(page_title=f'帮助中心 - {get_system_config("system_title", "邮件查看系统")}')
+
+@app.route('/legacy/admin/help')
+@admin_required
+def legacy_admin_help():
+    """Legacy help center page embedded by the React shell."""
+    return render_template('admin/help.html',
+                         admin_username=session.get('admin_username'),
+                         embedded=request.args.get('embedded') == '1')
+
 # ===============================
 # API 接口路由
 # ===============================
@@ -3050,6 +3190,147 @@ def api_check_login():
             'success': False,
             'logged_in': False,
             'message': f'检查登录状态失败: {str(e)}'
+        })
+
+CARD_STATUS_MESSAGES = {
+    'valid': '卡密有效',
+    'not_found': '卡密不存在或已失效',
+    'disabled': '卡密已被禁用',
+    'expired': '卡密已过期',
+    'exhausted': '卡密使用次数已用完'
+}
+
+def load_and_validate_card(db, db_type, card_key):
+    """查询卡密并校验状态，返回 (card_info_or_None, status)
+
+    status: 'valid' | 'not_found' | 'disabled' | 'expired' | 'exhausted'
+    """
+    if db_type == 'sqlite':
+        card_result = db.execute('''
+            SELECT c.*, e.email as bound_email, e.server, e.username, e.password,
+                   e.port, e.protocol, e.ssl
+            FROM cards c
+            LEFT JOIN mail_accounts e ON c.bound_email_id = e.id
+            WHERE c.card_key = ?
+        ''', (card_key,)).fetchone()
+        card_info = dict(card_result) if card_result else None
+    else:
+        cursor = db.cursor()
+        cursor.execute('''
+            SELECT c.*, e.email as bound_email, e.server, e.username, e.password,
+                   e.port, e.protocol, e.ssl
+            FROM cards c
+            LEFT JOIN mail_accounts e ON c.bound_email_id = e.id
+            WHERE c.card_key = %s
+        ''', (card_key,))
+        card_result = cursor.fetchone()
+        if card_result:
+            columns = [desc[0] for desc in cursor.description]
+            card_info = dict(zip(columns, card_result))
+        else:
+            card_info = None
+
+    if not card_info:
+        return None, 'not_found'
+
+    # 检查卡密是否启用（1=可用 0=禁用 2=已用完）
+    if card_info['status'] != 1:
+        return card_info, 'disabled'
+
+    # 检查是否已过期
+    now = get_beijing_time()
+    if card_info['expired_at'] and card_info['expired_at'] <= now:
+        return card_info, 'expired'
+
+    # 检查使用次数是否已用完
+    if card_info['used_count'] >= card_info['usage_limit']:
+        return card_info, 'exhausted'
+
+    return card_info, 'valid'
+
+@app.route('/api/card_info', methods=['POST'])
+def api_card_info():
+    """卡密信息查询 API：返回卡密状态与绑定邮箱，不消耗使用次数。
+
+    枚举风险与 GET /api/mail/<card_key>（HTML 页）一致，可接受。
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        card_key = (data.get('card_key', '') or '').strip()
+        if not card_key:
+            return jsonify({
+                'success': False,
+                'status': 'not_found',
+                'message': '请输入卡密',
+                'card_info': None,
+                'bound_emails': []
+            })
+
+        db = get_db()
+        db_type = app.config['DATABASE_TYPE']
+
+        card_info, status = load_and_validate_card(db, db_type, card_key)
+        if not card_info:
+            return jsonify({
+                'success': False,
+                'status': 'not_found',
+                'message': CARD_STATUS_MESSAGES['not_found'],
+                'card_info': None,
+                'bound_emails': []
+            })
+
+        bound_mailboxes = fetch_card_bound_mailboxes(
+            db, db_type, card_info.get('id'), card_info.get('bound_email_id')
+        )
+        # 只暴露 id 与 email，绑定行中的服务器/账号/密码绝不外泄
+        bound_emails = [
+            {'id': m.get('id'), 'email': m.get('email')}
+            for m in bound_mailboxes if m.get('email')
+        ]
+
+        try:
+            user_ip = request.environ.get('HTTP_X_FORWARDED_FOR') or request.environ.get('REMOTE_ADDR') or 'unknown'
+            user_agent = request.headers.get('User-Agent', 'unknown')
+            now = get_beijing_time()
+            if db_type == 'sqlite':
+                db.execute('''
+                    INSERT INTO card_logs (card_id, card_key, bound_email, user_ip, user_agent, action, result, mail_subject, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (card_info['id'], card_key, card_info.get('bound_email') or '', user_ip, user_agent,
+                      'check', '查询卡密信息', '', now))
+                db.commit()
+            else:
+                cursor = db.cursor()
+                cursor.execute('''
+                    INSERT INTO card_logs (card_id, card_key, bound_email, user_ip, user_agent, action, result, mail_subject, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (card_info['id'], card_key, card_info.get('bound_email') or '', user_ip, user_agent,
+                      'check', '查询卡密信息', '', now))
+                db.commit()
+        except Exception as log_error:
+            logger.warning(f"Card info check log error: {log_error}")
+
+        return jsonify({
+            'success': status == 'valid',
+            'status': status,
+            'message': CARD_STATUS_MESSAGES.get(status, ''),
+            'card_info': {
+                'card_type': card_info.get('card_type'),
+                'total_uses': card_info.get('usage_limit'),
+                'used_count': card_info.get('used_count'),
+                'remaining_uses': max((card_info.get('usage_limit') or 0) - (card_info.get('used_count') or 0), 0),
+                'expired_at': str(card_info.get('expired_at')) if card_info.get('expired_at') else None
+            },
+            'bound_emails': bound_emails
+        })
+    except Exception as e:
+        logger.error(f"Card info error: {e}")
+        return jsonify({
+            'success': False,
+            'status': 'error',
+            'message': f'卡密查询失败: {str(e)}',
+            'card_info': None,
+            'bound_emails': []
         })
 
 @app.route('/api/get_mail', methods=['POST'])
@@ -3187,63 +3468,16 @@ def api_get_mail():
         else:
             # 原有的卡密验证逻辑保持不变
             try:
-                # 查询卡密信息
-                if db_type == 'sqlite':
-                    card_result = db.execute('''
-                        SELECT c.*, e.email as bound_email, e.server, e.username, e.password, 
-                               e.port, e.protocol, e.ssl
-                        FROM cards c 
-                        LEFT JOIN mail_accounts e ON c.bound_email_id = e.id 
-                        WHERE c.card_key = ?
-                    ''', (card_key,)).fetchone()
-                else:
-                    cursor = db.cursor()
-                    cursor.execute('''
-                        SELECT c.*, e.email as bound_email, e.server, e.username, e.password, 
-                               e.port, e.protocol, e.ssl
-                        FROM cards c 
-                        LEFT JOIN mail_accounts e ON c.bound_email_id = e.id 
-                        WHERE c.card_key = %s
-                    ''', (card_key,))
-                    card_result = cursor.fetchone()
-                
-                if not card_result:
+                # 查询卡密并校验状态（与 /api/card_info 共享助手，消息保持一致）
+                card_info, card_status = load_and_validate_card(db, db_type, card_key)
+                if card_status != 'valid':
                     return jsonify({
                         'success': False,
-                        'message': '卡密不存在或已失效'
+                        'message': CARD_STATUS_MESSAGES[card_status]
                     })
-                
-                # 转换为字典
-                if db_type == 'sqlite':
-                    card_info = dict(card_result)
-                else:
-                    columns = [desc[0] for desc in cursor.description]
-                    card_info = dict(zip(columns, card_result))
-                
-                # 验证卡密状态
+
                 now = get_beijing_time()
-                
-                # 检查卡密是否启用
-                if card_info['status'] != 1:
-                    return jsonify({
-                        'success': False,
-                        'message': '卡密已被禁用'
-                    })
-                
-                # 检查是否已过期
-                if card_info['expired_at'] and card_info['expired_at'] <= now:
-                    return jsonify({
-                        'success': False,
-                        'message': '卡密已过期'
-                    })
-                
-                # 检查使用次数是否已用完
-                if card_info['used_count'] >= card_info['usage_limit']:
-                    return jsonify({
-                        'success': False,
-                        'message': '卡密使用次数已用完'
-                    })
-                
+
                 # 如果卡密绑定了邮箱，检查邮箱是否匹配（支持多邮箱绑定）
                 bound_mailboxes = fetch_card_bound_mailboxes(
                     db,
@@ -8696,6 +8930,41 @@ def apply_card_log_retention(db, db_type):
     
     return retention_days
 
+def apply_mail_log_retention(db, db_type):
+    """根据 mail_log_retention_days 清理收件日志，返回删除行数。
+
+    注意：历史上 init.sql 里播种过 log_retention_days=30 但从未被代码引用；
+    这里刻意使用新键 mail_log_retention_days（默认 0=关闭），让清理成为
+    管理员显式开启的行为，避免老安装升级后被静默删数据。
+    SQLite 删除后文件不会自动收缩（需 VACUUM），仅影响磁盘占用回收速度。
+    """
+    try:
+        retention_days = safe_int(get_system_config('mail_log_retention_days', '0'), 0)
+    except Exception:
+        retention_days = 0
+
+    if retention_days <= 0:
+        return 0
+
+    cutoff_time = datetime.now(timezone(timedelta(hours=8))) - timedelta(days=retention_days)
+    cutoff_str = cutoff_time.strftime('%Y-%m-%d %H:%M:%S')
+
+    deleted = 0
+    try:
+        if db_type == 'sqlite':
+            cursor = db.execute('DELETE FROM mail_logs WHERE created_at < ?', (cutoff_str,))
+            deleted = cursor.rowcount or 0
+            db.commit()
+        else:
+            cursor = db.cursor()
+            cursor.execute('DELETE FROM mail_logs WHERE created_at < %s', (cutoff_str,))
+            deleted = cursor.rowcount or 0
+            db.commit()
+    except Exception as e:
+        logger.error(f"Auto clear mail logs failed: {e}")
+
+    return deleted
+
 @app.route('/admin/api/recycle-bin')
 @admin_required
 def api_admin_recycle_bin():
@@ -9249,6 +9518,81 @@ def api_admin_mail_logs():
             'success': False,
             'message': f'获取收件日志失败: {str(e)}'
         }), 500
+
+@app.route('/admin/api/poller/config', methods=['GET', 'POST'])
+@admin_required
+def api_admin_poller_config():
+    """自动轮询管控：开关 / 间隔 / 日志保留 / 失败退避重置"""
+    db = get_db()
+    db_type = app.config['DATABASE_TYPE']
+
+    def build_payload(message=None, success=True):
+        state = get_mail_poller_state()
+        state['backoff'] = _mail_poll_backoff_snapshot()
+        state['auto_poll_enabled'] = _is_mail_auto_poll_enabled()
+        payload = {
+            'success': success,
+            'config': {
+                'auto_poll_enabled': get_system_config('mail_auto_poll_enabled', '1') == '1',
+                'interval': _get_mail_poll_interval(),
+                'min_interval': MAIL_POLL_MIN_INTERVAL,
+                'retention_days': safe_int(get_system_config('mail_log_retention_days', '0'), 0),
+                'failure_threshold': max(safe_int(get_system_config('mail_poll_failure_threshold', '3'), 3), 1),
+                'backoff_max_skip': max(safe_int(get_system_config('mail_poll_backoff_max_skip', '16'), 16), 1),
+                'env_kill_switch': os.environ.get('MAIL_AUTO_POLL', '1') == '0'
+            },
+            'state': state
+        }
+        if message is not None:
+            payload['message'] = message
+        return jsonify(payload)
+
+    if request.method == 'GET':
+        return build_payload()
+
+    try:
+        data = request.get_json(silent=True) or {}
+        action = data.get('action')
+
+        if action == 'set_enabled':
+            enabled = bool(data.get('enabled'))
+            set_system_config(db, db_type, 'mail_auto_poll_enabled', '1' if enabled else '0',
+                              config_type='boolean', description='邮件自动轮询开关')
+            _set_mail_poller_state(auto_poll_enabled=enabled)
+            message = '已开启自动轮询（下个周期生效）' if enabled else '已暂停自动轮询'
+            return build_payload(message)
+
+        if action == 'set_interval':
+            interval = max(safe_int(data.get('interval'), MAIL_POLL_DEFAULT_INTERVAL), MAIL_POLL_MIN_INTERVAL)
+            set_system_config(db, db_type, 'mail_check_interval', str(interval),
+                              config_type='number', description='邮件轮询间隔（秒）')
+            _set_mail_poller_state(interval=interval)
+            return build_payload(f'轮询间隔已设为 {interval} 秒，将在当前周期结束后生效')
+
+        if action == 'set_retention':
+            try:
+                days = max(0, int(data.get('days', 0)))
+            except Exception:
+                days = 0
+            set_system_config(db, db_type, 'mail_log_retention_days', str(days),
+                              config_type='number', description='收件日志保留天数（0=不清理）')
+            deleted = apply_mail_log_retention(db, db_type)
+            if days == 0:
+                message = '已关闭收件日志定期清理'
+            else:
+                message = f'保留天数已设为 {days} 天，本次清理 {deleted} 条历史日志'
+            return build_payload(message)
+
+        if action == 'reset_backoff':
+            email = (data.get('email') or '').strip() or None
+            _mail_poll_reset_backoff(email)
+            _set_mail_poller_state(backoff=_mail_poll_backoff_snapshot())
+            return build_payload(f'已重置 {email} 的退避状态' if email else '已重置全部退避状态')
+
+        return jsonify({'success': False, 'message': '无效的操作'})
+    except Exception as e:
+        logger.error(f"Poller config error: {e}")
+        return jsonify({'success': False, 'message': f'操作失败: {str(e)}'})
 
 @app.route('/admin/api/mail-logs/<int:log_id>', methods=['GET'])
 @admin_required

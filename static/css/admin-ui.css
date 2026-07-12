@@ -1,0 +1,426 @@
+/* ============================================================
+   admin-ui.css — 后台共享交互/动效层
+   在 claude-theme.css 之后加载：只做增强，不与主题争夺优先级。
+   所有动效统一受 prefers-reduced-motion 降级控制。
+   ============================================================ */
+
+/* ---------------------------------------------- 背景 canvas 层 */
+#adminBgCanvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+body .main-content,
+body .content,
+body .login-container {
+    position: relative;
+    z-index: 1;
+}
+
+/* ---------------------------------------------- 微交互 */
+.btn,
+.page-btn {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+}
+
+.card,
+.stat-card {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md, 0 4px 14px rgba(0, 0, 0, 0.08));
+}
+
+.table tbody tr {
+    transition: background 0.12s ease;
+}
+
+/* ---------------------------------------------- 入场动画（JS 按需挂类） */
+@keyframes auRowEnter {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+
+.au-row-enter {
+    animation: auRowEnter 0.28s ease-out backwards;
+}
+
+@keyframes auCardEnter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+}
+
+.au-card-enter {
+    animation: auCardEnter 0.35s ease-out backwards;
+}
+
+/* ---------------------------------------------- 模态过渡 */
+.modal.show .modal-content {
+    animation: auModalIn 0.18s ease-out;
+}
+
+.modal.au-leaving {
+    animation: auBackdropOut 0.14s ease-in forwards;
+}
+
+.modal.au-leaving .modal-content {
+    animation: auModalOut 0.14s ease-in forwards;
+}
+
+@keyframes auModalIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes auModalOut {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.97); }
+}
+
+@keyframes auBackdropOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* ---------------------------------------------- 批量操作条 */
+.au-bulk-bar {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translate(-50%, 140%);
+    z-index: 1500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--sidebar-bg, #1f1e1b);
+    color: #fff;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+    transition: transform 0.25s cubic-bezier(0.22, 0.9, 0.34, 1);
+    max-width: calc(100vw - 32px);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.au-bulk-bar.visible {
+    transform: translate(-50%, 0);
+}
+
+.au-bulk-bar .au-bulk-count {
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.au-bulk-bar .au-bulk-count b {
+    color: #f0b429;
+    font-variant-numeric: tabular-nums;
+}
+
+.au-bulk-bar .btn {
+    margin: 0;
+}
+
+/* ---------------------------------------------- 骨架屏 */
+@keyframes auShimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+
+.au-skeleton-cell {
+    display: block;
+    height: 14px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #ece9e1 25%, #f7f5ef 50%, #ece9e1 75%);
+    background-size: 200% 100%;
+    animation: auShimmer 1.3s linear infinite;
+}
+
+body.dark-mode .au-skeleton-cell {
+    background: linear-gradient(90deg, #3a3935 25%, #45443f 50%, #3a3935 75%);
+    background-size: 200% 100%;
+}
+
+/* ---------------------------------------------- 空状态 */
+.au-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 44px 16px;
+    color: var(--text-muted, #6e6c64);
+    text-align: center;
+}
+
+.au-empty .au-empty-icon {
+    font-size: 34px;
+    opacity: 0.5;
+}
+
+.au-empty .au-empty-title {
+    font-size: 15px;
+    font-weight: 650;
+    color: var(--text, #2b2a27);
+}
+
+.au-empty .au-empty-hint {
+    font-size: 13px;
+}
+
+/* ---------------------------------------------- 统一 Toast */
+.au-toast-stack {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 4000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: min(460px, calc(100vw - 36px));
+}
+
+@keyframes auToastIn {
+    from { opacity: 0; transform: translateX(40px); }
+    to { opacity: 1; transform: none; }
+}
+
+.au-toast {
+    padding: 12px 18px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    animation: auToastIn 0.25s ease-out;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+.au-toast.au-toast-hide {
+    opacity: 0;
+    transform: translateX(40px);
+}
+
+.au-toast.success { background: linear-gradient(135deg, #10b981, #059669); }
+.au-toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.au-toast.warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.au-toast.info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+
+/* ---------------------------------------------- 通用下拉菜单 */
+.au-dropdown {
+    position: relative;
+    display: inline-flex;
+}
+
+.au-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 1200;
+    min-width: 180px;
+    padding: 6px;
+    border-radius: 10px;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e7e4db);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+}
+
+.au-dropdown.au-dropdown-right .au-dropdown-menu {
+    left: auto;
+    right: 0;
+}
+
+.au-dropdown.open .au-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.au-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text, #2b2a27);
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.au-dropdown-item:hover {
+    background: var(--primary-soft, rgba(201, 100, 66, 0.1));
+    color: var(--primary-color, #c96442);
+}
+
+.au-dropdown-divider {
+    height: 1px;
+    margin: 5px 4px;
+    background: var(--border, #e7e4db);
+}
+
+body.dark-mode .au-dropdown-menu {
+    background: var(--surface-2, #2a2a28);
+}
+
+/* ---------------------------------------------- 帮助按钮 / 抽屉 / tooltip */
+.ah-help-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--border, #e7e4db);
+    border-radius: 8px;
+    background: var(--surface, #fff);
+    color: var(--text-muted, #6e6c64);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+.ah-help-btn:hover {
+    color: var(--primary-color, #c96442);
+    border-color: rgba(201, 100, 66, 0.4);
+}
+
+.ah-drawer-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 3500;
+    background: rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s;
+}
+.ah-drawer-mask.open { opacity: 1; visibility: visible; }
+
+.ah-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 3600;
+    width: min(420px, 92vw);
+    height: 100%;
+    background: var(--surface, #fff);
+    box-shadow: -8px 0 28px rgba(0, 0, 0, 0.18);
+    transform: translateX(100%);
+    transition: transform 0.25s cubic-bezier(0.22, 0.9, 0.34, 1);
+    display: flex;
+    flex-direction: column;
+}
+.ah-drawer.open { transform: translateX(0); }
+
+.ah-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border, #e7e4db);
+}
+.ah-drawer-title { font-size: 17px; font-weight: 650; color: var(--text, #2b2a27); }
+.ah-drawer-close {
+    border: none;
+    background: transparent;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-muted, #6e6c64);
+}
+.ah-drawer-body { flex: 1 1 auto; overflow-y: auto; padding: 18px 20px; }
+.ah-drawer-intro { color: var(--text-muted, #6e6c64); font-size: 14px; line-height: 1.7; margin-bottom: 16px; }
+.ah-section { margin-bottom: 18px; }
+.ah-section h4 { font-size: 14px; font-weight: 650; margin-bottom: 8px; color: var(--primary-color, #c96442); }
+.ah-section ul { margin: 0; padding-left: 18px; }
+.ah-section li { font-size: 13px; line-height: 1.7; color: var(--text, #2b2a27); margin-bottom: 4px; }
+.ah-faq { margin-top: 8px; }
+.ah-faq details { border: 1px solid var(--border, #e7e4db); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; }
+.ah-faq summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--text, #2b2a27); }
+.ah-faq p { margin-top: 8px; font-size: 13px; line-height: 1.7; color: var(--text-muted, #6e6c64); }
+.ah-drawer-footer { padding: 14px 20px; border-top: 1px solid var(--border, #e7e4db); }
+.ah-drawer-footer a { color: var(--primary-color, #c96442); font-size: 13px; text-decoration: none; font-weight: 600; }
+
+.ah-q {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    margin-left: 4px;
+    border-radius: 50%;
+    background: var(--border, #e7e4db);
+    color: var(--text-muted, #6e6c64);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: help;
+    vertical-align: middle;
+    user-select: none;
+}
+.ah-q:hover { background: var(--primary-color, #c96442); color: #fff; }
+
+.ah-tooltip {
+    position: fixed;
+    z-index: 4200;
+    max-width: 280px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    background: #2b2a27;
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.6;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.12s ease, visibility 0.12s;
+    pointer-events: none;
+}
+.ah-tooltip.show { opacity: 1; visibility: visible; }
+
+body.dark-mode .ah-drawer,
+body.dark-mode .ah-help-btn { background: var(--surface-2, #2a2a28); }
+
+/* ---------------------------------------------- 降级 */
+@media (prefers-reduced-motion: reduce) {
+    .au-row-enter,
+    .au-card-enter,
+    .modal.show .modal-content,
+    .modal.au-leaving,
+    .modal.au-leaving .modal-content,
+    .au-toast,
+    .au-skeleton-cell {
+        animation: none !important;
+    }
+
+    .btn,
+    .page-btn,
+    .card,
+    .stat-card,
+    .au-bulk-bar,
+    .au-toast {
+        transition: none !important;
+    }
+}

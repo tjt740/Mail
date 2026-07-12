@@ -22,6 +22,8 @@
     {% block head %}{% endblock %}
     <!-- Claude-style theme: loaded last so it overrides per-page inline styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/claude-theme.css') }}">
+    <!-- Shared admin interaction/animation layer (additive; loads after theme) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-ui.css') }}">
     <style>
         :root {
             --scroll-card-offset: 110px; /* reserve ~110px (search toolbar + card padding + pagination buffer) so pagination stays visible */
@@ -304,6 +306,9 @@
 </head>
 <body class="preload{% if embedded %} embedded-view{% endif %}">
     {% include '_icons.html' %}
+    {% if request.path and '/admin' in request.path %}
+    <canvas id="adminBgCanvas" aria-hidden="true"></canvas>
+    {% endif %}
     <script>
         (function() {
             try {
@@ -327,6 +332,12 @@
     </script>
     {% block body %}{% endblock %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin-ui.js') }}"></script>
+    <script>if (window.AdminUI) { AdminUI.initCanvas(); }</script>
+    {% if request.path and '/admin' in request.path %}
+    <script src="{{ url_for('static', filename='js/admin-help.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin-help-ui.js') }}"></script>
+    {% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>
