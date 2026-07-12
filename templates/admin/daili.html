@@ -12,8 +12,7 @@
     }
     
     :root {
-        --primary-color: #667eea;
-        --secondary-color: #764ba2;
+        /* 主题色由 claude-theme.css 统一提供 */
         --sidebar-width: 200px;
         --sidebar-collapsed-width: 72px;
         --header-height: 70px;
@@ -1399,7 +1398,7 @@
                 <td>${escapeHtml(proxy.name) || ''}</td>
                 <td>${escapeHtml(proxy.host)}:${proxy.port}</td>
                 <td>${escapeHtml(proxy.username || '-')}</td>
-                <td>${proxy.password ? '******' : '-'}</td>
+                <td>${renderProxyPassword(proxy.password)}</td>
                 <td>${statusBadge}</td>
                 <td>${proxy.response_time ? proxy.response_time + 'ms' : '-'}</td>
                 <td>${formatDateTime(proxy.last_check)}</td>
@@ -1415,7 +1414,8 @@
             `;
             tbody.appendChild(row);
         });
-        
+        if (window.AdminUI) AdminUI.staggerRows(tbody);
+
         updateBatchDeleteButton();
     }
     
@@ -1533,7 +1533,7 @@
                 <td>${escapeHtml(proxy.name)}</td>
                 <td>${escapeHtml(proxy.host)}:${proxy.port}</td>
                 <td>${escapeHtml(proxy.username || '-')}</td>
-                <td>${proxy.password ? '******' : '-'}</td>
+                <td>${renderProxyPassword(proxy.password)}</td>
                 <td>${statusBadge}</td>
                 <td>${proxy.response_time ? proxy.response_time + 'ms' : '-'}</td>
                 <td>${formatDateTime(proxy.last_check)}</td>
@@ -1548,7 +1548,8 @@
             `;
             tbody.appendChild(row);
         });
-        
+        if (window.AdminUI) AdminUI.staggerRows(tbody);
+
         updateBatchDeleteButton();
     }
     
@@ -2016,43 +2017,53 @@
     // ========== 工具函数 ==========
     
     // Toast通知系统
-    function showToast(message, type = 'info', duration = 3000) {
-        const container = document.getElementById('toast-container');
-        
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        
-        // 处理多行消息
-        if (message.includes('\n')) {
-            const lines = message.split('\n');
-            toast.innerHTML = lines.map(line => `<div>${escapeHtml(line)}</div>`).join('');
-        } else {
-            toast.textContent = message;
-        }
-        
-        container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.classList.add('show');
-        }, 10);
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                if (container.contains(toast)) {
-                    container.removeChild(toast);
-                }
-            }, 300);
-        }, duration);
-    }
-    
+    // Toast 统一走 AdminUI.toast（window.showToast 由 admin-ui.js 提供，支持多行）
+
+
     // 工具函数
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
-    
+
+    // 代理密码：默认打码，提供显示/隐藏与复制
+    function renderProxyPassword(password) {
+        if (!password) return '-';
+        const enc = encodeURIComponent(password);
+        return `<span class="proxy-pw" data-pw="${enc}" data-shown="0">
+            <span class="proxy-pw-text">••••••</span>
+            <button class="btn btn-small" type="button" title="显示/隐藏" onclick="toggleProxyPassword(this)" style="padding:2px 6px;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-eye"></use></svg></span></button>
+            <button class="btn btn-small" type="button" title="复制密码" onclick="copyProxyPassword(this)" style="padding:2px 6px;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span></button>
+        </span>`;
+    }
+
+    function toggleProxyPassword(btn) {
+        const wrap = btn.closest('.proxy-pw');
+        const text = wrap.querySelector('.proxy-pw-text');
+        const shown = wrap.dataset.shown === '1';
+        text.textContent = shown ? '••••••' : decodeURIComponent(wrap.dataset.pw);
+        wrap.dataset.shown = shown ? '0' : '1';
+        const use = btn.querySelector('use');
+        if (use) use.setAttribute('href', shown ? '#ai-eye' : '#ai-eye-invisible');
+    }
+
+    function copyProxyPassword(btn) {
+        const wrap = btn.closest('.proxy-pw');
+        const pw = decodeURIComponent(wrap.dataset.pw);
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(pw).then(function () { showToast('密码已复制', 'success', 2000); })
+                .catch(function () { showToast('复制失败', 'error'); });
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = pw; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); showToast('密码已复制', 'success', 2000); }
+            catch (e) { showToast('复制失败', 'error'); }
+            document.body.removeChild(ta);
+        }
+    }
+
     function formatDateTime(dateString) {
         if (!dateString) return '-';
         return new Date(dateString).toLocaleString('zh-CN');

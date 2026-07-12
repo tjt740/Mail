@@ -11,8 +11,7 @@
     }
     
     :root {
-        --primary-color: #667eea;
-        --secondary-color: #764ba2;
+        /* 主题色由 claude-theme.css 统一提供 */
         --sidebar-width: 200px;
         --sidebar-collapsed-width: 72px;
         --header-height: 70px;
@@ -611,6 +610,62 @@
             grid-template-columns: 1fr;
         }
     }
+
+    /* 锚点导航布局 */
+    .system-layout {
+        display: flex;
+        align-items: flex-start;
+        gap: 24px;
+    }
+    .system-nav {
+        position: sticky;
+        top: 20px;
+        flex: 0 0 190px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px;
+        border-radius: 14px;
+        background: var(--surface, #fff);
+        border: 1px solid var(--border, #e7e4db);
+    }
+    .system-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 9px;
+        color: var(--text-muted, #6e6c64);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background 0.15s ease, color 0.15s ease;
+    }
+    .system-nav-item:hover {
+        background: var(--primary-soft, rgba(201, 100, 66, 0.1));
+        color: var(--primary-color, #c96442);
+    }
+    .system-nav-item.active {
+        background: var(--primary-soft, rgba(201, 100, 66, 0.12));
+        color: var(--primary-color, #c96442);
+        font-weight: 650;
+    }
+    .system-sections {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .system-sections .card {
+        scroll-margin-top: 20px;
+    }
+    @media (max-width: 900px) {
+        .system-layout { flex-direction: column; }
+        .system-nav {
+            position: static;
+            flex-direction: row;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -668,8 +723,18 @@
     </div>
     
     <div class="content">
+        <div class="system-layout">
+        <aside class="system-nav" id="systemNav">
+            <a href="#sec-account" class="system-nav-item active"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 账号设置</a>
+            <a href="#sec-admins" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 管理员管理</a>
+            <a href="#sec-masterkey" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 万能秘钥</a>
+            <a href="#sec-systitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-aim"></use></svg></span> 系统标题</a>
+            <a href="#sec-pagetitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-tag"></use></svg></span> 页面标题</a>
+            <a href="#sec-info" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-info-circle"></use></svg></span> 系统信息</a>
+        </aside>
+        <div class="system-sections">
         <!-- 管理员账号设置 -->
-        <div class="card">
+        <div class="card" id="sec-account">
             <div class="card-header">
                 <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 管理员账号设置</h2>
             </div>
@@ -698,7 +763,7 @@
         </div>
 
         <!-- 多管理员管理 -->
-        <div class="card">
+        <div class="card" id="sec-admins">
             <div class="card-header">
                 <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 后台管理员管理</h2>
             </div>
@@ -765,7 +830,7 @@
         </div>
 
         <!-- 管理员万能秘钥 -->
-        <div class="card">
+        <div class="card" id="sec-masterkey">
             <div class="card-header">
                 <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 管理员万能秘钥</h2>
             </div>
@@ -790,7 +855,7 @@
         </div>
 
         <!-- 系统标题设置 -->
-        <div class="card">
+        <div class="card" id="sec-systitle">
             <div class="card-header">
                 <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-aim"></use></svg></span> 系统标题设置</h2>
             </div>
@@ -808,7 +873,7 @@
         </div>
 
         <!-- 页面标题设置 -->
-        <div class="card">
+        <div class="card" id="sec-pagetitle">
             <div class="card-header">
                 <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-tag"></use></svg></span> 页面标题设置</h2>
             </div>
@@ -838,7 +903,7 @@
         </div>
 
         <!-- 系统信息 -->
-        <div class="card">
+        <div class="card" id="sec-info">
             <div class="card-header">
                 <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-info-circle"></use></svg></span> 系统信息</h2>
             </div>
@@ -865,43 +930,49 @@
                 </div>
             </div>
         </div>
+        </div><!-- /.system-sections -->
+        </div><!-- /.system-layout -->
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Toast通知系统
-    function showToast(message, type = 'info', duration = 3000) {
-        const container = document.getElementById('toast-container') || createToastContainer();
-        
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
-        
-        container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.classList.add('show');
-        }, 10);
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                if (container.contains(toast)) {
-                    container.removeChild(toast);
-                }
-            }, 300);
-        }, duration);
-    }
+    // Toast 统一走 AdminUI.toast（window.showToast 由 admin-ui.js 提供）
 
-    function createToastContainer() {
-        const container = document.createElement('div');
-        container.id = 'toast-container';
-        container.className = 'toast-container';
-        document.body.appendChild(container);
-        return container;
-    }
+    // 锚点导航：点击平滑滚动 + IntersectionObserver 高亮当前区块
+    (function initSystemNav() {
+        function ready(fn) {
+            if (document.readyState !== 'loading') fn();
+            else document.addEventListener('DOMContentLoaded', fn);
+        }
+        ready(function () {
+            const nav = document.getElementById('systemNav');
+            if (!nav) return;
+            const links = Array.from(nav.querySelectorAll('.system-nav-item'));
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            links.forEach(function (link) {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(link.getAttribute('href'));
+                    if (target) target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+                    links.forEach(function (l) { l.classList.toggle('active', l === link); });
+                });
+            });
+            const sections = links.map(function (l) { return document.querySelector(l.getAttribute('href')); }).filter(Boolean);
+            if ('IntersectionObserver' in window && sections.length) {
+                const observer = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (!entry.isIntersecting) return;
+                        links.forEach(function (l) {
+                            l.classList.toggle('active', l.getAttribute('href') === '#' + entry.target.id);
+                        });
+                    });
+                }, { rootMargin: '-10% 0px -55% 0px' });
+                sections.forEach(function (s) { observer.observe(s); });
+            }
+        });
+    })();
 
     function setMasterKeyStatus(isSet) {
         const statusText = document.getElementById('masterKeyStatusText');

@@ -575,18 +575,6 @@
         z-index: 2;
     }
     
-    .loading::after {
-        content: '';
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 2px solid #667eea;
-        border-radius: 50%;
-        border-top: 2px solid transparent;
-        animation: spin 1s linear infinite;
-        margin-left: 10px;
-        vertical-align: middle;
-    }
 
     .secure-input {
         position: relative;
@@ -930,6 +918,10 @@
     
     .toast.info {
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+
+    .toast.warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
     }
     
     .toast::after {
@@ -1596,11 +1588,287 @@
             height: max(520px, 68vh);
         }
     }
+    /* ------------------------------------------------ 背景 canvas 动效 */
+    #bgCanvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .container {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* ------------------------------------------------ 卡密状态面板 */
+    #frontendApp .card-status-panel[hidden],
+    #frontendApp .mailbox-switcher[hidden] {
+        display: none !important;
+    }
+
+    #frontendApp .card-status-panel {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px 16px;
+        margin: 12px 0 0;
+        padding: 10px 14px;
+        border: 1px solid var(--border, #e7e4db);
+        border-radius: 12px;
+        background: var(--surface-2, #faf9f5);
+        animation: fadeInDown 0.3s ease-out;
+    }
+
+    #frontendApp .card-status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 650;
+        color: #fff;
+        background: #9ca3af;
+    }
+
+    #frontendApp .card-status-badge.is-valid { background: #52c41a; }
+    #frontendApp .card-status-badge.is-disabled { background: #9ca3af; }
+    #frontendApp .card-status-badge.is-expired { background: #ff4d4f; }
+    #frontendApp .card-status-badge.is-exhausted { background: #faad14; }
+
+    #frontendApp .card-status-metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+        color: var(--text-muted, #6e6c64);
+        font-size: 13px;
+    }
+
+    #frontendApp .card-status-metric b {
+        color: var(--text, #2b2a27);
+        font-variant-numeric: tabular-nums;
+    }
+
+    #frontendApp .card-usage-track {
+        flex: 1 1 140px;
+        min-width: 120px;
+        height: 6px;
+        border-radius: 999px;
+        background: #ece9e1;
+        overflow: hidden;
+    }
+
+    #frontendApp .card-usage-bar {
+        width: 0;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--primary-color, #c96442);
+        transition: width 0.4s ease;
+    }
+
+    /* ------------------------------------------------ 邮箱切换栏 */
+    #frontendApp .mailbox-switcher {
+        margin: 12px 0 0;
+        padding: 10px 14px;
+        border: 1px solid var(--border, #e7e4db);
+        border-radius: 12px;
+        background: var(--surface-2, #faf9f5);
+        animation: fadeInUp 0.3s ease-out;
+    }
+
+    #frontendApp .mailbox-switcher-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        color: var(--text-muted, #6e6c64);
+        font-size: 13px;
+        font-weight: 650;
+    }
+
+    #frontendApp .mailbox-total {
+        font-weight: 500;
+    }
+
+    #frontendApp .mailbox-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    #frontendApp .mailbox-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 100%;
+        min-height: 36px;
+        padding: 6px 12px;
+        border: 1px solid var(--border, #e7e4db);
+        border-radius: 999px;
+        background: #fff;
+        color: var(--text, #2b2a27);
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    #frontendApp .mailbox-chip:hover {
+        border-color: rgba(201, 100, 66, 0.45);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(201, 100, 66, 0.12);
+    }
+
+    #frontendApp .mailbox-chip.active {
+        border-color: rgba(201, 100, 66, 0.45);
+        background: #fff;
+        color: var(--primary-color, #c96442);
+        font-weight: 650;
+        box-shadow: 0 2px 8px rgba(201, 100, 66, 0.12);
+    }
+
+    #frontendApp .mailbox-chip-label {
+        max-width: 260px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #frontendApp .mailbox-chip-count {
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #ece9e1;
+        color: var(--text-muted, #6e6c64);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    #frontendApp .mailbox-chip.active .mailbox-chip-count {
+        background: rgba(201, 100, 66, 0.12);
+        color: var(--primary-color, #c96442);
+    }
+
+    #frontendApp .mailbox-chip-copy {
+        font-size: 14px;
+        padding: 3px;
+        border-radius: 6px;
+        color: var(--text-muted, #6e6c64);
+        transition: color 0.15s ease, background 0.15s ease;
+    }
+
+    #frontendApp .mailbox-chip-copy:hover {
+        color: var(--primary-color, #c96442);
+        background: rgba(201, 100, 66, 0.12);
+    }
+
+    /* ------------------------------------------------ 结果与视图动效 */
+    @keyframes mailRowEnter {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: none; }
+    }
+
+    #frontendApp .mail-table tr.mail-row-enter {
+        animation: mailRowEnter 0.3s ease-out both;
+    }
+
+    @keyframes viewSlideIn {
+        from { opacity: 0; transform: translateX(24px); }
+        to { opacity: 1; transform: none; }
+    }
+
+    #frontendApp .mail-display.is-visible {
+        animation: viewSlideIn 0.25s ease-out;
+    }
+
+    /* ------------------------------------------------ 加载动效 */
+    #frontendApp .mail-list-panel.is-loading .mail-list-view {
+        opacity: 0.45;
+        transition: opacity 0.2s ease;
+    }
+
+    .loading-inner {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .loading-orbit {
+        position: relative;
+        width: 36px;
+        height: 36px;
+        display: inline-block;
+    }
+
+    .loading-orbit::before,
+    .loading-orbit::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 3px solid transparent;
+    }
+
+    .loading-orbit::before {
+        border-top-color: var(--primary-color, #c96442);
+        border-right-color: var(--primary-color, #c96442);
+        animation: spin 1s linear infinite;
+    }
+
+    .loading-orbit::after {
+        inset: 7px;
+        border-bottom-color: #d97706;
+        border-left-color: #d97706;
+        animation: spin 0.8s linear infinite reverse;
+    }
+
+    .loading-dots {
+        display: inline-flex;
+        gap: 4px;
+        margin-left: 4px;
+        vertical-align: baseline;
+    }
+
+    .loading-dots i {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+        animation: loadingDotPulse 1.2s ease-in-out infinite;
+    }
+
+    .loading-dots i:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots i:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes loadingDotPulse {
+        0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+        40% { opacity: 1; transform: scale(1); }
+    }
+
+    /* ------------------------------------------------ 降级：减少动态效果 */
+    @media (prefers-reduced-motion: reduce) {
+        #frontendApp .mail-table tr.mail-row-enter,
+        #frontendApp .mail-display.is-visible,
+        #frontendApp .card-status-panel,
+        #frontendApp .mailbox-switcher,
+        .loading-orbit::before,
+        .loading-orbit::after,
+        .loading-dots i {
+            animation: none !important;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block body %}
 <script>document.body.classList.add('frontend-mail-page');</script>
+<canvas id="bgCanvas" aria-hidden="true"></canvas>
 <!-- Toast notification container -->
 <div id="toast-container" class="toast-container"></div>
 
@@ -1623,17 +1891,35 @@
                     </div>
                 </div>
                 <div class="control-block query-control-block">
-                    <label for="emailInput" class="query-input-label">邮箱查询</label>
-                    <textarea id="emailInput" class="highlight-input email-query-input" placeholder="请输入邮箱地址，支持多个邮箱自动识别：user@example.com&#10;test@example.com, demo@example.com"></textarea>
+                    <label for="emailInput" class="query-input-label">邮箱查询（填写卡密后可留空）</label>
+                    <textarea id="emailInput" class="highlight-input email-query-input" placeholder="选填：留空则自动查询卡密绑定的邮箱；也可输入邮箱地址，支持多个自动识别：user@example.com&#10;test@example.com, demo@example.com"></textarea>
                     <div class="query-count-field">
                         <label for="emailCountInput">每个邮箱收取</label>
                         <input type="number" id="emailCountInput" class="form-control count-input highlight-input" min="1" max="100" value="10" placeholder="10">
                     </div>
                     <button class="get-mail-btn" onclick="getMail()">获取邮件</button>
-                    <div class="query-hint">支持换行、逗号、空格、竖线等格式，会自动识别邮箱地址；默认每个邮箱查询 10 封。</div>
+                    <div class="query-hint">填写卡密可自动查询绑定邮箱；也可直接输入邮箱地址（支持换行、逗号、空格、竖线分隔）；默认每个邮箱查询 10 封。</div>
                 </div>
             </div>
-        
+
+        <div class="card-status-panel" id="cardStatusPanel" hidden>
+            <span class="card-status-badge" id="cardStatusBadge">有效</span>
+            <div class="card-status-metrics">
+                <span class="card-status-metric">剩余次数 <b id="cardRemainingUses">-</b> / <b id="cardTotalUses">-</b></span>
+                <span class="card-status-metric">有效期至 <b id="cardExpiry">-</b></span>
+            </div>
+            <div class="card-usage-track" aria-hidden="true"><div class="card-usage-bar" id="cardUsageBar"></div></div>
+        </div>
+
+        <div class="mailbox-switcher" id="mailboxSwitcher" hidden>
+            <div class="mailbox-switcher-title">
+                <span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span>
+                <span>绑定邮箱</span>
+                <span class="mailbox-total" id="mailboxTotal"></span>
+            </div>
+            <div class="mailbox-chip-list" id="mailboxChipList" role="tablist" aria-label="邮箱切换"></div>
+        </div>
+
         <div class="mail-layout">
             <nav class="folder-panel" id="folderPanel" aria-label="邮箱文件夹">
                 <div class="folder-heading">
@@ -1654,7 +1940,12 @@
                 </div>
             </nav>
             <div class="mail-list-panel" id="mailListPanel">
-                <div class="loading" id="loading">正在获取邮件，请稍候...</div>
+                <div class="loading" id="loading">
+                    <div class="loading-inner">
+                        <span class="loading-orbit" aria-hidden="true"></span>
+                        <span class="loading-text">正在获取邮件，请稍候<span class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span></span>
+                    </div>
+                </div>
                 <div class="mail-list-view" id="mailListView">
                     <div class="mail-list-wrapper">
                         <table class="mail-table">
@@ -1735,7 +2026,13 @@
 
 {% block scripts %}
 <script>
-    const mailState = { mails: [], folder: 'inbox', page: 1, perPage: 10, activeMailId: null };
+    const mailState = {
+        mails: [], folder: 'inbox', page: 1, perPage: 10, activeMailId: null,
+        mailboxes: [],        // 本次查询涉及的邮箱（小写）
+        activeMailbox: 'all', // 'all' 或某个邮箱地址（小写）
+        cardStatus: null,     // /api/card_info 的最近一次响应
+        animateNextRender: false // 新查询后首次渲染播放入场动效
+    };
     const REQUEST_FOLDER_MAP = { inbox: 'INBOX', trash: 'Trash' };
     const EMAIL_REGEX = /[\w.!#$%&'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}/g;
     
@@ -1875,6 +2172,7 @@
         if (loading) {
             loading.style.display = isLoading ? 'flex' : 'none';
         }
+        document.getElementById('mailListPanel')?.classList.toggle('is-loading', isLoading);
         if (getMailBtn) {
             getMailBtn.disabled = isLoading;
             getMailBtn.textContent = isLoading ? '获取中...' : '获取邮件';
@@ -1890,6 +2188,149 @@
         return `${text} ${useProxy ? '(代理)' : '(直连)'}`;
     }
     
+    function copyToClipboardLegacy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return ok;
+    }
+
+    async function copyToClipboard(text) {
+        let copied = false;
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(text);
+                copied = true;
+            } catch (error) {
+                // 无用户激活等场景会被拒绝，回退到 execCommand
+            }
+        }
+        if (!copied) {
+            try {
+                copied = copyToClipboardLegacy(text);
+            } catch (error) {
+                copied = false;
+            }
+        }
+        if (copied) {
+            showToast(`已复制: ${text}`, 'success', 2000);
+        } else {
+            showToast('复制失败，请手动复制', 'error');
+        }
+    }
+
+    async function fetchCardInfo(cardKey) {
+        const response = await fetch('/api/card_info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ card_key: cardKey })
+        });
+        return response.json();
+    }
+
+    const CARD_STATUS_META = {
+        valid: { label: '有效', className: 'is-valid' },
+        disabled: { label: '已禁用', className: 'is-disabled' },
+        expired: { label: '已过期', className: 'is-expired' },
+        exhausted: { label: '次数已用完', className: 'is-exhausted' }
+    };
+
+    function hideCardStatus() {
+        const panel = document.getElementById('cardStatusPanel');
+        if (panel) panel.hidden = true;
+    }
+
+    function renderCardStatus(data) {
+        const panel = document.getElementById('cardStatusPanel');
+        if (!panel || !data || !data.card_info) {
+            hideCardStatus();
+            return;
+        }
+        const meta = CARD_STATUS_META[data.status] || { label: data.message || '未知', className: 'is-disabled' };
+        const badge = document.getElementById('cardStatusBadge');
+        badge.textContent = meta.label;
+        badge.className = `card-status-badge ${meta.className}`;
+        panel.hidden = false;
+        updateCardUsage(data.card_info);
+    }
+
+    function updateCardUsage(cardInfo) {
+        if (!cardInfo) return;
+        const total = cardInfo.total_uses ?? 0;
+        const used = cardInfo.used_count ?? 0;
+        const remaining = cardInfo.remaining_uses ?? Math.max(total - used, 0);
+        const remainingEl = document.getElementById('cardRemainingUses');
+        const totalEl = document.getElementById('cardTotalUses');
+        const expiryEl = document.getElementById('cardExpiry');
+        const barEl = document.getElementById('cardUsageBar');
+        if (remainingEl) remainingEl.textContent = String(remaining);
+        if (totalEl) totalEl.textContent = String(total);
+        if (expiryEl) expiryEl.textContent = cardInfo.expired_at || '永久有效';
+        if (barEl) barEl.style.width = total > 0 ? `${Math.min(used / total * 100, 100)}%` : '0%';
+    }
+
+    function renderMailboxList() {
+        const switcher = document.getElementById('mailboxSwitcher');
+        const chipList = document.getElementById('mailboxChipList');
+        if (!switcher || !chipList) return;
+
+        const mailboxes = mailState.mailboxes;
+        const usedCard = Boolean(mailState.cardStatus && mailState.cardStatus.card_info);
+        if (mailboxes.length === 0 || (mailboxes.length <= 1 && !usedCard)) {
+            switcher.hidden = true;
+            chipList.innerHTML = '';
+            return;
+        }
+
+        const countByMailbox = mailState.mails.reduce((result, mail) => {
+            const key = (mail.mailbox || '').toLowerCase();
+            result[key] = (result[key] || 0) + 1;
+            return result;
+        }, {});
+
+        const totalEl = document.getElementById('mailboxTotal');
+        if (totalEl) totalEl.textContent = `${mailboxes.length} 个邮箱`;
+
+        const chips = [];
+        const allActive = mailState.activeMailbox === 'all';
+        chips.push(`
+            <button type="button" role="tab" aria-selected="${allActive}" class="mailbox-chip ${allActive ? 'active' : ''}"
+                    data-mailbox="all" onclick="switchMailbox('all')">
+                <span class="mailbox-chip-label">全部</span>
+                <span class="mailbox-chip-count">${mailState.mails.length}</span>
+            </button>`);
+        mailboxes.forEach(email => {
+            const active = mailState.activeMailbox === email;
+            const safeEmail = escapeHtml(email).replace(/"/g, '&quot;');
+            chips.push(`
+            <button type="button" role="tab" aria-selected="${active}" class="mailbox-chip ${active ? 'active' : ''}"
+                    data-mailbox="${safeEmail}" title="${safeEmail}" onclick="switchMailbox(this.dataset.mailbox)">
+                <span class="mailbox-chip-label">${safeEmail}</span>
+                <span class="mailbox-chip-count">${countByMailbox[email] || 0}</span>
+                <span class="mailbox-chip-copy anticon" role="button" aria-label="复制邮箱地址" title="复制邮箱地址"
+                      onclick="event.stopPropagation(); copyToClipboard(this.closest('.mailbox-chip').dataset.mailbox);">
+                    <svg aria-hidden="true"><use href="#ai-copy"></use></svg>
+                </span>
+            </button>`);
+        });
+        chipList.innerHTML = chips.join('');
+        switcher.hidden = false;
+    }
+
+    function switchMailbox(mailbox) {
+        mailState.activeMailbox = (mailbox || 'all').toLowerCase() === 'all' ? 'all' : mailbox.toLowerCase();
+        mailState.page = 1;
+        closeMailModal(true);
+        renderMailboxList();
+        renderMailList();
+    }
+
     function switchFolder(folder) {
         mailState.folder = folder;
         document.querySelectorAll('.folder-btn').forEach(btn => {
@@ -1908,8 +2349,13 @@
         }
     }
 
+    function matchesActiveMailbox(mail) {
+        return mailState.activeMailbox === 'all'
+            || (mail.mailbox || '').toLowerCase() === mailState.activeMailbox;
+    }
+
     function updateFolderCounts() {
-        const counts = mailState.mails.reduce((result, mail) => {
+        const counts = mailState.mails.filter(matchesActiveMailbox).reduce((result, mail) => {
             const folder = normalizeFolderName(mail.folder);
             result[folder] = (result[folder] || 0) + 1;
             return result;
@@ -1937,8 +2383,8 @@
         const accessKey = (masterKeyInput?.value || '').trim();
         const emailLimit = Math.min(Math.max(parseInt(emailCountInput.value, 10) || 10, 1), 100);
         
-        if (emails.length === 0) {
-            showToast('请输入邮箱地址', 'error');
+        if (emails.length === 0 && !accessKey) {
+            showToast('请输入卡密或邮箱地址', 'error');
             return;
         }
         
@@ -1951,6 +2397,57 @@
         toggleLoading(true);
         
         try {
+            let queryEmails = emails;
+
+            if (accessKey) {
+                // 查询卡密状态与绑定邮箱（万能秘钥会返回 not_found，不影响手输邮箱流程）
+                let cardData = null;
+                try {
+                    cardData = await fetchCardInfo(accessKey);
+                } catch (error) {
+                    console.error('卡密查询失败:', error);
+                }
+                mailState.cardStatus = cardData;
+
+                if (cardData && cardData.card_info) {
+                    renderCardStatus(cardData);
+                } else {
+                    hideCardStatus();
+                }
+
+                if (emails.length === 0) {
+                    // 仅卡密查询：由卡密解析绑定邮箱
+                    if (!cardData || cardData.status === 'not_found' || cardData.status === 'error') {
+                        showToast('卡密不存在；若为管理员万能秘钥，请同时填写邮箱地址', 'error', 5000);
+                        return;
+                    }
+                    if (cardData.status !== 'valid') {
+                        showToast(cardData.message || '卡密不可用', 'error', 5000);
+                        return;
+                    }
+                    const boundEmails = [...new Set((cardData.bound_emails || [])
+                        .map(item => (item.email || '').trim().toLowerCase())
+                        .filter(Boolean))];
+                    if (boundEmails.length === 0) {
+                        showToast('该卡密未绑定邮箱，请输入要查询的邮箱地址', 'warning', 5000);
+                        return;
+                    }
+                    queryEmails = boundEmails;
+                    const remaining = cardData.card_info?.remaining_uses;
+                    if (typeof remaining === 'number' && queryEmails.length > remaining) {
+                        queryEmails = queryEmails.slice(0, remaining);
+                        showToast(`剩余次数不足以查询全部绑定邮箱，本次仅查询前 ${remaining} 个`, 'warning', 5000);
+                    }
+                    if (queryEmails.length > 50) {
+                        queryEmails = queryEmails.slice(0, 50);
+                        showToast('绑定邮箱超过 50 个，本次仅查询前 50 个', 'warning', 5000);
+                    }
+                }
+            } else {
+                mailState.cardStatus = null;
+                hideCardStatus();
+            }
+
             const loginResponse = await fetch('/api/check_login', {
                 method: 'GET',
                 credentials: 'same-origin'
@@ -1965,7 +2462,7 @@
             }
 
             const requestFolder = REQUEST_FOLDER_MAP[mailState.folder] || 'INBOX';
-            const fetchResults = await mapWithConcurrency(emails, 3, async (email) => {
+            const fetchResults = await mapWithConcurrency(queryEmails, 3, async (email) => {
                 const requestData = {
                     email,
                     email_index: 0,
@@ -2000,7 +2497,8 @@
             
             const fetchedMails = [];
             const errorMessages = [];
-            
+            let minCardInfo = null;
+
             fetchResults.forEach(result => {
                 if (result.status === 'rejected') {
                     errorMessages.push(`${result.item || '邮箱'}：${result.reason?.message || '请求失败'}`);
@@ -2008,6 +2506,12 @@
                 }
 
                 const { email, data } = result.value;
+                if (data.card_info) {
+                    // 并发响应取剩余次数最小者，保证展示的余量不虚高
+                    if (!minCardInfo || (data.card_info.remaining_uses ?? Infinity) < (minCardInfo.remaining_uses ?? Infinity)) {
+                        minCardInfo = data.card_info;
+                    }
+                }
                 if (data.success) {
                     const items = data.mails || (data.mail ? [data.mail] : []);
                     items.forEach(item => fetchedMails.push({
@@ -2022,9 +2526,14 @@
                 }
             });
 
+            if (minCardInfo) updateCardUsage(minCardInfo);
+
             if (fetchedMails.length === 0) {
                 mailState.mails = [];
                 mailState.activeMailId = null;
+                mailState.mailboxes = queryEmails;
+                mailState.activeMailbox = 'all';
+                renderMailboxList();
                 renderMailList();
                 mailDisplay.classList.remove('is-visible');
                 closeMailModal(true);
@@ -2051,6 +2560,9 @@
             });
             mailState.page = 1;
             mailState.activeMailId = null;
+            mailState.mailboxes = queryEmails;
+            mailState.activeMailbox = 'all';
+            mailState.animateNextRender = true;
 
             const successMessage = errorMessages.length
                 ? `成功获取 ${mailState.mails.length} 封邮件，${errorMessages.length} 个邮箱失败`
@@ -2059,6 +2571,7 @@
             if (errorMessages.length) {
                 showToast(errorMessages.slice(0, 5).map(msg => `• ${msg}`).join('\n'), 'error', 6000);
             }
+            renderMailboxList();
             renderMailList();
             
         } catch (error) {
@@ -2071,8 +2584,10 @@
     
     function renderMailList() {
         const tbody = document.getElementById('mailTableBody');
+        const animateRows = mailState.animateNextRender;
+        mailState.animateNextRender = false;
         updateFolderCounts();
-        const filtered = mailState.mails.filter(mail => mail.folder === mailState.folder);
+        const filtered = mailState.mails.filter(mail => mail.folder === mailState.folder && matchesActiveMailbox(mail));
         const totalPages = Math.max(1, Math.ceil(filtered.length / mailState.perPage));
         mailState.page = Math.min(mailState.page, totalPages);
         const start = (mailState.page - 1) * mailState.perPage;
@@ -2089,6 +2604,10 @@
                     const verificationCode = mail.verificationCode || '--';
                     row.classList.toggle('active', mailId !== null && mailId === mailState.activeMailId);
                     row.dataset.mailId = mailId ?? '';
+                    if (animateRows) {
+                        row.classList.add('mail-row-enter');
+                        row.style.animationDelay = `${Math.min(idx * 40, 600)}ms`;
+                    }
                     row.innerHTML = `
                         <td class="col-index">${start + idx + 1}</td>
                         <td class="col-mailbox" title="${escapeHtml(mail.mailbox || '-')}">${escapeHtml(mail.mailbox || '-')}</td>
@@ -2491,5 +3010,109 @@
     }
 
     renderMailList();
+
+    // 背景粒子网络动效：漂移粒子 + 近距连线，随主题渐变背景一起呼吸
+    (function initBackgroundCanvas() {
+        const canvas = document.getElementById('bgCanvas');
+        if (!canvas || !canvas.getContext) return;
+        const ctx = canvas.getContext('2d');
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        // 主题色粒子：暖色 clay 在浅色（奶油底）与深色主题下都可见
+        const PARTICLE_RGB = '201, 100, 66';
+
+        let width = 0;
+        let height = 0;
+        let particles = [];
+        let rafId = null;
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = Math.floor(width * dpr);
+            canvas.height = Math.floor(height * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            const targetCount = Math.max(24, Math.min(60, Math.floor(width / 24)));
+            while (particles.length < targetCount) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.35,
+                    vy: (Math.random() - 0.5) * 0.35,
+                    r: 1.2 + Math.random() * 1.8
+                });
+            }
+            particles.length = targetCount;
+        }
+
+        function drawFrame() {
+            ctx.clearRect(0, 0, width, height);
+
+            for (const p of particles) {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < -20) p.x = width + 20; else if (p.x > width + 20) p.x = -20;
+                if (p.y < -20) p.y = height + 20; else if (p.y > height + 20) p.y = -20;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${PARTICLE_RGB}, 0.35)`;
+                ctx.fill();
+            }
+
+            const linkDistance = 120;
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist >= linkDistance) continue;
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = `rgba(${PARTICLE_RGB}, ${0.18 * (1 - dist / linkDistance)})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function loop() {
+            drawFrame();
+            rafId = requestAnimationFrame(loop);
+        }
+
+        function start() {
+            if (rafId === null && !reduceMotion) rafId = requestAnimationFrame(loop);
+        }
+
+        function stop() {
+            if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+        }
+
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                resize();
+                if (reduceMotion) drawFrame();
+            }, 150);
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) stop(); else start();
+        });
+
+        resize();
+        if (reduceMotion) {
+            drawFrame(); // 静态一帧，不做持续动画
+        } else {
+            start();
+        }
+    })();
 </script>
 {% endblock %}

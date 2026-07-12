@@ -11,8 +11,7 @@
     }
     
     :root {
-        --primary-color: #667eea;
-        --secondary-color: #764ba2;
+        /* 主题色由 claude-theme.css 统一提供 */
         --sidebar-width: 200px;
         --sidebar-collapsed-width: 72px;
         --header-height: 70px;
@@ -1379,6 +1378,98 @@
     .mobile-overlay.show {
         display: block;
     }
+
+    /* 轮询控制面板 */
+    .poller-control {
+        margin: 14px 0 6px;
+        padding: 12px 14px;
+        border: 1px solid var(--border, #e7e4db);
+        border-radius: 12px;
+        background: var(--surface-2, #faf9f5);
+    }
+    .poller-control-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 20px;
+    }
+    .poller-control-field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--text-muted, #6e6c64);
+    }
+    .poller-control-field .btn-sm {
+        padding: 5px 12px;
+        font-size: 13px;
+    }
+    .poller-switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .poller-switch input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .poller-switch-slider {
+        position: relative;
+        width: 42px;
+        height: 24px;
+        border-radius: 999px;
+        background: #cfccc4;
+        transition: background 0.2s ease;
+        flex: 0 0 auto;
+    }
+    .poller-switch-slider::before {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        transition: transform 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+    .poller-switch input:checked + .poller-switch-slider {
+        background: var(--primary-color, #c96442);
+    }
+    .poller-switch input:checked + .poller-switch-slider::before {
+        transform: translateX(18px);
+    }
+    .poller-switch input:disabled + .poller-switch-slider {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .poller-switch-text {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text, #2b2a27);
+    }
+    .poller-backoff-list {
+        margin-top: 10px;
+        border-top: 1px dashed var(--border, #e7e4db);
+        padding-top: 10px;
+    }
+    .poller-backoff-item {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 14px;
+        padding: 6px 0;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border, #e7e4db);
+    }
+    .poller-backoff-item:last-child { border-bottom: none; }
+    .poller-backoff-item .backoff-email { font-weight: 600; }
+    .poller-backoff-item .backoff-error { color: #d97706; }
 </style>
 {% endblock %}
 
@@ -1471,12 +1562,13 @@
 
                 <div class="log-toolbar">
                     <input type="text" class="form-control log-filter-control log-search-input" id="logSearch" placeholder="关键词：邮箱、主题、发件人、正文">
-                    <select class="form-control" id="statusFilter">
+                    <select class="form-control" id="statusFilter" title="按收件状态筛选：成功/失败/已处理">
                         <option value="">全部状态</option>
                         <option value="received">成功</option>
                         <option value="failed">失败</option>
                         <option value="processed">已处理</option>
                     </select>
+                    <span class="ah-q" data-help="log.status" style="align-self:center;">?</span>
                     <select class="form-control" id="adminFilter">
                         <option value="">全部管理员</option>
                     </select>
@@ -1493,6 +1585,31 @@
                         <textarea class="form-control bulk-filter log-filter-control" id="subjectFilters" rows="2" placeholder="批量主题筛选：每行或逗号分隔多个关键词"></textarea>
                         <textarea class="form-control bulk-filter log-filter-control" id="senderFilters" rows="2" placeholder="批量发件人筛选：每行或逗号分隔多个发件人"></textarea>
                     </div>
+                </div>
+
+                <div class="poller-control" id="pollerControl">
+                    <div class="poller-control-row">
+                        <label class="poller-switch" title="关闭后自动轮询暂停，约30秒内生效，无需重启">
+                            <input type="checkbox" id="autoPollToggle" onchange="setAutoPoll(this.checked)">
+                            <span class="poller-switch-slider"></span>
+                            <span class="poller-switch-text">自动轮询</span>
+                        </label>
+                        <span class="ah-q" data-help="poller.enabled" style="margin-left:-6px;">?</span>
+                        <div class="poller-control-field">
+                            <label for="pollIntervalInput">间隔(秒)<span class="ah-q" data-help="poller.interval">?</span></label>
+                            <input type="number" class="form-control" id="pollIntervalInput" min="30" step="10" style="width:96px">
+                            <button class="btn btn-secondary btn-sm" type="button" onclick="savePollInterval()">保存</button>
+                        </div>
+                        <div class="poller-control-field">
+                            <label for="retentionInput">日志保留(天)<span class="ah-q" data-help="poller.retention">?</span></label>
+                            <input type="number" class="form-control" id="retentionInput" min="0" step="1" style="width:80px">
+                            <button class="btn btn-secondary btn-sm" type="button" onclick="savePollRetention()">保存</button>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" type="button" id="backoffToggleBtn" onclick="toggleBackoffList()" hidden>
+                            退避中 <b id="backoffCount">0</b> 个 ▾
+                        </button>
+                    </div>
+                    <div class="poller-backoff-list" id="backoffList" hidden></div>
                 </div>
 
                 <div class="poller-status" id="pollerStatus">
@@ -1640,10 +1757,14 @@
     }
 
     function setLogMessage(message, type = 'info') {
+        // 统一走右上角 toast；保留 #logMessage 元素兼容旧调用（不再作为主要反馈）
+        if (message && window.AdminUI) {
+            AdminUI.toast(message, type === 'info' ? 'info' : type);
+        }
         const el = document.getElementById('logMessage');
         if (!el) return;
         el.textContent = message;
-        el.className = `log-message show ${type}`;
+        el.className = message ? `log-message show ${type}` : 'log-message';
         if (message) {
             window.clearTimeout(setLogMessage.timer);
             setLogMessage.timer = window.setTimeout(() => {
@@ -2032,9 +2153,13 @@
     }
 
     function updateStats(stats, poller) {
-        document.getElementById('statTotal').textContent = stats?.total ?? 0;
-        document.getElementById('statReceived').textContent = stats?.received ?? 0;
-        document.getElementById('statFailed').textContent = stats?.failed ?? 0;
+        const cu = (id, val) => {
+            const el = document.getElementById(id);
+            if (window.AdminUI) AdminUI.countUp(el, val); else el.textContent = val;
+        };
+        cu('statTotal', stats?.total ?? 0);
+        cu('statReceived', stats?.received ?? 0);
+        cu('statFailed', stats?.failed ?? 0);
         const interval = poller?.interval ? `${poller.interval}s` : '-';
         document.getElementById('statInterval').textContent = interval;
     }
@@ -2057,11 +2182,16 @@
                 <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-check"></use></svg></span></span>
                 <span><span class="poller-status-label">最近结束</span><span class="poller-status-value">${escapeHtml(poller?.last_finished_at || '-')}</span></span>
             </div>
+            <div class="poller-status-item time">
+                <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-sync"></use></svg></span></span>
+                <span><span class="poller-status-label">下次轮询</span><span class="poller-status-value">${escapeHtml(poller?.auto_poll_enabled === false ? '已暂停' : (poller?.next_run_at || '-'))}</span></span>
+            </div>
             <div class="poller-status-item result">
                 <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-file-text"></use></svg></span></span>
                 <span><span class="poller-status-label">结果</span><span class="poller-status-value" title="${escapeHtml(poller?.last_message || '-')}">${escapeHtml(poller?.last_message || '-')}</span></span>
             </div>
         `;
+        renderBackoff(poller?.backoff);
         const pollBtn = document.getElementById('pollNowBtn');
         if (pollBtn) {
             pollBtn.disabled = Boolean(poller?.running);
@@ -2297,10 +2427,115 @@
         }
     }
     
+    // ---- 轮询控制面板 ----
+    let backoffListVisible = false;
+
+    async function postPollerAction(body) {
+        try {
+            const response = await fetch('/admin/api/poller/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (response.redirected && response.url.includes('/admin/login')) {
+                window.location.href = response.url;
+                return null;
+            }
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                setLogMessage('登录状态已失效，请重新登录', 'error');
+                return null;
+            }
+            const data = await response.json();
+            setLogMessage(data.message || (data.success ? '操作成功' : '操作失败'), data.success ? 'success' : 'error');
+            if (data.config) renderPollerConfig(data.config);
+            if (data.state) updatePollerStatus(data.state);
+            return data;
+        } catch (error) {
+            console.error('轮询配置操作失败:', error);
+            setLogMessage('网络错误，请稍后重试', 'error');
+            return null;
+        }
+    }
+
+    async function loadPollerConfig() {
+        try {
+            const response = await fetch('/admin/api/poller/config');
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) return;
+            const data = await response.json();
+            if (data.config) renderPollerConfig(data.config);
+            if (data.state) updatePollerStatus(data.state);
+        } catch (error) {
+            console.error('加载轮询配置失败:', error);
+        }
+    }
+
+    function renderPollerConfig(config) {
+        const toggle = document.getElementById('autoPollToggle');
+        if (toggle && document.activeElement !== toggle) {
+            toggle.checked = Boolean(config.auto_poll_enabled);
+            toggle.disabled = Boolean(config.env_kill_switch);
+            toggle.closest('.poller-switch')?.setAttribute('title',
+                config.env_kill_switch ? '已被环境变量 MAIL_AUTO_POLL=0 禁用，需在服务端解除' : '关闭后自动轮询暂停，约30秒内生效，无需重启');
+        }
+        const intervalInput = document.getElementById('pollIntervalInput');
+        if (intervalInput && document.activeElement !== intervalInput) intervalInput.value = config.interval;
+        const retentionInput = document.getElementById('retentionInput');
+        if (retentionInput && document.activeElement !== retentionInput) retentionInput.value = config.retention_days;
+    }
+
+    function setAutoPoll(enabled) {
+        postPollerAction({ action: 'set_enabled', enabled: enabled });
+    }
+
+    function savePollInterval() {
+        const input = document.getElementById('pollIntervalInput');
+        postPollerAction({ action: 'set_interval', interval: parseInt(input.value, 10) || 300 });
+    }
+
+    function savePollRetention() {
+        const input = document.getElementById('retentionInput');
+        postPollerAction({ action: 'set_retention', days: parseInt(input.value, 10) || 0 });
+    }
+
+    function resetBackoff(email) {
+        postPollerAction({ action: 'reset_backoff', email: email || '' });
+    }
+
+    function toggleBackoffList() {
+        backoffListVisible = !backoffListVisible;
+        const list = document.getElementById('backoffList');
+        if (list) list.hidden = !backoffListVisible;
+    }
+
+    function renderBackoff(backoff) {
+        const btn = document.getElementById('backoffToggleBtn');
+        const countEl = document.getElementById('backoffCount');
+        const list = document.getElementById('backoffList');
+        const items = Array.isArray(backoff) ? backoff : [];
+        if (countEl) countEl.textContent = String(items.length);
+        if (btn) btn.hidden = items.length === 0;
+        if (!items.length) { if (list) list.hidden = true; backoffListVisible = false; return; }
+        if (list) {
+            list.hidden = !backoffListVisible;
+            list.innerHTML = items.map(item => `
+                <div class="poller-backoff-item">
+                    <span class="backoff-email">${escapeHtml(item.email || '')}</span>
+                    <span>连续失败 ${item.failures || 0} 次</span>
+                    <span>剩余跳过 ${item.skip_remaining || 0} 轮</span>
+                    <span class="backoff-error" title="${escapeHtml(item.last_error || '')}">${escapeHtml((item.last_error || '').slice(0, 40))}</span>
+                    <button class="btn btn-secondary btn-sm" type="button" onclick="resetBackoff('${escapeHtml(item.email || '')}')">重置</button>
+                </div>`).join('') +
+                `<div style="margin-top:8px;"><button class="btn btn-secondary btn-sm" type="button" onclick="resetBackoff('')">全部重置</button></div>`;
+        }
+    }
+
     // Close mobile menu when clicking on navigation items
     document.addEventListener('DOMContentLoaded', function() {
         initSidebarCollapse();
         loadMailLogs(1);
+        loadPollerConfig();
         window.setInterval(() => loadMailLogs(currentLogPage, false), LOG_REFRESH_INTERVAL_MS);
 
         function debouncedSearch() {

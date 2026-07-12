@@ -11,8 +11,7 @@
     }
     
     :root {
-        --primary-color: #667eea;
-        --secondary-color: #764ba2;
+        /* 主题色由 claude-theme.css 统一提供 */
         --sidebar-width: 200px;
         --sidebar-collapsed-width: 72px;
         --header-height: 70px;
@@ -373,6 +372,43 @@
     .mobile-overlay.show {
         display: block;
     }
+
+    /* 功能导航宫格 */
+    .quick-link-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 14px;
+    }
+    .quick-link {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px;
+        border: 1px solid var(--border, #e7e4db);
+        border-radius: 12px;
+        background: var(--surface, #fff);
+        color: var(--text, #2b2a27);
+        text-decoration: none;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .quick-link:hover {
+        transform: translateY(-2px);
+        border-color: rgba(201, 100, 66, 0.4);
+        box-shadow: 0 6px 18px rgba(201, 100, 66, 0.12);
+    }
+    .quick-link-icon {
+        font-size: 24px;
+        color: var(--primary-color, #c96442);
+        flex: 0 0 auto;
+    }
+    .quick-link-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+    .quick-link-text b { font-size: 15px; }
+    .quick-link-text small { font-size: 12px; color: var(--text-muted, #6e6c64); }
 </style>
 {% endblock %}
 
@@ -429,38 +465,55 @@
     <div class="content">
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-number">{{ account_count }}</div>
+                <div class="stat-number" id="statAccounts" data-value="{{ account_count }}">{{ account_count }}</div>
                 <div class="stat-label">邮箱账号总数</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">{{ card_count }}</div>
+                <div class="stat-number" id="statCards" data-value="{{ card_count }}">{{ card_count }}</div>
                 <div class="stat-label">卡密总数</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">{{ available_proxy_count }}</div>
+                <div class="stat-number" id="statProxies" data-value="{{ available_proxy_count }}">{{ available_proxy_count }}</div>
                 <div class="stat-label">可用代理数量</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">运行中</div>
-                <div class="stat-label">系统状态</div>
+                <div class="stat-number" id="statPollerState" style="font-size: 26px;">—</div>
+                <div class="stat-label">自动轮询</div>
             </div>
         </div>
-        
+
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">系统概览</h2>
+                <h2 class="card-title">功能导航</h2>
             </div>
             <div class="card-body">
-                <p>欢迎使用邮件查看系统管理控制台。您可以通过左侧菜单管理不同功能模块。</p>
-                <ul style="margin-top: 15px; padding-left: 20px;">
-                    <li><strong>首页</strong>：查看系统概览和统计信息</li>
-                    <li><strong>邮箱管理</strong>：添加、编辑和删除邮箱账号配置</li>
-                    <li><strong>代理池</strong>：管理代理服务器配置</li>
-                    <li><strong>卡密管理</strong>：生成和管理访问卡密</li>
-                    <li><strong>卡密日志</strong>：查看卡密使用记录</li>
-                    <li><strong>收件日志</strong>：查看邮件接收记录</li>
-                    <li><strong>系统设置</strong>：配置系统参数和安全选项</li>
-                </ul>
+                <p style="margin-bottom: 16px; color: var(--text-muted, #6e6c64);">欢迎使用邮件查看系统管理控制台，点击下方卡片进入对应模块。</p>
+                <div class="quick-link-grid">
+                    <a class="quick-link" href="#" onclick="goAdmin('/admin/mailbox'); return false;">
+                        <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span>
+                        <span class="quick-link-text"><b>邮箱管理</b><small>添加、编辑和删除邮箱账号配置</small></span>
+                    </a>
+                    <a class="quick-link" href="#" onclick="goAdmin('/admin/daili'); return false;">
+                        <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span>
+                        <span class="quick-link-text"><b>代理池</b><small>管理代理服务器配置</small></span>
+                    </a>
+                    <a class="quick-link" href="#" onclick="goAdmin('/admin/kami'); return false;">
+                        <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-key"></use></svg></span>
+                        <span class="quick-link-text"><b>卡密管理</b><small>生成和管理访问卡密</small></span>
+                    </a>
+                    <a class="quick-link" href="#" onclick="goAdmin('/admin/kamirizhi'); return false;">
+                        <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-file-text"></use></svg></span>
+                        <span class="quick-link-text"><b>卡密日志</b><small>查看卡密使用记录</small></span>
+                    </a>
+                    <a class="quick-link" href="#" onclick="goAdmin('/admin/shoujian'); return false;">
+                        <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span>
+                        <span class="quick-link-text"><b>收件日志</b><small>查看邮件接收记录与轮询控制</small></span>
+                    </a>
+                    <a class="quick-link" href="#" onclick="goAdmin('/admin/system'); return false;">
+                        <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span>
+                        <span class="quick-link-text"><b>系统设置</b><small>配置系统参数和安全选项</small></span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -543,9 +596,38 @@
         overlay.classList.remove('show');
     }
     
+    // 在 iframe 内跳转到其它后台模块（React 壳会接管路由）
+    function goAdmin(path) {
+        try { window.top.location.href = path; }
+        catch (e) { window.location.href = path; }
+    }
+
+    // 统计数字滚动动画 + 轮询状态
+    function initHomeDashboard() {
+        if (window.AdminUI) {
+            ['statAccounts', 'statCards', 'statProxies'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) AdminUI.countUp(el, parseInt(el.dataset.value, 10) || 0);
+            });
+        }
+        fetch('/admin/api/poller/config')
+            .then(function (r) { return r.headers.get('content-type', '').includes('application/json') ? r.json() : null; })
+            .then(function (data) {
+                const el = document.getElementById('statPollerState');
+                if (!el || !data) return;
+                const st = data.state || {};
+                const cfg = data.config || {};
+                if (cfg.env_kill_switch) el.textContent = '已禁用';
+                else if (!cfg.auto_poll_enabled) el.textContent = '已暂停';
+                else el.textContent = st.running ? '运行中' : '空闲';
+            })
+            .catch(function () { /* 忽略 */ });
+    }
+
     // Close mobile menu when clicking on navigation items
     document.addEventListener('DOMContentLoaded', function() {
         initSidebarCollapse();
+        initHomeDashboard();
         const navItems = document.querySelectorAll('.nav-item');
         navItems.forEach(item => {
             item.addEventListener('click', function() {

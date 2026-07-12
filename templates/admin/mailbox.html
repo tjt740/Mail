@@ -11,8 +11,7 @@
     }
     
     :root {
-        --primary-color: #667eea;
-        --secondary-color: #764ba2;
+        /* 主题色由 claude-theme.css 统一提供（陶土色），此处不再覆盖 */
         --sidebar-width: 200px;
         --sidebar-collapsed-width: 72px;
         --header-height: 70px;
@@ -2972,6 +2971,23 @@
                     <div class="card-body toolbar-card-body">
                         <div class="toolbar-row">
                             <div class="button-group">
+                                <div class="au-dropdown">
+                                    <button class="btn btn-primary au-dropdown-toggle" type="button">
+                                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span> 添加邮箱 <span aria-hidden="true">▾</span>
+                                    </button>
+                                    <div class="au-dropdown-menu">
+                                        <button class="au-dropdown-item" type="button" onclick="showAddModal()">
+                                            <span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span> 单个添加
+                                        </button>
+                                        <button class="au-dropdown-item" type="button" onclick="showBatchAddModal()">
+                                            <span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量添加
+                                        </button>
+                                        <div class="au-dropdown-divider"></div>
+                                        <button class="au-dropdown-item" type="button" onclick="showServerModal()">
+                                            <span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span> 添加服务器地址
+                                        </button>
+                                    </div>
+                                </div>
                                 <button class="btn btn-secondary group-panel-toggle" id="groupPanelToggle" type="button" onclick="toggleMailboxGroupPanel()" aria-expanded="false">
                                     <span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span> 显示分组
                                 </button>
@@ -2981,24 +2997,6 @@
                                     </button>
                                     <div class="column-config-menu" id="columnConfigMenu" aria-hidden="true"></div>
                                 </div>
-                                <button class="btn btn-primary" onclick="showAddModal()">
-                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span> 添加邮箱
-                                </button>
-                                <button class="btn btn-primary" onclick="showBatchAddModal()">
-                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量添加邮箱
-                                </button>
-                                <button class="btn btn-primary" onclick="showServerModal()">
-                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span> 添加服务器地址
-                                </button>
-                                <button class="btn btn-success" onclick="copySelectedMailboxes()" id="batchCopyBtn" style="display: none;">
-                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span> 批量复制
-                                </button>
-                                <button class="btn btn-danger" onclick="batchDeleteMailboxes()" id="batchDeleteBtn" style="display: none;">
-                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除
-                                </button>
-                                <button class="btn btn-secondary" onclick="showBatchGroupModal()" id="batchGroupBtn" style="display: none;">
-                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量分组
-                                </button>
                             </div>
                             <div class="admin-summary" id="mailboxAdminSummary">
                                 <span>管理员：<strong>{{ admin_username }}</strong></span>
@@ -3526,6 +3524,21 @@
             <button type="button" class="btn" onclick="closeServerModal()">关闭</button>
         </div>
     </div>
+</div>
+
+<!-- 选中邮箱时滑入的批量操作条 -->
+<div class="au-bulk-bar" id="mailboxBulkBar">
+    <span class="au-bulk-count">已选 <b id="bulkSelectedCount">0</b> 个邮箱</span>
+    <button class="btn btn-success" type="button" onclick="copySelectedMailboxes()">
+        <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span> 批量复制
+    </button>
+    <button class="btn btn-secondary" type="button" onclick="showBatchGroupModal()">
+        <span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量分组
+    </button>
+    <button class="btn btn-danger" type="button" onclick="batchDeleteMailboxes()">
+        <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除
+    </button>
+    <button class="btn" type="button" onclick="clearMailboxSelection()">取消选择</button>
 </div>
 {% endblock %}
 
@@ -4386,7 +4399,8 @@
             row.innerHTML = visibleColumns.map(column => getMailboxCellHtml(column, mailbox, rowNumber)).join('');
             tbody.appendChild(row);
         });
-        
+        if (window.AdminUI) AdminUI.staggerRows(tbody);
+
         updateSelectionButtons();
     }
     
@@ -6731,40 +6745,19 @@
     
     // 更新批量操作按钮状态
     function updateSelectionButtons() {
-        const copyBtn = document.getElementById('batchCopyBtn');
-        const deleteBtn = document.getElementById('batchDeleteBtn');
-        const groupBtn = document.getElementById('batchGroupBtn');
-        if (selectedMailboxes.size > 0) {
-            if (copyBtn) {
-                copyBtn.style.display = 'inline-flex';
-                copyBtn.classList.add('selection-action-visible');
-                copyBtn.innerHTML = `<span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span> 批量复制 (${selectedMailboxes.size})`;
-            }
-            if (deleteBtn) {
-                deleteBtn.style.display = 'inline-flex';
-                deleteBtn.classList.add('selection-action-visible');
-                deleteBtn.innerHTML = `<span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除 (${selectedMailboxes.size})`;
-            }
-            if (groupBtn) {
-                groupBtn.style.display = 'inline-flex';
-                groupBtn.classList.add('selection-action-visible');
-                groupBtn.innerHTML = `<span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量分组 (${selectedMailboxes.size})`;
-            }
-        } else {
-            if (copyBtn) {
-                copyBtn.style.display = 'none';
-                copyBtn.classList.remove('selection-action-visible');
-            }
-            if (deleteBtn) {
-                deleteBtn.style.display = 'none';
-                deleteBtn.classList.remove('selection-action-visible');
-            }
-            if (groupBtn) {
-                groupBtn.style.display = 'none';
-                groupBtn.classList.remove('selection-action-visible');
-            }
-        }
+        const bar = document.getElementById('mailboxBulkBar');
+        const countEl = document.getElementById('bulkSelectedCount');
+        if (countEl) countEl.textContent = String(selectedMailboxes.size);
+        if (bar) bar.classList.toggle('visible', selectedMailboxes.size > 0);
         updateAdminSummary();
+    }
+
+    function clearMailboxSelection() {
+        selectedMailboxes.clear();
+        document.querySelectorAll('.mailbox-checkbox').forEach(cb => { cb.checked = false; });
+        const selectAll = document.getElementById('selectAllCheckbox');
+        if (selectAll) selectAll.checked = false;
+        updateSelectionButtons();
     }
 
     function updateBatchDeleteButton() {

@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}帮助中心 - {{ system_title }}{% endblock %}
+
+{% block head %}
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+        --sidebar-width: 200px;
+        --header-height: 70px;
+    }
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--text, #2b2a27);
+        line-height: 1.6;
+    }
+    .main-content { margin-left: var(--sidebar-width); min-height: 100vh; }
+    body.embedded-view .main-content { margin-left: 0; }
+    .content { padding: 24px; max-width: 960px; margin: 0 auto; }
+
+    .help-hero {
+        border-radius: 16px;
+        padding: 28px;
+        background: linear-gradient(135deg, var(--primary-color, #c96442), var(--secondary-color, #b0552f));
+        color: #fff;
+        margin-bottom: 22px;
+    }
+    .help-hero h1 { font-size: 24px; margin-bottom: 8px; }
+    .help-hero p { opacity: 0.92; font-size: 14px; }
+
+    .help-toc {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 22px;
+    }
+    .help-toc a {
+        padding: 7px 14px;
+        border: 1px solid var(--border, #e7e4db);
+        border-radius: 999px;
+        text-decoration: none;
+        color: var(--text-muted, #6e6c64);
+        font-size: 13px;
+        transition: all 0.15s ease;
+    }
+    .help-toc a:hover { color: var(--primary-color, #c96442); border-color: rgba(201,100,66,0.4); }
+
+    .help-card {
+        background: var(--surface, #fff);
+        border: 1px solid var(--border, #e7e4db);
+        border-radius: 14px;
+        padding: 22px;
+        margin-bottom: 18px;
+        scroll-margin-top: 20px;
+    }
+    .help-card h2 {
+        font-size: 18px;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text, #2b2a27);
+    }
+    .help-card h2 .anticon { color: var(--primary-color, #c96442); }
+    .help-card > p { color: var(--text-muted, #6e6c64); font-size: 14px; margin-bottom: 14px; }
+    .help-sec { margin-top: 14px; }
+    .help-sec h3 { font-size: 14px; color: var(--primary-color, #c96442); margin-bottom: 6px; }
+    .help-sec ul { padding-left: 20px; }
+    .help-sec li { font-size: 13px; line-height: 1.8; }
+
+    .poller-diagram {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 16px;
+        background: var(--surface-2, #faf9f5);
+        border-radius: 12px;
+        margin: 14px 0;
+    }
+    .pd-step {
+        padding: 8px 14px;
+        border-radius: 10px;
+        background: #fff;
+        border: 1px solid var(--border, #e7e4db);
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .pd-arrow { color: var(--primary-color, #c96442); font-weight: 700; }
+
+    .help-faq details {
+        border: 1px solid var(--border, #e7e4db);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+    }
+    .help-faq summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+    .help-faq p { margin-top: 10px; color: var(--text-muted, #6e6c64); font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block body %}
+<script>document.body.classList.add('frontend-mail-page');</script>
+<div class="main-content">
+    <div class="content">
+        <div class="help-hero">
+            <h1>📖 帮助中心</h1>
+            <p>这里汇总了各功能模块的使用说明、字段释义与常见问题。每个后台页面右上角也有「使用说明」按钮可随时查看。</p>
+        </div>
+        <div class="help-toc" id="helpToc"></div>
+        <div id="helpContent"></div>
+        <div class="help-card" id="sec-faq">
+            <h2><span class="anticon"><svg aria-hidden="true"><use href="#ai-bulb"></use></svg></span> 常见问题</h2>
+            <div class="help-faq" id="helpFaq"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function renderHelpCenter() {
+        function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+        function ready(fn) { if (document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
+
+        const ICONS = {
+            home: 'ai-home', mailbox: 'ai-inbox', daili: 'ai-global', kami: 'ai-key',
+            kamirizhi: 'ai-file-text', shoujian: 'ai-mail', system: 'ai-setting'
+        };
+
+        ready(function () {
+            if (!window.AdminHelp) return;
+            const pages = window.AdminHelp.pages;
+            const toc = document.getElementById('helpToc');
+            const content = document.getElementById('helpContent');
+            let html = '';
+            let tocHtml = '';
+
+            Object.keys(pages).forEach(function (key) {
+                const p = pages[key];
+                tocHtml += '<a href="#sec-' + key + '">' + esc(p.title) + '</a>';
+                let secs = (p.sections || []).map(function (sec) {
+                    return '<div class="help-sec"><h3>' + esc(sec.h) + '</h3><ul>' +
+                        sec.items.map(function (it) { return '<li>' + esc(it) + '</li>'; }).join('') + '</ul></div>';
+                }).join('');
+                let diagram = '';
+                if (key === 'shoujian') {
+                    diagram = '<div class="poller-diagram">' +
+                        '<span class="pd-step">定时触发</span><span class="pd-arrow">→</span>' +
+                        '<span class="pd-step">遍历启用邮箱</span><span class="pd-arrow">→</span>' +
+                        '<span class="pd-step">跳过退避中的邮箱</span><span class="pd-arrow">→</span>' +
+                        '<span class="pd-step">IMAP 收取最新邮件</span><span class="pd-arrow">→</span>' +
+                        '<span class="pd-step">去重写入日志</span><span class="pd-arrow">→</span>' +
+                        '<span class="pd-step">失败则退避/成功则恢复</span>' +
+                    '</div>';
+                }
+                html += '<div class="help-card" id="sec-' + key + '">' +
+                    '<h2><span class="anticon"><svg aria-hidden="true"><use href="#' + (ICONS[key] || 'ai-info-circle') + '"></use></svg></span>' + esc(p.title) + '</h2>' +
+                    '<p>' + esc(p.intro) + '</p>' + diagram + secs +
+                '</div>';
+            });
+
+            toc.innerHTML = tocHtml + '<a href="#sec-faq">常见问题</a>';
+            content.innerHTML = html;
+
+            const faq = document.getElementById('helpFaq');
+            faq.innerHTML = (window.AdminHelp.faq || []).map(function (f) {
+                return '<details><summary>' + esc(f.q) + '</summary><p>' + esc(f.a) + '</p></details>';
+            }).join('');
+
+            toc.querySelectorAll('a').forEach(function (a) {
+                a.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const t = document.querySelector(a.getAttribute('href'));
+                    if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}

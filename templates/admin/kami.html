@@ -11,8 +11,7 @@
     }
     
     :root {
-        --primary-color: #667eea;
-        --secondary-color: #764ba2;
+        /* 主题色由 claude-theme.css 统一提供 */
         --sidebar-width: 200px;
         --sidebar-collapsed-width: 72px;
         --header-height: 70px;
@@ -1013,7 +1012,7 @@
     }
     
     .email-group-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--primary-color, #c96442) 0%, var(--secondary-color, #b0552f) 100%);
         color: white;
         padding: 12px 15px;
         font-weight: 600;
@@ -1122,7 +1121,7 @@
     }
     
     .group-list-item.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--primary-color, #c96442) 0%, var(--secondary-color, #b0552f) 100%);
         color: white;
         border-color: transparent;
     }
@@ -1425,15 +1424,12 @@
                                 <th>
                                     <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
                                 </th>
-                                <th>序号ID</th>
+                                <th>序号</th>
                                 <th>卡密</th>
-                                <th>使用次数</th>
-                                <th>使用时间</th>
-                                <th>过期时间</th>
+                                <th>使用情况<span class="ah-q" data-help="card.usage">?</span></th>
+                                <th>有效期<span class="ah-q" data-help="card.expiry">?</span></th>
                                 <th>绑定邮箱</th>
-                                <th>邮件过滤</th>
-                                <th>备注</th>
-                                <th>创建时间</th>
+                                <th>备注 / 过滤<span class="ah-q" data-help="card.filter">?</span></th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -1974,29 +1970,7 @@
 
     // ========== 工具函数 ==========
     
-    // Toast通知系统
-    function showToast(message, type = 'info', duration = 3000) {
-        const container = document.getElementById('toast-container');
-        
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
-        
-        container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.classList.add('show');
-        }, 10);
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                if (container.contains(toast)) {
-                    container.removeChild(toast);
-                }
-            }, 300);
-        }, duration);
-    }
+    // Toast 统一走 AdminUI.toast（window.showToast 已由 admin-ui.js 提供）
 
     // 页面加载完成后初始化
     document.addEventListener('DOMContentLoaded', function() {
@@ -2011,10 +1985,11 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('totalCards').textContent = data.stats.total || 0;
-                    document.getElementById('activeCards').textContent = data.stats.active || 0;
-                    document.getElementById('usedCards').textContent = data.stats.used || 0;
-                    document.getElementById('expiredCards').textContent = data.stats.expired || 0;
+                    const cu = (id, v) => { const el = document.getElementById(id); if (window.AdminUI) AdminUI.countUp(el, v); else el.textContent = v; };
+                    cu('totalCards', data.stats.total || 0);
+                    cu('activeCards', data.stats.active || 0);
+                    cu('usedCards', data.stats.used || 0);
+                    cu('expiredCards', data.stats.expired || 0);
                 }
             })
             .catch(error => {
@@ -2059,7 +2034,7 @@
         if (cards.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="11" style="text-align: center; padding: 40px; color: #6b7280;">
+                    <td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">
                         暂无卡密数据
                     </td>
                 </tr>
@@ -2070,37 +2045,37 @@
         tbody.innerHTML = cards.map((card, index) => `
             <tr>
                 <td>
-                    <input type="checkbox" class="card-checkbox" value="${card.id}" 
-                           onchange="toggleCardSelection(${card.id})" 
+                    <input type="checkbox" class="card-checkbox" value="${card.id}"
+                           onchange="toggleCardSelection(${card.id})"
                            ${selectedCards.has(card.id) ? 'checked' : ''}>
                 </td>
-                <td>${index + 1 + (currentPage - 1) * perPage}</td>
+                <td title="创建时间：${formatDateTime(card.created_at)}">${index + 1 + (currentPage - 1) * perPage}</td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace;">
                             ${card.card_key}
                         </code>
-                        <button class="btn btn-sm" onclick="copyToClipboard('${card.card_key}')" 
+                        <button class="btn btn-sm" onclick="copyToClipboard('${card.card_key}')"
                                 title="复制卡密" style="padding: 2px 6px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer;">
                             <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span>
                         </button>
                     </div>
                 </td>
-                <td>${card.used_count}/${card.usage_limit}</td>
-                <td>${card.last_used_at ? formatDateTime(card.last_used_at) : '-'}</td>
+                <td>
+                    <div style="font-weight:600;">${card.used_count}/${card.usage_limit}</div>
+                    <div style="font-size:12px;color:#6e6c64;">${card.last_used_at ? formatDateTime(card.last_used_at) : '未使用'}</div>
+                </td>
                 <td>${formatExpirationDisplay(card.expired_at)}</td>
                 <td>${renderBoundEmailCell(card)}</td>
                 <td>
-                    <div style="font-size: 12px;">
-                        <div>收取: ${card.email_days_filter || 1}天内</div>
-                        ${card.keyword_filter ? `<div>关键词: ${card.keyword_filter.substring(0, 20)}${card.keyword_filter.length > 20 ? '...' : ''}</div>` : '<div>关键词: 不限制</div>'}
+                    <div>${getCardRemarks(card.remarks) || '-'}</div>
+                    <div style="font-size:12px;color:#6e6c64;" title="收取范围 ${card.email_days_filter || 1} 天内${card.keyword_filter ? '，关键词：' + escapeHtml(card.keyword_filter) : '，关键词不限'}">
+                        ${card.email_days_filter || 1}天内${card.keyword_filter ? ' · 含关键词' : ''}
                     </div>
                 </td>
-                <td>${getCardRemarks(card.remarks) || '-'}</td>
-                <td>${formatDateTime(card.created_at)}</td>
                 <td>
                     <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                        <button class="btn btn-sm btn-primary" onclick="showEditModal(${card.id})" 
+                        <button class="btn btn-sm btn-primary" onclick="showEditModal(${card.id})"
                                 title="编辑"><span class="anticon"><svg aria-hidden="true"><use href="#ai-edit"></use></svg></span></button>
                         <button class="btn btn-sm btn-warning" onclick="openQuickBindEmailModal(${card.id})"
                                 title="绑定选择邮箱"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span></button>
@@ -2112,6 +2087,7 @@
                 </td>
             </tr>
         `).join('');
+        if (window.AdminUI) AdminUI.staggerRows(tbody);
     }
 
     // 复制到剪贴板

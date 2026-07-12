@@ -11,8 +11,7 @@
     }
     
     :root {
-        --primary-color: #667eea;
-        --secondary-color: #764ba2;
+        /* 主题色由 claude-theme.css 统一提供 */
         --sidebar-width: 200px;
         --sidebar-collapsed-width: 72px;
         --header-height: 70px;
@@ -569,6 +568,7 @@
                     </div>
                     <div class="search-actions">
                         <input type="number" id="retentionDays" min="0" placeholder="保留天数(0关闭)" style="padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 8px; width: 160px;">
+                        <span class="ah-q" data-help="poller.retention" title="日志保留天数">?</span>
                         <button class="btn btn-primary" onclick="saveLogRetention()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-save"></use></svg></span> 保存定期清理</button>
                         <button class="btn btn-danger" onclick="clearCardLogs()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 清空日志</button>
                     </div>
@@ -721,10 +721,13 @@
     function renderCardLogs(logs) {
         const tbody = document.getElementById('cardLogBody');
         if (!logs || logs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">暂无卡密日志</td></tr>`;
+            const empty = window.AdminUI
+                ? AdminUI.emptyState({ icon: 'ai-file-text', title: '暂无卡密日志', hint: '卡密被使用后，记录会显示在这里' })
+                : '暂无卡密日志';
+            tbody.innerHTML = `<tr><td colspan="6" style="padding:0;">${empty}</td></tr>`;
             return;
         }
-        
+
         tbody.innerHTML = logs.map((log, index) => `
             <tr>
                 <td>${(logPage - 1) * logPerPage + index + 1}</td>
@@ -735,6 +738,7 @@
                 <td>${formatDateTime(log.created_at)}</td>
             </tr>
         `).join('');
+        if (window.AdminUI) AdminUI.staggerRows(tbody);
     }
 
     function renderLogPagination(pagination) {
@@ -885,8 +889,6 @@
         return text ? text.replace(/[&<>"']/g, function(m) { return map[m]; }) : '';
     }
 
-    function showToast(message) {
-        alert(message);
-    }
+    // Toast 统一走 AdminUI.toast（原实现为 alert，已由 admin-ui.js 提供）
 </script>
 {% endblock %}

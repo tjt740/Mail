@@ -23,6 +23,7 @@ import {
   MailOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  QuestionCircleOutlined,
   SettingOutlined,
   UserOutlined
 } from '@ant-design/icons';
@@ -40,7 +41,8 @@ const adminMenuItems = [
   { key: '/admin/kami', icon: <KeyOutlined />, label: '卡密管理' },
   { key: '/admin/kamirizhi', icon: <FileTextOutlined />, label: '卡密日志' },
   { key: '/admin/shoujian', icon: <MailOutlined />, label: '收件日志' },
-  { key: '/admin/system', icon: <SettingOutlined />, label: '系统设置' }
+  { key: '/admin/system', icon: <SettingOutlined />, label: '系统设置' },
+  { key: '/admin/help', icon: <QuestionCircleOutlined />, label: '帮助中心' }
 ];
 
 function getCurrentPath() {
