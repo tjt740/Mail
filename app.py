@@ -3871,6 +3871,8 @@ def api_admin_mailbox():
         
         if action == 'add':
             return _add_mailbox(db, data)
+        elif action == 'parse_import':
+            return _parse_mailbox_import_preview(data)
         elif action == 'batch_add':
             return _batch_add_mailbox(db, data)
         elif action == 'edit':
@@ -4000,6 +4002,7 @@ def api_mailbox_search():
 
 def _add_mailbox(db, data):
     """添加单个邮箱"""
+    import_content = str(data.get('import_content') or '').strip()
     email = data.get('email', '').strip()
     username = email  # 使用邮箱作为用户名
     password = data.get('password', '').strip()
@@ -4013,8 +4016,44 @@ def _add_mailbox(db, data):
     send_ssl = 1 if (send_ssl_flag if send_ssl_flag is not None else data.get('ssl')) else 0
     send_port = normalize_smtp_port(data.get('send_port'), send_protocol, send_ssl == 1)
     remarks = data.get('remarks', '').strip()
+    auth_type = 'password'
+    oauth_client_id = ''
+    oauth_refresh_token = ''
     group_id = data.get('group_id')  # Get group_id from request
     created_by_admin = session.get('admin_username', 'admin')
+
+    if import_content:
+        import_lines = [line.strip() for line in import_content.splitlines() if line.strip()]
+        if len(import_lines) != 1:
+            return jsonify({
+                'success': False,
+                'message': '单个添加一次只能识别一条邮箱内容'
+            })
+
+        parsed_account, parse_error = parse_mailbox_import_line(import_lines[0])
+        if not parsed_account:
+            return jsonify({
+                'success': False,
+                'message': f'邮箱内容识别失败：{parse_error}'
+            })
+
+        email = parsed_account['email']
+        username = parsed_account.get('username') or email
+        password = parsed_account['password']
+        auth_type = parsed_account.get('auth_type') or 'password'
+        oauth_client_id = parsed_account.get('oauth_client_id') or ''
+        oauth_refresh_token = parsed_account.get('oauth_refresh_token') or ''
+        remarks = merge_mailbox_remarks(remarks, parsed_account.get('remarks', ''))
+
+        if auth_type == 'graph':
+            server = 'imap-mail.outlook.com'
+            port = 993
+            protocol = 'imap'
+            ssl = 1
+            send_server = 'smtp-mail.outlook.com'
+            send_port = 587
+            send_protocol = 'smtp_starttls'
+            send_ssl = 0
     
     if not all([email, password, server, port]):
         return jsonify({
@@ -4094,17 +4133,17 @@ def _add_mailbox(db, data):
         now = get_beijing_time()
         if db_type == 'sqlite':
             db.execute('''
-                INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, created_by_admin, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, created_by_admin, now, now))
+                INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, created_by_admin, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, created_by_admin, now, now))
             mailbox_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
             db.commit()
         else:
             cursor = db.cursor()
             cursor.execute('''
-                INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, created_by_admin, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, created_by_admin, now, now))
+                INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, created_by_admin, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, created_by_admin, now, now))
             mailbox_id = cursor.lastrowid
             db.commit()
         
@@ -4404,6 +4443,40 @@ def merge_mailbox_remarks(default_remarks, parsed_remarks):
     if default_remarks and parsed_remarks:
         return f'{default_remarks} | {parsed_remarks}'
     return default_remarks or parsed_remarks
+
+
+def _parse_mailbox_import_preview(data):
+    """识别单个邮箱导入内容，供添加表单即时预览。"""
+    import_content = str(data.get('import_content') or '').strip()
+    import_lines = [line.strip() for line in import_content.splitlines() if line.strip()]
+    if not import_lines:
+        return jsonify({
+            'success': False,
+            'message': '请输入需要识别的邮箱内容'
+        })
+    if len(import_lines) != 1:
+        return jsonify({
+            'success': False,
+            'message': '单个添加一次只能识别一条邮箱内容'
+        })
+
+    parsed_account, parse_error = parse_mailbox_import_line(import_lines[0])
+    if not parsed_account:
+        return jsonify({
+            'success': False,
+            'message': parse_error or '无法识别邮箱内容'
+        })
+
+    return jsonify({
+        'success': True,
+        'message': '邮箱内容识别成功',
+        'data': {
+            'email': parsed_account['email'],
+            'password': parsed_account['password'],
+            'auth_type': parsed_account.get('auth_type') or 'password',
+            'remarks': parsed_account.get('remarks') or ''
+        }
+    })
 
 
 def _batch_add_mailbox(db, data):
@@ -5081,6 +5154,7 @@ def _send_mail(db, data):
 
 def _test_new_mailbox(data):
     """测试新邮箱连接（无需保存到数据库）"""
+    import_content = str(data.get('import_content') or '').strip()
     email = data.get('email', '').strip()
     password = data.get('password', '').strip()
     server = data.get('server', '').strip()
@@ -5092,6 +5166,37 @@ def _test_new_mailbox(data):
     send_ssl_flag = data.get('send_ssl')
     send_ssl = 1 if (send_ssl_flag if send_ssl_flag is not None else data.get('ssl', True)) else 0
     send_port = normalize_smtp_port(data.get('send_port'), send_protocol, send_ssl == 1)
+    auth_type = 'password'
+    oauth_client_id = ''
+    oauth_refresh_token = ''
+
+    if import_content:
+        import_lines = [line.strip() for line in import_content.splitlines() if line.strip()]
+        if len(import_lines) != 1:
+            return jsonify({
+                'success': False,
+                'message': '单个添加一次只能识别一条邮箱内容'
+            })
+        parsed_account, parse_error = parse_mailbox_import_line(import_lines[0])
+        if not parsed_account:
+            return jsonify({
+                'success': False,
+                'message': f'邮箱内容识别失败：{parse_error}'
+            })
+        email = parsed_account['email']
+        password = parsed_account['password']
+        auth_type = parsed_account.get('auth_type') or 'password'
+        oauth_client_id = parsed_account.get('oauth_client_id') or ''
+        oauth_refresh_token = parsed_account.get('oauth_refresh_token') or ''
+        if auth_type == 'graph':
+            server = 'imap-mail.outlook.com'
+            port = 993
+            protocol = 'imap'
+            ssl = True
+            send_server = 'smtp-mail.outlook.com'
+            send_port = 587
+            send_protocol = 'smtp_starttls'
+            send_ssl = 0
     
     if not all([email, password, server, port]):
         return jsonify({
@@ -5109,16 +5214,16 @@ def _test_new_mailbox(data):
             now = get_beijing_time()
             if app.config['DATABASE_TYPE'] == 'sqlite':
                 db.execute('''
-                    INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (temp_email, email, password, server, port, protocol, 1 if ssl else 0, send_server, send_port, send_protocol, send_ssl, '临时测试邮箱', now, now))
+                    INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (temp_email, email, password, server, port, protocol, 1 if ssl else 0, send_server, send_port, send_protocol, send_ssl, '临时测试邮箱', auth_type, oauth_client_id, oauth_refresh_token, now, now))
                 db.commit()
             else:
                 cursor = db.cursor()
                 cursor.execute('''
-                    INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ''', (temp_email, email, password, server, port, protocol, 1 if ssl else 0, send_server, send_port, send_protocol, send_ssl, '临时测试邮箱', now, now))
+                    INSERT INTO mail_accounts (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (temp_email, email, password, server, port, protocol, 1 if ssl else 0, send_server, send_port, send_protocol, send_ssl, '临时测试邮箱', auth_type, oauth_client_id, oauth_refresh_token, now, now))
                 db.commit()
             
             try:

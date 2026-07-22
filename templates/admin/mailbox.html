@@ -2413,6 +2413,77 @@
         line-height: 1.35;
     }
 
+    #mailboxForm #singleImportContent {
+        min-height: 88px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .single-import-label-note {
+        color: #77736a;
+        font-size: 12px;
+        font-weight: 400;
+    }
+
+    .single-import-feedback {
+        min-height: 18px;
+        margin-top: 6px;
+        color: #77736a;
+        font-size: 12px;
+        line-height: 1.45;
+    }
+
+    .single-import-feedback.is-loading {
+        color: #9a5b3d;
+    }
+
+    .single-import-feedback.is-success {
+        color: #3f7a4c;
+    }
+
+    .single-import-feedback.is-error {
+        color: #bc4b3c;
+    }
+
+    #mailboxForm .password-input-wrap {
+        position: relative;
+    }
+
+    #mailboxForm .password-input-wrap input:not([type="checkbox"]) {
+        padding-right: 46px;
+    }
+
+    #mailboxForm .password-visibility-toggle {
+        position: absolute;
+        top: 50%;
+        right: 4px;
+        width: 38px;
+        height: 36px;
+        padding: 0;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: #77736a;
+        cursor: pointer;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #mailboxForm .password-visibility-toggle:hover,
+    #mailboxForm .password-visibility-toggle:focus-visible {
+        background: #f2efe7;
+        color: #b14e2e;
+        outline: none;
+    }
+
+    #mailboxForm .password-visibility-toggle .anticon {
+        width: 18px;
+        height: 18px;
+    }
+
     @media (max-width: 760px) {
         .mailbox-edit-modal .modal-content {
             width: calc(100vw - 24px);
@@ -3211,6 +3282,17 @@
             <form id="mailboxForm">
                 <input type="hidden" id="mailboxId" name="id">
                 <input type="hidden" id="formAction" name="action" value="add">
+
+                <div class="form-group" id="singleImportGroup">
+                    <label for="singleImportContent">
+                        自动识别邮箱内容
+                        <span class="single-import-label-note">（可选，粘贴后自动填充）</span>
+                    </label>
+                    <textarea id="singleImportContent" name="import_content" rows="3"
+                              oninput="scheduleSingleMailboxImportParse()"
+                              placeholder="支持与批量添加相同的格式，例如：user@example.com----password"></textarea>
+                    <div class="single-import-feedback" id="singleImportFeedback">支持 ---- / 冒号 / 竖线 / 逗号 / JSON / key=value / Graph API</div>
+                </div>
                 
                 <!-- 邮箱账号和邮箱密码同一行 -->
                 <div class="form-row mailbox-two-col">
@@ -3220,7 +3302,13 @@
                     </div>
                     <div class="form-group">
                         <label for="password">邮箱密码 <span class="required-mark">*</span></label>
-                        <input type="password" id="password" name="password" required placeholder="邮箱密码或授权码">
+                        <div class="password-input-wrap">
+                            <input type="password" id="password" name="password" required autocomplete="new-password" placeholder="邮箱密码或授权码">
+                            <button type="button" class="password-visibility-toggle" id="passwordVisibilityToggle"
+                                    onclick="toggleMailboxPasswordVisibility()" title="显示密码" aria-label="显示密码" aria-pressed="false">
+                                <span class="anticon"><svg aria-hidden="true"><use href="#ai-eye"></use></svg></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
@@ -3757,6 +3845,8 @@
     let contextTargetGroupId = null;
     let collapsedGroups = {};
     let batchAutoFilledPresetKey = '';
+    let singleImportParseTimer = null;
+    let singleImportParseRequestId = 0;
     const GROUP_COLLAPSE_STORAGE_KEY = 'mailboxGroupCollapseState';
     const TOP_LEVEL_LABEL = '主分组';
     const RECEIVE_STORE_KEY = 'mailboxReceiveStore';
@@ -6070,11 +6160,120 @@
         renderReceiveList();
     }
     
+    function setSingleImportFeedback(message, state = '') {
+        const feedback = document.getElementById('singleImportFeedback');
+        if (!feedback) return;
+        feedback.textContent = message;
+        feedback.className = 'single-import-feedback';
+        if (state) feedback.classList.add(`is-${state}`);
+    }
+
+    function setMailboxPasswordVisibility(visible) {
+        const input = document.getElementById('password');
+        const button = document.getElementById('passwordVisibilityToggle');
+        if (!input || !button) return;
+
+        input.type = visible ? 'text' : 'password';
+        button.setAttribute('aria-pressed', visible ? 'true' : 'false');
+        button.setAttribute('aria-label', visible ? '隐藏密码' : '显示密码');
+        button.title = visible ? '隐藏密码' : '显示密码';
+        const use = button.querySelector('use');
+        if (use) use.setAttribute('href', visible ? '#ai-eye-invisible' : '#ai-eye');
+    }
+
+    function toggleMailboxPasswordVisibility() {
+        const input = document.getElementById('password');
+        setMailboxPasswordVisibility(input?.type === 'password');
+    }
+
+    function applySingleProviderPreset(preset) {
+        if (!preset) return;
+        document.getElementById('serverSelect').value = '';
+        document.getElementById('server').value = preset.server;
+        document.getElementById('protocol').value = preset.protocol;
+        document.getElementById('ssl').checked = preset.ssl;
+        document.getElementById('port').value = preset.port;
+        document.getElementById('sendServer').value = preset.sendServer;
+        document.getElementById('sendProtocol').value = preset.sendProtocol;
+        document.getElementById('sendSsl').checked = preset.sendSsl;
+        document.getElementById('sendPort').value = preset.sendPort;
+    }
+
+    async function parseSingleMailboxImport(content, requestId) {
+        setSingleImportFeedback('正在识别邮箱内容…', 'loading');
+        try {
+            const response = await fetch('/admin/api/mailbox', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'parse_import',
+                    import_content: content
+                })
+            });
+            const result = await readJsonResponse(response);
+            if (requestId !== singleImportParseRequestId) return false;
+
+            if (!result.success) {
+                setSingleImportFeedback(result.message || '无法识别邮箱内容', 'error');
+                return false;
+            }
+
+            const parsed = result.data || {};
+            document.getElementById('email').value = parsed.email || '';
+            document.getElementById('password').value = parsed.password || '';
+            applySingleProviderPreset(inferBatchProviderPreset(parsed.email || ''));
+            const authLabel = parsed.auth_type === 'graph'
+                ? 'Graph API'
+                : (parsed.auth_type === 'oauth' ? 'OAuth' : '密码登录');
+            setSingleImportFeedback(`已识别：${parsed.email || '邮箱'}（${authLabel}）`, 'success');
+            return true;
+        } catch (error) {
+            if (requestId === singleImportParseRequestId) {
+                setSingleImportFeedback(error.message || '邮箱内容识别请求失败', 'error');
+            }
+            return false;
+        }
+    }
+
+    function scheduleSingleMailboxImportParse() {
+        if (singleImportParseTimer) clearTimeout(singleImportParseTimer);
+        const content = document.getElementById('singleImportContent')?.value.trim() || '';
+        const requestId = ++singleImportParseRequestId;
+        if (!content) {
+            setSingleImportFeedback('支持 ---- / 冒号 / 竖线 / 逗号 / JSON / key=value / Graph API');
+            return;
+        }
+        singleImportParseTimer = setTimeout(() => {
+            parseSingleMailboxImport(content, requestId);
+        }, 250);
+    }
+
+    async function ensureSingleMailboxImportParsed() {
+        const content = document.getElementById('singleImportContent')?.value.trim() || '';
+        if (!content) return true;
+        if (singleImportParseTimer) clearTimeout(singleImportParseTimer);
+        const requestId = ++singleImportParseRequestId;
+        return parseSingleMailboxImport(content, requestId);
+    }
+
+    function resetSingleMailboxImportControls() {
+        if (singleImportParseTimer) clearTimeout(singleImportParseTimer);
+        singleImportParseTimer = null;
+        singleImportParseRequestId += 1;
+        const group = document.getElementById('singleImportGroup');
+        const input = document.getElementById('singleImportContent');
+        if (group) group.style.display = '';
+        if (input) input.value = '';
+        setSingleImportFeedback('支持 ---- / 冒号 / 竖线 / 逗号 / JSON / key=value / Graph API');
+        setMailboxPasswordVisibility(false);
+    }
+
     // 显示添加邮箱模态框
     function showAddModal() {
         document.getElementById('modalTitle').textContent = '添加邮箱';
         document.getElementById('formAction').value = 'add';
         document.getElementById('mailboxForm').reset();
+        resetSingleMailboxImportControls();
         document.getElementById('mailboxId').value = '';
         document.getElementById('ssl').checked = true;
         document.getElementById('sendSsl').checked = true;
@@ -6220,6 +6419,8 @@
             
             if (data.success) {
                 const mailbox = data.data;
+                resetSingleMailboxImportControls();
+                document.getElementById('singleImportGroup').style.display = 'none';
                 document.getElementById('modalTitle').textContent = '编辑邮箱';
                 document.getElementById('formAction').value = 'edit';
                 document.getElementById('mailboxId').value = mailbox.id;
@@ -6270,10 +6471,12 @@
         if (!targetId) {
             // 如果没有ID，使用当前表单数据进行测试
             const form = document.getElementById('mailboxForm');
+            if (!await ensureSingleMailboxImportParsed()) return;
             const formData = new FormData(form);
             
             const testData = {
                 action: 'test_new',
+                import_content: formData.get('import_content') || '',
                 email: formData.get('email'),
                 password: formData.get('password'),
                 server: formData.get('server'),
@@ -6436,6 +6639,8 @@
     // 保存邮箱
     async function saveMailbox() {
         const form = document.getElementById('mailboxForm');
+        const action = document.getElementById('formAction').value;
+        if (action === 'add' && !await ensureSingleMailboxImportParsed()) return;
         const formData = new FormData(form);
         
         // Get the selected group ID and convert special values
@@ -6454,6 +6659,7 @@
         
         const data = {
             action: formData.get('action'),
+            import_content: action === 'add' ? (formData.get('import_content') || '') : '',
             email: formData.get('email'),
             password: formData.get('password'),
             server: formData.get('server'),
@@ -7274,6 +7480,7 @@
     // 关闭添加/编辑邮箱模态框
     function closeModal() {
         document.getElementById('mailboxModal').classList.remove('show');
+        resetSingleMailboxImportControls();
     }
     
     // 关闭批量添加模态框
