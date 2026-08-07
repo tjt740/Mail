@@ -16,6 +16,18 @@
     <meta name="msapplication-TileColor" content="#C96442">
 
     <script>
+        (function () {
+            try {
+                var savedColorTheme = localStorage.getItem('mailSystemColorTheme');
+                var supportedColorThemes = ['clay', 'ocean', 'emerald', 'violet', 'rose'];
+                document.documentElement.dataset.colorTheme = supportedColorThemes.indexOf(savedColorTheme) >= 0 ? savedColorTheme : 'clay';
+            } catch (error) {
+                document.documentElement.dataset.colorTheme = 'clay';
+            }
+        })();
+    </script>
+
+    <script>
         window.__MAIL_APP_PROPS__ = {{ app_props | tojson }};
     </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='react/assets/main.css') }}">

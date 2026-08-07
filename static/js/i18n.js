@@ -9,10 +9,21 @@
         en: 'English',
         vi: 'Tiếng Việt'
     };
+    const LANG_MARKS = {
+        zh: '中',
+        en: 'EN',
+        vi: 'VI'
+    };
 
     const dictionary = {
         en: {
             '语言': 'Language',
+            '颜色主题': 'Color Theme',
+            '暖陶橙': 'Warm Clay',
+            '海洋蓝': 'Ocean Blue',
+            '翡翠绿': 'Emerald Green',
+            '紫罗兰': 'Violet',
+            '玫瑰红': 'Rose Red',
             '邮件查看系统': 'Mail Viewer System',
             '邮件管理系统': 'Mail Management System',
             '邮件查看系统后台管理': 'Mail viewer admin console',
@@ -103,6 +114,34 @@
             '新增管理员': 'Add Admin',
             '重置密码': 'Reset Password',
             '当前管理员': 'Current Admin',
+            '邮箱范围权限': 'Mailbox Access',
+            '管理员邮箱可见范围': 'Admin Mailbox Access',
+            '受限管理员': 'Restricted Admin',
+            '目标管理员': 'Target Admin',
+            '搜索邮箱': 'Search Mailboxes',
+            '搜索邮箱地址、操作人或备注...': 'Search email, operator, or notes...',
+            '正在加载邮箱范围...': 'Loading mailbox access...',
+            '保存可见范围': 'Save Access',
+            '没有匹配的邮箱': 'No matching mailboxes',
+            '本人添加 · 始终可见': 'Added by this admin · Always visible',
+            '历史数据': 'Legacy data',
+            '受限管理员默认只能看到自己添加的邮箱。这里勾选的邮箱会作为额外授权；未勾选的其他管理员邮箱及其分组不会出现在邮箱管理、搜索、卡密绑定和收件日志中。': 'Restricted admins see only mailboxes they added by default. Checked mailboxes are additional grants; unchecked mailboxes from other admins and their groups are hidden from mailbox management, search, card binding, and mail logs.',
+            '可为任意管理员单独启用邮箱范围限制。启用后，该管理员只能看到自己添加的邮箱，以及这里授权的邮箱分组和单个邮箱；分组中新加入的邮箱会自动继承权限。': 'Mailbox restrictions can be enabled separately for any admin. Once enabled, that admin sees only their own mailboxes plus granted groups and individual mailboxes. New mailboxes added to a granted group inherit access automatically.',
+            '限制该管理员的邮箱范围': 'Restrict this admin’s mailbox access',
+            '关闭时可查看全部邮箱；开启后按下方授权范围显示。': 'When off, all mailboxes are visible. When on, visibility follows the grants below.',
+            '已启用限制': 'Restriction enabled',
+            '未启用限制': 'Not restricted',
+            '按邮箱分组授权': 'Grant by Mailbox Group',
+            '授权整个分组，后续加入的邮箱自动可见': 'Grant the whole group; future mailboxes become visible automatically',
+            '按单个邮箱授权': 'Grant Individual Mailboxes',
+            '可与分组权限叠加': 'Can be combined with group access',
+            '正在加载邮箱分组...': 'Loading mailbox groups...',
+            '暂无可授权分组': 'No mailbox groups available',
+            '当前未限制，可查看全部邮箱': 'Not restricted; all mailboxes are visible',
+            '请选择受限管理员': 'Select a restricted admin',
+            '获取邮箱范围失败': 'Failed to load mailbox access',
+            '保存邮箱范围失败': 'Failed to save mailbox access',
+            '邮箱可见范围已保存': 'Mailbox access saved',
             '管理员万能秘钥': 'Admin Master Key',
             '万能秘钥': 'Master Key',
             '保存设置': 'Save Settings',
@@ -136,14 +175,18 @@
             '卡密绑定邮箱': 'Bound Email',
 
             '邮件查看': 'Mail Viewer',
+            '输入后台邮箱地址，即刻查看最新邮件': 'Enter a configured mailbox to view the latest messages',
             '卡密 / 管理员万能秘钥': 'Card Key / Admin Master Key',
             '请输入卡密或管理员万能秘钥': 'Enter a card key or admin master key',
             '设置后的万能秘钥可免卡密取件': 'A configured master key can fetch mail without a card key',
             '邮箱查询': 'Mailbox Query',
+            '查询邮箱': 'Queried Mailboxes',
             '请输入邮箱地址 (例: user@example.com)': 'Enter email address (e.g. user@example.com)',
+            '请输入邮局后台已添加的邮箱地址，支持多个自动识别：user@example.com\ntest@example.com, demo@example.com': 'Enter mailbox addresses already added by the administrator. Multiple addresses are auto-detected:\nuser@example.com\ntest@example.com, demo@example.com',
             '请输入邮箱地址，支持多个邮箱自动识别：user@example.com\ntest@example.com, demo@example.com': 'Enter email addresses. Multiple addresses are auto-detected:\nuser@example.com\ntest@example.com, demo@example.com',
             '每个邮箱收取': 'Per mailbox',
             '支持换行、逗号、空格、竖线等格式，会自动识别邮箱地址；默认每个邮箱查询 10 封。': 'Supports line breaks, commas, spaces, pipes, and more. Email addresses are detected automatically. Default is 10 mails per mailbox.',
+            '无需卡密或密钥，输入邮局后台已添加的邮箱即可查询；支持换行、逗号、空格、竖线分隔，默认每个邮箱查询 10 封。': 'No key is required. Enter a mailbox already added by the administrator. Line breaks, commas, spaces, and pipes are supported; the default is 10 messages per mailbox.',
             '收取封数': 'Mail count',
             '获取邮件': 'Fetch Mail',
             '获取中...': 'Fetching...',
@@ -185,6 +228,7 @@
             '（无主题）': '(No subject)',
             '(无主题)': '(No subject)',
             '(邮件内容为空)': '(Mail body is empty)',
+            '（无正文）': '(No body)',
 
             '批量复制': 'Batch Copy',
             '批量分组': 'Batch Group',
@@ -192,6 +236,9 @@
             '当前分组：': 'Current Group:',
             '邮箱：': 'Mailboxes:',
             '已选：': 'Selected:',
+            '已选': 'Selected',
+            '个邮箱': 'mailboxes',
+            '取消选择': 'Clear Selection',
             '选择': 'Select',
             '上级分组': 'Parent Group',
             '分组名称': 'Group Name',
@@ -383,6 +430,12 @@
         },
         vi: {
             '语言': 'Ngôn ngữ',
+            '颜色主题': 'Chủ đề màu sắc',
+            '暖陶橙': 'Cam đất ấm',
+            '海洋蓝': 'Xanh đại dương',
+            '翡翠绿': 'Xanh ngọc lục bảo',
+            '紫罗兰': 'Tím violet',
+            '玫瑰红': 'Đỏ hoa hồng',
             '邮件查看系统': 'Hệ thống xem thư',
             '邮件管理系统': 'Hệ thống quản lý thư',
             '邮件查看系统后台管理': 'Trang quản trị hệ thống xem thư',
@@ -473,6 +526,34 @@
             '新增管理员': 'Thêm quản trị',
             '重置密码': 'Đặt lại mật khẩu',
             '当前管理员': 'Quản trị hiện tại',
+            '邮箱范围权限': 'Quyền truy cập hộp thư',
+            '管理员邮箱可见范围': 'Phạm vi hộp thư của quản trị viên',
+            '受限管理员': 'Quản trị viên bị giới hạn',
+            '目标管理员': 'Quản trị viên mục tiêu',
+            '搜索邮箱': 'Tìm hộp thư',
+            '搜索邮箱地址、操作人或备注...': 'Tìm email, người thao tác hoặc ghi chú...',
+            '正在加载邮箱范围...': 'Đang tải phạm vi hộp thư...',
+            '保存可见范围': 'Lưu phạm vi hiển thị',
+            '没有匹配的邮箱': 'Không có hộp thư phù hợp',
+            '本人添加 · 始终可见': 'Do quản trị viên này thêm · Luôn hiển thị',
+            '历史数据': 'Dữ liệu cũ',
+            '受限管理员默认只能看到自己添加的邮箱。这里勾选的邮箱会作为额外授权；未勾选的其他管理员邮箱及其分组不会出现在邮箱管理、搜索、卡密绑定和收件日志中。': 'Quản trị viên bị giới hạn mặc định chỉ thấy hộp thư do mình thêm. Các hộp thư được chọn là quyền bổ sung; hộp thư của quản trị viên khác và nhóm của chúng sẽ bị ẩn khỏi quản lý hộp thư, tìm kiếm, liên kết mã và nhật ký thư.',
+            '可为任意管理员单独启用邮箱范围限制。启用后，该管理员只能看到自己添加的邮箱，以及这里授权的邮箱分组和单个邮箱；分组中新加入的邮箱会自动继承权限。': 'Có thể bật giới hạn hộp thư riêng cho từng quản trị viên. Khi bật, họ chỉ thấy hộp thư của mình cùng các nhóm và hộp thư riêng lẻ được cấp quyền. Hộp thư mới thêm vào nhóm được cấp quyền sẽ tự động hiển thị.',
+            '限制该管理员的邮箱范围': 'Giới hạn phạm vi hộp thư của quản trị viên này',
+            '关闭时可查看全部邮箱；开启后按下方授权范围显示。': 'Khi tắt sẽ thấy tất cả hộp thư; khi bật sẽ hiển thị theo quyền bên dưới.',
+            '已启用限制': 'Đã bật giới hạn',
+            '未启用限制': 'Chưa giới hạn',
+            '按邮箱分组授权': 'Cấp quyền theo nhóm hộp thư',
+            '授权整个分组，后续加入的邮箱自动可见': 'Cấp quyền cả nhóm; hộp thư thêm sau sẽ tự động hiển thị',
+            '按单个邮箱授权': 'Cấp quyền từng hộp thư',
+            '可与分组权限叠加': 'Có thể kết hợp với quyền theo nhóm',
+            '正在加载邮箱分组...': 'Đang tải nhóm hộp thư...',
+            '暂无可授权分组': 'Không có nhóm hộp thư để cấp quyền',
+            '当前未限制，可查看全部邮箱': 'Chưa giới hạn; có thể xem tất cả hộp thư',
+            '请选择受限管理员': 'Chọn quản trị viên bị giới hạn',
+            '获取邮箱范围失败': 'Không thể tải phạm vi hộp thư',
+            '保存邮箱范围失败': 'Không thể lưu phạm vi hộp thư',
+            '邮箱可见范围已保存': 'Đã lưu phạm vi hộp thư',
             '管理员万能秘钥': 'Khóa tổng quản trị',
             '万能秘钥': 'Khóa tổng',
             '保存设置': 'Lưu cài đặt',
@@ -506,14 +587,18 @@
             '卡密绑定邮箱': 'Email liên kết mã',
 
             '邮件查看': 'Xem thư',
+            '输入后台邮箱地址，即刻查看最新邮件': 'Nhập hộp thư đã cấu hình để xem thư mới nhất',
             '卡密 / 管理员万能秘钥': 'Mã / Khóa tổng quản trị',
             '请输入卡密或管理员万能秘钥': 'Nhập mã hoặc khóa tổng quản trị',
             '设置后的万能秘钥可免卡密取件': 'Khóa tổng đã đặt có thể lấy thư không cần mã',
             '邮箱查询': 'Truy vấn hộp thư',
+            '查询邮箱': 'Hộp thư đã tra cứu',
             '请输入邮箱地址 (例: user@example.com)': 'Nhập địa chỉ email (ví dụ: user@example.com)',
+            '请输入邮局后台已添加的邮箱地址，支持多个自动识别：user@example.com\ntest@example.com, demo@example.com': 'Nhập địa chỉ hộp thư đã được quản trị viên thêm. Tự nhận diện nhiều địa chỉ:\nuser@example.com\ntest@example.com, demo@example.com',
             '请输入邮箱地址，支持多个邮箱自动识别：user@example.com\ntest@example.com, demo@example.com': 'Nhập địa chỉ email. Có thể tự nhận diện nhiều email:\nuser@example.com\ntest@example.com, demo@example.com',
             '每个邮箱收取': 'Mỗi hộp thư',
             '支持换行、逗号、空格、竖线等格式，会自动识别邮箱地址；默认每个邮箱查询 10 封。': 'Hỗ trợ xuống dòng, dấu phẩy, khoảng trắng, dấu gạch đứng và nhiều định dạng khác. Mặc định truy vấn 10 thư cho mỗi hộp thư.',
+            '无需卡密或密钥，输入邮局后台已添加的邮箱即可查询；支持换行、逗号、空格、竖线分隔，默认每个邮箱查询 10 封。': 'Không cần mã hay khóa. Chỉ cần nhập hộp thư đã được quản trị viên thêm; hỗ trợ xuống dòng, dấu phẩy, khoảng trắng và dấu gạch dọc. Mặc định 10 thư mỗi hộp thư.',
             '收取封数': 'Số thư nhận',
             '获取邮件': 'Lấy thư',
             '获取中...': 'Đang lấy...',
@@ -555,6 +640,7 @@
             '（无主题）': '(Không có tiêu đề)',
             '(无主题)': '(Không có tiêu đề)',
             '(邮件内容为空)': '(Nội dung thư trống)',
+            '（无正文）': '(Không có nội dung)',
 
             '批量复制': 'Sao chép hàng loạt',
             '批量分组': 'Phân nhóm hàng loạt',
@@ -562,6 +648,9 @@
             '当前分组：': 'Nhóm hiện tại:',
             '邮箱：': 'Hộp thư:',
             '已选：': 'Đã chọn:',
+            '已选': 'Đã chọn',
+            '个邮箱': 'hộp thư',
+            '取消选择': 'Bỏ chọn',
             '选择': 'Chọn',
             '上级分组': 'Nhóm cha',
             '分组名称': 'Tên nhóm',
@@ -758,9 +847,42 @@
     let observer = null;
     let isApplying = false;
 
+    function getSavedLanguage() {
+        try {
+            return localStorage.getItem(STORAGE_KEY);
+        } catch (error) {
+            return null;
+        }
+    }
+
     function getInitialLanguage() {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        const saved = getSavedLanguage();
         return SUPPORTED_LANGS.includes(saved) ? saved : DEFAULT_LANG;
+    }
+
+    async function detectLanguageFromIp() {
+        // A manual language choice always wins. Without one, ask the server for
+        // an IP-country recommendation on every page load so travel/VPN changes
+        // are reflected automatically.
+        if (SUPPORTED_LANGS.includes(getSavedLanguage())) return;
+        try {
+            const response = await fetch('/api/language', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' }
+            });
+            if (!response.ok) return;
+            const data = await response.json();
+            if (!data.success || !SUPPORTED_LANGS.includes(data.language)) return;
+            if (SUPPORTED_LANGS.includes(getSavedLanguage())) return;
+            currentLang = data.language;
+            applyLanguage();
+            window.dispatchEvent(new CustomEvent('app-language-change', {
+                detail: { language: currentLang, automatic: true, country: data.country || null }
+            }));
+        } catch (error) {
+            // Keep the Chinese default when IP detection is unavailable.
+        }
     }
 
     function translateExact(text, lang) {
@@ -775,9 +897,53 @@
         if (exact !== text) return exact;
 
         const t = dictionary[lang] || {};
-        let match = text.match(/^欢迎，\s*(.+)$/);
+        let match = text.match(/^颜色主题\s*[:：]\s*(.+)$/);
+        if (match) {
+            return `${translateExact('颜色主题', lang)}: ${translateExact(match[1], lang)}`;
+        }
+        match = text.match(/^欢迎，\s*(.+)$/);
         if (match) {
             return lang === 'vi' ? `Xin chào, ${match[1]}` : `Welcome, ${match[1]}`;
+        }
+
+        match = text.match(/^操作人：\s*(.+)$/);
+        if (match) {
+            const operator = match[1] === '历史数据'
+                ? (lang === 'vi' ? 'Dữ liệu cũ' : 'Legacy data')
+                : match[1];
+            return lang === 'vi' ? `Người thao tác: ${operator}` : `Operator: ${operator}`;
+        }
+
+        match = text.match(/^(\d+)\s*个邮箱\s*·\s*操作人：\s*(.+)$/);
+        if (match) {
+            const operator = match[2] === '历史数据'
+                ? (lang === 'vi' ? 'Dữ liệu cũ' : 'Legacy data')
+                : match[2];
+            return lang === 'vi'
+                ? `${match[1]} hộp thư · Người thao tác: ${operator}`
+                : `${match[1]} mailboxes · Operator: ${operator}`;
+        }
+
+        match = text.match(/^(.+)\s*·\s*(已限制|未限制)$/);
+        if (match) {
+            const state = match[2] === '已限制'
+                ? (lang === 'vi' ? 'Đã giới hạn' : 'Restricted')
+                : (lang === 'vi' ? 'Chưa giới hạn' : 'Unrestricted');
+            return `${match[1]} · ${state}`;
+        }
+
+        match = text.match(/^本人邮箱\s*(\d+)\s*个，授权分组\s*(\d+)\s*个，单邮箱授权\s*(\d+)\s*个$/);
+        if (match) {
+            return lang === 'vi'
+                ? `Hộp thư riêng ${match[1]}, nhóm được cấp ${match[2]}, hộp thư được cấp riêng ${match[3]}`
+                : `Own mailboxes ${match[1]}, granted groups ${match[2]}, individual grants ${match[3]}`;
+        }
+
+        match = text.match(/^本人邮箱\s*(\d+)\s*个，额外授权\s*(\d+)\s*个$/);
+        if (match) {
+            return lang === 'vi'
+                ? `Hộp thư riêng ${match[1]}, cấp thêm ${match[2]}`
+                : `Own mailboxes ${match[1]}, additional grants ${match[2]}`;
         }
 
         if (text.startsWith('每行一个邮箱，自动识别多种格式：')) {
@@ -1097,9 +1263,36 @@
     }
 
     function syncSwitcher() {
-        const select = document.getElementById('i18nLanguageSelect');
-        if (select && select.value !== currentLang) {
-            select.value = currentLang;
+        const wrapper = document.getElementById('i18nLanguageSwitcher');
+        const trigger = document.getElementById('i18nLanguageButton');
+        if (wrapper) wrapper.dataset.language = currentLang;
+        if (trigger) {
+            trigger.setAttribute(
+                'aria-label',
+                `${translateWithRules('语言', currentLang)}: ${LANG_LABELS[currentLang]}`
+            );
+        }
+        document.querySelectorAll('.i18n-language-option').forEach((option) => {
+            const active = option.dataset.language === currentLang;
+            option.classList.toggle('is-active', active);
+            option.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+    }
+
+    function setLanguageMenuOpen(open, focusOption = false) {
+        const wrapper = document.getElementById('i18nLanguageSwitcher');
+        const trigger = document.getElementById('i18nLanguageButton');
+        const menu = document.getElementById('i18nLanguageMenu');
+        if (!wrapper || !trigger || !menu) return;
+
+        wrapper.classList.toggle('is-open', open);
+        trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        menu.hidden = !open;
+
+        if (open && focusOption) {
+            const activeOption = menu.querySelector('.i18n-language-option.is-active');
+            const firstOption = menu.querySelector('.i18n-language-option');
+            (activeOption || firstOption)?.focus();
         }
     }
 
@@ -1109,36 +1302,99 @@
         const headerUserInfo = document.querySelector('.header-actions .user-info');
         const headerActions = headerUserInfo ? headerUserInfo.parentElement : null;
         const wrapper = document.createElement('div');
-        wrapper.className = headerActions ? 'i18n-switcher i18n-switcher--header' : 'i18n-switcher';
+        wrapper.className = headerActions
+            ? 'i18n-switcher i18n-switcher--header i18n-switcher--icon i18n-switcher--custom'
+            : 'i18n-switcher i18n-switcher--icon i18n-switcher--custom';
         wrapper.id = 'i18nLanguageSwitcher';
 
-        const label = document.createElement('label');
-        label.setAttribute('for', 'i18nLanguageSelect');
-        label.textContent = '语言';
+        const trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'i18n-language-trigger';
+        trigger.id = 'i18nLanguageButton';
+        trigger.setAttribute('aria-haspopup', 'listbox');
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.setAttribute('aria-controls', 'i18nLanguageMenu');
+        trigger.setAttribute('title', '语言');
+        trigger.innerHTML = '<span class="i18n-switcher-icon" aria-hidden="true"><svg viewBox="0 0 1024 1024"><use href="#ai-global"></use></svg></span>';
 
-        const select = document.createElement('select');
-        select.id = 'i18nLanguageSelect';
-        select.setAttribute('aria-label', '语言');
+        const menu = document.createElement('div');
+        menu.className = 'i18n-language-menu';
+        menu.id = 'i18nLanguageMenu';
+        menu.setAttribute('role', 'listbox');
+        menu.setAttribute('aria-label', '语言');
+        menu.hidden = true;
 
         SUPPORTED_LANGS.forEach((lang) => {
-            const option = document.createElement('option');
-            option.value = lang;
-            option.textContent = LANG_LABELS[lang];
-            select.appendChild(option);
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'i18n-language-option';
+            option.dataset.language = lang;
+            option.setAttribute('role', 'option');
+
+            const mark = document.createElement('span');
+            mark.className = 'i18n-language-mark';
+            mark.setAttribute('aria-hidden', 'true');
+            mark.textContent = LANG_MARKS[lang];
+
+            const name = document.createElement('span');
+            name.className = 'i18n-language-name';
+            name.textContent = LANG_LABELS[lang];
+
+            const check = document.createElement('span');
+            check.className = 'i18n-language-check';
+            check.setAttribute('aria-hidden', 'true');
+            check.innerHTML = '<svg viewBox="0 0 1024 1024"><use href="#ai-check"></use></svg>';
+
+            option.append(mark, name, check);
+            option.addEventListener('click', () => {
+                setLanguageMenuOpen(false);
+                setLanguage(lang);
+                trigger.focus();
+            });
+            menu.appendChild(option);
         });
 
-        select.value = currentLang;
-        select.addEventListener('change', () => {
-            setLanguage(select.value);
+        trigger.addEventListener('click', () => {
+            setLanguageMenuOpen(menu.hidden, false);
+        });
+        trigger.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                setLanguageMenuOpen(true, true);
+            }
+        });
+        menu.addEventListener('keydown', (event) => {
+            const options = Array.from(menu.querySelectorAll('.i18n-language-option'));
+            const currentIndex = options.indexOf(document.activeElement);
+            let nextIndex = currentIndex;
+            if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % options.length;
+            if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + options.length) % options.length;
+            if (event.key === 'Home') nextIndex = 0;
+            if (event.key === 'End') nextIndex = options.length - 1;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setLanguageMenuOpen(false);
+                trigger.focus();
+                return;
+            }
+            if (nextIndex !== currentIndex && nextIndex >= 0) {
+                event.preventDefault();
+                options[nextIndex].focus();
+            }
         });
 
-        wrapper.appendChild(label);
-        wrapper.appendChild(select);
+        wrapper.append(trigger, menu);
         if (headerActions) {
             headerActions.insertBefore(wrapper, headerUserInfo);
         } else {
             document.body.appendChild(wrapper);
         }
+
+        document.addEventListener('click', (event) => {
+            if (!wrapper.contains(event.target)) {
+                setLanguageMenuOpen(false);
+            }
+        });
     }
 
     function startObserver() {
@@ -1189,7 +1445,11 @@
     function setLanguage(lang) {
         if (!SUPPORTED_LANGS.includes(lang)) return;
         currentLang = lang;
-        localStorage.setItem(STORAGE_KEY, lang);
+        try {
+            localStorage.setItem(STORAGE_KEY, lang);
+        } catch (error) {
+            // The current-page switch still works when storage is unavailable.
+        }
         applyLanguage();
         window.dispatchEvent(new CustomEvent('app-language-change', { detail: { language: lang } }));
     }
@@ -1208,6 +1468,18 @@
         }
     }
 
+    function observeExternalLanguageChanges() {
+        window.addEventListener('storage', (event) => {
+            if (event.key !== STORAGE_KEY || !SUPPORTED_LANGS.includes(event.newValue)) return;
+            if (event.newValue === currentLang) return;
+            currentLang = event.newValue;
+            applyLanguage();
+            window.dispatchEvent(new CustomEvent('app-language-change', {
+                detail: { language: currentLang, external: true }
+            }));
+        });
+    }
+
     window.AppI18n = {
         get language() {
             return currentLang;
@@ -1223,6 +1495,8 @@
         createSwitcher();
         applyLanguage();
         observeChanges();
+        observeExternalLanguageChanges();
+        detectLanguageFromIp();
     }
 
     if (document.readyState === 'loading') {

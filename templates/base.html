@@ -18,12 +18,24 @@
     <meta name="theme-color" content="#C96442">
     <meta name="msapplication-TileColor" content="#C96442">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <script>
+        (function () {
+            try {
+                var savedColorTheme = localStorage.getItem('mailSystemColorTheme');
+                var supportedColorThemes = ['clay', 'ocean', 'emerald', 'violet', 'rose'];
+                document.documentElement.dataset.colorTheme = supportedColorThemes.indexOf(savedColorTheme) >= 0 ? savedColorTheme : 'clay';
+            } catch (error) {
+                document.documentElement.dataset.colorTheme = 'clay';
+            }
+        })();
+    </script>
     
     {% block head %}{% endblock %}
     <!-- Claude-style theme: loaded last so it overrides per-page inline styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/claude-theme.css') }}">
     <!-- Shared admin interaction/animation layer (additive; loads after theme) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-ui.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/color-theme.css') }}">
     <style>
         :root {
             --scroll-card-offset: 110px; /* reserve ~110px (search toolbar + card padding + pagination buffer) so pagination stays visible */
@@ -146,6 +158,189 @@
         .i18n-switcher--header:focus-within {
             border-color: #c96442;
             box-shadow: 0 0 0 3px rgba(201, 100, 66, 0.12);
+        }
+        .i18n-switcher.i18n-switcher--icon {
+            position: relative;
+            width: 42px;
+            min-width: 42px;
+            height: 42px;
+            min-height: 42px;
+            padding: 0;
+            gap: 0;
+            justify-content: center;
+            overflow: visible;
+            border-radius: 50%;
+        }
+        .i18n-switcher.i18n-switcher--icon::after {
+            display: none;
+        }
+        .i18n-switcher--icon .i18n-switcher-icon {
+            position: static;
+            width: 20px;
+            height: 20px;
+            padding: 0;
+            margin: 0;
+            overflow: visible;
+            clip: auto;
+            color: #475569;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .i18n-switcher--icon .i18n-switcher-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        .i18n-switcher--icon select,
+        .i18n-switcher--header.i18n-switcher--icon select {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            min-width: 0;
+            height: 100%;
+            padding: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .i18n-switcher.i18n-switcher--icon:hover .i18n-switcher-icon,
+        .i18n-switcher.i18n-switcher--icon:focus-within .i18n-switcher-icon {
+            color: #c96442;
+        }
+        .i18n-language-trigger {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            border: 0;
+            border-radius: inherit;
+            background: transparent;
+            color: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .i18n-language-trigger:focus {
+            outline: 0;
+        }
+        .i18n-language-menu[hidden] {
+            display: none !important;
+        }
+        .i18n-language-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            z-index: 5200;
+            width: 206px;
+            padding: 7px;
+            border: 1px solid rgba(86, 78, 65, 0.12);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.97);
+            box-shadow: 0 18px 46px rgba(52, 45, 36, 0.18), 0 2px 10px rgba(52, 45, 36, 0.06);
+            backdrop-filter: blur(20px);
+            transform-origin: top right;
+            animation: i18nMenuIn 0.16s ease-out;
+        }
+        .i18n-switcher:not(.i18n-switcher--header) .i18n-language-menu {
+            top: auto;
+            bottom: calc(100% + 10px);
+            transform-origin: bottom right;
+        }
+        .i18n-language-menu::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            right: 16px;
+            width: 9px;
+            height: 9px;
+            border-top: 1px solid rgba(86, 78, 65, 0.12);
+            border-left: 1px solid rgba(86, 78, 65, 0.12);
+            background: rgba(255, 255, 255, 0.97);
+            transform: rotate(45deg);
+        }
+        .i18n-switcher:not(.i18n-switcher--header) .i18n-language-menu::before {
+            top: auto;
+            bottom: -5px;
+            transform: rotate(225deg);
+        }
+        .i18n-language-option {
+            position: relative;
+            width: 100%;
+            min-height: 46px;
+            padding: 6px 10px 6px 7px;
+            border: 0;
+            border-radius: 11px;
+            background: transparent;
+            color: #3f3b34;
+            display: grid;
+            grid-template-columns: 34px minmax(0, 1fr) 18px;
+            align-items: center;
+            gap: 9px;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+            transition: color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+        }
+        .i18n-language-option:hover,
+        .i18n-language-option:focus-visible {
+            outline: 0;
+            color: #a9442d;
+            background: #fff5ef;
+        }
+        .i18n-language-option:active {
+            transform: scale(0.985);
+        }
+        .i18n-language-option.is-active {
+            color: #a9442d;
+            background: rgba(201, 100, 66, 0.11);
+            font-weight: 700;
+        }
+        .i18n-language-mark {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #706a60;
+            background: #f3f1ec;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        .i18n-language-option.is-active .i18n-language-mark {
+            color: #fff;
+            background: linear-gradient(145deg, #d67a55, #b94d32);
+            box-shadow: 0 5px 12px rgba(185, 77, 50, 0.2);
+        }
+        .i18n-language-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+        .i18n-language-check {
+            width: 17px;
+            height: 17px;
+            color: #b94d32;
+            opacity: 0;
+            transform: scale(0.7);
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        .i18n-language-check svg {
+            width: 17px;
+            height: 17px;
+            fill: currentColor;
+        }
+        .i18n-language-option.is-active .i18n-language-check {
+            opacity: 1;
+            transform: scale(1);
+        }
+        @keyframes i18nMenuIn {
+            from { opacity: 0; transform: translateY(-5px) scale(0.97); }
+            to { opacity: 1; transform: none; }
         }
         @media (max-width: 768px) {
             .i18n-switcher {
@@ -332,6 +527,7 @@
     </script>
     {% block body %}{% endblock %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/color-theme.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin-ui.js') }}"></script>
     <script>if (window.AdminUI) { AdminUI.initCanvas(); }</script>
     {% if request.path and '/admin' in request.path %}
