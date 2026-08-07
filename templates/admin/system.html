@@ -333,6 +333,13 @@
         font-weight: 600;
     }
 
+    .master-key-note {
+        margin: 8px 0 0;
+        color: #6b7280;
+        font-size: 13px;
+        line-height: 1.55;
+    }
+
     .secure-input input {
         padding-right: 110px;
     }
@@ -428,6 +435,75 @@
         flex-wrap: wrap;
         align-items: center;
     }
+
+    .mailbox-access-toolbar {
+        display: grid;
+        grid-template-columns: minmax(180px, 0.45fr) minmax(240px, 1fr);
+        gap: 14px;
+        margin-bottom: 14px;
+    }
+
+    .mailbox-access-note {
+        margin-bottom: 14px;
+        padding: 12px 14px;
+        border: 1px solid #fed7aa;
+        border-radius: 10px;
+        background: #fff7ed;
+        color: #9a3412;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .mailbox-access-switch {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+        padding: 14px 16px;
+        border: 1px solid #bfdbfe;
+        border-radius: 12px;
+        background: #eff6ff;
+    }
+
+    .mailbox-access-switch-title { color: #1e3a8a; font-weight: 700; }
+    .mailbox-access-switch-help { margin-top: 3px; color: #64748b; font-size: 12px; }
+    .mailbox-access-switch-control { display: flex; align-items: center; gap: 9px; white-space: nowrap; color: #1d4ed8; font-weight: 600; }
+    .mailbox-access-switch-control input { width: 18px; height: 18px; accent-color: var(--primary-color); }
+    .mailbox-access-permissions { transition: opacity .2s ease; }
+    .mailbox-access-permissions.is-disabled { opacity: .48; }
+    .mailbox-access-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 15px 0 9px; }
+    .mailbox-access-section-title h3 { margin: 0; color: #334155; font-size: 14px; }
+    .mailbox-access-section-title span { color: #94a3b8; font-size: 12px; }
+    .mailbox-access-group-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #334155; }
+
+    .mailbox-access-list {
+        max-height: 360px;
+        overflow: auto;
+        margin-bottom: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #fff;
+    }
+
+    .mailbox-access-item {
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        padding: 11px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+    }
+
+    .mailbox-access-item:last-child { border-bottom: none; }
+    .mailbox-access-item:hover { background: #f8fafc; }
+    .mailbox-access-item input { width: 16px; height: 16px; accent-color: var(--primary-color); }
+    .mailbox-access-email { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #1f2937; }
+    .mailbox-access-meta { font-size: 12px; color: #64748b; white-space: nowrap; }
+    .mailbox-access-own { color: #047857; font-weight: 600; }
+    .mailbox-access-empty { padding: 32px 16px; text-align: center; color: #94a3b8; }
+    .mailbox-access-summary { margin-left: 10px; color: #64748b; font-size: 13px; }
 
     /* Buttons */
     .btn {
@@ -609,6 +685,8 @@
         .form-row {
             grid-template-columns: 1fr;
         }
+
+        .mailbox-access-toolbar { grid-template-columns: 1fr; }
     }
 
     /* 锚点导航布局 */
@@ -664,6 +742,258 @@
             flex-direction: row;
             flex-wrap: wrap;
             width: 100%;
+        }
+    }
+
+    /* 系统设置布局校准：统一标题、标签、控件与辅助文案基线。 */
+    .system-sections .card-header {
+        min-height: 72px;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+    }
+
+    .system-sections .card-title {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        line-height: 24px;
+    }
+
+    .system-sections .card-title .anticon,
+    .system-nav-item .anticon {
+        flex: 0 0 20px;
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .system-nav-item {
+        min-height: 44px;
+        line-height: 22px;
+    }
+
+    .system-sections .card-body {
+        padding: 24px;
+    }
+
+    .system-sections .form-row {
+        gap: 16px;
+        align-items: start;
+    }
+
+    .system-sections .form-group {
+        min-width: 0;
+        margin-bottom: 18px;
+    }
+
+    .system-sections .form-label {
+        min-height: 22px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        line-height: 22px;
+        white-space: nowrap;
+    }
+
+    .system-sections .form-control,
+    .system-sections select.form-control {
+        min-height: 40px;
+        line-height: 20px;
+    }
+
+    .system-sections .btn {
+        min-height: 40px;
+        padding-top: 9px;
+        padding-bottom: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 20px;
+        vertical-align: middle;
+    }
+
+    .system-sections .btn-small {
+        min-height: 32px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        line-height: 20px;
+    }
+
+    .admin-table th,
+    .admin-table td {
+        height: 50px;
+        line-height: 20px;
+    }
+
+    .admin-current-badge {
+        line-height: 18px;
+        vertical-align: middle;
+    }
+
+    .admin-actions {
+        min-height: 32px;
+        flex-wrap: nowrap;
+    }
+
+    .mailbox-access-note {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        line-height: 22px;
+    }
+
+    .mailbox-access-toolbar {
+        grid-template-columns: minmax(210px, .45fr) minmax(280px, 1fr);
+        align-items: end;
+        gap: 16px;
+    }
+
+    .mailbox-access-toolbar .form-group {
+        display: grid;
+        grid-template-rows: 22px 40px;
+        gap: 8px;
+    }
+
+    .mailbox-access-toolbar .form-label {
+        margin: 0;
+    }
+
+    .mailbox-access-switch {
+        min-height: 78px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+    }
+
+    .mailbox-access-switch-title {
+        line-height: 22px;
+    }
+
+    .mailbox-access-switch-help {
+        line-height: 18px;
+    }
+
+    .mailbox-access-switch-control {
+        min-height: 32px;
+        justify-content: flex-end;
+        line-height: 22px;
+    }
+
+    .mailbox-access-section-title {
+        min-height: 28px;
+        display: grid;
+        grid-template-columns: minmax(150px, auto) minmax(0, 1fr);
+        align-items: center;
+        gap: 16px;
+    }
+
+    .mailbox-access-section-title h3,
+    .mailbox-access-section-title span {
+        line-height: 20px;
+    }
+
+    .mailbox-access-section-title span {
+        text-align: right;
+    }
+
+    .mailbox-access-item {
+        min-height: 48px;
+        line-height: 20px;
+    }
+
+    .mailbox-access-item input {
+        margin: 0;
+        align-self: center;
+    }
+
+    .mailbox-access-email,
+    .mailbox-access-group-name,
+    .mailbox-access-meta {
+        line-height: 20px;
+    }
+
+    .mailbox-access-footer {
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .mailbox-access-summary {
+        margin-left: 0;
+        line-height: 20px;
+    }
+
+    .master-key-row {
+        max-width: 760px;
+        display: grid;
+        grid-template-columns: minmax(300px, 1.2fr) minmax(240px, .8fr);
+        align-items: start;
+        gap: 16px;
+    }
+
+    .master-key-input,
+    .master-key-status {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+    }
+
+    .master-key-note {
+        min-height: 40px;
+        line-height: 20px;
+    }
+
+    @media (max-width: 768px) {
+        .system-sections .card-header,
+        .system-sections .card-body {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        .system-sections .form-label {
+            white-space: normal;
+        }
+
+        .mailbox-access-toolbar,
+        .master-key-row {
+            grid-template-columns: 1fr;
+        }
+
+        .mailbox-access-switch {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .mailbox-access-switch-control {
+            justify-content: flex-start;
+        }
+
+        .mailbox-access-section-title {
+            grid-template-columns: 1fr;
+            gap: 2px;
+        }
+
+        .mailbox-access-section-title span {
+            text-align: left;
+        }
+
+        .mailbox-access-item {
+            grid-template-columns: 24px minmax(0, 1fr);
+        }
+
+        .mailbox-access-meta {
+            grid-column: 2;
+            white-space: normal;
+        }
+
+        .admin-actions {
+            flex-wrap: wrap;
         }
     }
 </style>
@@ -727,6 +1057,9 @@
         <aside class="system-nav" id="systemNav">
             <a href="#sec-account" class="system-nav-item active"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 账号设置</a>
             <a href="#sec-admins" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 管理员管理</a>
+            {% if show_mailbox_access %}
+            <a href="#sec-mailbox-access" class="system-nav-item" id="mailboxAccessNav" style="display:none;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 邮箱范围权限</a>
+            {% endif %}
             <a href="#sec-masterkey" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 万能秘钥</a>
             <a href="#sec-systitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-aim"></use></svg></span> 系统标题</a>
             <a href="#sec-pagetitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-tag"></use></svg></span> 页面标题</a>
@@ -829,6 +1162,60 @@
             </div>
         </div>
 
+        {% if show_mailbox_access %}
+        <!-- 管理员邮箱可见范围（仅 tjt740 服务端渲染） -->
+        <div class="card" id="sec-mailbox-access" style="display:none;">
+            <div class="card-header">
+                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 管理员邮箱可见范围</h2>
+            </div>
+            <div class="card-body">
+                <div class="mailbox-access-note">
+                    可为任意管理员单独启用邮箱范围限制。启用后，该管理员只能看到自己添加的邮箱，以及这里授权的邮箱分组和单个邮箱；分组中新加入的邮箱会自动继承权限。
+                </div>
+                <div class="mailbox-access-toolbar">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label">目标管理员</label>
+                        <select class="form-control" id="mailboxAccessTarget" onchange="loadMailboxAccessPermissions()"></select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label">搜索邮箱</label>
+                        <input class="form-control" id="mailboxAccessSearch" placeholder="搜索邮箱地址、操作人或备注..." oninput="renderMailboxAccessList()">
+                    </div>
+                </div>
+                <div class="mailbox-access-switch">
+                    <div>
+                        <div class="mailbox-access-switch-title">限制该管理员的邮箱范围</div>
+                        <div class="mailbox-access-switch-help">关闭时可查看全部邮箱；开启后按下方授权范围显示。</div>
+                    </div>
+                    <label class="mailbox-access-switch-control">
+                        <input type="checkbox" id="mailboxAccessRestricted" onchange="updateMailboxAccessRestriction()">
+                        <span id="mailboxAccessRestrictedStatus">未启用限制</span>
+                    </label>
+                </div>
+                <div class="mailbox-access-permissions" id="mailboxAccessPermissions">
+                    <div class="mailbox-access-section-title">
+                        <h3>按邮箱分组授权</h3>
+                        <span>授权整个分组，后续加入的邮箱自动可见</span>
+                    </div>
+                    <div class="mailbox-access-list" id="mailboxAccessGroupList">
+                        <div class="mailbox-access-empty">正在加载邮箱分组...</div>
+                    </div>
+                    <div class="mailbox-access-section-title">
+                        <h3>按单个邮箱授权</h3>
+                        <span>可与分组权限叠加</span>
+                    </div>
+                    <div class="mailbox-access-list" id="mailboxAccessList">
+                        <div class="mailbox-access-empty">正在加载邮箱范围...</div>
+                    </div>
+                </div>
+                <div class="mailbox-access-footer">
+                    <button type="button" class="btn btn-primary" id="saveMailboxAccessBtn" onclick="saveMailboxAccessPermissions()">保存可见范围</button>
+                    <span class="mailbox-access-summary" id="mailboxAccessSummary"></span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- 管理员万能秘钥 -->
         <div class="card" id="sec-masterkey">
             <div class="card-header">
@@ -843,6 +1230,7 @@
                                 <input type="password" class="form-control" id="adminMasterKey" name="admin_master_key" placeholder="至少6位，设置后可免卡密取件">
                                 <button type="button" class="toggle-visibility" id="toggleMasterKeyVisibility" onclick="toggleAdminMasterKeyVisibility()" aria-label="显示或隐藏万能秘钥"><span class="anticon"><svg aria-hidden="true"><use href="#ai-eye"></use></svg></span></button>
                             </div>
+                            <p class="master-key-note" id="masterKeyNote">保存后只存储安全哈希，不会回显明文；请以右侧状态为准。</p>
                         </div>
                         <div class="master-key-status">
                             <label class="form-label">当前状态</label>
@@ -977,9 +1365,15 @@
     function setMasterKeyStatus(isSet) {
         const statusText = document.getElementById('masterKeyStatusText');
         const submitBtn = document.getElementById('masterKeySubmitBtn');
+        const masterKeyInput = document.getElementById('adminMasterKey');
         if (!statusText) return;
-        statusText.value = isSet ? '已设置万能秘钥' : '未设置万能秘钥';
+        statusText.value = isSet ? '已安全保存并生效' : '未设置万能秘钥';
         statusText.style.color = isSet ? '#10b981' : '#f97316';
+        if (masterKeyInput) {
+            masterKeyInput.placeholder = isSet
+                ? '已安全保存（不回显）；输入新值可修改'
+                : '至少6位，设置后可免卡密取件';
+        }
         if (submitBtn) {
             submitBtn.textContent = isSet ? '修改万能秘钥' : '设置万能秘钥';
         }
@@ -1003,6 +1397,203 @@
 
     function formatDateTime(value) {
         return value || '-';
+    }
+
+    let mailboxAccessMailboxes = [];
+    let mailboxAccessTargets = [];
+    let mailboxAccessGroups = [];
+    let mailboxAccessRestricted = false;
+
+    function setupMailboxAccessManager(enabled) {
+        const nav = document.getElementById('mailboxAccessNav');
+        const card = document.getElementById('sec-mailbox-access');
+        if (nav) nav.style.display = enabled ? '' : 'none';
+        if (card) card.style.display = enabled ? '' : 'none';
+        if (enabled) loadMailboxAccessPermissions();
+    }
+
+    async function loadMailboxAccessPermissions() {
+        const targetSelect = document.getElementById('mailboxAccessTarget');
+        const list = document.getElementById('mailboxAccessList');
+        const groupList = document.getElementById('mailboxAccessGroupList');
+        if (!targetSelect || !list || !groupList) return;
+        const targetId = Number(targetSelect.value) || 0;
+        list.innerHTML = '<div class="mailbox-access-empty">正在加载邮箱范围...</div>';
+        groupList.innerHTML = '<div class="mailbox-access-empty">正在加载邮箱分组...</div>';
+        try {
+            const query = targetId ? `?target_admin_id=${targetId}` : '';
+            const response = await fetch('/admin/api/mailbox-access' + query);
+            const payload = await response.json();
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.message || '获取邮箱范围失败');
+            }
+
+            mailboxAccessTargets = payload.data.targets || [];
+            mailboxAccessMailboxes = payload.data.mailboxes || [];
+            mailboxAccessGroups = payload.data.groups || [];
+            mailboxAccessRestricted = Boolean(payload.data.restricted_enabled);
+            const selectedTargetId = Number(payload.data.target?.id) || 0;
+            targetSelect.innerHTML = mailboxAccessTargets.map(target =>
+                `<option value="${Number(target.id)}">${escapeHtml(target.username)} · ${Number(target.restricted_enabled) ? '已限制' : '未限制'}</option>`
+            ).join('');
+            targetSelect.value = String(selectedTargetId);
+            const restrictedCheckbox = document.getElementById('mailboxAccessRestricted');
+            if (restrictedCheckbox) restrictedCheckbox.checked = mailboxAccessRestricted;
+            renderMailboxAccessGroups();
+            renderMailboxAccessList();
+            updateMailboxAccessRestriction();
+        } catch (error) {
+            list.innerHTML = `<div class="mailbox-access-empty">${escapeHtml(error.message || '获取邮箱范围失败')}</div>`;
+            groupList.innerHTML = `<div class="mailbox-access-empty">${escapeHtml(error.message || '获取邮箱范围失败')}</div>`;
+        }
+    }
+
+    function mailboxAccessGroupPath(group) {
+        const names = [String(group.name || '')];
+        let parentId = Number(group.parent_id) || 0;
+        const visited = new Set([Number(group.id) || 0]);
+        while (parentId && !visited.has(parentId)) {
+            visited.add(parentId);
+            const parent = mailboxAccessGroups.find(item => Number(item.id) === parentId);
+            if (!parent) break;
+            names.unshift(String(parent.name || ''));
+            parentId = Number(parent.parent_id) || 0;
+        }
+        return names.filter(Boolean).join(' / ');
+    }
+
+    function renderMailboxAccessGroups() {
+        const list = document.getElementById('mailboxAccessGroupList');
+        if (!list) return;
+        if (!mailboxAccessGroups.length) {
+            list.innerHTML = '<div class="mailbox-access-empty">暂无可授权分组</div>';
+            return;
+        }
+        list.innerHTML = mailboxAccessGroups.map(group => {
+            const id = Number(group.id) || 0;
+            const checked = Boolean(Number(group.granted));
+            const owner = String(group.created_by_admin || '').trim() || '历史数据';
+            const count = Number(group.mailbox_count) || 0;
+            return `
+                <label class="mailbox-access-item">
+                    <input type="checkbox" value="${id}" ${checked ? 'checked' : ''} ${mailboxAccessRestricted ? '' : 'disabled'} onchange="updateMailboxGroupAccessGrant(${id}, this.checked)">
+                    <span class="mailbox-access-group-name">${escapeHtml(mailboxAccessGroupPath(group))}</span>
+                    <span class="mailbox-access-meta">${count} 个邮箱 · 操作人：${escapeHtml(owner)}</span>
+                </label>
+            `;
+        }).join('');
+    }
+
+    function renderMailboxAccessList() {
+        const list = document.getElementById('mailboxAccessList');
+        const summary = document.getElementById('mailboxAccessSummary');
+        const search = (document.getElementById('mailboxAccessSearch')?.value || '').trim().toLowerCase();
+        if (!list) return;
+
+        const filtered = mailboxAccessMailboxes.filter(mailbox => {
+            const searchable = [mailbox.email, mailbox.created_by_admin, mailbox.remarks]
+                .map(value => String(value || '').toLowerCase())
+                .join(' ');
+            return !search || searchable.includes(search);
+        });
+
+        if (!filtered.length) {
+            list.innerHTML = '<div class="mailbox-access-empty">没有匹配的邮箱</div>';
+        } else {
+            list.innerHTML = filtered.map(mailbox => {
+                const id = Number(mailbox.id) || 0;
+                const isOwn = Boolean(mailbox.owned_by_target);
+                const checked = isOwn || Boolean(Number(mailbox.granted));
+                const owner = String(mailbox.created_by_admin || '').trim() || '历史数据';
+                const meta = isOwn ? '本人添加 · 始终可见' : `操作人：${escapeHtml(owner)}`;
+                const disabled = isOwn || !mailboxAccessRestricted;
+                return `
+                    <label class="mailbox-access-item" data-searchable="${escapeHtml(mailbox.email || '')}">
+                        <input type="checkbox" class="mailbox-access-checkbox" value="${id}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange="updateMailboxAccessGrant(${id}, this.checked)">
+                        <span class="mailbox-access-email">${escapeHtml(mailbox.email || '')}</span>
+                        <span class="mailbox-access-meta ${isOwn ? 'mailbox-access-own' : ''}">${meta}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        updateMailboxAccessSummary();
+    }
+
+    function updateMailboxAccessGrant(mailboxId, granted) {
+        const mailbox = mailboxAccessMailboxes.find(item => Number(item.id) === Number(mailboxId));
+        if (mailbox && !mailbox.owned_by_target) mailbox.granted = granted ? 1 : 0;
+        updateMailboxAccessSummary();
+    }
+
+    function updateMailboxGroupAccessGrant(groupId, granted) {
+        const group = mailboxAccessGroups.find(item => Number(item.id) === Number(groupId));
+        if (group) group.granted = granted ? 1 : 0;
+        updateMailboxAccessSummary();
+    }
+
+    function updateMailboxAccessSummary() {
+        const summary = document.getElementById('mailboxAccessSummary');
+        if (!summary) return;
+        if (!mailboxAccessRestricted) {
+            summary.textContent = '当前未限制，可查看全部邮箱';
+            return;
+        }
+        const ownCount = mailboxAccessMailboxes.filter(item => item.owned_by_target).length;
+        const groupCount = mailboxAccessGroups.filter(item => Number(item.granted)).length;
+        const grantedCount = mailboxAccessMailboxes.filter(item => !item.owned_by_target && Number(item.granted)).length;
+        summary.textContent = `本人邮箱 ${ownCount} 个，授权分组 ${groupCount} 个，单邮箱授权 ${grantedCount} 个`;
+    }
+
+    function updateMailboxAccessRestriction() {
+        const checkbox = document.getElementById('mailboxAccessRestricted');
+        const status = document.getElementById('mailboxAccessRestrictedStatus');
+        const permissions = document.getElementById('mailboxAccessPermissions');
+        mailboxAccessRestricted = Boolean(checkbox?.checked);
+        if (status) status.textContent = mailboxAccessRestricted ? '已启用限制' : '未启用限制';
+        if (permissions) permissions.classList.toggle('is-disabled', !mailboxAccessRestricted);
+        renderMailboxAccessGroups();
+        renderMailboxAccessList();
+    }
+
+    async function saveMailboxAccessPermissions() {
+        const targetId = Number(document.getElementById('mailboxAccessTarget')?.value) || 0;
+        const saveButton = document.getElementById('saveMailboxAccessBtn');
+        if (!targetId) {
+            showToast('请选择受限管理员', 'error');
+            return;
+        }
+        const mailboxIds = mailboxAccessMailboxes
+            .filter(mailbox => !mailbox.owned_by_target && Number(mailbox.granted))
+            .map(mailbox => Number(mailbox.id))
+            .filter(Boolean);
+        const groupIds = mailboxAccessGroups
+            .filter(group => Number(group.granted))
+            .map(group => Number(group.id))
+            .filter(Boolean);
+        if (saveButton) saveButton.disabled = true;
+        try {
+            const response = await fetch('/admin/api/mailbox-access', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    target_admin_id: targetId,
+                    restricted_enabled: mailboxAccessRestricted,
+                    mailbox_ids: mailboxIds,
+                    group_ids: groupIds
+                })
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.message || '保存邮箱范围失败');
+            }
+            showToast(payload.message || '邮箱可见范围已保存', 'success');
+            await loadMailboxAccessPermissions();
+        } catch (error) {
+            showToast(error.message || '保存邮箱范围失败', 'error');
+        } finally {
+            if (saveButton) saveButton.disabled = false;
+        }
     }
 
     function renderAdminUsers(adminUsers, currentAdminId) {
@@ -1095,6 +1686,7 @@
                     }
 
                     renderAdminUsers(data.data.admin_users || [], data.data.current_admin_id);
+                    setupMailboxAccessManager(Boolean(data.data.can_manage_mailbox_access));
                     
                     // 更新数据库类型显示
                     if (data.data.database_type) {
@@ -1322,7 +1914,9 @@
 
     // 更新管理员万能秘钥
     function updateAdminMasterKey() {
-        const masterKey = document.getElementById('adminMasterKey').value.trim();
+        const input = document.getElementById('adminMasterKey');
+        const submitBtn = document.getElementById('masterKeySubmitBtn');
+        const masterKey = input.value.trim();
         
         if (!masterKey) {
             showToast('请输入万能秘钥', 'error');
@@ -1333,6 +1927,8 @@
             showToast('万能秘钥长度至少6位', 'error');
             return;
         }
+
+        if (submitBtn) submitBtn.disabled = true;
 
         fetch('/admin/api/system-config', {
             method: 'POST',
@@ -1347,8 +1943,10 @@
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                showToast('万能秘钥更新成功', 'success');
+            if (data.success && data.data?.verified) {
+                input.value = '';
+                input.type = 'password';
+                showToast('万能秘钥已安全保存并验证；刷新后不会回显明文', 'success', 5000);
                 setMasterKeyStatus(true);
             } else {
                 showToast(data.message || '更新失败', 'error');
@@ -1357,6 +1955,9 @@
         .catch(error => {
             console.error('更新万能秘钥失败:', error);
             showToast('网络错误，请稍后重试', 'error');
+        })
+        .finally(() => {
+            if (submitBtn) submitBtn.disabled = false;
         });
     }
 

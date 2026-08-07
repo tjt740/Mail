@@ -1968,8 +1968,7 @@
         box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
     }
 
-    .receive-detail-content:empty::before {
-        content: '（无正文）';
+    .receive-empty-placeholder {
         color: #94a3b8;
     }
 
@@ -3257,7 +3256,7 @@
                                 <h4 id="receiveDetailSubject">-</h4>
                                 <div class="receive-meta" id="receiveDetailMeta"></div>
                             </div>
-                            <div class="receive-detail-content" id="receiveDetailBody"></div>
+                            <div class="receive-detail-content" id="receiveDetailBody"><span class="receive-empty-placeholder">（无正文）</span></div>
                             <div id="receiveDetailImages" class="receive-detail-images" style="display:none;">
                                 <div class="receive-detail-images-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-camera"></use></svg></span> 图片</div>
                                 <div id="receiveDetailImageContainer" class="receive-detail-image-grid"></div>

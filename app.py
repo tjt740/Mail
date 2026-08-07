@@ -20,6 +20,7 @@ import smtplib
 import socket
 import ssl
 import errno
+import ipaddress
 import re
 import html
 from contextlib import contextmanager
@@ -219,6 +220,12 @@ MAIL_POLLER_STATE = {
 # 失败退避：连续失败的邮箱按指数跳过若干轮，避免反复空耗子进程与超时
 MAIL_POLL_BACKOFF_LOCK = threading.Lock()
 MAIL_POLL_BACKOFF = {}  # email -> {'failures', 'skip_remaining', 'last_error', 'last_failed_at'}
+
+# IP language detection cache. Country lookups are only used when the reverse
+# proxy/CDN did not already provide a country header.
+IP_COUNTRY_CACHE = {}
+IP_COUNTRY_CACHE_LOCK = threading.Lock()
+IP_COUNTRY_CACHE_TTL = 24 * 60 * 60
 
 # 确保数据库目录存在
 os.makedirs(os.path.dirname(app.config['DATABASE']), exist_ok=True)
@@ -591,6 +598,9 @@ def init_db():
             
             # 检查是否有默认管理员，如果没有则创建
             create_default_admin(db, db_type)
+
+            # 创建管理员邮箱可见范围表，并绑定 tjt740 -> lhm 的管理关系
+            create_admin_mailbox_scope_tables(db, db_type)
             
             # 提交事务
             if db_type != 'sqlite':
@@ -969,6 +979,234 @@ def create_admin_table(db, db_type):
             cursor.close()
     except Exception as e:
         logger.error(f"Failed to create admin table: {e}")
+        raise
+
+def create_admin_mailbox_scope_tables(db, db_type):
+    """创建管理员邮箱范围控制、单邮箱授权与分组授权表。"""
+    try:
+        if db_type == 'sqlite':
+            db.execute('''
+                CREATE TABLE IF NOT EXISTS admin_mailbox_scope_managers (
+                    manager_admin_id INTEGER PRIMARY KEY,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (manager_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE
+                )
+            ''')
+            db.execute('''
+                CREATE TABLE IF NOT EXISTS admin_mailbox_scopes (
+                    restricted_admin_id INTEGER PRIMARY KEY,
+                    manager_admin_id INTEGER NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (restricted_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (manager_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE
+                )
+            ''')
+            db.execute('''
+                CREATE TABLE IF NOT EXISTS admin_mailbox_permissions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    admin_id INTEGER NOT NULL,
+                    mailbox_id INTEGER NOT NULL,
+                    granted_by_admin_id INTEGER NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (mailbox_id) REFERENCES mail_accounts(id) ON DELETE CASCADE,
+                    FOREIGN KEY (granted_by_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                    UNIQUE(admin_id, mailbox_id)
+                )
+            ''')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_admin_mailbox_permissions_admin ON admin_mailbox_permissions(admin_id)')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_admin_mailbox_permissions_mailbox ON admin_mailbox_permissions(mailbox_id)')
+            db.execute('''
+                CREATE TABLE IF NOT EXISTS admin_mailbox_group_permissions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    admin_id INTEGER NOT NULL,
+                    group_id INTEGER NOT NULL,
+                    granted_by_admin_id INTEGER NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (group_id) REFERENCES mailbox_groups(id) ON DELETE CASCADE,
+                    FOREIGN KEY (granted_by_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                    UNIQUE(admin_id, group_id)
+                )
+            ''')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_admin_mailbox_group_permissions_admin ON admin_mailbox_group_permissions(admin_id)')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_admin_mailbox_group_permissions_group ON admin_mailbox_group_permissions(group_id)')
+            manager = db.execute('SELECT id FROM admin_users WHERE LOWER(username) = LOWER(?)', ('tjt740',)).fetchone()
+            restricted = db.execute('SELECT id FROM admin_users WHERE LOWER(username) = LOWER(?)', ('lhm',)).fetchone()
+            should_seed_default_scope = False
+            if manager:
+                now = get_beijing_time()
+                registered_manager = db.execute('''
+                    SELECT 1 FROM admin_mailbox_scope_managers WHERE manager_admin_id = ?
+                ''', (manager['id'],)).fetchone()
+                should_seed_default_scope = not bool(registered_manager)
+                if should_seed_default_scope:
+                    db.execute('''
+                        INSERT INTO admin_mailbox_scope_managers (manager_admin_id, created_at)
+                        VALUES (?, ?)
+                    ''', (manager['id'], now))
+            if manager and restricted and should_seed_default_scope:
+                now = get_beijing_time()
+                db.execute('''
+                    INSERT INTO admin_mailbox_scopes
+                        (restricted_admin_id, manager_admin_id, created_at, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(restricted_admin_id) DO UPDATE SET
+                        manager_admin_id = excluded.manager_admin_id,
+                        updated_at = excluded.updated_at
+                ''', (restricted['id'], manager['id'], now, now))
+        else:
+            cursor = db.cursor()
+            if db_type == 'mysql':
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS admin_mailbox_scope_managers (
+                        manager_admin_id INT PRIMARY KEY,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (manager_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ''')
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS admin_mailbox_scopes (
+                        restricted_admin_id INT PRIMARY KEY,
+                        manager_admin_id INT NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (restricted_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (manager_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        INDEX idx_admin_mailbox_scope_manager (manager_admin_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ''')
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS admin_mailbox_permissions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        admin_id INT NOT NULL,
+                        mailbox_id INT NOT NULL,
+                        granted_by_admin_id INT NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (mailbox_id) REFERENCES mail_accounts(id) ON DELETE CASCADE,
+                        FOREIGN KEY (granted_by_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        UNIQUE KEY uniq_admin_mailbox_permission (admin_id, mailbox_id),
+                        INDEX idx_admin_mailbox_permissions_mailbox (mailbox_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ''')
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS admin_mailbox_group_permissions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        admin_id INT NOT NULL,
+                        group_id INT NOT NULL,
+                        granted_by_admin_id INT NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (group_id) REFERENCES mailbox_groups(id) ON DELETE CASCADE,
+                        FOREIGN KEY (granted_by_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        UNIQUE KEY uniq_admin_mailbox_group_permission (admin_id, group_id),
+                        INDEX idx_admin_mailbox_group_permissions_group (group_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ''')
+            else:
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS admin_mailbox_scope_managers (
+                        manager_admin_id INTEGER PRIMARY KEY,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (manager_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE
+                    )
+                ''')
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS admin_mailbox_scopes (
+                        restricted_admin_id INTEGER PRIMARY KEY,
+                        manager_admin_id INTEGER NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (restricted_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (manager_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_admin_mailbox_scope_manager ON admin_mailbox_scopes(manager_admin_id)')
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS admin_mailbox_permissions (
+                        id SERIAL PRIMARY KEY,
+                        admin_id INTEGER NOT NULL,
+                        mailbox_id INTEGER NOT NULL,
+                        granted_by_admin_id INTEGER NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (mailbox_id) REFERENCES mail_accounts(id) ON DELETE CASCADE,
+                        FOREIGN KEY (granted_by_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        UNIQUE(admin_id, mailbox_id)
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_admin_mailbox_permissions_admin ON admin_mailbox_permissions(admin_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_admin_mailbox_permissions_mailbox ON admin_mailbox_permissions(mailbox_id)')
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS admin_mailbox_group_permissions (
+                        id SERIAL PRIMARY KEY,
+                        admin_id INTEGER NOT NULL,
+                        group_id INTEGER NOT NULL,
+                        granted_by_admin_id INTEGER NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (group_id) REFERENCES mailbox_groups(id) ON DELETE CASCADE,
+                        FOREIGN KEY (granted_by_admin_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+                        UNIQUE(admin_id, group_id)
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_admin_mailbox_group_permissions_admin ON admin_mailbox_group_permissions(admin_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_admin_mailbox_group_permissions_group ON admin_mailbox_group_permissions(group_id)')
+
+            cursor.execute('SELECT id FROM admin_users WHERE LOWER(username) = LOWER(%s)', ('tjt740',))
+            manager = cursor.fetchone()
+            cursor.execute('SELECT id FROM admin_users WHERE LOWER(username) = LOWER(%s)', ('lhm',))
+            restricted = cursor.fetchone()
+            should_seed_default_scope = False
+            if manager:
+                manager_id = manager['id'] if isinstance(manager, dict) else manager[0]
+                now = get_beijing_time()
+                cursor.execute('''
+                    SELECT 1 FROM admin_mailbox_scope_managers WHERE manager_admin_id = %s
+                ''', (manager_id,))
+                should_seed_default_scope = not bool(cursor.fetchone())
+                if db_type == 'mysql':
+                    if should_seed_default_scope:
+                        cursor.execute('''
+                            INSERT INTO admin_mailbox_scope_managers (manager_admin_id, created_at)
+                            VALUES (%s, %s)
+                        ''', (manager_id, now))
+                else:
+                    if should_seed_default_scope:
+                        cursor.execute('''
+                            INSERT INTO admin_mailbox_scope_managers (manager_admin_id, created_at)
+                            VALUES (%s, %s)
+                        ''', (manager_id, now))
+            if manager and restricted and should_seed_default_scope:
+                manager_id = manager['id'] if isinstance(manager, dict) else manager[0]
+                restricted_id = restricted['id'] if isinstance(restricted, dict) else restricted[0]
+                now = get_beijing_time()
+                if db_type == 'mysql':
+                    cursor.execute('''
+                        INSERT INTO admin_mailbox_scopes
+                            (restricted_admin_id, manager_admin_id, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            manager_admin_id = VALUES(manager_admin_id),
+                            updated_at = VALUES(updated_at)
+                    ''', (restricted_id, manager_id, now, now))
+                else:
+                    cursor.execute('''
+                        INSERT INTO admin_mailbox_scopes
+                            (restricted_admin_id, manager_admin_id, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (restricted_admin_id) DO UPDATE SET
+                            manager_admin_id = EXCLUDED.manager_admin_id,
+                            updated_at = EXCLUDED.updated_at
+                    ''', (restricted_id, manager_id, now, now))
+            cursor.close()
+
+        db.commit()
+        logger.info("Admin mailbox scope tables created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create admin mailbox scope tables: {e}")
         raise
 
 def create_default_admin(db, db_type):
@@ -1508,7 +1746,7 @@ def migrate_card_logs_table(db, db_type):
         logger.error(f"Error during card_logs table migration: {e}")
 
 def migrate_mailbox_groups_table(db, db_type):
-    """迁移mailbox_groups表，添加mailbox_count字段"""
+    """迁移 mailbox_groups 表，补充分组计数与创建管理员字段。"""
     try:
         column_name = 'mailbox_count'
         if db_type == 'sqlite':
@@ -1528,6 +1766,9 @@ def migrate_mailbox_groups_table(db, db_type):
                     """, (group['id'],)).fetchone()['cnt']
                     db.execute("UPDATE mailbox_groups SET mailbox_count = ? WHERE id = ?", (count, group['id']))
                 logger.info("Populated mailbox_count for existing groups")
+            if 'created_by_admin' not in columns:
+                db.execute("ALTER TABLE mailbox_groups ADD COLUMN created_by_admin TEXT DEFAULT ''")
+                logger.info("Added created_by_admin column to mailbox_groups table")
         else:
             cursor = db.cursor()
             try:
@@ -1550,6 +1791,10 @@ def migrate_mailbox_groups_table(db, db_type):
                             count = cursor.fetchone()[0]
                             cursor.execute("UPDATE mailbox_groups SET mailbox_count = %s WHERE id = %s", (count, group_id))
                         logger.info("Populated mailbox_count for existing groups")
+                    cursor.execute("SHOW COLUMNS FROM mailbox_groups LIKE %s", ('created_by_admin',))
+                    if not cursor.fetchone():
+                        cursor.execute("ALTER TABLE mailbox_groups ADD COLUMN created_by_admin VARCHAR(255) DEFAULT ''")
+                        logger.info("Added created_by_admin column to mailbox_groups table")
                 elif db_type == 'postgresql':
                     cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='mailbox_groups' AND column_name=%s", (column_name,))
                     if not cursor.fetchone():
@@ -1569,6 +1814,10 @@ def migrate_mailbox_groups_table(db, db_type):
                             count = cursor.fetchone()[0]
                             cursor.execute("UPDATE mailbox_groups SET mailbox_count = %s WHERE id = %s", (count, group_id))
                         logger.info("Populated mailbox_count for existing groups")
+                    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='mailbox_groups' AND column_name=%s", ('created_by_admin',))
+                    if not cursor.fetchone():
+                        cursor.execute("ALTER TABLE mailbox_groups ADD COLUMN created_by_admin VARCHAR(255) DEFAULT ''")
+                        logger.info("Added created_by_admin column to mailbox_groups table")
             except Exception as e:
                 logger.error(f"Error checking/adding mailbox_count to mailbox_groups: {e}")
         db.commit()
@@ -1588,6 +1837,7 @@ def create_mailbox_groups_tables(db, db_type):
                     sort_order INTEGER DEFAULT 0,
                     is_expanded INTEGER DEFAULT 1,
                     mailbox_count INTEGER DEFAULT 0,
+                    created_by_admin TEXT DEFAULT '',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (parent_id) REFERENCES mailbox_groups(id) ON DELETE CASCADE
@@ -1624,6 +1874,7 @@ def create_mailbox_groups_tables(db, db_type):
                     sort_order INT DEFAULT 0,
                     is_expanded TINYINT DEFAULT 1,
                     mailbox_count INT DEFAULT 0,
+                    created_by_admin VARCHAR(255) DEFAULT '',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (parent_id) REFERENCES mailbox_groups(id) ON DELETE CASCADE,
@@ -1658,6 +1909,7 @@ def create_mailbox_groups_tables(db, db_type):
                     sort_order INTEGER DEFAULT 0,
                     is_expanded INTEGER DEFAULT 1,
                     mailbox_count INTEGER DEFAULT 0,
+                    created_by_admin VARCHAR(255) DEFAULT '',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (parent_id) REFERENCES mailbox_groups(id) ON DELETE CASCADE
@@ -2362,6 +2614,127 @@ def legacy_index():
         embedded=request.args.get('embedded') == '1'
     )
 
+
+SUPPORTED_PUBLIC_LANGUAGES = ('zh', 'en', 'vi')
+CHINESE_LANGUAGE_COUNTRIES = {'CN', 'HK', 'MO', 'TW'}
+COUNTRY_HEADER_NAMES = (
+    'CF-IPCountry',
+    'CloudFront-Viewer-Country',
+    'X-Vercel-IP-Country',
+    'X-Country-Code',
+    'X-AppEngine-Country',
+)
+
+
+def _normalize_country_code(value):
+    """Return a usable ISO-style country code or an empty string."""
+    country = str(value or '').strip().upper()
+    if len(country) == 2 and country.isalpha() and country not in {'XX'}:
+        return country
+    return ''
+
+
+def _get_request_country_header():
+    for header_name in COUNTRY_HEADER_NAMES:
+        country = _normalize_country_code(request.headers.get(header_name))
+        if country:
+            return country
+    return ''
+
+
+def _get_client_ip():
+    """Resolve the visitor IP used only for locale recommendation."""
+    candidates = [
+        request.headers.get('CF-Connecting-IP', ''),
+        request.headers.get('X-Real-IP', ''),
+        (request.headers.get('X-Forwarded-For', '').split(',', 1)[0]),
+        request.remote_addr or '',
+    ]
+    for candidate in candidates:
+        value = str(candidate or '').strip()
+        if not value:
+            continue
+        try:
+            return str(ipaddress.ip_address(value))
+        except ValueError:
+            continue
+    return ''
+
+
+def _lookup_country_for_ip(client_ip):
+    """Look up a public IP country with a short timeout and a 24-hour cache."""
+    try:
+        address = ipaddress.ip_address(client_ip)
+    except ValueError:
+        return ''
+    if not address.is_global:
+        return ''
+
+    now = time.time()
+    with IP_COUNTRY_CACHE_LOCK:
+        cached = IP_COUNTRY_CACHE.get(client_ip)
+        if cached and cached['expires_at'] > now:
+            return cached['country']
+
+    country = ''
+    try:
+        response = requests.get(
+            f'https://ipapi.co/{client_ip}/country/',
+            headers={'User-Agent': 'mail-viewer-language-detection/1.0'},
+            timeout=2.5,
+        )
+        if response.ok:
+            country = _normalize_country_code(response.text)
+    except requests.RequestException as error:
+        logger.info('IP country lookup unavailable for %s: %s', client_ip, error)
+
+    with IP_COUNTRY_CACHE_LOCK:
+        IP_COUNTRY_CACHE[client_ip] = {
+            'country': country,
+            'expires_at': now + (IP_COUNTRY_CACHE_TTL if country else 60 * 60),
+        }
+    return country
+
+
+def _language_for_country(country):
+    if country == 'VN':
+        return 'vi'
+    if country in CHINESE_LANGUAGE_COUNTRIES:
+        return 'zh'
+    return 'en'
+
+
+def _language_from_accept_header():
+    best = request.accept_languages.best_match(
+        ['zh-CN', 'zh-TW', 'zh', 'vi-VN', 'vi', 'en'],
+        default='en',
+    )
+    normalized = str(best or 'en').lower()
+    if normalized.startswith('zh'):
+        return 'zh'
+    if normalized.startswith('vi'):
+        return 'vi'
+    return 'en'
+
+
+@app.route('/api/language', methods=['GET'])
+def api_public_language():
+    """Recommend the public UI language from the visitor's IP country."""
+    country = _get_request_country_header()
+    source = 'country_header' if country else ''
+    if not country:
+        client_ip = _get_client_ip()
+        country = _lookup_country_for_ip(client_ip) if client_ip else ''
+        source = 'ip_lookup' if country else ''
+
+    language = _language_for_country(country) if country else _language_from_accept_header()
+    return jsonify({
+        'success': True,
+        'language': language if language in SUPPORTED_PUBLIC_LANGUAGES else 'en',
+        'country': country or None,
+        'source': source or 'accept_language',
+    })
+
 # ===============================
 # 管理员认证相关路由
 # ===============================
@@ -2439,8 +2812,334 @@ def admin_required(f):
     decorated_function.__name__ = f.__name__
     return decorated_function
 
+def _get_admin_mailbox_scope(db, admin_id):
+    """返回受限管理员的范围配置；未受限时返回 None。"""
+    admin_id = safe_int(admin_id, 0)
+    if admin_id <= 0:
+        return None
+    db_type = app.config['DATABASE_TYPE']
+    try:
+        if db_type == 'sqlite':
+            row = db.execute('''
+                SELECT s.restricted_admin_id, s.manager_admin_id,
+                       restricted.username AS restricted_username,
+                       manager.username AS manager_username
+                FROM admin_mailbox_scopes s
+                JOIN admin_users restricted ON restricted.id = s.restricted_admin_id
+                JOIN admin_users manager ON manager.id = s.manager_admin_id
+                WHERE s.restricted_admin_id = ?
+            ''', (admin_id,)).fetchone()
+            return dict(row) if row else None
+
+        cursor = db.cursor()
+        cursor.execute('''
+            SELECT s.restricted_admin_id, s.manager_admin_id,
+                   restricted.username AS restricted_username,
+                   manager.username AS manager_username
+            FROM admin_mailbox_scopes s
+            JOIN admin_users restricted ON restricted.id = s.restricted_admin_id
+            JOIN admin_users manager ON manager.id = s.manager_admin_id
+            WHERE s.restricted_admin_id = %s
+        ''', (admin_id,))
+        row = cursor.fetchone()
+        columns = [desc[0] for desc in cursor.description] if cursor.description else []
+        cursor.close()
+        return _row_to_dict(row, columns) if row else None
+    except Exception as e:
+        # 测试库或尚未迁移的旧库没有权限表时，保持原有不受限行为。
+        logger.debug(f"Admin mailbox scope lookup skipped: {e}")
+        return None
+
+def _get_current_admin_mailbox_scope(db=None):
+    if not session.get('admin_logged_in'):
+        return None
+    return _get_admin_mailbox_scope(db or get_db(), session.get('admin_id'))
+
+def _mailbox_scope_condition(db, alias=''):
+    """生成当前管理员可见邮箱的 SQL 条件和参数。"""
+    scope = _get_current_admin_mailbox_scope(db)
+    if not scope:
+        return '', []
+    prefix = f'{alias}.' if alias else ''
+    placeholder = '?' if app.config['DATABASE_TYPE'] == 'sqlite' else '%s'
+    condition = f'''(
+        LOWER(TRIM(COALESCE({prefix}created_by_admin, ''))) = LOWER({placeholder})
+        OR EXISTS (
+            SELECT 1 FROM admin_mailbox_permissions amp
+            WHERE amp.admin_id = {placeholder}
+              AND amp.mailbox_id = {prefix}id
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM mailbox_group_mappings scope_mapping
+            JOIN admin_mailbox_group_permissions scope_group_permission
+              ON scope_group_permission.group_id = scope_mapping.group_id
+            WHERE scope_group_permission.admin_id = {placeholder}
+              AND scope_mapping.mailbox_id = {prefix}id
+        )
+    )'''
+    return condition, [
+        session.get('admin_username', ''),
+        scope['restricted_admin_id'],
+        scope['restricted_admin_id'],
+    ]
+
+def _mailbox_log_scope_condition(db, log_alias='l', email_column='email'):
+    """生成按日志邮箱地址过滤的 SQL 条件。"""
+    scope = _get_current_admin_mailbox_scope(db)
+    if not scope:
+        return '', []
+    placeholder = '?' if app.config['DATABASE_TYPE'] == 'sqlite' else '%s'
+    condition = f'''EXISTS (
+        SELECT 1
+        FROM mail_accounts scope_mailbox
+        WHERE LOWER(TRIM(COALESCE(scope_mailbox.email, ''))) =
+              LOWER(TRIM(COALESCE({log_alias}.{email_column}, '')))
+          AND (
+              LOWER(TRIM(COALESCE(scope_mailbox.created_by_admin, ''))) = LOWER({placeholder})
+              OR EXISTS (
+                  SELECT 1 FROM admin_mailbox_permissions scope_permission
+                  WHERE scope_permission.admin_id = {placeholder}
+                    AND scope_permission.mailbox_id = scope_mailbox.id
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM mailbox_group_mappings scope_mapping
+                  JOIN admin_mailbox_group_permissions scope_group_permission
+                    ON scope_group_permission.group_id = scope_mapping.group_id
+                  WHERE scope_group_permission.admin_id = {placeholder}
+                    AND scope_mapping.mailbox_id = scope_mailbox.id
+              )
+          )
+    )'''
+    return condition, [
+        session.get('admin_username', ''),
+        scope['restricted_admin_id'],
+        scope['restricted_admin_id'],
+    ]
+
+def _can_access_mailbox(db, mailbox_id):
+    mailbox_id = safe_int(mailbox_id, 0)
+    if mailbox_id <= 0:
+        return False
+    condition, params = _mailbox_scope_condition(db, 'ma')
+    if not condition:
+        return True
+    db_type = app.config['DATABASE_TYPE']
+    if db_type == 'sqlite':
+        row = db.execute(
+            f'SELECT ma.id FROM mail_accounts ma WHERE ma.id = ? AND {condition} LIMIT 1',
+            [mailbox_id] + params
+        ).fetchone()
+    else:
+        cursor = db.cursor()
+        cursor.execute(
+            f'SELECT ma.id FROM mail_accounts ma WHERE ma.id = %s AND {condition} LIMIT 1',
+            [mailbox_id] + params
+        )
+        row = cursor.fetchone()
+        cursor.close()
+    return bool(row)
+
+def _all_mailboxes_accessible(db, mailbox_ids):
+    normalized_ids = []
+    for mailbox_id in mailbox_ids or []:
+        parsed = safe_int(mailbox_id, 0)
+        if parsed > 0 and parsed not in normalized_ids:
+            normalized_ids.append(parsed)
+    return bool(normalized_ids) and all(_can_access_mailbox(db, mailbox_id) for mailbox_id in normalized_ids)
+
+def _mailbox_not_found_response():
+    # 对受限管理员不区分“不存在”和“无权访问”，避免通过 ID 探测数据。
+    return jsonify({'success': False, 'message': '邮箱不存在或无权访问'}), 404
+
+def _can_manage_group(db, group_id):
+    group_id = safe_int(group_id, 0)
+    if group_id <= 0:
+        return False
+    scope = _get_current_admin_mailbox_scope(db)
+    if not scope:
+        return True
+    db_type = app.config['DATABASE_TYPE']
+    username = session.get('admin_username', '')
+    if db_type == 'sqlite':
+        row = db.execute('''
+            SELECT id FROM mailbox_groups
+            WHERE id = ? AND LOWER(TRIM(COALESCE(created_by_admin, ''))) = LOWER(?)
+        ''', (group_id, username)).fetchone()
+    else:
+        cursor = db.cursor()
+        cursor.execute('''
+            SELECT id FROM mailbox_groups
+            WHERE id = %s AND LOWER(TRIM(COALESCE(created_by_admin, ''))) = LOWER(%s)
+        ''', (group_id, username))
+        row = cursor.fetchone()
+        cursor.close()
+    return bool(row)
+
+def _filter_groups_for_current_admin(db, groups, mappings):
+    """按当前受限管理员的邮箱范围过滤分组、关联和计数。"""
+    scope = _get_current_admin_mailbox_scope(db)
+    group_dicts = [dict(group) for group in groups]
+    mapping_dicts = [dict(mapping) for mapping in mappings]
+    if not scope:
+        return group_dicts, mapping_dicts
+
+    db_type = app.config['DATABASE_TYPE']
+    condition, params = _mailbox_scope_condition(db, 'ma')
+    if db_type == 'sqlite':
+        mailbox_rows = db.execute(
+            f'SELECT ma.id FROM mail_accounts ma WHERE {condition}', params
+        ).fetchall()
+        visible_mailbox_ids = {int(row['id']) for row in mailbox_rows}
+    else:
+        cursor = db.cursor()
+        cursor.execute(f'SELECT ma.id FROM mail_accounts ma WHERE {condition}', params)
+        visible_mailbox_ids = {
+            int(row['id'] if isinstance(row, dict) else row[0])
+            for row in cursor.fetchall()
+        }
+        cursor.close()
+
+    visible_mappings = [
+        mapping for mapping in mapping_dicts
+        if safe_int(mapping.get('mailbox_id'), 0) in visible_mailbox_ids
+    ]
+    visible_group_ids = {
+        safe_int(mapping.get('group_id'), 0)
+        for mapping in visible_mappings
+        if safe_int(mapping.get('group_id'), 0) > 0
+    }
+    try:
+        if db_type == 'sqlite':
+            granted_group_rows = db.execute('''
+                SELECT group_id FROM admin_mailbox_group_permissions WHERE admin_id = ?
+            ''', (scope['restricted_admin_id'],)).fetchall()
+            visible_group_ids.update(int(row['group_id']) for row in granted_group_rows)
+        else:
+            cursor = db.cursor()
+            cursor.execute('''
+                SELECT group_id FROM admin_mailbox_group_permissions WHERE admin_id = %s
+            ''', (scope['restricted_admin_id'],))
+            visible_group_ids.update(
+                int(row['group_id'] if isinstance(row, dict) else row[0])
+                for row in cursor.fetchall()
+            )
+            cursor.close()
+    except Exception as e:
+        logger.debug(f"Admin mailbox group permission lookup skipped: {e}")
+    username = str(session.get('admin_username', '')).strip().lower()
+    for group in group_dicts:
+        if str(group.get('created_by_admin') or '').strip().lower() == username:
+            visible_group_ids.add(safe_int(group.get('id'), 0))
+
+    # 保留可见分组的父级路径，避免树形结构断裂；父级只暴露名称，不暴露其邮箱。
+    groups_by_id = {safe_int(group.get('id'), 0): group for group in group_dicts}
+    pending = list(visible_group_ids)
+    while pending:
+        group = groups_by_id.get(pending.pop())
+        parent_id = safe_int(group.get('parent_id'), 0) if group else 0
+        if parent_id > 0 and parent_id not in visible_group_ids:
+            visible_group_ids.add(parent_id)
+            pending.append(parent_id)
+
+    scoped_counts = {}
+    for mapping in visible_mappings:
+        group_id = safe_int(mapping.get('group_id'), 0)
+        mailbox_id = safe_int(mapping.get('mailbox_id'), 0)
+        scoped_counts.setdefault(group_id, set()).add(mailbox_id)
+
+    visible_groups = []
+    for group in group_dicts:
+        group_id = safe_int(group.get('id'), 0)
+        if group_id not in visible_group_ids:
+            continue
+        scoped_group = dict(group)
+        scoped_group['mailbox_count'] = len(scoped_counts.get(group_id, set()))
+        visible_groups.append(scoped_group)
+    return visible_groups, visible_mappings
+
+def _current_admin_managed_scope_targets(db):
+    """仅允许 tjt740 返回可配置的其他管理员。"""
+    current_admin_id = safe_int(session.get('admin_id'), 0)
+    current_username = str(session.get('admin_username') or '').strip().lower()
+    if current_admin_id <= 0 or current_username != 'tjt740':
+        return []
+    db_type = app.config['DATABASE_TYPE']
+    try:
+        if db_type == 'sqlite':
+            manager = db.execute('''
+                SELECT m.manager_admin_id
+                FROM admin_mailbox_scope_managers m
+                JOIN admin_users u ON u.id = m.manager_admin_id
+                WHERE m.manager_admin_id = ? AND LOWER(TRIM(u.username)) = 'tjt740'
+            ''', (current_admin_id,)).fetchone()
+            if not manager:
+                return []
+            rows = db.execute('''
+                SELECT u.id, u.username,
+                       CASE WHEN s.restricted_admin_id IS NULL THEN 0 ELSE 1 END AS restricted_enabled
+                FROM admin_users u
+                LEFT JOIN admin_mailbox_scopes s
+                  ON s.restricted_admin_id = u.id AND s.manager_admin_id = ?
+                WHERE u.id <> ?
+                ORDER BY u.username COLLATE NOCASE
+            ''', (current_admin_id, current_admin_id)).fetchall()
+            return [dict(row) for row in rows]
+        cursor = db.cursor()
+        cursor.execute('''
+            SELECT m.manager_admin_id
+            FROM admin_mailbox_scope_managers m
+            JOIN admin_users u ON u.id = m.manager_admin_id
+            WHERE m.manager_admin_id = %s AND LOWER(TRIM(u.username)) = 'tjt740'
+        ''', (current_admin_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            return []
+        cursor.execute('''
+            SELECT u.id, u.username,
+                   CASE WHEN s.restricted_admin_id IS NULL THEN 0 ELSE 1 END AS restricted_enabled
+            FROM admin_users u
+            LEFT JOIN admin_mailbox_scopes s
+              ON s.restricted_admin_id = u.id AND s.manager_admin_id = %s
+            WHERE u.id <> %s
+            ORDER BY u.username
+        ''', (current_admin_id, current_admin_id))
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description] if cursor.description else []
+        cursor.close()
+        return [_row_to_dict(row, columns) for row in rows]
+    except Exception as e:
+        logger.debug(f"Managed mailbox scope lookup skipped: {e}")
+        return []
+
+def _is_admin_mailbox_scope_manager(db, admin_id):
+    """判断管理员是否为持久化的邮箱范围控制人。"""
+    admin_id = safe_int(admin_id, 0)
+    if admin_id <= 0:
+        return False
+    try:
+        if app.config['DATABASE_TYPE'] == 'sqlite':
+            row = db.execute('''
+                SELECT 1 FROM admin_mailbox_scope_managers
+                WHERE manager_admin_id = ? LIMIT 1
+            ''', (admin_id,)).fetchone()
+        else:
+            cursor = db.cursor()
+            cursor.execute('''
+                SELECT 1 FROM admin_mailbox_scope_managers
+                WHERE manager_admin_id = %s LIMIT 1
+            ''', (admin_id,))
+            row = cursor.fetchone()
+            cursor.close()
+        return bool(row)
+    except Exception as e:
+        logger.debug(f"Mailbox scope manager lookup skipped: {e}")
+        return False
+
 def get_system_config(key, default_value=''):
     """获取系统配置值"""
+    cursor = None
     try:
         db = get_db()
         db_type = app.config['DATABASE_TYPE']
@@ -2456,6 +3155,25 @@ def get_system_config(key, default_value=''):
     except Exception as e:
         logger.error(f"Failed to get system config for key {key}: {e}")
         return default_value
+    finally:
+        if cursor is not None:
+            cursor.close()
+
+def verify_admin_master_key(candidate):
+    """校验管理员万能秘钥，配置缺失或旧哈希损坏时安全地返回 False。"""
+    candidate = (candidate or '').strip()
+    if not candidate:
+        return False
+
+    stored_hash = get_system_config('admin_master_key', '').strip()
+    if not stored_hash:
+        return False
+
+    try:
+        return check_password_hash(stored_hash, candidate)
+    except (TypeError, ValueError) as e:
+        logger.error(f"Invalid admin master key hash: {e}")
+        return False
 
 def set_system_config(db, db_type, key, value, config_type='string', description=''):
     """写入/更新一条系统配置（三种数据库通用 upsert）"""
@@ -3152,6 +3870,7 @@ def legacy_admin_system():
     """Legacy system settings page embedded by the React shell."""
     return render_template('admin/system.html',
                          admin_username=session.get('admin_username'),
+                         show_mailbox_access=(str(session.get('admin_username') or '').strip().lower() == 'tjt740'),
                          embedded=request.args.get('embedded') == '1')
 
 @app.route('/admin/help')
@@ -3261,7 +3980,20 @@ def api_card_info():
             return jsonify({
                 'success': False,
                 'status': 'not_found',
+                'credential_type': None,
                 'message': '请输入卡密',
+                'card_info': None,
+                'bound_emails': []
+            })
+
+        # 首页共用一个凭证输入框。先识别万能秘钥，避免把有效的万能秘钥
+        # 错误提示成“卡密不存在”，也让后续请求只携带正确的凭证字段。
+        if verify_admin_master_key(card_key):
+            return jsonify({
+                'success': True,
+                'status': 'master_key',
+                'credential_type': 'master_key',
+                'message': '万能秘钥有效，请填写要查询的邮箱地址',
                 'card_info': None,
                 'bound_emails': []
             })
@@ -3274,6 +4006,7 @@ def api_card_info():
             return jsonify({
                 'success': False,
                 'status': 'not_found',
+                'credential_type': None,
                 'message': CARD_STATUS_MESSAGES['not_found'],
                 'card_info': None,
                 'bound_emails': []
@@ -3313,6 +4046,7 @@ def api_card_info():
         return jsonify({
             'success': status == 'valid',
             'status': status,
+            'credential_type': 'card_key',
             'message': CARD_STATUS_MESSAGES.get(status, ''),
             'card_info': {
                 'card_type': card_info.get('card_type'),
@@ -3328,6 +4062,7 @@ def api_card_info():
         return jsonify({
             'success': False,
             'status': 'error',
+            'credential_type': None,
             'message': f'卡密查询失败: {str(e)}',
             'card_info': None,
             'bound_emails': []
@@ -3335,7 +4070,13 @@ def api_card_info():
 
 @app.route('/api/get_mail', methods=['POST'])
 def api_get_mail():
-    """获取邮件 API（增强版本 - 支持卡密验证和管理员免卡密访问）"""
+    """获取邮件 API。
+
+    Public callers may fetch any mailbox already configured in the admin
+    database by entering its address. Card-key requests remain compatible with
+    older generated links, but the public home page no longer requires or
+    exposes credentials.
+    """
     try:
         data = request.get_json()
         if not data:
@@ -3347,9 +4088,10 @@ def api_get_mail():
         email = data.get('email', '').strip()
         card_key = (data.get('card_key', '') or request.headers.get('X-Card-Key', '') or '').strip()
         admin_access = bool(data.get('admin_access', False))
-        master_key_input = (data.get('master_key') or '').strip()
-        stored_master_key_hash = get_system_config('admin_master_key', '').strip()
-        master_key_valid = bool(stored_master_key_hash and master_key_input and check_password_hash(stored_master_key_hash, master_key_input))
+        # 兼容只有一个“卡密/万能秘钥”输入框的旧客户端：显式 master_key
+        # 优先，否则也允许把万能秘钥放在 card_key 或 X-Card-Key 中。
+        master_key_input = (data.get('master_key') or card_key or '').strip()
+        master_key_valid = verify_admin_master_key(master_key_input)
         
         # 验证请求参数
         if not email:
@@ -3358,12 +4100,12 @@ def api_get_mail():
                 'message': '请提供邮箱地址'
             })
         
-        # 检查是否为管理员访问
-        # An explicitly supplied card must use the card-bound authorization path,
-        # even when the browser also has an administrator session. A valid master
-        # key still takes precedence because it is verified independently.
+        # No credential means the new public mailbox-address lookup flow. An
+        # explicitly supplied legacy card still uses the card-bound path, while
+        # administrator sessions and old master-key clients remain compatible.
         is_admin_session = session.get('admin_logged_in', False) and admin_access and not card_key
-        is_admin = is_admin_session or master_key_valid
+        is_public_lookup = not card_key
+        is_direct_access = is_public_lookup or is_admin_session or master_key_valid
         
         # Get optional email_index parameter for fetching different emails
         email_index = safe_int(data.get('email_index', 0), 0)
@@ -3378,18 +4120,13 @@ def api_get_mail():
         # Preview mode: fetch mail without incrementing card usage (for duplicate detection)
         preview_only = data.get('preview_only', False)
         
-        if not is_admin and not card_key:
-            return jsonify({
-                'success': False,
-                'message': '请提供卡密、管理员登录或万能秘钥'
-            })
-        
         # 获取数据库连接
         db = get_db()
         db_type = app.config['DATABASE_TYPE']
         
-        if is_admin:
-            # 管理员访问：直接调用邮件获取器，无需卡密验证
+        if is_direct_access:
+            # 公开邮箱查询 / 管理员访问：直接调用邮件获取器。邮件获取器
+            # 只会读取后台 mail_accounts 中已配置的邮箱，不接受任意账号密码。
             try:
                 # 调用Python邮件获取器脚本
                 script_args = [
@@ -3418,11 +4155,17 @@ def api_get_mail():
                     response_data = json.loads(result.stdout)
                     
                     if response_data.get('success'):
-                        # 记录管理员访问日志
+                        # 记录公开查询或管理员访问日志
                         user_ip = request.environ.get('HTTP_X_FORWARDED_FOR') or request.environ.get('REMOTE_ADDR') or 'unknown'
-                        admin_username = 'master_key' if master_key_valid else session.get('admin_username', 'unknown')
+                        if master_key_valid:
+                            actor_username = 'master_key'
+                        elif is_admin_session:
+                            actor_username = session.get('admin_username', 'unknown')
+                        else:
+                            actor_username = 'public'
                         user_agent = request.headers.get('User-Agent', 'unknown')
-                        log_mail_fetch_result(db, db_type, email, response_data, 'admin_manual', user_ip, user_agent, admin_username)
+                        log_source = 'admin_manual' if (master_key_valid or is_admin_session) else 'public_lookup'
+                        log_mail_fetch_result(db, db_type, email, response_data, log_source, user_ip, user_agent, actor_username)
                         mail_items = _extract_mail_items(response_data)
                         first_subject = mail_items[0].get('subject', '无主题') if mail_items else '无主题'
                         
@@ -3430,16 +4173,16 @@ def api_get_mail():
                             db.execute('''
                                 INSERT INTO admin_mail_logs (admin_username, email, user_ip, action, result, created_at)
                                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                            ''', (admin_username, email, user_ip, 'admin_get_mail', 
-                                  f'管理员获取邮件: {first_subject}'))
+                            ''', (actor_username, email, user_ip, 'public_get_mail' if actor_username == 'public' else 'admin_get_mail',
+                                  f'获取邮件: {first_subject}'))
                             db.commit()
                         else:
                             cursor = db.cursor()
                             cursor.execute('''
                                 INSERT INTO admin_mail_logs (admin_username, email, user_ip, action, result, created_at)
                                 VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-                            ''', (admin_username, email, user_ip, 'admin_get_mail', 
-                                  f'管理员获取邮件: {first_subject}'))
+                            ''', (actor_username, email, user_ip, 'public_get_mail' if actor_username == 'public' else 'admin_get_mail',
+                                  f'获取邮件: {first_subject}'))
                             db.commit()
                     
                     return jsonify(response_data)
@@ -3460,10 +4203,10 @@ def api_get_mail():
                     'message': '邮件服务响应格式错误'
                 })
             except Exception as e:
-                logger.error(f"Admin mail access error: {e}")
+                logger.error(f"Direct mail access error: {e}")
                 return jsonify({
                     'success': False,
-                    'message': f'管理员邮件获取错误: {str(e)}'
+                    'message': f'邮件获取错误: {str(e)}'
                 })
         else:
             # 原有的卡密验证逻辑保持不变
@@ -3766,6 +4509,9 @@ def api_admin_mailbox():
                         'success': False,
                         'message': '无效的邮箱ID'
                     }), 400
+
+                if not _can_access_mailbox(db, mailbox_id_int):
+                    return _mailbox_not_found_response()
                     
                 if db_type == 'sqlite':
                     account = db.execute('SELECT * FROM mail_accounts WHERE id = ?', (mailbox_id_int,)).fetchone()
@@ -3810,26 +4556,31 @@ def api_admin_mailbox():
         
         offset = (page - 1) * per_page
         
-        # 构建查询条件
-        where_clause = ""
+        # 构建查询条件，并在数据库层应用当前管理员的邮箱可见范围。
+        conditions = []
         params = []
         if search:
-            where_clause = "WHERE email LIKE ? OR server LIKE ? OR remarks LIKE ? OR created_by_admin LIKE ?"
+            conditions.append("(ma.email LIKE ? OR ma.server LIKE ? OR ma.remarks LIKE ? OR ma.created_by_admin LIKE ?)")
             search_param = f"%{search}%"
             params = [search_param, search_param, search_param, search_param]
+        scope_condition, scope_params = _mailbox_scope_condition(db, 'ma')
+        if scope_condition:
+            conditions.append(scope_condition)
+            params.extend(scope_params)
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         
         # 获取总数
         if db_type == 'sqlite':
             total = None
             if not fast_mode:
-                count_sql = f"SELECT COUNT(*) as count FROM mail_accounts {where_clause}"
+                count_sql = f"SELECT COUNT(*) as count FROM mail_accounts ma {where_clause}"
                 count_result = db.execute(count_sql, params).fetchone()
                 total = count_result['count']
             
             # 获取分页数据 - 按ID排序确保ID稳定显示
             sql = f"""
-                SELECT {select_columns} FROM mail_accounts {where_clause}
-                ORDER BY id ASC 
+                SELECT {select_columns} FROM mail_accounts ma {where_clause}
+                ORDER BY ma.id ASC
                 LIMIT ? OFFSET ?
             """
             accounts = db.execute(sql, params + [per_page, offset]).fetchall()
@@ -3841,13 +4592,13 @@ def api_admin_mailbox():
             
             total = None
             if not fast_mode:
-                count_sql = f"SELECT COUNT(*) as count FROM mail_accounts {where_mysql}"
+                count_sql = f"SELECT COUNT(*) as count FROM mail_accounts ma {where_mysql}"
                 cursor.execute(count_sql, params)
                 total = cursor.fetchone()['count'] if db_type == 'postgresql' else cursor.fetchone()[0]
             
             sql = f"""
-                SELECT {select_columns} FROM mail_accounts {where_mysql}
-                ORDER BY id ASC 
+                SELECT {select_columns} FROM mail_accounts ma {where_mysql}
+                ORDER BY ma.id ASC
                 LIMIT {per_page} OFFSET {offset}
             """
             cursor.execute(sql, params)
@@ -3866,8 +4617,16 @@ def api_admin_mailbox():
     
     elif request.method == 'POST':
         # 添加或编辑邮箱
-        data = request.get_json()
+        data = request.get_json() or {}
         action = data.get('action')
+
+        single_mailbox_actions = {'edit', 'test', 'send_mail', 'update_remarks'}
+        if action in single_mailbox_actions and not _can_access_mailbox(db, data.get('id')):
+            return _mailbox_not_found_response()
+        if action == 'batch_delete' and not _all_mailboxes_accessible(db, data.get('ids', [])):
+            return _mailbox_not_found_response()
+        if action == 'edit' and _get_current_admin_mailbox_scope(db) and 'created_by_admin' in data:
+            return jsonify({'success': False, 'message': '无权修改邮箱归属管理员'}), 403
         
         if action == 'add':
             return _add_mailbox(db, data)
@@ -3898,6 +4657,9 @@ def api_admin_mailbox():
                 'success': False,
                 'message': '缺少邮箱ID'
             })
+
+        if not _can_access_mailbox(db, account_id):
+            return _mailbox_not_found_response()
         
         try:
             if app.config['DATABASE_TYPE'] == 'sqlite':
@@ -3944,23 +4706,28 @@ def api_mailbox_search():
     
     offset = (page - 1) * per_page
     
-    # 构建查询条件 - 使用索引优化的搜索
-    where_clause = "WHERE email LIKE ? OR server LIKE ? OR remarks LIKE ?"
+    # 构建查询条件 - 使用索引优化的搜索，并应用可见范围。
+    conditions = ["(ma.email LIKE ? OR ma.server LIKE ? OR ma.remarks LIKE ?)"]
     search_param = f"%{search}%"
     params = [search_param, search_param, search_param]
+    scope_condition, scope_params = _mailbox_scope_condition(db, 'ma')
+    if scope_condition:
+        conditions.append(scope_condition)
+        params.extend(scope_params)
+    where_clause = f"WHERE {' AND '.join(conditions)}"
     
     try:
         if db_type == 'sqlite':
             # 获取总数（限制计数以提高性能）
-            count_sql = f"SELECT COUNT(*) as count FROM mail_accounts {where_clause}"
+            count_sql = f"SELECT COUNT(*) as count FROM mail_accounts ma {where_clause}"
             count_result = db.execute(count_sql, params).fetchone()
             total = count_result['count']
             
             # 获取分页数据 - 只返回必要字段以提高性能
             sql = f"""
                 SELECT id, email, server, remarks
-                FROM mail_accounts {where_clause}
-                ORDER BY id ASC 
+                FROM mail_accounts ma {where_clause}
+                ORDER BY ma.id ASC
                 LIMIT ? OFFSET ?
             """
             accounts = db.execute(sql, params + [per_page, offset]).fetchall()
@@ -3969,14 +4736,14 @@ def api_mailbox_search():
             placeholder = '%s'
             where_mysql = where_clause.replace('?', placeholder)
             
-            count_sql = f"SELECT COUNT(*) as count FROM mail_accounts {where_mysql}"
+            count_sql = f"SELECT COUNT(*) as count FROM mail_accounts ma {where_mysql}"
             cursor.execute(count_sql, params)
             total = cursor.fetchone()['count'] if db_type == 'postgresql' else cursor.fetchone()[0]
             
             sql = f"""
                 SELECT id, email, server, remarks
-                FROM mail_accounts {where_mysql}
-                ORDER BY id ASC 
+                FROM mail_accounts ma {where_mysql}
+                ORDER BY ma.id ASC
                 LIMIT {per_page} OFFSET {offset}
             """
             cursor.execute(sql, params)
@@ -4060,29 +4827,37 @@ def _add_mailbox(db, data):
             'success': False,
             'message': '请填写所有必需字段'
         })
+
+    normalized_group_id = safe_int(group_id, 0)
+    if normalized_group_id > 0 and not _can_manage_group(db, normalized_group_id):
+        return jsonify({'success': False, 'message': '分组不存在或无权使用'}), 403
     
     try:
         db_type = app.config['DATABASE_TYPE']
         
         # 检查该邮箱在哪些分组中已存在
         existing_groups = []
+        scope_condition, scope_params = _mailbox_scope_condition(db, 'ma')
+        visibility_sql = f' AND {scope_condition}' if scope_condition else ''
         if db_type == 'sqlite':
-            existing_accounts = db.execute('''
+            existing_accounts = db.execute(f'''
                 SELECT ma.id, mg.name as group_name, mgm.group_id
                 FROM mail_accounts ma
                 LEFT JOIN mailbox_group_mappings mgm ON ma.id = mgm.mailbox_id
                 LEFT JOIN mailbox_groups mg ON mgm.group_id = mg.id
                 WHERE ma.email = ?
-            ''', (email,)).fetchall()
+                {visibility_sql}
+            ''', [email] + scope_params).fetchall()
         else:
             cursor = db.cursor()
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT ma.id, mg.name as group_name, mgm.group_id
                 FROM mail_accounts ma
                 LEFT JOIN mailbox_group_mappings mgm ON ma.id = mgm.mailbox_id
                 LEFT JOIN mailbox_groups mg ON mgm.group_id = mg.id
                 WHERE ma.email = %s
-            ''', (email,))
+                {visibility_sql}
+            ''', [email] + scope_params)
             existing_accounts = cursor.fetchall()
         
         # 检查是否在当前分组中已存在
@@ -4493,12 +5268,48 @@ def _batch_add_mailbox(db, data):
     send_port = normalize_smtp_port(data.get('send_port'), send_protocol, send_ssl == 1)
     remarks = data.get('remarks', '').strip()
     group_id = data.get('group_id')  # Get group_id from request
+
+    if group_id is not None and _get_current_admin_mailbox_scope(db):
+        requested_group_id = safe_int(group_id, 0)
+        if requested_group_id > 0 and not _can_manage_group(db, requested_group_id):
+            return jsonify({'success': False, 'message': '分组不存在或无权修改'}), 403
+
+        db_type = app.config['DATABASE_TYPE']
+        if db_type == 'sqlite':
+            existing_group_rows = db.execute(
+                'SELECT group_id FROM mailbox_group_mappings WHERE mailbox_id = ?',
+                (account_id,)
+            ).fetchall()
+            existing_group_ids = {safe_int(row['group_id'], 0) for row in existing_group_rows}
+        else:
+            cursor = db.cursor()
+            cursor.execute(
+                'SELECT group_id FROM mailbox_group_mappings WHERE mailbox_id = %s',
+                (account_id,)
+            )
+            existing_group_ids = {
+                safe_int(row['group_id'] if isinstance(row, dict) else row[0], 0)
+                for row in cursor.fetchall()
+            }
+            cursor.close()
+
+        protected_existing = [gid for gid in existing_group_ids if gid > 0 and not _can_manage_group(db, gid)]
+        if protected_existing:
+            if requested_group_id in existing_group_ids:
+                # 保持其他管理员的原分组不变，只编辑邮箱本身。
+                group_id = None
+            else:
+                return jsonify({'success': False, 'message': '无权移动其他管理员分组中的邮箱'}), 403
     
     if not batch_content or not server or not port:
         return jsonify({
             'success': False,
             'message': '请填写批量内容和服务器信息'
         })
+
+    normalized_group_id = safe_int(group_id, 0)
+    if normalized_group_id > 0 and not _can_manage_group(db, normalized_group_id):
+        return jsonify({'success': False, 'message': '分组不存在或无权使用'}), 403
     
     # 解析批量内容，兼容：账号----密码、账号----密码----client_id----refresh_token、
     # 账号----密码----client_id----refresh_token----Graph API、账号:密码、账号|密码、
@@ -4552,23 +5363,27 @@ def _batch_add_mailbox(db, data):
             # 检查该邮箱在哪些分组中已存在（当前分组）
             existing_in_group = False
             existing_groups = []
+            scope_condition, scope_params = _mailbox_scope_condition(db, 'ma')
+            visibility_sql = f' AND {scope_condition}' if scope_condition else ''
             if db_type == 'sqlite':
-                existing_accounts = db.execute('''
+                existing_accounts = db.execute(f'''
                     SELECT ma.id, mg.name as group_name, mgm.group_id
                     FROM mail_accounts ma
                     LEFT JOIN mailbox_group_mappings mgm ON ma.id = mgm.mailbox_id
                     LEFT JOIN mailbox_groups mg ON mgm.group_id = mg.id
                     WHERE ma.email = ?
-                ''', (email,)).fetchall()
+                    {visibility_sql}
+                ''', [email] + scope_params).fetchall()
             else:
                 cursor = db.cursor()
-                cursor.execute('''
+                cursor.execute(f'''
                     SELECT ma.id, mg.name as group_name, mgm.group_id
                     FROM mail_accounts ma
                     LEFT JOIN mailbox_group_mappings mgm ON ma.id = mgm.mailbox_id
                     LEFT JOIN mailbox_groups mg ON mgm.group_id = mg.id
                     WHERE ma.email = %s
-                ''', (email,))
+                    {visibility_sql}
+                ''', [email] + scope_params)
                 existing_accounts = cursor.fetchall()
             
             # 检查是否在当前分组中已存在
@@ -5403,6 +6218,7 @@ def api_mailbox_groups():
                     cursor.execute('SELECT mailbox_id, group_id FROM mailbox_group_mappings')
                     mappings_data = cursor.fetchall()
                     mappings = [{'mailbox_id': row[0], 'group_id': row[1]} for row in mappings_data]
+                _, mappings = _filter_groups_for_current_admin(db, [], mappings)
                 return jsonify({
                     'success': True,
                     'groups': [],
@@ -5410,28 +6226,30 @@ def api_mailbox_groups():
                 })
 
             if db_type == 'sqlite':
-                group_sql = 'SELECT id, name, parent_id, sort_order, mailbox_count FROM mailbox_groups ORDER BY parent_id, sort_order, id' if compact else 'SELECT id, name, parent_id, sort_order, is_expanded, mailbox_count, created_at, updated_at FROM mailbox_groups ORDER BY parent_id, sort_order, id'
+                group_sql = 'SELECT id, name, parent_id, sort_order, mailbox_count, created_by_admin FROM mailbox_groups ORDER BY parent_id, sort_order, id' if compact else 'SELECT id, name, parent_id, sort_order, is_expanded, mailbox_count, created_by_admin, created_at, updated_at FROM mailbox_groups ORDER BY parent_id, sort_order, id'
                 groups = db.execute(group_sql).fetchall()
-                mappings = [] if compact else db.execute('SELECT mailbox_id, group_id FROM mailbox_group_mappings').fetchall()
+                must_scope = bool(_get_current_admin_mailbox_scope(db))
+                mappings = [] if compact and not must_scope else db.execute('SELECT mailbox_id, group_id FROM mailbox_group_mappings').fetchall()
             else:
                 cursor = db.cursor()
-                group_sql = 'SELECT id, name, parent_id, sort_order, mailbox_count FROM mailbox_groups ORDER BY parent_id, sort_order, id' if compact else 'SELECT id, name, parent_id, sort_order, is_expanded, mailbox_count, created_at, updated_at FROM mailbox_groups ORDER BY parent_id, sort_order, id'
+                group_sql = 'SELECT id, name, parent_id, sort_order, mailbox_count, created_by_admin FROM mailbox_groups ORDER BY parent_id, sort_order, id' if compact else 'SELECT id, name, parent_id, sort_order, is_expanded, mailbox_count, created_by_admin, created_at, updated_at FROM mailbox_groups ORDER BY parent_id, sort_order, id'
                 cursor.execute(group_sql)
                 groups_data = cursor.fetchall()
                 columns = [desc[0] for desc in cursor.description]
                 groups = [dict(zip(columns, row)) for row in groups_data]
                 
-                if compact:
+                if compact and not _get_current_admin_mailbox_scope(db):
                     mappings = []
                 else:
                     cursor.execute('SELECT mailbox_id, group_id FROM mailbox_group_mappings')
                     mappings_data = cursor.fetchall()
                     mappings = [{'mailbox_id': row[0], 'group_id': row[1]} for row in mappings_data]
             
+            scoped_groups, scoped_mappings = _filter_groups_for_current_admin(db, groups, mappings)
             return jsonify({
                 'success': True,
-                'groups': [dict(g) for g in groups],
-                'mappings': [dict(m) for m in mappings]
+                'groups': scoped_groups,
+                'mappings': [] if compact else scoped_mappings
             })
         except Exception as e:
             logger.error(f"Get groups error: {e}")
@@ -5457,6 +6275,8 @@ def api_mailbox_groups():
                 })
 
             duplicate = find_group_duplicate_by_name(name)
+            if duplicate and duplicate.get('id') and _get_current_admin_mailbox_scope(db) and not _can_manage_group(db, duplicate.get('id')):
+                duplicate = None
             if duplicate:
                 return jsonify({
                     'success': False,
@@ -5465,19 +6285,22 @@ def api_mailbox_groups():
             
             try:
                 now = get_beijing_time()
+                if parent_id and not _can_manage_group(db, parent_id):
+                    return jsonify({'success': False, 'message': '父分组不存在或无权使用'}), 403
+                created_by_admin = session.get('admin_username', 'admin')
                 if db_type == 'sqlite':
                     cursor = db.execute('''
-                        INSERT INTO mailbox_groups (name, parent_id, sort_order, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (name, parent_id, sort_order, now, now))
+                        INSERT INTO mailbox_groups (name, parent_id, sort_order, created_by_admin, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (name, parent_id, sort_order, created_by_admin, now, now))
                     group_id = cursor.lastrowid
                     db.commit()
                 else:
                     cursor = db.cursor()
                     cursor.execute('''
-                        INSERT INTO mailbox_groups (name, parent_id, sort_order, created_at, updated_at)
-                        VALUES (%s, %s, %s, %s, %s)
-                    ''', (name, parent_id, sort_order, now, now))
+                        INSERT INTO mailbox_groups (name, parent_id, sort_order, created_by_admin, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    ''', (name, parent_id, sort_order, created_by_admin, now, now))
                     group_id = cursor.lastrowid
                     db.commit()
                 
@@ -5505,6 +6328,8 @@ def api_mailbox_groups():
                 })
 
             duplicate = find_group_duplicate_by_name(name, group_id)
+            if duplicate and duplicate.get('id') and _get_current_admin_mailbox_scope(db) and not _can_manage_group(db, duplicate.get('id')):
+                duplicate = None
             if duplicate:
                 return jsonify({
                     'success': False,
@@ -5512,6 +6337,8 @@ def api_mailbox_groups():
                 })
             
             try:
+                if not _can_manage_group(db, group_id):
+                    return jsonify({'success': False, 'message': '分组不存在或无权修改'}), 403
                 now = get_beijing_time()
                 if db_type == 'sqlite':
                     db.execute('''
@@ -5546,6 +6373,11 @@ def api_mailbox_groups():
                     'success': False,
                     'message': '邮箱ID不能为空'
                 })
+
+            if not _can_access_mailbox(db, mailbox_id):
+                return _mailbox_not_found_response()
+            if group_id and not _can_manage_group(db, group_id):
+                return jsonify({'success': False, 'message': '分组不存在或无权修改'}), 403
             
             try:
                 # 获取邮箱原来所属的分组
@@ -5554,6 +6386,9 @@ def api_mailbox_groups():
                     old_mapping = db.execute('SELECT group_id FROM mailbox_group_mappings WHERE mailbox_id = ?', (mailbox_id,)).fetchone()
                     if old_mapping:
                         old_group_id = old_mapping['group_id']
+
+                    if old_group_id and _get_current_admin_mailbox_scope(db) and not _can_manage_group(db, old_group_id):
+                        return jsonify({'success': False, 'message': '无权移动其他管理员分组中的邮箱'}), 403
                     
                     # 先删除该邮箱的现有分组
                     db.execute('DELETE FROM mailbox_group_mappings WHERE mailbox_id = ?', (mailbox_id,))
@@ -5581,6 +6416,10 @@ def api_mailbox_groups():
                     old_mapping = cursor.fetchone()
                     if old_mapping:
                         old_group_id = old_mapping[0]
+
+                    if old_group_id and _get_current_admin_mailbox_scope(db) and not _can_manage_group(db, old_group_id):
+                        cursor.close()
+                        return jsonify({'success': False, 'message': '无权移动其他管理员分组中的邮箱'}), 403
                     
                     cursor.execute('DELETE FROM mailbox_group_mappings WHERE mailbox_id = %s', (mailbox_id,))
                     
@@ -5628,6 +6467,9 @@ def api_mailbox_groups():
                 'success': False,
                 'message': '分组ID不能为空'
             })
+
+        if not _can_manage_group(db, group_id):
+            return jsonify({'success': False, 'message': '分组不存在或无权删除'}), 403
         
         try:
             # 删除分组（CASCADE会自动删除子分组和关联）
@@ -6734,24 +7576,28 @@ def fetch_card_bound_mailboxes(db, db_type, card_id, legacy_bound_email_id=None)
 
     rows = []
     try:
+        scope_condition, scope_params = _mailbox_scope_condition(db, 'm')
+        scope_sql = f' AND {scope_condition}' if scope_condition else ''
         if db_type == 'sqlite':
-            rows = db.execute('''
+            rows = db.execute(f'''
                 SELECT m.id, m.email, m.server
                 FROM card_email_bindings ceb
                 JOIN mail_accounts m ON m.id = ceb.mailbox_id
                 WHERE ceb.card_id = ?
+                {scope_sql}
                 ORDER BY ceb.id ASC
-            ''', (card_id,)).fetchall()
+            ''', [card_id] + scope_params).fetchall()
             mailboxes = [dict(row) for row in rows]
         else:
             cursor = db.cursor()
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT m.id, m.email, m.server
                 FROM card_email_bindings ceb
                 JOIN mail_accounts m ON m.id = ceb.mailbox_id
                 WHERE ceb.card_id = %s
+                {scope_sql}
                 ORDER BY ceb.id ASC
-            ''', (card_id,))
+            ''', [card_id] + scope_params)
             result_rows = cursor.fetchall()
             columns = [desc[0] for desc in cursor.description]
             mailboxes = [_row_to_dict(row, columns) for row in result_rows]
@@ -6759,7 +7605,7 @@ def fetch_card_bound_mailboxes(db, db_type, card_id, legacy_bound_email_id=None)
         logger.warning(f"Failed to fetch card email bindings for card {card_id}: {e}")
         mailboxes = []
 
-    if legacy_bound_email_id and not any(str(m.get('id')) == str(legacy_bound_email_id) for m in mailboxes):
+    if legacy_bound_email_id and _can_access_mailbox(db, legacy_bound_email_id) and not any(str(m.get('id')) == str(legacy_bound_email_id) for m in mailboxes):
         try:
             if db_type == 'sqlite':
                 legacy = db.execute('SELECT id, email, server FROM mail_accounts WHERE id = ?', (legacy_bound_email_id,)).fetchone()
@@ -6789,7 +7635,7 @@ def attach_card_bound_mailboxes(db, db_type, cards):
     """给卡密列表附加 bound_email_ids / bound_emails 字段"""
     for card in cards:
         mailboxes = fetch_card_bound_mailboxes(db, db_type, card.get('id'), card.get('bound_email_id'))
-        if not mailboxes and card.get('bound_email'):
+        if not mailboxes and card.get('bound_email') and card.get('bound_email_id') and _can_access_mailbox(db, card.get('bound_email_id')):
             mailboxes = [{
                 'id': card.get('bound_email_id'),
                 'email': card.get('bound_email'),
@@ -7264,6 +8110,9 @@ def _edit_card(db, data):
     
     try:
         now = get_beijing_time()  # 使用北京时间
+
+        if bound_email_ids and not _all_mailboxes_accessible(db, bound_email_ids):
+            return _mailbox_not_found_response()
         
         # 验证绑定邮箱是否有效（如果提供）
         if bound_email_ids:
@@ -7358,6 +8207,8 @@ def _bind_email_to_card(db, data):
     
     try:
         # 验证卡密和邮箱是否存在
+        if not _all_mailboxes_accessible(db, email_ids):
+            return _mailbox_not_found_response()
         if app.config['DATABASE_TYPE'] == 'sqlite':
             card = db.execute('SELECT * FROM cards WHERE id = ?', (card_id,)).fetchone()
             placeholders = ','.join(['?'] * len(email_ids))
@@ -7431,13 +8282,18 @@ def api_admin_card_available_emails(card_id):
         current_bound_ids = {int(m['id']) for m in current_bound_mailboxes if m.get('id') is not None}
 
         # 构建查询条件
-        where_clause = ""
+        conditions = []
         params = []
         
         if search:
-            where_clause = "AND (m.email LIKE ? OR m.server LIKE ? OR m.remarks LIKE ?)"
+            conditions.append("(m.email LIKE ? OR m.server LIKE ? OR m.remarks LIKE ?)")
             search_param = f"%{search}%"
             params.extend([search_param, search_param, search_param])
+        scope_condition, scope_params = _mailbox_scope_condition(db, 'm')
+        if scope_condition:
+            conditions.append(scope_condition)
+            params.extend(scope_params)
+        where_clause = f"AND {' AND '.join(conditions)}" if conditions else ""
         
         if db_type == 'sqlite':
             # 获取总数
@@ -8874,11 +9730,16 @@ def api_admin_card_logs():
         search = request.args.get('search', '').strip()
         offset = (page - 1) * per_page
         
-        where_clause = ""
+        conditions = []
         params = []
         if search:
-            where_clause = "WHERE card_key LIKE ?"
+            conditions.append("cl.card_key LIKE ?")
             params.append(f"%{search}%")
+        card_log_scope, card_log_scope_params = _mailbox_log_scope_condition(db, 'cl', 'bound_email')
+        if card_log_scope:
+            conditions.append(card_log_scope)
+            params.extend(card_log_scope_params)
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         
         if db_type != 'sqlite':
             placeholder = '%s'
@@ -8887,7 +9748,7 @@ def api_admin_card_logs():
         
         # 获取总数
         if db_type == 'sqlite':
-            count_row = db.execute(f"SELECT COUNT(*) as count FROM card_logs {where_clause}", params).fetchone()
+            count_row = db.execute(f"SELECT COUNT(*) as count FROM card_logs cl {where_clause}", params).fetchone()
             total = count_row['count'] if count_row else 0
             logs = db.execute(f'''
                 SELECT cl.id, cl.card_key, cl.bound_email, cl.mail_subject, cl.user_ip, cl.created_at
@@ -8899,7 +9760,7 @@ def api_admin_card_logs():
             data_rows = [dict(row) for row in logs]
         else:
             cursor = db.cursor()
-            cursor.execute(f"SELECT COUNT(*) as count FROM card_logs {where_clause}", params)
+            cursor.execute(f"SELECT COUNT(*) as count FROM card_logs cl {where_clause}", params)
             total_row = cursor.fetchone()
             total = total_row[0] if total_row else 0
             
@@ -9412,6 +10273,10 @@ def api_admin_mail_logs():
 
         where_parts = []
         params = []
+        log_scope_condition, log_scope_params = _mailbox_log_scope_condition(db, 'l')
+        if log_scope_condition:
+            where_parts.append(log_scope_condition)
+            params.extend(log_scope_params)
         if search:
             where_parts.append('''
                 (l.email LIKE ? OR l.mail_subject LIKE ? OR l.mail_from LIKE ?
@@ -9508,7 +10373,11 @@ def api_admin_mail_logs():
                     ORDER BY COALESCE(mailbox_created_at, created_at) DESC, id DESC
                 ''', params + email_keys + [MAIL_LOG_LIST_PER_EMAIL_LIMIT]).fetchall()
                 logs = [dict(row) for row in rows]
-            stat_rows = db.execute('SELECT status, COUNT(*) as count FROM mail_logs GROUP BY status').fetchall()
+            scope_where_clause = f'WHERE {log_scope_condition}' if log_scope_condition else ''
+            stat_rows = db.execute(
+                f'SELECT l.status, COUNT(*) as count FROM mail_logs l {scope_where_clause} GROUP BY l.status',
+                log_scope_params
+            ).fetchall()
             stats = {row['status']: row['count'] for row in stat_rows}
             admin_rows = db.execute('''
                 SELECT admin_name FROM (
@@ -9581,7 +10450,11 @@ def api_admin_mail_logs():
                     ''', params + email_keys + [MAIL_LOG_LIST_PER_EMAIL_LIMIT])
                     columns = [desc[0] for desc in cursor.description]
                     logs = [_row_to_dict(row, columns) for row in cursor.fetchall()]
-                cursor.execute('SELECT status, COUNT(*) as count FROM mail_logs GROUP BY status')
+                scope_where_mysql = f'WHERE {log_scope_condition}' if log_scope_condition else ''
+                cursor.execute(
+                    f'SELECT l.status, COUNT(*) as count FROM mail_logs l {scope_where_mysql} GROUP BY l.status',
+                    log_scope_params
+                )
                 stats = {row[0]: row[1] for row in cursor.fetchall()}
                 cursor.execute('''
                     SELECT admin_name FROM (
@@ -9722,6 +10595,8 @@ def api_admin_mail_log_detail(log_id):
         ) ma
     '''
     email_key_sql = "LOWER(COALESCE(NULLIF(TRIM(l.email), ''), '-'))"
+    log_scope_condition, log_scope_params = _mailbox_log_scope_condition(db, 'l')
+    scope_sql = f' AND {log_scope_condition}' if log_scope_condition else ''
 
     try:
         if db_type == 'sqlite':
@@ -9733,8 +10608,9 @@ def api_admin_mail_log_detail(log_id):
                 FROM mail_logs l
                 LEFT JOIN {mailbox_meta_sql} ON ma.email_key = {email_key_sql}
                 WHERE l.id = ?
+                {scope_sql}
                 LIMIT 1
-            ''', (log_id,)).fetchone()
+            ''', [log_id] + log_scope_params).fetchone()
             log = dict(row) if row else None
         else:
             cursor = db.cursor()
@@ -9747,8 +10623,9 @@ def api_admin_mail_log_detail(log_id):
                     FROM mail_logs l
                     LEFT JOIN {mailbox_meta_sql} ON ma.email_key = {email_key_sql}
                     WHERE l.id = %s
+                    {scope_sql}
                     LIMIT 1
-                ''', (log_id,))
+                ''', [log_id] + log_scope_params)
                 row = cursor.fetchone()
                 columns = [desc[0] for desc in cursor.description] if cursor.description else []
                 log = _row_to_dict(row, columns) if row else None
@@ -9771,6 +10648,250 @@ def api_admin_mail_log_detail(log_id):
             'success': False,
             'message': f'获取收件日志详情失败: {str(e)}'
         }), 500
+
+@app.route('/admin/api/mailbox-access', methods=['GET', 'POST'])
+@admin_required
+def api_admin_mailbox_access():
+    """由范围控制人配置任意管理员的限制开关、分组和单邮箱授权。"""
+    db = get_db()
+    db_type = app.config['DATABASE_TYPE']
+    managed_targets = _current_admin_managed_scope_targets(db)
+    if not managed_targets:
+        return jsonify({'success': False, 'message': '无权配置管理员邮箱范围'}), 403
+
+    data = (request.get_json(silent=True) or {}) if request.method == 'POST' else request.args
+    target_admin_id = safe_int(data.get('target_admin_id'), 0)
+    allowed_target_ids = {safe_int(target.get('id'), 0) for target in managed_targets}
+    if target_admin_id <= 0:
+        target_admin_id = safe_int(managed_targets[0].get('id'), 0)
+    if target_admin_id not in allowed_target_ids:
+        return jsonify({'success': False, 'message': '无权配置该管理员'}), 403
+
+    target = next(target for target in managed_targets if safe_int(target.get('id'), 0) == target_admin_id)
+
+    if request.method == 'POST':
+        restricted_enabled_value = data.get('restricted_enabled', True)
+        if isinstance(restricted_enabled_value, str):
+            restricted_enabled = restricted_enabled_value.strip().lower() not in ('0', 'false', 'off', 'no', '')
+        else:
+            restricted_enabled = bool(restricted_enabled_value)
+        requested_ids = normalize_mailbox_id_list(data.get('mailbox_ids'))
+        requested_group_ids = normalize_mailbox_id_list(data.get('group_ids'))
+        try:
+            if db_type == 'sqlite':
+                existing_ids = set()
+                existing_group_ids = set()
+                if requested_ids:
+                    placeholders = ','.join(['?'] * len(requested_ids))
+                    rows = db.execute(
+                        f'SELECT id FROM mail_accounts WHERE id IN ({placeholders})',
+                        requested_ids
+                    ).fetchall()
+                    existing_ids = {int(row['id']) for row in rows}
+                if requested_group_ids:
+                    placeholders = ','.join(['?'] * len(requested_group_ids))
+                    rows = db.execute(
+                        f'SELECT id FROM mailbox_groups WHERE id IN ({placeholders})',
+                        requested_group_ids
+                    ).fetchall()
+                    existing_group_ids = {int(row['id']) for row in rows}
+                db.execute('DELETE FROM admin_mailbox_permissions WHERE admin_id = ?', (target_admin_id,))
+                db.execute('DELETE FROM admin_mailbox_group_permissions WHERE admin_id = ?', (target_admin_id,))
+                if restricted_enabled:
+                    now = get_beijing_time()
+                    db.execute('''
+                        INSERT INTO admin_mailbox_scopes
+                            (restricted_admin_id, manager_admin_id, created_at, updated_at)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(restricted_admin_id) DO UPDATE SET
+                            manager_admin_id = excluded.manager_admin_id,
+                            updated_at = excluded.updated_at
+                    ''', (target_admin_id, session.get('admin_id'), now, now))
+                    for mailbox_id in requested_ids:
+                        if mailbox_id in existing_ids:
+                            db.execute('''
+                                INSERT OR IGNORE INTO admin_mailbox_permissions
+                                    (admin_id, mailbox_id, granted_by_admin_id, created_at)
+                                VALUES (?, ?, ?, ?)
+                            ''', (target_admin_id, mailbox_id, session.get('admin_id'), now))
+                    for group_id in requested_group_ids:
+                        if group_id in existing_group_ids:
+                            db.execute('''
+                                INSERT OR IGNORE INTO admin_mailbox_group_permissions
+                                    (admin_id, group_id, granted_by_admin_id, created_at)
+                                VALUES (?, ?, ?, ?)
+                            ''', (target_admin_id, group_id, session.get('admin_id'), now))
+                else:
+                    db.execute('DELETE FROM admin_mailbox_scopes WHERE restricted_admin_id = ?', (target_admin_id,))
+            else:
+                cursor = db.cursor()
+                existing_ids = set()
+                existing_group_ids = set()
+                if requested_ids:
+                    placeholders = ','.join(['%s'] * len(requested_ids))
+                    cursor.execute(
+                        f'SELECT id FROM mail_accounts WHERE id IN ({placeholders})',
+                        requested_ids
+                    )
+                    existing_ids = {
+                        int(row['id'] if isinstance(row, dict) else row[0])
+                        for row in cursor.fetchall()
+                    }
+                if requested_group_ids:
+                    placeholders = ','.join(['%s'] * len(requested_group_ids))
+                    cursor.execute(
+                        f'SELECT id FROM mailbox_groups WHERE id IN ({placeholders})',
+                        requested_group_ids
+                    )
+                    existing_group_ids = {
+                        int(row['id'] if isinstance(row, dict) else row[0])
+                        for row in cursor.fetchall()
+                    }
+                cursor.execute('DELETE FROM admin_mailbox_permissions WHERE admin_id = %s', (target_admin_id,))
+                cursor.execute('DELETE FROM admin_mailbox_group_permissions WHERE admin_id = %s', (target_admin_id,))
+                if restricted_enabled:
+                    now = get_beijing_time()
+                    if db_type == 'mysql':
+                        cursor.execute('''
+                            INSERT INTO admin_mailbox_scopes
+                                (restricted_admin_id, manager_admin_id, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                                manager_admin_id = VALUES(manager_admin_id),
+                                updated_at = VALUES(updated_at)
+                        ''', (target_admin_id, session.get('admin_id'), now, now))
+                    else:
+                        cursor.execute('''
+                            INSERT INTO admin_mailbox_scopes
+                                (restricted_admin_id, manager_admin_id, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s)
+                            ON CONFLICT (restricted_admin_id) DO UPDATE SET
+                                manager_admin_id = EXCLUDED.manager_admin_id,
+                                updated_at = EXCLUDED.updated_at
+                        ''', (target_admin_id, session.get('admin_id'), now, now))
+                    for mailbox_id in requested_ids:
+                        if mailbox_id not in existing_ids:
+                            continue
+                        if db_type == 'mysql':
+                            cursor.execute('''
+                                INSERT IGNORE INTO admin_mailbox_permissions
+                                    (admin_id, mailbox_id, granted_by_admin_id, created_at)
+                                VALUES (%s, %s, %s, %s)
+                            ''', (target_admin_id, mailbox_id, session.get('admin_id'), now))
+                        else:
+                            cursor.execute('''
+                                INSERT INTO admin_mailbox_permissions
+                                    (admin_id, mailbox_id, granted_by_admin_id, created_at)
+                                VALUES (%s, %s, %s, %s)
+                                ON CONFLICT (admin_id, mailbox_id) DO NOTHING
+                            ''', (target_admin_id, mailbox_id, session.get('admin_id'), now))
+                    for group_id in requested_group_ids:
+                        if group_id not in existing_group_ids:
+                            continue
+                        if db_type == 'mysql':
+                            cursor.execute('''
+                                INSERT IGNORE INTO admin_mailbox_group_permissions
+                                    (admin_id, group_id, granted_by_admin_id, created_at)
+                                VALUES (%s, %s, %s, %s)
+                            ''', (target_admin_id, group_id, session.get('admin_id'), now))
+                        else:
+                            cursor.execute('''
+                                INSERT INTO admin_mailbox_group_permissions
+                                    (admin_id, group_id, granted_by_admin_id, created_at)
+                                VALUES (%s, %s, %s, %s)
+                                ON CONFLICT (admin_id, group_id) DO NOTHING
+                            ''', (target_admin_id, group_id, session.get('admin_id'), now))
+                else:
+                    cursor.execute('DELETE FROM admin_mailbox_scopes WHERE restricted_admin_id = %s', (target_admin_id,))
+                cursor.close()
+            db.commit()
+            return jsonify({
+                'success': True,
+                'message': (
+                    f'已更新管理员 {target.get("username", "")} 的邮箱可见范围'
+                    if restricted_enabled else
+                    f'已取消管理员 {target.get("username", "")} 的邮箱范围限制'
+                ),
+                'data': {
+                    'restricted_enabled': restricted_enabled,
+                    'granted_count': len(existing_ids.intersection(requested_ids)) if restricted_enabled else 0,
+                    'granted_group_count': len(existing_group_ids.intersection(requested_group_ids)) if restricted_enabled else 0,
+                }
+            })
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Update admin mailbox access error: {e}")
+            return jsonify({'success': False, 'message': f'保存邮箱范围失败: {str(e)}'}), 500
+
+    try:
+        if db_type == 'sqlite':
+            rows = db.execute('''
+                SELECT ma.id, ma.email, ma.created_by_admin, ma.remarks, ma.status, ma.created_at,
+                       CASE WHEN amp.mailbox_id IS NULL THEN 0 ELSE 1 END AS granted
+                FROM mail_accounts ma
+                LEFT JOIN admin_mailbox_permissions amp
+                  ON amp.mailbox_id = ma.id AND amp.admin_id = ?
+                ORDER BY ma.id ASC
+            ''', (target_admin_id,)).fetchall()
+            mailboxes = [dict(row) for row in rows]
+            group_rows = db.execute('''
+                SELECT mg.id, mg.name, mg.parent_id, mg.created_by_admin,
+                       (SELECT COUNT(DISTINCT mgm.mailbox_id)
+                        FROM mailbox_group_mappings mgm WHERE mgm.group_id = mg.id) AS mailbox_count,
+                       CASE WHEN amgp.group_id IS NULL THEN 0 ELSE 1 END AS granted
+                FROM mailbox_groups mg
+                LEFT JOIN admin_mailbox_group_permissions amgp
+                  ON amgp.group_id = mg.id AND amgp.admin_id = ?
+                ORDER BY mg.sort_order ASC, mg.id ASC
+            ''', (target_admin_id,)).fetchall()
+            groups = [dict(row) for row in group_rows]
+        else:
+            cursor = db.cursor()
+            cursor.execute('''
+                SELECT ma.id, ma.email, ma.created_by_admin, ma.remarks, ma.status, ma.created_at,
+                       CASE WHEN amp.mailbox_id IS NULL THEN 0 ELSE 1 END AS granted
+                FROM mail_accounts ma
+                LEFT JOIN admin_mailbox_permissions amp
+                  ON amp.mailbox_id = ma.id AND amp.admin_id = %s
+                ORDER BY ma.id ASC
+            ''', (target_admin_id,))
+            rows = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            mailboxes = [_row_to_dict(row, columns) for row in rows]
+            cursor.execute('''
+                SELECT mg.id, mg.name, mg.parent_id, mg.created_by_admin,
+                       (SELECT COUNT(DISTINCT mgm.mailbox_id)
+                        FROM mailbox_group_mappings mgm WHERE mgm.group_id = mg.id) AS mailbox_count,
+                       CASE WHEN amgp.group_id IS NULL THEN 0 ELSE 1 END AS granted
+                FROM mailbox_groups mg
+                LEFT JOIN admin_mailbox_group_permissions amgp
+                  ON amgp.group_id = mg.id AND amgp.admin_id = %s
+                ORDER BY mg.sort_order ASC, mg.id ASC
+            ''', (target_admin_id,))
+            group_rows = cursor.fetchall()
+            group_columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            groups = [_row_to_dict(row, group_columns) for row in group_rows]
+            cursor.close()
+
+        target_username = str(target.get('username') or '')
+        for mailbox in mailboxes:
+            mailbox['owned_by_target'] = (
+                str(mailbox.get('created_by_admin') or '').strip().lower() == target_username.strip().lower()
+            )
+        return jsonify({
+            'success': True,
+            'data': {
+                'targets': managed_targets,
+                'target': target,
+                'mailboxes': mailboxes,
+                'groups': groups,
+                'restricted_enabled': bool(safe_int(target.get('restricted_enabled'), 0)),
+                'policy': 'own_plus_granted_mailboxes_and_groups'
+            }
+        })
+    except Exception as e:
+        logger.error(f"Get admin mailbox access error: {e}")
+        return jsonify({'success': False, 'message': f'获取邮箱范围失败: {str(e)}'}), 500
 
 @app.route('/admin/api/system-config', methods=['GET', 'POST'])
 @admin_required
@@ -9817,7 +10938,8 @@ def api_admin_system_config():
                     'admin_login_title': system_config.get('admin_login_title', '管理员登录'),
                     'admin_master_key_set': bool(system_config.get('admin_master_key', '')),
                     'current_admin_id': current_admin_id,
-                    'admin_users': admin_users
+                    'admin_users': admin_users,
+                    'can_manage_mailbox_access': bool(_current_admin_managed_scope_targets(db))
                 }
             })
         except Exception as e:
@@ -9978,6 +11100,9 @@ def _update_admin_account(db, db_type, data):
 
 def _add_admin_account(db, db_type, data):
     """新增后台管理员账号"""
+    if _get_current_admin_mailbox_scope(db):
+        return jsonify({'success': False, 'message': '受限管理员无权新增其他管理员'}), 403
+
     username = data.get('admin_username', '').strip()
     password = data.get('admin_password', '').strip()
 
@@ -10072,6 +11197,13 @@ def _reset_admin_password(db, db_type, data):
             'message': '密码长度至少4位'
         })
 
+    current_admin_id = safe_int(session.get('admin_id'), 0)
+    if _get_current_admin_mailbox_scope(db) and admin_id != current_admin_id:
+        return jsonify({'success': False, 'message': '受限管理员无权重置其他管理员密码'}), 403
+
+    if _is_admin_mailbox_scope_manager(db, admin_id) and admin_id != current_admin_id:
+        return jsonify({'success': False, 'message': '邮箱范围控制人的密码只能由本人修改'}), 403
+
     try:
         hashed_password = generate_password_hash(new_password)
 
@@ -10139,6 +11271,12 @@ def _delete_admin_account(db, db_type, data):
             'success': False,
             'message': '不能删除当前登录的管理员'
         })
+
+    if _get_current_admin_mailbox_scope(db):
+        return jsonify({'success': False, 'message': '受限管理员无权删除其他管理员'}), 403
+
+    if _is_admin_mailbox_scope_manager(db, admin_id):
+        return jsonify({'success': False, 'message': '邮箱范围控制人不能被其他管理员删除'}), 403
 
     try:
         if db_type == 'sqlite':
@@ -10396,12 +11534,24 @@ def _update_admin_master_key(db, db_type, data):
                 ''', (hashed_key, now, now))
         
         db.commit()
+
+        # 提交后立即从实际配置读取并校验，避免仅凭 SQL 未抛错就向前端报告成功。
+        if not verify_admin_master_key(new_key):
+            logger.error("Admin master key read-back verification failed")
+            return jsonify({
+                'success': False,
+                'message': '万能秘钥写入后校验失败，请检查数据库持久化配置'
+            }), 500
         
         logger.info("Admin master key updated")
         
         return jsonify({
             'success': True,
-            'message': '管理员万能秘钥已更新'
+            'message': '管理员万能秘钥已保存并验证',
+            'data': {
+                'admin_master_key_set': True,
+                'verified': True
+            }
         })
     except Exception as e:
         logger.error(f"Update admin master key error: {e}")

@@ -63,6 +63,12 @@
         min-width: 112px;
         background: #fff !important;
     }
+
+    /* The public page is embedded by the React shell. Base embedded styles hide
+       legacy page chrome, but the language switcher must remain user-facing. */
+    body.frontend-mail-page.embedded-view #i18nLanguageSwitcher {
+        display: flex !important;
+    }
     
     .header {
         text-align: center;
@@ -113,11 +119,8 @@
     }
     
     .control-row {
-        display: grid;
-        grid-template-columns: minmax(260px, 340px) minmax(520px, 1fr);
-        gap: 12px;
+        display: block;
         margin-bottom: 16px;
-        align-items: start;
     }
     
     .control-block {
@@ -1149,7 +1152,7 @@
     #frontendApp .control-row {
         flex: 0 0 auto;
         display: grid;
-        grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
         gap: 12px;
         margin: 0 0 12px !important;
         align-items: stretch;
@@ -1863,6 +1866,441 @@
             animation: none !important;
         }
     }
+
+    /* ------------------------------------------------ 2026 前台视觉刷新 */
+    body.frontend-mail-page {
+        color: #292722;
+        background:
+            radial-gradient(circle at 12% 8%, rgba(240, 191, 143, 0.22), transparent 28%),
+            radial-gradient(circle at 88% 2%, rgba(118, 155, 205, 0.14), transparent 30%),
+            linear-gradient(180deg, #f8f6f1 0%, #f3f1eb 100%) !important;
+    }
+
+    body.frontend-mail-page #bgCanvas {
+        opacity: 0.42;
+    }
+
+    body.frontend-mail-page #frontendApp {
+        max-width: 1480px;
+    }
+
+    #frontendApp .frontend-topbar {
+        position: relative;
+        z-index: 80;
+        flex-basis: 66px;
+        height: 66px;
+        max-height: 66px;
+        min-height: 66px;
+        margin-bottom: 14px;
+    }
+
+    #frontendApp .header {
+        gap: 12px;
+    }
+
+    #frontendApp .frontend-brand-mark {
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        color: #fff;
+        background: linear-gradient(145deg, #d67a55 0%, #b94d32 100%);
+        box-shadow: 0 10px 24px rgba(185, 77, 50, 0.23);
+    }
+
+    #frontendApp .frontend-brand-mark svg {
+        width: 23px;
+        height: 23px;
+        fill: currentColor;
+    }
+
+    #frontendApp .frontend-brand-copy {
+        min-width: 0;
+        text-align: left;
+    }
+
+    #frontendApp .header h1 {
+        margin: 0 !important;
+        color: #292722 !important;
+        font-size: clamp(22px, 2vw, 27px);
+        font-weight: 720;
+        letter-spacing: -0.03em;
+    }
+
+    #frontendApp .frontend-subtitle {
+        margin: 4px 0 0;
+        color: #817b70;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.3;
+        white-space: nowrap;
+    }
+
+    #frontendApp .frontend-top-actions .i18n-switcher--icon {
+        width: 44px;
+        min-width: 44px !important;
+        height: 44px;
+        min-height: 44px;
+        padding: 0 !important;
+        border: 1px solid rgba(86, 78, 65, 0.13);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.82) !important;
+        box-shadow: 0 8px 24px rgba(60, 53, 43, 0.08);
+        backdrop-filter: blur(16px);
+    }
+
+    #frontendApp .frontend-top-actions .i18n-switcher--icon:hover {
+        border-color: rgba(185, 77, 50, 0.35);
+        transform: translateY(-1px);
+        box-shadow: 0 10px 26px rgba(60, 53, 43, 0.12);
+    }
+
+    #frontendApp .frontend-top-actions .i18n-language-menu {
+        top: calc(100% + 9px);
+        width: 208px;
+    }
+
+    #frontendApp .mail-input-card {
+        padding: 16px !important;
+        border: 1px solid rgba(107, 96, 78, 0.12) !important;
+        border-radius: 20px !important;
+        background: rgba(255, 255, 255, 0.82) !important;
+        box-shadow: 0 18px 48px rgba(58, 49, 37, 0.09) !important;
+        backdrop-filter: blur(18px);
+    }
+
+    #frontendApp .control-row {
+        margin-bottom: 14px !important;
+    }
+
+    #frontendApp .query-control-block {
+        grid-template-columns: minmax(0, 1fr) 132px 150px;
+        padding: 16px !important;
+        gap: 9px 12px;
+        border: 1px solid rgba(185, 77, 50, 0.12) !important;
+        border-radius: 16px !important;
+        background:
+            radial-gradient(circle at 100% 0%, rgba(235, 182, 139, 0.17), transparent 34%),
+            linear-gradient(135deg, rgba(255, 252, 247, 0.98), rgba(250, 247, 240, 0.92)) !important;
+    }
+
+    #frontendApp .query-input-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #34312b !important;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    #frontendApp .query-label-icon {
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        color: #b94d32;
+        background: rgba(185, 77, 50, 0.1);
+    }
+
+    #frontendApp .query-label-icon svg {
+        width: 14px;
+        height: 14px;
+        fill: currentColor;
+    }
+
+    #frontendApp .highlight-input {
+        color: #302d27;
+        border-color: rgba(99, 89, 74, 0.17) !important;
+        background: rgba(255, 255, 255, 0.94) !important;
+        box-shadow: 0 1px 2px rgba(48, 41, 32, 0.03) !important;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    #frontendApp .highlight-input:hover {
+        border-color: rgba(185, 77, 50, 0.32) !important;
+    }
+
+    #frontendApp .highlight-input:focus {
+        border-color: #c96442 !important;
+        background: #fff !important;
+        box-shadow: 0 0 0 4px rgba(201, 100, 66, 0.1) !important;
+    }
+
+    #frontendApp .email-query-input {
+        height: 58px;
+        min-height: 58px;
+        max-height: 58px;
+        padding: 10px 13px !important;
+    }
+
+    #frontendApp .query-count-field label {
+        color: #817b70 !important;
+    }
+
+    #frontendApp .query-control-block .get-mail-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 46px !important;
+        margin-top: 27px !important;
+        border: 0 !important;
+        color: #fff !important;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        background: linear-gradient(135deg, #d36f4a 0%, #b94d32 100%) !important;
+        box-shadow: 0 10px 22px rgba(185, 77, 50, 0.22) !important;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    }
+
+    #frontendApp .query-control-block .get-mail-btn:hover {
+        transform: translateY(-1px) !important;
+        filter: saturate(1.08);
+        box-shadow: 0 13px 26px rgba(185, 77, 50, 0.28) !important;
+    }
+
+    #frontendApp .query-control-block .get-mail-btn:active {
+        transform: translateY(0) !important;
+    }
+
+    #frontendApp .query-control-block .get-mail-btn .anticon,
+    #frontendApp .query-control-block .get-mail-btn svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+    }
+
+    #frontendApp .query-hint {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #817b70;
+    }
+
+    #frontendApp .query-hint .query-hint-icon,
+    #frontendApp .query-hint svg {
+        width: 15px;
+        height: 15px;
+        flex: 0 0 15px;
+        color: #8b9a72;
+        fill: currentColor;
+    }
+
+    #frontendApp .query-hint .query-hint-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #frontendApp .folder-panel {
+        min-height: 58px;
+        padding: 8px 10px !important;
+        border-color: rgba(107, 96, 78, 0.12) !important;
+        border-radius: 15px !important;
+        background: rgba(249, 247, 242, 0.88) !important;
+    }
+
+    #frontendApp .folder-heading {
+        color: #756f64;
+    }
+
+    #frontendApp .folder-btn {
+        min-height: 42px;
+        border-color: transparent;
+        border-radius: 11px;
+        color: #5f5a51;
+        background: transparent;
+        transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    #frontendApp .folder-btn:hover {
+        color: #b94d32;
+        background: rgba(255, 255, 255, 0.75);
+        transform: translateY(-1px);
+    }
+
+    #frontendApp .folder-btn.active {
+        color: #b94d32 !important;
+        border-color: rgba(185, 77, 50, 0.18) !important;
+        background: #fff !important;
+        box-shadow: 0 5px 16px rgba(63, 53, 41, 0.08) !important;
+    }
+
+    #frontendApp .mail-list-panel {
+        padding: 14px !important;
+        border: 1px solid rgba(107, 96, 78, 0.12) !important;
+        border-radius: 16px !important;
+        background: rgba(255, 255, 255, 0.94) !important;
+    }
+
+    #frontendApp .mail-list-wrapper {
+        border: 1px solid rgba(107, 96, 78, 0.1);
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    #frontendApp .mail-table th {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        color: #756f64;
+        background: #f8f6f1 !important;
+        border-bottom-color: rgba(107, 96, 78, 0.11);
+    }
+
+    #frontendApp .mail-table td {
+        color: #454139;
+        border-bottom-color: rgba(107, 96, 78, 0.08);
+    }
+
+    #frontendApp .mail-table tbody tr:not(:has(.mail-list-empty)) {
+        transition: background 0.16s ease, transform 0.16s ease;
+    }
+
+    #frontendApp .mail-table tbody tr:not(:has(.mail-list-empty)):hover {
+        background: #fff9f5;
+    }
+
+    #frontendApp .mail-list-empty {
+        height: 118px;
+        color: #9a958b;
+        text-align: center;
+    }
+
+    #frontendApp .mail-list-empty::before {
+        content: '✉';
+        display: block;
+        margin: 0 auto 8px;
+        color: #c9c2b6;
+        font-size: 24px;
+        line-height: 1;
+    }
+
+    #frontendApp .mail-pagination {
+        margin-top: 10px;
+        padding: 10px 2px 0;
+        border-top: 1px solid rgba(107, 96, 78, 0.08);
+    }
+
+    @media (max-width: 900px) {
+        #frontendApp .frontend-topbar {
+            flex-basis: 60px;
+            height: 60px;
+            max-height: 60px;
+            min-height: 60px;
+        }
+
+        #frontendApp .query-control-block {
+            grid-template-columns: minmax(0, 1fr) 124px;
+            grid-template-areas:
+                "label label"
+                "email email"
+                "count button"
+                "hint hint";
+        }
+
+        #frontendApp .query-control-block .get-mail-btn {
+            margin-top: 27px !important;
+        }
+    }
+
+    @media (max-width: 560px) {
+        body.frontend-mail-page {
+            padding: 8px !important;
+        }
+
+        #frontendApp .frontend-topbar {
+            flex-basis: 54px;
+            height: 54px;
+            max-height: 54px;
+            min-height: 54px;
+            margin-bottom: 8px;
+        }
+
+        #frontendApp .frontend-brand-mark {
+            width: 38px;
+            height: 38px;
+            flex-basis: 38px;
+            border-radius: 12px;
+        }
+
+        #frontendApp .frontend-brand-mark svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        #frontendApp .header {
+            gap: 9px;
+        }
+
+        #frontendApp .header h1 {
+            font-size: 18px;
+        }
+
+        #frontendApp .frontend-subtitle {
+            display: none;
+        }
+
+        #frontendApp .frontend-top-actions .i18n-switcher--icon {
+            width: 40px;
+            min-width: 40px !important;
+            height: 40px;
+            min-height: 40px;
+            border-radius: 12px;
+        }
+
+        #frontendApp .frontend-top-actions .i18n-language-menu {
+            right: -1px;
+            width: min(208px, calc(100vw - 24px));
+        }
+
+        #frontendApp .mail-input-card {
+            padding: 9px !important;
+            border-radius: 16px !important;
+        }
+
+        #frontendApp .query-control-block {
+            grid-template-columns: 1fr;
+            grid-template-areas:
+                "label"
+                "email"
+                "count"
+                "button"
+                "hint";
+            padding: 13px !important;
+            border-radius: 14px !important;
+        }
+
+        #frontendApp .email-query-input {
+            height: 82px;
+            min-height: 82px;
+            max-height: 82px;
+        }
+
+        #frontendApp .query-control-block .get-mail-btn {
+            height: 48px !important;
+            margin-top: 0 !important;
+        }
+
+        #frontendApp .query-hint {
+            align-items: flex-start;
+            line-height: 1.55;
+        }
+
+        #frontendApp .folder-panel {
+            border-radius: 13px !important;
+        }
+
+        #frontendApp .mail-list-panel {
+            padding: 9px !important;
+            border-radius: 14px !important;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -1875,7 +2313,11 @@
     <div class="container frontend-shell" id="frontendApp">
         <div class="frontend-topbar">
             <div class="header">
-                <h1><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span> 邮件查看系统</h1>
+                <span class="frontend-brand-mark" aria-hidden="true"><svg><use href="#ai-mail"></use></svg></span>
+                <div class="frontend-brand-copy">
+                    <h1>邮件查看系统</h1>
+                    <p class="frontend-subtitle">输入后台邮箱地址，即刻查看最新邮件</p>
+                </div>
             </div>
             <div class="frontend-top-actions header-actions" aria-label="页面操作">
                 <span class="user-info" aria-hidden="true"></span>
@@ -1884,37 +2326,31 @@
     
     <div class="mail-input-card">
             <div class="control-row">
-                <div class="control-block master-key-block">
-                    <label for="masterKeyInput">卡密 / 管理员万能秘钥</label>
-                    <div class="secure-input">
-                        <input type="text" id="masterKeyInput" class="form-control highlight-input short-master-key" placeholder="请输入卡密或管理员万能秘钥">
-                    </div>
-                </div>
                 <div class="control-block query-control-block">
-                    <label for="emailInput" class="query-input-label">邮箱查询（填写卡密后可留空）</label>
-                    <textarea id="emailInput" class="highlight-input email-query-input" placeholder="选填：留空则自动查询卡密绑定的邮箱；也可输入邮箱地址，支持多个自动识别：user@example.com&#10;test@example.com, demo@example.com"></textarea>
+                    <label for="emailInput" class="query-input-label">
+                        <span class="query-label-icon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
+                        <span>邮箱查询</span>
+                    </label>
+                    <textarea id="emailInput" class="highlight-input email-query-input" placeholder="请输入邮局后台已添加的邮箱地址，支持多个自动识别：user@example.com&#10;test@example.com, demo@example.com"></textarea>
                     <div class="query-count-field">
                         <label for="emailCountInput">每个邮箱收取</label>
                         <input type="number" id="emailCountInput" class="form-control count-input highlight-input" min="1" max="100" value="10" placeholder="10">
                     </div>
-                    <button class="get-mail-btn" onclick="getMail()">获取邮件</button>
-                    <div class="query-hint">填写卡密可自动查询绑定邮箱；也可直接输入邮箱地址（支持换行、逗号、空格、竖线分隔）；默认每个邮箱查询 10 封。</div>
+                    <button class="get-mail-btn" onclick="getMail()">
+                        <span class="anticon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
+                        <span>获取邮件</span>
+                    </button>
+                    <div class="query-hint">
+                        <span class="query-hint-icon" aria-hidden="true"><svg><use href="#ai-safety-certificate"></use></svg></span>
+                        <span>无需卡密或密钥，输入邮局后台已添加的邮箱即可查询；支持换行、逗号、空格、竖线分隔，默认每个邮箱查询 10 封。</span>
+                    </div>
                 </div>
             </div>
-
-        <div class="card-status-panel" id="cardStatusPanel" hidden>
-            <span class="card-status-badge" id="cardStatusBadge">有效</span>
-            <div class="card-status-metrics">
-                <span class="card-status-metric">剩余次数 <b id="cardRemainingUses">-</b> / <b id="cardTotalUses">-</b></span>
-                <span class="card-status-metric">有效期至 <b id="cardExpiry">-</b></span>
-            </div>
-            <div class="card-usage-track" aria-hidden="true"><div class="card-usage-bar" id="cardUsageBar"></div></div>
-        </div>
 
         <div class="mailbox-switcher" id="mailboxSwitcher" hidden>
             <div class="mailbox-switcher-title">
                 <span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span>
-                <span>绑定邮箱</span>
+                <span>查询邮箱</span>
                 <span class="mailbox-total" id="mailboxTotal"></span>
             </div>
             <div class="mailbox-chip-list" id="mailboxChipList" role="tablist" aria-label="邮箱切换"></div>
@@ -2030,7 +2466,6 @@
         mails: [], folder: 'inbox', page: 1, perPage: 10, activeMailId: null,
         mailboxes: [],        // 本次查询涉及的邮箱（小写）
         activeMailbox: 'all', // 'all' 或某个邮箱地址（小写）
-        cardStatus: null,     // /api/card_info 的最近一次响应
         animateNextRender: false // 新查询后首次渲染播放入场动效
     };
     const REQUEST_FOLDER_MAP = { inbox: 'INBOX', trash: 'Trash' };
@@ -2224,65 +2659,13 @@
         }
     }
 
-    async function fetchCardInfo(cardKey) {
-        const response = await fetch('/api/card_info', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ card_key: cardKey })
-        });
-        return response.json();
-    }
-
-    const CARD_STATUS_META = {
-        valid: { label: '有效', className: 'is-valid' },
-        disabled: { label: '已禁用', className: 'is-disabled' },
-        expired: { label: '已过期', className: 'is-expired' },
-        exhausted: { label: '次数已用完', className: 'is-exhausted' }
-    };
-
-    function hideCardStatus() {
-        const panel = document.getElementById('cardStatusPanel');
-        if (panel) panel.hidden = true;
-    }
-
-    function renderCardStatus(data) {
-        const panel = document.getElementById('cardStatusPanel');
-        if (!panel || !data || !data.card_info) {
-            hideCardStatus();
-            return;
-        }
-        const meta = CARD_STATUS_META[data.status] || { label: data.message || '未知', className: 'is-disabled' };
-        const badge = document.getElementById('cardStatusBadge');
-        badge.textContent = meta.label;
-        badge.className = `card-status-badge ${meta.className}`;
-        panel.hidden = false;
-        updateCardUsage(data.card_info);
-    }
-
-    function updateCardUsage(cardInfo) {
-        if (!cardInfo) return;
-        const total = cardInfo.total_uses ?? 0;
-        const used = cardInfo.used_count ?? 0;
-        const remaining = cardInfo.remaining_uses ?? Math.max(total - used, 0);
-        const remainingEl = document.getElementById('cardRemainingUses');
-        const totalEl = document.getElementById('cardTotalUses');
-        const expiryEl = document.getElementById('cardExpiry');
-        const barEl = document.getElementById('cardUsageBar');
-        if (remainingEl) remainingEl.textContent = String(remaining);
-        if (totalEl) totalEl.textContent = String(total);
-        if (expiryEl) expiryEl.textContent = cardInfo.expired_at || '永久有效';
-        if (barEl) barEl.style.width = total > 0 ? `${Math.min(used / total * 100, 100)}%` : '0%';
-    }
-
     function renderMailboxList() {
         const switcher = document.getElementById('mailboxSwitcher');
         const chipList = document.getElementById('mailboxChipList');
         if (!switcher || !chipList) return;
 
         const mailboxes = mailState.mailboxes;
-        const usedCard = Boolean(mailState.cardStatus && mailState.cardStatus.card_info);
-        if (mailboxes.length === 0 || (mailboxes.length <= 1 && !usedCard)) {
+        if (mailboxes.length <= 1) {
             switcher.hidden = true;
             chipList.innerHTML = '';
             return;
@@ -2375,16 +2758,14 @@
     
     async function getMail() {
         const emailInput = document.getElementById('emailInput');
-        const masterKeyInput = document.getElementById('masterKeyInput');
         const mailDisplay = document.getElementById('mailDisplay');
         const emailCountInput = document.getElementById('emailCountInput');
         
         const emails = parseEmailsFromInput(emailInput.value);
-        const accessKey = (masterKeyInput?.value || '').trim();
         const emailLimit = Math.min(Math.max(parseInt(emailCountInput.value, 10) || 10, 1), 100);
         
-        if (emails.length === 0 && !accessKey) {
-            showToast('请输入卡密或邮箱地址', 'error');
+        if (emails.length === 0) {
+            showToast('请输入邮箱地址', 'error');
             return;
         }
         
@@ -2397,69 +2778,7 @@
         toggleLoading(true);
         
         try {
-            let queryEmails = emails;
-
-            if (accessKey) {
-                // 查询卡密状态与绑定邮箱（万能秘钥会返回 not_found，不影响手输邮箱流程）
-                let cardData = null;
-                try {
-                    cardData = await fetchCardInfo(accessKey);
-                } catch (error) {
-                    console.error('卡密查询失败:', error);
-                }
-                mailState.cardStatus = cardData;
-
-                if (cardData && cardData.card_info) {
-                    renderCardStatus(cardData);
-                } else {
-                    hideCardStatus();
-                }
-
-                if (emails.length === 0) {
-                    // 仅卡密查询：由卡密解析绑定邮箱
-                    if (!cardData || cardData.status === 'not_found' || cardData.status === 'error') {
-                        showToast('卡密不存在；若为管理员万能秘钥，请同时填写邮箱地址', 'error', 5000);
-                        return;
-                    }
-                    if (cardData.status !== 'valid') {
-                        showToast(cardData.message || '卡密不可用', 'error', 5000);
-                        return;
-                    }
-                    const boundEmails = [...new Set((cardData.bound_emails || [])
-                        .map(item => (item.email || '').trim().toLowerCase())
-                        .filter(Boolean))];
-                    if (boundEmails.length === 0) {
-                        showToast('该卡密未绑定邮箱，请输入要查询的邮箱地址', 'warning', 5000);
-                        return;
-                    }
-                    queryEmails = boundEmails;
-                    const remaining = cardData.card_info?.remaining_uses;
-                    if (typeof remaining === 'number' && queryEmails.length > remaining) {
-                        queryEmails = queryEmails.slice(0, remaining);
-                        showToast(`剩余次数不足以查询全部绑定邮箱，本次仅查询前 ${remaining} 个`, 'warning', 5000);
-                    }
-                    if (queryEmails.length > 50) {
-                        queryEmails = queryEmails.slice(0, 50);
-                        showToast('绑定邮箱超过 50 个，本次仅查询前 50 个', 'warning', 5000);
-                    }
-                }
-            } else {
-                mailState.cardStatus = null;
-                hideCardStatus();
-            }
-
-            const loginResponse = await fetch('/api/check_login', {
-                method: 'GET',
-                credentials: 'same-origin'
-            });
-            
-            const loginData = await loginResponse.json();
-            
-            if (loginData.logged_in && !accessKey) {
-                showToast('已检测到管理员登录状态，免卡密访问', 'info', 3000);
-            } else if (!accessKey) {
-                showToast('您尚未登录管理员账户，请使用卡密或万能秘钥访问', 'warning', 4000);
-            }
+            const queryEmails = emails;
 
             const requestFolder = REQUEST_FOLDER_MAP[mailState.folder] || 'INBOX';
             const fetchResults = await mapWithConcurrency(queryEmails, 3, async (email) => {
@@ -2469,18 +2788,6 @@
                     email_limit: emailLimit,
                     folder: requestFolder
                 };
-
-                if (accessKey) {
-                    // The same input accepts either credential. The backend validates
-                    // the master key first and otherwise treats it as a regular card.
-                    requestData.master_key = accessKey;
-                    requestData.card_key = accessKey;
-                    requestData.admin_access = true;
-                }
-
-                if (loginData.logged_in && !accessKey) {
-                    requestData.admin_access = true;
-                }
 
                 const response = await fetch('/api/get_mail', {
                     method: 'POST',
@@ -2497,7 +2804,6 @@
             
             const fetchedMails = [];
             const errorMessages = [];
-            let minCardInfo = null;
 
             fetchResults.forEach(result => {
                 if (result.status === 'rejected') {
@@ -2506,12 +2812,6 @@
                 }
 
                 const { email, data } = result.value;
-                if (data.card_info) {
-                    // 并发响应取剩余次数最小者，保证展示的余量不虚高
-                    if (!minCardInfo || (data.card_info.remaining_uses ?? Infinity) < (minCardInfo.remaining_uses ?? Infinity)) {
-                        minCardInfo = data.card_info;
-                    }
-                }
                 if (data.success) {
                     const items = data.mails || (data.mail ? [data.mail] : []);
                     items.forEach(item => fetchedMails.push({
@@ -2525,8 +2825,6 @@
                     errorMessages.push(`${email}：${message}`);
                 }
             });
-
-            if (minCardInfo) updateCardUsage(minCardInfo);
 
             if (fetchedMails.length === 0) {
                 mailState.mails = [];
