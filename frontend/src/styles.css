@@ -291,6 +291,13 @@ body {
     padding: 8px;
   }
 
+  .admin-header > .ant-btn:first-child {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
   .admin-title {
     min-width: 0;
     flex-direction: column;
@@ -303,7 +310,7 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 18px;
+    font-size: 20px;
   }
 
   .admin-title .ant-typography-secondary {
@@ -323,9 +330,9 @@ body {
   .admin-actions .react-color-theme-button,
   .admin-actions .react-language-button,
   .admin-actions .ant-space-item:last-child .ant-btn {
-    width: 38px !important;
-    min-width: 38px !important;
-    height: 38px !important;
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
     padding: 0 !important;
   }
 
@@ -351,6 +358,12 @@ body {
     overflow-y: auto;
   }
 
+  .admin-mobile-drawer .ant-menu-item {
+    min-height: 46px;
+    line-height: 46px;
+    font-size: 16px;
+  }
+
   .admin-mobile-brand {
     height: 64px;
     border-bottom: 1px solid #e7e4db;
@@ -365,15 +378,16 @@ body {
   }
 
   .admin-title h4.ant-typography {
-    font-size: 16px;
+    font-size: 18px;
   }
 
+  .admin-header > .ant-btn:first-child,
   .admin-actions .react-color-theme-button,
   .admin-actions .react-language-button,
   .admin-actions .ant-space-item:last-child .ant-btn {
-    width: 34px !important;
-    min-width: 34px !important;
-    height: 34px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
   }
 }
 

@@ -1432,6 +1432,10 @@
         justify-content: center;
     }
 
+    .mobile-only-action {
+        display: none !important;
+    }
+
     /* Add explicit height for scrollable card body aligned to page bottom */
     .scroll-card-body {
         height: auto;
@@ -2813,17 +2817,49 @@
         }
 
         .search-box {
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr) 48px 48px;
+            gap: 7px;
+            padding: 6px;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 4px 14px rgba(47, 42, 36, 0.05);
         }
 
         .search-box input,
         .search-box select {
-            grid-column: 1 / -1;
+            grid-column: auto;
+            min-height: 48px;
+            padding: 0 10px;
+            border: 0;
+            border-radius: 10px;
+            font-size: 16px;
+            box-shadow: none;
+        }
+
+        .search-box input:focus,
+        .search-box select:focus {
+            transform: none;
+            border-color: transparent;
+            box-shadow: 0 0 0 3px rgba(201, 100, 66, 0.12);
         }
 
         .search-box .btn {
-            width: 100%;
+            width: 48px;
+            min-width: 48px;
+            min-height: 48px;
+            padding: 0;
+            border-radius: 11px;
             justify-content: center;
+        }
+
+        .search-box .btn .anticon {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .search-button-label {
+            display: none;
         }
 
         .toolbar-row {
@@ -2844,22 +2880,24 @@
         }
 
         .toolbar-row .button-group > .column-config {
-            grid-column: 1 / -1;
+            display: none !important;
         }
 
         .toolbar-row .button-group .au-dropdown-toggle,
         .toolbar-row .button-group .group-panel-toggle,
         .toolbar-row .button-group .column-config-toggle {
             width: 100%;
-            min-height: 42px;
+            min-height: 46px;
             justify-content: center;
+            font-size: 15px;
         }
 
         .admin-summary {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 6px 12px;
-            padding: 10px 12px;
+            padding: 11px 12px;
+            font-size: 15px;
         }
 
         .admin-summary span {
@@ -2867,6 +2905,11 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .admin-summary-admin,
+        .admin-summary-selected {
+            display: none !important;
         }
 
         .group-panel {
@@ -2881,7 +2924,7 @@
 
         .column-config,
         .column-config-toggle {
-            width: 100%;
+            display: none !important;
         }
 
         .mail-panel .table-container {
@@ -2915,11 +2958,12 @@
         }
 
         #mailboxTable tbody tr {
-            padding: 12px 13px;
+            padding: 13px 14px;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
             background: #fff;
             box-shadow: 0 4px 14px rgba(47, 42, 36, 0.05);
+            font-size: 16px;
         }
 
         #mailboxTable tbody tr:hover,
@@ -2929,30 +2973,33 @@
 
         #mailboxTable td {
             display: grid;
-            grid-template-columns: 76px minmax(0, 1fr);
+            grid-template-columns: 82px minmax(0, 1fr);
             gap: 10px;
             align-items: start;
-            padding: 6px 0 !important;
+            padding: 7px 0 !important;
             border-bottom: 0 !important;
             white-space: normal !important;
+            font-size: 16px;
+            line-height: 1.5;
         }
 
         #mailboxTable td::before {
             content: attr(data-label);
             color: #6b7280;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
-            line-height: 1.45;
+            line-height: 1.5;
         }
 
         #mailboxTable td.mailbox-col-select {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            display: none !important;
         }
 
-        #mailboxTable td.mailbox-col-select::before {
-            content: attr(data-label);
+        #mailboxTable td.mailbox-col-created_at,
+        #mailboxTable td.mailbox-col-updated_at,
+        #mailboxTable td.mailbox-col-created_by_admin,
+        #mailboxTable td.mailbox-col-group {
+            display: none !important;
         }
 
         #mailboxTable td.mailbox-col-actions {
@@ -2975,6 +3022,7 @@
             text-overflow: clip;
             overflow-wrap: anywhere;
             word-break: break-word;
+            font-size: 16px;
         }
 
         .mailbox-actions {
@@ -2986,18 +3034,53 @@
 
         .mailbox-actions .btn-small,
         .mailbox-actions-more {
-            flex: 1 1 calc(50% - 8px);
+            flex: 1 1 calc(33.333% - 6px);
         }
 
         .mailbox-actions .btn-small {
             width: 100%;
-            min-height: 36px;
+            min-height: 44px;
+            padding: 8px 10px;
+            font-size: 15px;
+        }
+
+        .mailbox-actions .btn-small.desktop-priority-action {
+            display: none !important;
+        }
+
+        .mailbox-actions .mobile-only-action {
+            display: inline-flex !important;
+        }
+
+        .mailbox-actions-more {
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .mailbox-actions-more > .btn-small {
+            flex: 0 0 auto;
+            width: 100%;
+        }
+
+        .mailbox-actions-more.open {
+            flex-basis: 100%;
         }
 
         .mailbox-more-menu {
-            left: 0;
-            right: auto;
-            min-width: 120px;
+            position: static;
+            width: 100%;
+            min-width: 0;
+            margin-top: 8px;
+            padding: 8px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            border-radius: 10px;
+            box-shadow: none;
+            background: #f8fafc;
+        }
+
+        .mailbox-more-menu .btn-small {
+            min-width: 0;
+            min-height: 42px;
         }
 
         .pagination-container {
@@ -3026,24 +3109,7 @@
         }
 
         .au-bulk-bar {
-            bottom: 8px;
-            width: calc(100vw - 16px);
-            max-width: none;
-            padding: 10px;
-            gap: 7px;
-            border-radius: 14px;
-        }
-
-        .au-bulk-bar .au-bulk-count {
-            flex: 1 1 100%;
-            text-align: center;
-        }
-
-        .au-bulk-bar .btn {
-            flex: 1 1 calc(50% - 7px);
-            min-width: 0;
-            min-height: 38px;
-            padding-inline: 8px;
+            display: none !important;
         }
     }
 
@@ -3175,16 +3241,16 @@
                                 </div>
                             </div>
                             <div class="admin-summary" id="mailboxAdminSummary">
-                                <span>管理员：<strong>{{ admin_username }}</strong></span>
+                                <span class="admin-summary-admin">管理员：<strong>{{ admin_username }}</strong></span>
                                 <span>当前分组：<strong id="adminCurrentGroup">所有分组</strong></span>
                                 <span>邮箱：<strong id="adminMailboxCount">0</strong></span>
-                                <span>已选：<strong id="adminSelectedCount">0</strong></span>
+                                <span class="admin-summary-selected">已选：<strong id="adminSelectedCount">0</strong></span>
                             </div>
 	                            <div class="search-controls">
 	                                <div class="search-box">
 	                                    <input type="text" id="searchInput" placeholder="搜索邮箱地址或服务器..." onkeyup="searchMailboxes()">
-	                                    <button class="btn btn-primary" onclick="searchMailboxes()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 搜索</button>
-	                                    <button class="btn btn-danger" onclick="clearMailboxSearch()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 清除</button>
+	                                    <button class="btn btn-primary" type="button" aria-label="搜索邮箱" title="搜索" onclick="searchMailboxes()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span><span class="search-button-label">搜索</span></button>
+	                                    <button class="btn btn-danger" type="button" aria-label="清除搜索" title="清除" onclick="clearMailboxSearch()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span><span class="search-button-label">清除</span></button>
 	                                </div>
                             </div>
                         </div>
@@ -4485,13 +4551,15 @@
                     <div class="mailbox-actions">
                         <button class="btn btn-success btn-small" data-action="edit" data-mailbox-id="${mailbox.id}">编辑</button>
                         <button class="btn btn-primary btn-small" data-action="receive" data-mailbox-id="${mailbox.id}">收件</button>
-                        <button class="btn btn-primary btn-small" data-action="test" data-mailbox-id="${mailbox.id}">测试</button>
-                        <button class="btn btn-danger btn-small" data-action="delete" data-mailbox-id="${mailbox.id}">删除</button>
+                        <button class="btn btn-primary btn-small desktop-priority-action" data-action="test" data-mailbox-id="${mailbox.id}">测试</button>
+                        <button class="btn btn-danger btn-small desktop-priority-action" data-action="delete" data-mailbox-id="${mailbox.id}">删除</button>
                         <span class="mailbox-actions-more">
                             <button class="btn btn-secondary btn-small" type="button" data-action="more" data-mailbox-id="${mailbox.id}" aria-haspopup="true" aria-expanded="false">更多</button>
                             <span class="mailbox-more-menu" role="menu">
                                 <button class="btn btn-success btn-small" type="button" data-action="remarks" data-mailbox-id="${mailbox.id}">备注</button>
                                 <button class="btn btn-primary btn-small" type="button" data-action="send" data-mailbox-id="${mailbox.id}">发件</button>
+                                <button class="btn btn-primary btn-small mobile-only-action" type="button" data-action="test" data-mailbox-id="${mailbox.id}">测试</button>
+                                <button class="btn btn-danger btn-small mobile-only-action" type="button" data-action="delete" data-mailbox-id="${mailbox.id}">删除</button>
                             </span>
                         </span>
                     </div>
@@ -5815,7 +5883,8 @@
 
     function getTestButton(id) {
         if (id) {
-            return document.querySelector(`.mailbox-actions .btn-small[data-action="test"][data-mailbox-id="${id}"]`);
+            const buttons = Array.from(document.querySelectorAll(`.mailbox-actions .btn-small[data-action="test"][data-mailbox-id="${id}"]`));
+            return buttons.find(button => button.offsetParent !== null) || buttons[0] || null;
         }
         return document.getElementById('testBtn');
     }

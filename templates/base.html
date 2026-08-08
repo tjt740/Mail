@@ -462,9 +462,21 @@
             box-shadow: none;
         }
         @media (max-width: 640px) {
+            body.embedded-view {
+                font-size: 16px !important;
+            }
             body.embedded-view .content {
                 padding: 8px !important;
                 overflow: visible !important;
+            }
+            body.embedded-view input,
+            body.embedded-view select,
+            body.embedded-view textarea {
+                font-size: 16px !important;
+            }
+            body.embedded-view .btn {
+                min-height: 44px;
+                font-size: 15px;
             }
             body.embedded-view .main-content {
                 height: auto !important;
