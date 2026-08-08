@@ -2212,6 +2212,7 @@
     @media (max-width: 560px) {
         body.frontend-mail-page {
             padding: 8px !important;
+            font-size: 16px;
         }
 
         #frontendApp .frontend-topbar {
@@ -2239,7 +2240,7 @@
         }
 
         #frontendApp .header h1 {
-            font-size: 18px;
+            font-size: 20px;
         }
 
         #frontendApp .frontend-subtitle {
@@ -2276,24 +2277,46 @@
             border-radius: 14px !important;
         }
 
+        #frontendApp .query-input-label {
+            font-size: 16px;
+        }
+
         #frontendApp .email-query-input {
             height: 82px;
             min-height: 82px;
             max-height: 82px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        #frontendApp .query-count-field label {
+            font-size: 14px;
+        }
+
+        #frontendApp .query-count-field input {
+            min-height: 46px;
+            font-size: 16px;
         }
 
         #frontendApp .query-control-block .get-mail-btn {
-            height: 48px !important;
+            height: 50px !important;
             margin-top: 0 !important;
+            font-size: 16px;
         }
 
         #frontendApp .query-hint {
             align-items: flex-start;
             line-height: 1.55;
+            font-size: 14px;
         }
 
         #frontendApp .folder-panel {
             border-radius: 13px !important;
+        }
+
+        #frontendApp .folder-btn {
+            min-height: 46px;
+            font-size: 15px;
         }
 
         #frontendApp .mail-list-panel {
@@ -2350,12 +2373,14 @@
             text-overflow: clip;
             overflow-wrap: anywhere;
             word-break: break-word;
+            font-size: 16px;
+            line-height: 1.5;
         }
 
         #frontendApp .mail-table td:not(.mail-list-empty)::before {
             content: attr(data-label);
             color: #817b70;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 700;
         }
 
@@ -2371,6 +2396,12 @@
         #frontendApp .mail-pagination {
             justify-content: space-between !important;
             gap: 8px;
+        }
+
+        #frontendApp .mail-pagination button,
+        #frontendApp .mail-pagination select {
+            min-height: 44px;
+            font-size: 15px;
         }
     }
 </style>
