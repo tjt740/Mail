@@ -2826,6 +2826,49 @@
             justify-content: center;
         }
 
+        .toolbar-row {
+            gap: 10px;
+        }
+
+        .toolbar-row .button-group {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .toolbar-row .button-group > .au-dropdown,
+        .toolbar-row .button-group > .group-panel-toggle,
+        .toolbar-row .button-group > .column-config {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .toolbar-row .button-group > .column-config {
+            grid-column: 1 / -1;
+        }
+
+        .toolbar-row .button-group .au-dropdown-toggle,
+        .toolbar-row .button-group .group-panel-toggle,
+        .toolbar-row .button-group .column-config-toggle {
+            width: 100%;
+            min-height: 42px;
+            justify-content: center;
+        }
+
+        .admin-summary {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px 12px;
+            padding: 10px 12px;
+        }
+
+        .admin-summary span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         .group-panel {
             max-height: 150px;
         }
@@ -2842,7 +2885,15 @@
         }
 
         .mail-panel .table-container {
-            overflow-x: hidden !important;
+            overflow: visible !important;
+        }
+
+        .mail-panel,
+        .mail-panel .card:last-of-type,
+        .mail-panel .card:last-of-type .card-body {
+            height: auto;
+            min-height: 0;
+            overflow: visible;
         }
 
         #mailboxTable,
@@ -2864,10 +2915,11 @@
         }
 
         #mailboxTable tbody tr {
-            padding: 12px;
+            padding: 12px 13px;
             border: 1px solid #e5e7eb;
-            border-radius: 10px;
+            border-radius: 12px;
             background: #fff;
+            box-shadow: 0 4px 14px rgba(47, 42, 36, 0.05);
         }
 
         #mailboxTable tbody tr:hover,
@@ -2877,7 +2929,7 @@
 
         #mailboxTable td {
             display: grid;
-            grid-template-columns: 88px minmax(0, 1fr);
+            grid-template-columns: 76px minmax(0, 1fr);
             gap: 10px;
             align-items: start;
             padding: 6px 0 !important;
@@ -2913,6 +2965,18 @@
             margin-bottom: 8px;
         }
 
+        .mailbox-email-content {
+            align-items: flex-start;
+        }
+
+        .mailbox-email-text {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
         .mailbox-actions {
             display: flex;
             flex-wrap: wrap;
@@ -2937,7 +3001,49 @@
         }
 
         .pagination-container {
-            justify-content: flex-end;
+            position: static;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 12px 2px 4px;
+            box-shadow: none;
+        }
+
+        .pagination-info {
+            flex: 1 1 170px;
+            margin-right: 0;
+            line-height: 1.5;
+        }
+
+        .pagination-buttons {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .page-btn {
+            min-height: 38px;
+        }
+
+        .au-bulk-bar {
+            bottom: 8px;
+            width: calc(100vw - 16px);
+            max-width: none;
+            padding: 10px;
+            gap: 7px;
+            border-radius: 14px;
+        }
+
+        .au-bulk-bar .au-bulk-count {
+            flex: 1 1 100%;
+            text-align: center;
+        }
+
+        .au-bulk-bar .btn {
+            flex: 1 1 calc(50% - 7px);
+            min-width: 0;
+            min-height: 38px;
+            padding-inline: 8px;
         }
     }
 
@@ -3797,7 +3903,7 @@
 
     // 全局变量
     let currentPage = 1;
-    let perPage = 100;
+    let perPage = window.matchMedia('(max-width: 640px)').matches ? 20 : 100;
     let searchQuery = '';
     let ownerFilter = '';
     let testStatusFilter = '';
@@ -4540,6 +4646,8 @@
         html += `<div class="page-size-control">
             <label for="perPageSelect">每页</label>
             <select id="perPageSelect" onchange="changePerPage()">
+                <option value="20" ${perPage === 20 ? 'selected' : ''}>20条</option>
+                <option value="50" ${perPage === 50 ? 'selected' : ''}>50条</option>
                 <option value="100" ${perPage === 100 ? 'selected' : ''}>100条</option>
                 <option value="150" ${perPage === 150 ? 'selected' : ''}>150条</option>
                 <option value="200" ${perPage === 200 ? 'selected' : ''}>200条</option>

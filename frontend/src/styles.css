@@ -282,31 +282,98 @@ body {
   }
 
   .admin-header {
-    height: auto;
-    min-height: 64px;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    padding: 10px 12px;
+    height: 56px;
+    min-height: 56px;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
   }
 
   .admin-title {
-    flex-basis: calc(100% - 52px);
+    min-width: 0;
     flex-direction: column;
     gap: 0;
+    line-height: 1.2;
+  }
+
+  .admin-title h4.ant-typography {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 18px;
+  }
+
+  .admin-title .ant-typography-secondary {
+    display: none;
   }
 
   .admin-actions {
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
+    gap: 4px !important;
+    justify-content: flex-end;
   }
 
   .admin-user {
     display: none;
   }
 
+  .admin-actions .react-color-theme-button,
+  .admin-actions .react-language-button,
+  .admin-actions .ant-space-item:last-child .ant-btn {
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+  }
+
+  .admin-actions .ant-space-item:last-child .ant-btn > span:not(.ant-btn-icon) {
+    display: none;
+  }
+
   .admin-content {
-    height: calc(100vh - 118px);
-    padding: 10px;
+    height: calc(100vh - 56px);
+    height: calc(100dvh - 56px);
+    padding: 6px;
+  }
+
+  .legacy-frame-wrap {
+    border-radius: 6px;
+  }
+
+  .admin-mobile-drawer .ant-drawer-content {
+    background: #fff;
+  }
+
+  .admin-mobile-drawer .ant-drawer-body {
+    overflow-y: auto;
+  }
+
+  .admin-mobile-brand {
+    height: 64px;
+    border-bottom: 1px solid #e7e4db;
+  }
+}
+
+@media (max-width: 380px) {
+  .admin-header {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 5px;
+    padding-inline: 5px;
+  }
+
+  .admin-title h4.ant-typography {
+    font-size: 16px;
+  }
+
+  .admin-actions .react-color-theme-button,
+  .admin-actions .react-language-button,
+  .admin-actions .ant-space-item:last-child .ant-btn {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
   }
 }
 
