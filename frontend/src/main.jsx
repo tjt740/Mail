@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   ConfigProvider,
+  Drawer,
   Dropdown,
   Input,
   Layout,
@@ -413,6 +414,22 @@ function LegacyFrame({ title, src, language }) {
   );
 }
 
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia(query).matches
+  ));
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query);
+    const updateMatches = (event) => setMatches(event.matches);
+    setMatches(mediaQuery.matches);
+    mediaQuery.addEventListener?.('change', updateMatches);
+    return () => mediaQuery.removeEventListener?.('change', updateMatches);
+  }, [query]);
+
+  return matches;
+}
+
 function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange, t }) {
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -421,6 +438,8 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
       return false;
     }
   });
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const currentPath = getCurrentPath();
   const adminMenuItems = useMemo(
     () => adminMenuDefinitions.map((item) => ({ ...item, label: t(item.labelKey) })),
@@ -435,6 +454,10 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
     document.title = `${currentItem?.label || t('后台管理')} - ${systemTitle}`;
   }, [currentItem?.label, language, systemTitle]);
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [selectedKey]);
+
   function updateCollapsed(nextValue) {
     setCollapsed(nextValue);
     try {
@@ -444,40 +467,70 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
     }
   }
 
+  function handleAdminMenuClick(key) {
+    setMobileMenuOpen(false);
+    if (key !== window.location.pathname) {
+      window.history.pushState({}, '', key);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  }
+
+  const adminMenu = (
+    <Menu
+      theme="light"
+      mode="inline"
+      selectedKeys={[selectedKey]}
+      items={adminMenuItems}
+      onClick={({ key }) => handleAdminMenuClick(key)}
+    />
+  );
+
   return (
     <Layout className="admin-app">
-      <Sider
-        collapsible
-        collapsed={collapsed}
-        trigger={null}
-        width={224}
-        className="admin-sider"
+      {!isMobile ? (
+        <Sider
+          collapsible
+          collapsed={collapsed}
+          trigger={null}
+          width={224}
+          className="admin-sider"
+        >
+          <div className="brand">
+            <ApiOutlined />
+            {!collapsed ? <span>{systemTitle}</span> : null}
+          </div>
+          {adminMenu}
+        </Sider>
+      ) : null}
+      <Drawer
+        placement="left"
+        width={280}
+        open={isMobile && mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        closable={false}
+        className="admin-mobile-drawer"
+        styles={{ body: { padding: 0 } }}
       >
-        <div className="brand">
+        <div className="brand admin-mobile-brand">
           <ApiOutlined />
-          {!collapsed ? <span>{systemTitle}</span> : null}
+          <span>{systemTitle}</span>
         </div>
-        <Menu
-          theme="light"
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={adminMenuItems}
-          onClick={({ key }) => {
-            if (key !== window.location.pathname) {
-              window.history.pushState({}, '', key);
-              window.dispatchEvent(new PopStateEvent('popstate'));
-            }
-          }}
-        />
-      </Sider>
+        {adminMenu}
+      </Drawer>
       <Layout>
         <Header className="admin-header">
           <Button
             type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            aria-label={collapsed ? t('展开菜单') : t('收起菜单')}
-            title={collapsed ? t('展开菜单') : t('收起菜单')}
-            onClick={() => updateCollapsed(!collapsed)}
+            icon={isMobile || collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            aria-label={isMobile || collapsed ? t('展开菜单') : t('收起菜单')}
+            title={isMobile || collapsed ? t('展开菜单') : t('收起菜单')}
+            onClick={() => {
+              if (isMobile) {
+                setMobileMenuOpen(true);
+              } else {
+                updateCollapsed(!collapsed);
+              }
+            }}
           />
           <div className="admin-title">
             <Title level={4}>{currentItem?.label || t('后台管理')}</Title>

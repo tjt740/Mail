@@ -41,6 +41,11 @@
             --scroll-card-offset: 110px; /* reserve ~110px (search toolbar + card padding + pagination buffer) so pagination stays visible */
             --scroll-card-max-height: calc(100vh - var(--header-height, 70px) - var(--scroll-card-offset));
         }
+        html,
+        body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
         .is-hidden {
             display: none !important;
         }
@@ -435,7 +440,8 @@
         body.embedded-view {
             min-height: 100vh !important;
             padding: 0 !important;
-            overflow: auto !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
             background: #ffffff !important;
         }
         body.embedded-view .sidebar,
@@ -454,6 +460,28 @@
         }
         body.embedded-view .card {
             box-shadow: none;
+        }
+        @media (max-width: 640px) {
+            body.embedded-view .content {
+                padding: 8px !important;
+                overflow: visible !important;
+            }
+            body.embedded-view .main-content {
+                height: auto !important;
+                overflow: visible !important;
+            }
+            body.embedded-view .scroll-card-body {
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+            }
+            body.embedded-view .scroll-card-body .table-container {
+                max-height: none !important;
+                overflow: visible !important;
+            }
+            body.embedded-view .scroll-card-body .pagination-container {
+                position: static !important;
+            }
         }
         {% endif %}
         /* Tablet/mobile admin layout fixes */
