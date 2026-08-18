@@ -4970,11 +4970,12 @@ EMAIL_IMPORT_RE = re.compile(r'[\w.!#$%&\'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}'
 UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
 
 IMPORT_FIELD_ALIASES = {
-    'email': {'email', 'mail', '邮箱', '账号', '帐号', 'account'},
-    'username': {'username', 'user', 'login', '登录名', '用户名'},
-    'password': {'password', 'pass', 'pwd', '密码', '授权码'},
-    'client_id': {'client_id', 'clientid', 'client', 'app_id', 'appid', 'application_id', '应用id'},
-    'refresh_token': {'refresh_token', 'refreshtoken', 'refresh', 'token', '刷新令牌'},
+    'email': {'email', 'mail', 'email_address', 'mail_address', 'account_email', '邮箱', '邮箱地址', '账号', '帐号', '账户', 'account'},
+    'username': {'username', 'user', 'login', 'login_name', '登录名', '用户名'},
+    'password': {'password', 'passwd', 'pass', 'pwd', 'mail_password', '密码', '邮箱密码', '授权码'},
+    'client_id': {'client_id', 'clientid', 'client', 'cid', 'app_id', 'appid', 'application_id', '应用id', '客户端id'},
+    'refresh_token': {'refresh_token', 'refreshtoken', 'refresh', 'oauth_token', 'token', '刷新令牌', '刷新token'},
+    'recovery_email': {'recovery_email', 'recovery', 'backup_email', 'secondary_email', '辅助邮箱', '恢复邮箱', '备用邮箱'},
     'auth_type': {'auth_type', 'authtype', 'auth', 'login_type', 'receive_type', 'receive', 'api', 'mode', '类型', '收件方式'},
     'remarks': {'remarks', 'remark', 'note', 'notes', '备注'}
 }
@@ -5026,14 +5027,30 @@ def _is_graph_api_marker(value):
     return 'graph' in normalized and ('api' in normalized or '收件' in value)
 
 
+def _split_hyphen_import_line(line):
+    """按连续四个连字符切分，并保留字段末尾多出来的连字符。"""
+    matches = list(re.finditer(r'-{4,}', line))
+    if not matches:
+        return line.split('---') if '---' in line else [line]
+
+    parts = []
+    start = 0
+    for match in matches:
+        separator_start = match.end() - 4
+        parts.append(line[start:separator_start])
+        start = match.end()
+    parts.append(line[start:])
+    return parts
+
+
 def _split_import_line(line):
     """按常见批量格式切分一行，优先使用更明确的分隔符。"""
-    if '----' in line:
-        return [_clean_import_value(part) for part in line.split('----')]
+    if re.search(r'-{3,}', line):
+        return [_clean_import_value(part) for part in _split_hyphen_import_line(line)]
     if '\t' in line:
         return [_clean_import_value(part) for part in line.split('\t')]
 
-    for delimiter in ('|', ',', ';'):
+    for delimiter in ('｜', '|', '，', ',', '；', ';'):
         if delimiter in line:
             try:
                 return [_clean_import_value(part) for part in next(csv.reader([line], delimiter=delimiter))]
@@ -5044,8 +5061,8 @@ def _split_import_line(line):
     if email_match:
         email = email_match.group(0)
         tail = line[email_match.end():].strip()
-        if tail.startswith(':'):
-            return [email] + [_clean_import_value(part) for part in tail[1:].split(':')]
+        if tail.startswith((':', '：')):
+            return [email] + [_clean_import_value(part) for part in re.split(r'[:：]', tail[1:])]
 
     return [_clean_import_value(part) for part in re.split(r'\s+', line) if part.strip()]
 
@@ -5091,8 +5108,22 @@ def _parse_key_value_import_line(line):
     if parsed:
         return parsed
 
-    pattern = re.compile(r'([\w\u4e00-\u9fff\-]+)\s*[:=]\s*("[^"]*"|\'[^\']*\'|[^\s,;|]+)')
-    for key, value in pattern.findall(line):
+    # 将字段之间的显式分隔符归一为空格，再用“下一个 key=”作为值边界。
+    # 单个连字符不会被替换，因此 UUID、密码和刷新令牌保持完整。
+    normalized_line = line
+    if re.search(r'-{3,}', normalized_line):
+        normalized_line = ' '.join(_split_hyphen_import_line(normalized_line))
+    normalized_line = re.sub(r'[|｜,，;；]+', ' ', normalized_line)
+    key_pattern = r'[\w\u4e00-\u9fff\-]+(?:\s+[\w\u4e00-\u9fff\-]+)?'
+    pattern = re.compile(
+        rf'(?P<key>{key_pattern})\s*[:=：]\s*'
+        rf'(?P<value>"[^"]*"|\'[^\']*\'|.*?)'
+        rf'(?=\s+(?:{key_pattern})\s*[:=：]|$)',
+        re.IGNORECASE,
+    )
+    for match in pattern.finditer(normalized_line.strip()):
+        key = match.group('key')
+        value = match.group('value')
         canonical = _canonical_import_key(key)
         if canonical:
             parsed[canonical] = _clean_import_value(value)
@@ -5111,8 +5142,25 @@ def parse_mailbox_import_line(line):
     parsed = _parse_key_value_import_line(raw_line)
     tokens = _split_import_line(raw_line)
 
-    email_match = EMAIL_IMPORT_RE.search(parsed.get('email', '') or raw_line)
-    email = _clean_import_value(email_match.group(0)) if email_match else ''
+    # 分隔格式必须优先从独立字段中取邮箱。直接在整行搜索时，邮箱域名正则
+    # 会把 `----password----client_id...` 这一类仅含字母、数字和连字符的
+    # 尾部误当作域名的一部分。
+    email = ''
+    parsed_email = _clean_import_value(parsed.get('email', ''))
+    if parsed_email:
+        email_match = EMAIL_IMPORT_RE.search(parsed_email)
+        email = _clean_import_value(email_match.group(0)) if email_match else ''
+
+    if not email:
+        for token in tokens:
+            if EMAIL_IMPORT_RE.fullmatch(token):
+                email = _clean_import_value(token)
+                break
+
+    if not email:
+        email_match = EMAIL_IMPORT_RE.search(raw_line)
+        email = _clean_import_value(email_match.group(0)) if email_match else ''
+
     if not email:
         return None, '未识别到邮箱地址'
 
@@ -5130,6 +5178,7 @@ def parse_mailbox_import_line(line):
     client_id = parsed.get('client_id', '')
     refresh_token = parsed.get('refresh_token', '')
     remarks = parsed.get('remarks', '')
+    recovery_email = parsed.get('recovery_email', '')
     graph_api_requested = _is_graph_api_marker(parsed.get('auth_type', '')) or _is_pipe_graph_oauth_pack(raw_line, tokens, email_index) or any(
         _is_graph_api_marker(token) for token in tokens
     )
@@ -5195,6 +5244,10 @@ def parse_mailbox_import_line(line):
         extra_text = ' | '.join(extra_parts)
         remarks = f'{remarks} | {extra_text}' if remarks else extra_text
 
+    if recovery_email and recovery_email != email:
+        recovery_note = f'辅助邮箱：{recovery_email}'
+        remarks = f'{remarks} | {recovery_note}' if remarks else recovery_note
+
     auth_type = 'graph' if graph_api_requested and client_id and refresh_token else ('oauth' if client_id and refresh_token else 'password')
     if auth_type == 'graph' and not remarks:
         remarks = 'Graph API收件'
@@ -5212,6 +5265,92 @@ def parse_mailbox_import_line(line):
     }, ''
 
 
+def _serialize_mailbox_import_entry(value):
+    """把结构化记录转成现有单行解析器可消费的文本。"""
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False, separators=(',', ':'))
+    return _clean_import_value(value)
+
+
+def _mailbox_import_header_keys(line):
+    tokens = _split_import_line(line)
+    keys = [_canonical_import_key(token) for token in tokens]
+    recognized = [key for key in keys if key]
+    if 'email' not in recognized or len(recognized) < 2:
+        return []
+    return keys
+
+
+def expand_mailbox_import_entries(content):
+    """展开 JSON、带表头 CSV/TSV 和分行键值块，返回可逐条解析的记录。"""
+    raw_content = str(content or '').strip().lstrip('\ufeff')
+    if not raw_content:
+        return []
+
+    # JSON 对象、JSON 数组以及字符串数组。
+    if raw_content.startswith(('{', '[')):
+        try:
+            payload = json.loads(raw_content)
+            if isinstance(payload, dict):
+                return [_serialize_mailbox_import_entry(payload)]
+            if isinstance(payload, list):
+                entries = [_serialize_mailbox_import_entry(item) for item in payload]
+                return [entry for entry in entries if entry]
+        except (TypeError, ValueError, json.JSONDecodeError):
+            pass
+
+    source_lines = raw_content.splitlines()
+    nonempty_lines = [line.strip() for line in source_lines if line.strip()]
+    if not nonempty_lines:
+        return []
+
+    # email,password,client_id,refresh_token + 后续数据行（也兼容 Tab/----/竖线）。
+    header_keys = _mailbox_import_header_keys(nonempty_lines[0])
+    if header_keys and len(nonempty_lines) > 1:
+        entries = []
+        for row in nonempty_lines[1:]:
+            values = _split_import_line(row)
+            record = {
+                key: values[index]
+                for index, key in enumerate(header_keys)
+                if key and index < len(values) and values[index]
+            }
+            if record:
+                entries.append(_serialize_mailbox_import_entry(record))
+        if entries:
+            return entries
+
+    # 一个账号占多行：email: ... / password: ... / client_id: ...。
+    if len(nonempty_lines) > 1:
+        blocks = []
+        current = {}
+        multiline_key_values = True
+        for raw_line in source_lines:
+            line = raw_line.strip()
+            if not line:
+                if current:
+                    blocks.append(current)
+                    current = {}
+                continue
+            fields = _parse_key_value_import_line(line)
+            if len(fields) != 1:
+                multiline_key_values = False
+                break
+            key, value = next(iter(fields.items()))
+            if key == 'email' and 'email' in current:
+                blocks.append(current)
+                current = {}
+            current[key] = value
+
+        if multiline_key_values:
+            if current:
+                blocks.append(current)
+            if blocks and all(block.get('email') for block in blocks):
+                return [_serialize_mailbox_import_entry(block) for block in blocks]
+
+    return nonempty_lines
+
+
 def merge_mailbox_remarks(default_remarks, parsed_remarks):
     default_remarks = _clean_import_value(default_remarks)
     parsed_remarks = _clean_import_value(parsed_remarks)
@@ -5223,19 +5362,19 @@ def merge_mailbox_remarks(default_remarks, parsed_remarks):
 def _parse_mailbox_import_preview(data):
     """识别单个邮箱导入内容，供添加表单即时预览。"""
     import_content = str(data.get('import_content') or '').strip()
-    import_lines = [line.strip() for line in import_content.splitlines() if line.strip()]
-    if not import_lines:
+    import_entries = expand_mailbox_import_entries(import_content)
+    if not import_entries:
         return jsonify({
             'success': False,
             'message': '请输入需要识别的邮箱内容'
         })
-    if len(import_lines) != 1:
+    if len(import_entries) != 1:
         return jsonify({
             'success': False,
             'message': '单个添加一次只能识别一条邮箱内容'
         })
 
-    parsed_account, parse_error = parse_mailbox_import_line(import_lines[0])
+    parsed_account, parse_error = parse_mailbox_import_line(import_entries[0])
     if not parsed_account:
         return jsonify({
             'success': False,
@@ -5311,10 +5450,8 @@ def _batch_add_mailbox(db, data):
     if normalized_group_id > 0 and not _can_manage_group(db, normalized_group_id):
         return jsonify({'success': False, 'message': '分组不存在或无权使用'}), 403
     
-    # 解析批量内容，兼容：账号----密码、账号----密码----client_id----refresh_token、
-    # 账号----密码----client_id----refresh_token----Graph API、账号:密码、账号|密码、
-    # 账号,密码、JSON、key=value 等常见格式。
-    lines = batch_content.split('\n')
+    # 统一展开 JSON/JSON 数组、CSV/TSV 表头、分行键值块和逐行分隔格式。
+    entries = expand_mailbox_import_entries(batch_content)
     success_count = 0
     error_count = 0
     errors = []
@@ -5323,16 +5460,12 @@ def _batch_add_mailbox(db, data):
     db_type = app.config['DATABASE_TYPE']
     created_by_admin = session.get('admin_username', 'admin')
     
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        
+    for line_number, line in enumerate(entries, 1):
         try:
             parsed_account, parse_error = parse_mailbox_import_line(line)
             if not parsed_account:
                 error_count += 1
-                errors.append(f'{parse_error}：{line[:120]}')
+                errors.append(f'第 {line_number} 条：{parse_error}')
                 continue
 
             email = parsed_account['email']
@@ -5475,7 +5608,7 @@ def _batch_add_mailbox(db, data):
             
         except Exception as e:
             error_count += 1
-            errors.append(f'处理失败：{line} - {str(e)}')
+            errors.append(f'第 {line_number} 条处理失败：{str(e)}')
     
     try:
         db.commit()

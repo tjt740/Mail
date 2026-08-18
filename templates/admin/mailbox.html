@@ -3461,8 +3461,8 @@
                     </label>
                     <textarea id="singleImportContent" name="import_content" rows="3"
                               oninput="scheduleSingleMailboxImportParse()"
-                              placeholder="支持与批量添加相同的格式，例如：user@example.com----password"></textarea>
-                    <div class="single-import-feedback" id="singleImportFeedback">支持 ---- / 冒号 / 竖线 / 逗号 / JSON / key=value / Graph API</div>
+                              placeholder="例如：user@outlook.com----password----client_id----refresh_token，也可粘贴 key=value、JSON 或分行字段"></textarea>
+                    <div class="single-import-feedback" id="singleImportFeedback">支持 ---- / 冒号 / 竖线 / 逗号 / 分号 / Tab / 空格 / key=value / JSON / CSV 表头</div>
                 </div>
                 
                 <!-- 邮箱账号和邮箱密码同一行 -->
@@ -3603,7 +3603,7 @@
                 <div class="form-group">
                     <label for="batchContent">自动识别邮箱内容 <span class="required-mark">*</span></label>
                     <textarea id="batchContent" class="batch-content-textarea" name="batch_content" rows="10"
-                              placeholder="每行一个邮箱，自动识别多种格式：&#10;user@example.com----password&#10;user@hotmail.com----password----client_id----refresh_token----Graph API&#10;user@hotmail.com|password|refresh_token|client_id|recovery@example.com&#10;email=user@example.com password=password client_id=... refresh_token=... auth_type=graph&#10;支持 ---- / 冒号 / 竖线 / 逗号 / JSON / key=value / Graph API"
+                              placeholder="每行一个邮箱，也支持 JSON 数组、CSV/TSV 表头和分行字段：&#10;user@example.com----password----client_id----refresh_token&#10;user@hotmail.com|password|refresh_token|client_id|recovery@example.com&#10;email=user@example.com password=password client_id=... refresh_token=...&#10;email,password,client_id,refresh_token&#10;支持中英文逗号、分号、竖线、冒号、Tab、空格、JSON、key=value"
                               oninput="autoFillBatchRequiredFields()"></textarea>
                 </div>
                 
@@ -6416,7 +6416,7 @@
         const content = document.getElementById('singleImportContent')?.value.trim() || '';
         const requestId = ++singleImportParseRequestId;
         if (!content) {
-            setSingleImportFeedback('支持 ---- / 冒号 / 竖线 / 逗号 / JSON / key=value / Graph API');
+            setSingleImportFeedback('支持 ---- / 冒号 / 竖线 / 逗号 / 分号 / Tab / 空格 / key=value / JSON / CSV 表头');
             return;
         }
         singleImportParseTimer = setTimeout(() => {
@@ -6440,7 +6440,7 @@
         const input = document.getElementById('singleImportContent');
         if (group) group.style.display = '';
         if (input) input.value = '';
-        setSingleImportFeedback('支持 ---- / 冒号 / 竖线 / 逗号 / JSON / key=value / Graph API');
+        setSingleImportFeedback('支持 ---- / 冒号 / 竖线 / 逗号 / 分号 / Tab / 空格 / key=value / JSON / CSV 表头');
         setMailboxPasswordVisibility(false);
     }
 
