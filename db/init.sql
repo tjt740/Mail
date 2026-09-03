@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS mail_accounts (
     oauth_refresh_token TEXT DEFAULT '',
     created_by_admin TEXT DEFAULT '',
     status INTEGER DEFAULT 1,  -- 1: 正常, 0: 禁用
+    account_status TEXT DEFAULT 'pending',  -- pending/normal/banned/invalid_credentials/network_error/test_error
     last_test DATETIME DEFAULT NULL,  -- 最后测试时间
     test_result TEXT DEFAULT '',  -- 测试结果
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

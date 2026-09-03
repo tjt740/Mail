@@ -36,10 +36,71 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Columns used for fast mailbox listing (avoid fetching large blobs/passwords)
-FAST_MAILBOX_COLUMNS = "id, email, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, status, remarks, created_by_admin, last_test, test_result, created_at, updated_at"
+FAST_MAILBOX_COLUMNS = "id, email, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, status, account_status, remarks, created_by_admin, last_test, test_result, created_at, updated_at"
 MAIL_LOG_BODY_MAX_LENGTH = 200000
 MAIL_LOG_LIST_BODY_PREVIEW_LENGTH = 1200
 MAIL_LOG_LIST_PER_EMAIL_LIMIT = 30
+
+MAILBOX_ACCOUNT_STATUS_PENDING = 'pending'
+MAILBOX_ACCOUNT_STATUS_NORMAL = 'normal'
+MAILBOX_ACCOUNT_STATUS_BANNED = 'banned'
+MAILBOX_ACCOUNT_STATUS_INVALID = 'invalid_credentials'
+MAILBOX_ACCOUNT_STATUS_NETWORK = 'network_error'
+MAILBOX_ACCOUNT_STATUS_ERROR = 'test_error'
+
+
+def classify_mailbox_account_status(test_payload=None, fallback_message=''):
+    """Map the mail test API response to a stable account status."""
+    payload = test_payload if isinstance(test_payload, dict) else {}
+    if payload.get('success') is True:
+        return MAILBOX_ACCOUNT_STATUS_NORMAL
+
+    error_type = str(payload.get('error_type') or '').strip().lower()
+    diagnostics = payload.get('diagnostics') if isinstance(payload.get('diagnostics'), dict) else {}
+    text_parts = [
+        str(payload.get('message') or ''),
+        str(fallback_message or ''),
+        error_type,
+        json.dumps(diagnostics, ensure_ascii=False, default=str),
+    ]
+    normalized = ' '.join(text_parts).lower()
+
+    banned_markers = (
+        'aadsts50053', 'aadsts50057', 'erroraccountdisabled', 'account_disabled',
+        'accountlocked', 'account_locked', 'mailboxdisabled', 'mailbox_disabled',
+        'account has been disabled', 'user account is disabled', 'account is locked',
+        'user is blocked', 'account suspended', 'account banned',
+        '账号已被封禁', '帐号已被封禁', '账户已被封禁', '账号被封', '帐号被封',
+        '账户被封', '账号被冻结', '帐号被冻结', '账户被冻结', '用户已被禁用',
+        '账号已被禁用', '帐号已被禁用', '账户已被禁用', '账号被锁定',
+        '帐号被锁定', '账户被锁定', '封停', '封禁',
+    )
+    if any(marker in normalized for marker in banned_markers):
+        return MAILBOX_ACCOUNT_STATUS_BANNED
+
+    invalid_markers = (
+        'auth_failed', 'invalid_grant', 'invalid credentials', 'authentication failed',
+        'authentication unsuccessful', 'login failed', 'token expired', 'expired token',
+        'token has expired', 'token revoked', 'revoked token', '密码错误', '密码不正确',
+        '用户名或密码错误', '身份验证失败', '认证失败', '登录失败', '令牌已过期',
+        '令牌失效', '令牌无效', '刷新令牌获取失败', 'oauth登录失败',
+    )
+    if error_type == 'auth_failed' or any(marker in normalized for marker in invalid_markers):
+        return MAILBOX_ACCOUNT_STATUS_INVALID
+
+    network_error_types = {
+        'ssl_error', 'connection_refused', 'timeout', 'proxy_error', 'dns_error',
+        'connection_failed', 'network_error',
+    }
+    network_markers = (
+        'timeout', 'timed out', 'connection refused', 'connection reset', 'dns',
+        'proxy', 'ssl', 'certificate', 'handshake', '网络', '超时', '连接被拒绝',
+        '连接被重置', '代理', '无法解析', '服务器不可达',
+    )
+    if error_type in network_error_types or any(marker in normalized for marker in network_markers):
+        return MAILBOX_ACCOUNT_STATUS_NETWORK
+
+    return MAILBOX_ACCOUNT_STATUS_ERROR
 
 # EAI error code constant (Name or service not known)
 # This is not a standard errno, but an EAI (getaddrinfo) error code
@@ -1431,7 +1492,8 @@ def migrate_mail_accounts_table(db, db_type):
             ('auth_type', "TEXT DEFAULT 'password'", "VARCHAR(50) DEFAULT 'password'"),
             ('oauth_client_id', "TEXT DEFAULT ''", "TEXT DEFAULT ''"),
             ('oauth_refresh_token', "TEXT DEFAULT ''", "TEXT DEFAULT ''"),
-            ('created_by_admin', "TEXT DEFAULT ''", "VARCHAR(255) DEFAULT ''")
+            ('created_by_admin', "TEXT DEFAULT ''", "VARCHAR(255) DEFAULT ''"),
+            ('account_status', "TEXT DEFAULT 'pending'", "VARCHAR(50) DEFAULT 'pending'")
         ]
         
         for column_name, sqlite_def, other_def in new_columns:
@@ -2432,6 +2494,7 @@ def reorder_mailbox_ids(db, db_type):
                     oauth_client_id TEXT DEFAULT '',
                     oauth_refresh_token TEXT DEFAULT '',
                     status INTEGER DEFAULT 1,
+                    account_status TEXT DEFAULT 'pending',
                     last_test DATETIME DEFAULT NULL,
                     test_result TEXT DEFAULT '',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -2444,8 +2507,8 @@ def reorder_mailbox_ids(db, db_type):
                 mailbox_dict = dict(mailbox)
                 db.execute(f'''
                     INSERT INTO {temp_table_name} 
-                    (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, status, last_test, test_result, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, status, account_status, last_test, test_result, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     mailbox_dict['email'], mailbox_dict['username'], mailbox_dict['password'],
                     mailbox_dict['server'], mailbox_dict['port'], mailbox_dict['protocol'],
@@ -2454,6 +2517,7 @@ def reorder_mailbox_ids(db, db_type):
                     mailbox_dict['remarks'], mailbox_dict.get('auth_type', 'password'),
                     mailbox_dict.get('oauth_client_id', ''), mailbox_dict.get('oauth_refresh_token', ''),
                     mailbox_dict['status'],
+                    mailbox_dict.get('account_status', MAILBOX_ACCOUNT_STATUS_PENDING),
                     mailbox_dict['last_test'], mailbox_dict['test_result'],
                     mailbox_dict['created_at'], mailbox_dict['updated_at']
                 ))
@@ -2487,6 +2551,7 @@ def reorder_mailbox_ids(db, db_type):
                         oauth_client_id TEXT DEFAULT '',
                         oauth_refresh_token TEXT DEFAULT '',
                         status TINYINT DEFAULT 1,
+                        account_status VARCHAR(50) DEFAULT 'pending',
                         last_test DATETIME DEFAULT NULL,
                         test_result TEXT DEFAULT '',
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -2513,6 +2578,7 @@ def reorder_mailbox_ids(db, db_type):
                         oauth_client_id TEXT DEFAULT '',
                         oauth_refresh_token TEXT DEFAULT '',
                         status INTEGER DEFAULT 1,
+                        account_status VARCHAR(50) DEFAULT 'pending',
                         last_test TIMESTAMP DEFAULT NULL,
                         test_result TEXT DEFAULT '',
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -2524,8 +2590,8 @@ def reorder_mailbox_ids(db, db_type):
             for mailbox_dict in mailboxes:
                 cursor.execute(f'''
                     INSERT INTO {temp_table_name} 
-                    (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, status, last_test, test_result, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    (email, username, password, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, remarks, auth_type, oauth_client_id, oauth_refresh_token, status, account_status, last_test, test_result, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (
                     mailbox_dict.get('email'), mailbox_dict.get('username'), mailbox_dict.get('password'),
                     mailbox_dict.get('server'), mailbox_dict.get('port'), mailbox_dict.get('protocol'),
@@ -2534,6 +2600,7 @@ def reorder_mailbox_ids(db, db_type):
                     mailbox_dict.get('remarks'), mailbox_dict.get('auth_type', 'password'),
                     mailbox_dict.get('oauth_client_id', ''), mailbox_dict.get('oauth_refresh_token', ''),
                     mailbox_dict.get('status'),
+                    mailbox_dict.get('account_status', MAILBOX_ACCOUNT_STATUS_PENDING),
                     mailbox_dict.get('last_test'), mailbox_dict.get('test_result'),
                     mailbox_dict.get('created_at'), mailbox_dict.get('updated_at')
                 ))
@@ -5787,121 +5854,105 @@ def _update_mailbox_remarks(db, data):
             'message': f'更新失败: {str(e)}'
         })
 
+def _record_mailbox_test_result(db, account_id, test_payload):
+    """Persist the raw test message and its normalized account status."""
+    test_message = str(test_payload.get('message') or '测试完成')
+    account_status = classify_mailbox_account_status(test_payload, test_message)
+    now = get_beijing_time()
+    if app.config['DATABASE_TYPE'] == 'sqlite':
+        db.execute('''
+            UPDATE mail_accounts
+            SET last_test=?, test_result=?, account_status=?
+            WHERE id=?
+        ''', (now, test_message, account_status, account_id))
+    else:
+        cursor = db.cursor()
+        cursor.execute('''
+            UPDATE mail_accounts
+            SET last_test=%s, test_result=%s, account_status=%s
+            WHERE id=%s
+        ''', (now, test_message, account_status, account_id))
+        cursor.close()
+    db.commit()
+    return now, test_message, account_status
+
+
 def _test_mailbox(db, data):
-    """测试邮箱连接"""
+    """测试邮箱连接并保存接口返回的账号状态。"""
     account_id = data.get('id')
-    
+
     try:
-        # 获取邮箱信息
         if app.config['DATABASE_TYPE'] == 'sqlite':
             account = db.execute('SELECT * FROM mail_accounts WHERE id = ?', (account_id,)).fetchone()
+            account_dict = dict(account) if account else None
         else:
             cursor = db.cursor()
             cursor.execute('SELECT * FROM mail_accounts WHERE id = %s', (account_id,))
             account = cursor.fetchone()
-        
-        if not account:
-            return jsonify({
-                'success': False,
-                'message': '邮箱不存在'
-            })
-        
-        # 调用Python邮件获取器进行测试
-        try:
-            if app.config['DATABASE_TYPE'] == 'sqlite':
-                account_dict = dict(account)
-            else:
+            if account:
                 columns = [desc[0] for desc in cursor.description]
                 account_dict = dict(zip(columns, account))
-            
+            else:
+                account_dict = None
+            cursor.close()
+
+        if not account_dict:
+            return jsonify({'success': False, 'message': '邮箱不存在'})
+
+        try:
             result = subprocess.run([
-                sys.executable, 
+                sys.executable,
                 os.path.join(os.path.dirname(__file__), 'python', 'mail_fetcher.py'),
                 account_dict['email'],
                 '--test-connection'
             ], capture_output=True, text=True, timeout=30)
-            
+
             if result.returncode == 0:
-                # 解析JSON输出
-                test_result = json.loads(result.stdout)
-                test_success = test_result.get('success', False)
-                test_message = test_result.get('message', '测试完成')
-                
-                # 更新测试结果
-                now = get_beijing_time()
-                if app.config['DATABASE_TYPE'] == 'sqlite':
-                    db.execute('''
-                        UPDATE mail_accounts 
-                        SET last_test=?, test_result=?
-                        WHERE id=?
-                    ''', (now, test_message, account_id))
-                    db.commit()
-                else:
-                    cursor = db.cursor()
-                    cursor.execute('''
-                        UPDATE mail_accounts 
-                        SET last_test=%s, test_result=%s
-                        WHERE id=%s
-                    ''', (now, test_message, account_id))
-                    db.commit()
-                
-                return jsonify({
-                    'success': test_success,
-                    'message': test_message,
-                    'last_test': now,
-                    'test_result': test_message,
-                    'proxy_info': test_result.get('proxy', {}),
-                    'diagnostics': test_result.get('diagnostics', {})
-                })
+                try:
+                    test_payload = json.loads(result.stdout)
+                except json.JSONDecodeError:
+                    test_payload = {
+                        'success': False,
+                        'message': '邮箱测试服务响应格式错误',
+                        'error_type': 'test_exception',
+                    }
             else:
-                error_message = result.stderr or "邮箱测试失败"
-                
-                # 更新测试结果
-                now = get_beijing_time()
-                if app.config['DATABASE_TYPE'] == 'sqlite':
-                    db.execute('''
-                        UPDATE mail_accounts 
-                        SET last_test=?, test_result=?
-                        WHERE id=?
-                    ''', (now, error_message, account_id))
-                    db.commit()
-                else:
-                    cursor = db.cursor()
-                    cursor.execute('''
-                        UPDATE mail_accounts 
-                        SET last_test=%s, test_result=%s
-                        WHERE id=%s
-                    ''', (now, error_message, account_id))
-                    db.commit()
-                
-                return jsonify({
+                test_payload = {
                     'success': False,
-                    'message': error_message,
-                    'last_test': now,
-                    'test_result': error_message
-                })
-                
+                    'message': result.stderr.strip() or '邮箱测试失败',
+                    'error_type': 'test_exception',
+                }
         except subprocess.TimeoutExpired:
-            return jsonify({
+            test_payload = {
                 'success': False,
-                'message': '邮箱连接测试超时，请检查网络连接或服务器配置'
-            })
-        except json.JSONDecodeError:
-            return jsonify({
+                'message': '邮箱连接测试超时，请检查网络连接或服务器配置',
+                'error_type': 'timeout',
+            }
+        except Exception as exc:
+            test_payload = {
                 'success': False,
-                'message': '邮箱测试服务响应格式错误'
-            })
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'message': f'邮箱测试服务错误: {str(e)}'
-            })
-        
-    except Exception as e:
+                'message': f'邮箱测试服务错误: {str(exc)}',
+                'error_type': 'test_exception',
+            }
+
+        now, test_message, account_status = _record_mailbox_test_result(
+            db, account_id, test_payload
+        )
+        return jsonify({
+            'success': bool(test_payload.get('success')),
+            'message': test_message,
+            'last_test': now,
+            'test_result': test_message,
+            'account_status': account_status,
+            'error_type': test_payload.get('error_type', ''),
+            'proxy_info': test_payload.get('proxy', {}),
+            'diagnostics': test_payload.get('diagnostics', {}),
+        })
+    except Exception as exc:
         return jsonify({
             'success': False,
-                'message': f'测试失败: {str(e)}'
-            })
+            'message': f'测试失败: {str(exc)}'
+        })
 
 def _send_mail(db, data):
     """使用邮箱发件"""
@@ -6192,6 +6243,8 @@ def _test_new_mailbox(data):
                     return jsonify({
                         'success': test_success,
                         'message': test_message,
+                        'account_status': classify_mailbox_account_status(test_result, test_message),
+                        'error_type': test_result.get('error_type', ''),
                         'proxy_info': test_result.get('proxy', {}),
                         'diagnostics': test_result.get('diagnostics', {})
                     })
@@ -6199,23 +6252,34 @@ def _test_new_mailbox(data):
                     error_message = result.stderr or "邮箱测试失败"
                     return jsonify({
                         'success': False,
-                        'message': error_message
+                        'message': error_message,
+                        'account_status': classify_mailbox_account_status({
+                            'success': False,
+                            'message': error_message,
+                            'error_type': 'test_exception',
+                        })
                     })
                     
             except subprocess.TimeoutExpired:
                 return jsonify({
                     'success': False,
-                    'message': '邮箱连接测试超时'
+                    'message': '邮箱连接测试超时',
+                    'account_status': MAILBOX_ACCOUNT_STATUS_NETWORK,
+                    'error_type': 'timeout',
                 })
             except json.JSONDecodeError:
                 return jsonify({
                     'success': False,
-                    'message': '邮箱测试服务响应格式错误'
+                    'message': '邮箱测试服务响应格式错误',
+                    'account_status': MAILBOX_ACCOUNT_STATUS_ERROR,
+                    'error_type': 'test_exception',
                 })
             except Exception as e:
                 return jsonify({
                     'success': False,
-                    'message': f'邮箱测试服务错误: {str(e)}'
+                    'message': f'邮箱测试服务错误: {str(e)}',
+                    'account_status': MAILBOX_ACCOUNT_STATUS_ERROR,
+                    'error_type': 'test_exception',
                 })
                 
             finally:

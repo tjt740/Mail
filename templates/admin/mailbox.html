@@ -1103,19 +1103,44 @@
         white-space: nowrap;
     }
 
+    .mailbox-test-tag.normal,
     .mailbox-test-tag.success {
         color: #065f46;
         background: #d1fae5;
     }
 
+    .mailbox-test-tag.banned,
     .mailbox-test-tag.failed {
         color: #991b1b;
         background: #fee2e2;
     }
 
+    .mailbox-test-tag.invalid_credentials {
+        color: #9a3412;
+        background: #ffedd5;
+    }
+
+    .mailbox-test-tag.network_error,
+    .mailbox-test-tag.test_error {
+        color: #854d0e;
+        background: #fef9c3;
+    }
+
     .mailbox-test-tag.pending {
         color: #475569;
         background: #f1f5f9;
+    }
+
+    .btn-delete-normal {
+        color: #fff;
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .status-delete-button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
     }
 
     .mailbox-owner-tag {
@@ -3239,6 +3264,12 @@
                                     </button>
                                     <div class="column-config-menu" id="columnConfigMenu" aria-hidden="true"></div>
                                 </div>
+                                <button class="btn btn-danger status-delete-button" id="deleteBannedAccountsBtn" type="button" onclick="deleteMailboxesByStatus('banned')" disabled>
+                                    ❌ 删除封禁 (0)
+                                </button>
+                                <button class="btn btn-delete-normal status-delete-button" id="deleteNormalAccountsBtn" type="button" onclick="deleteMailboxesByStatus('normal')" disabled>
+                                    ✅ 删除正常 (0)
+                                </button>
                             </div>
                             <div class="admin-summary" id="mailboxAdminSummary">
                                 <span class="admin-summary-admin">管理员：<strong>{{ admin_username }}</strong></span>
@@ -4001,11 +4032,22 @@
         { key: 'actions', label: '操作', required: true, defaultVisible: true, minWidth: 236, fixed: true }
     ];
     const MAILBOX_TEST_STATUS_FILTERS = [
-        { value: '', label: '检测状态' },
-        { value: 'pending', label: '未检测' },
-        { value: 'success', label: '邮箱正常' },
-        { value: 'failed', label: '邮箱异常' }
+        { value: '', label: '全部状态' },
+        { value: 'pending', label: '○ 未检测' },
+        { value: 'normal', label: '✅ 正常' },
+        { value: 'banned', label: '❌ 封禁' },
+        { value: 'invalid_credentials', label: '⚠️ 凭据失效' },
+        { value: 'network_error', label: '⚠️ 网络异常' },
+        { value: 'test_error', label: '⚠️ 检测异常' }
     ];
+    const MAILBOX_STATUS_META = {
+        pending: { className: 'pending', icon: '○', label: '未检测', rank: 5 },
+        normal: { className: 'normal', icon: '✅', label: '正常', rank: 0 },
+        banned: { className: 'banned', icon: '❌', label: '封禁', rank: 1 },
+        invalid_credentials: { className: 'invalid_credentials', icon: '⚠️', label: '凭据失效', rank: 2 },
+        network_error: { className: 'network_error', icon: '⚠️', label: '网络异常', rank: 3 },
+        test_error: { className: 'test_error', icon: '⚠️', label: '检测异常', rank: 4 }
+    };
     let groups = [];
     let mailboxGroupMap = {};
     let mailboxGroupMappings = [];
@@ -4436,13 +4478,50 @@
     function getMailboxTestStatus(mailbox) {
         const result = String(mailbox.test_result || '');
         if (!mailbox.last_test && !result) {
-            return { className: 'pending', label: '未检测', rank: 2 };
+            return MAILBOX_STATUS_META.pending;
         }
+
+        const storedStatus = String(mailbox.account_status || '').trim().toLowerCase();
+        if (storedStatus && storedStatus !== 'pending' && MAILBOX_STATUS_META[storedStatus]) {
+            return MAILBOX_STATUS_META[storedStatus];
+        }
+
         const normalized = result.toLowerCase();
-        if (result.includes('成功') || result.includes('正常') || normalized.includes('success')) {
-            return { className: 'success', label: '邮箱正常', rank: 0 };
+        const bannedMarkers = [
+            'aadsts50053', 'aadsts50057', 'erroraccountdisabled', 'account_disabled',
+            'accountlocked', 'account_locked', 'mailboxdisabled', 'mailbox_disabled',
+            'account has been disabled', 'user account is disabled', 'account is locked',
+            'user is blocked', 'account suspended', 'account banned', '账号已被封禁',
+            '帐号已被封禁', '账户已被封禁', '账号被封', '帐号被封', '账户被封',
+            '账号被冻结', '帐号被冻结', '账户被冻结', '用户已被禁用', '账号已被禁用',
+            '帐号已被禁用', '账户已被禁用', '账号被锁定', '帐号被锁定', '账户被锁定',
+            '封停', '封禁'
+        ];
+        if (bannedMarkers.some(marker => normalized.includes(marker))) {
+            return MAILBOX_STATUS_META.banned;
         }
-        return { className: 'failed', label: '邮箱异常', rank: 1 };
+        if (result.includes('成功') || result.includes('正常') || normalized.includes('success')) {
+            return MAILBOX_STATUS_META.normal;
+        }
+        const invalidMarkers = [
+            'auth_failed', 'invalid_grant', 'invalid credentials', 'authentication failed',
+            'authentication unsuccessful', 'login failed', 'token expired', 'expired token',
+            'token has expired', 'token revoked', 'revoked token', '密码错误', '密码不正确',
+            '用户名或密码错误', '身份验证失败', '认证失败', '登录失败', '令牌已过期',
+            '令牌失效', '令牌无效', '刷新令牌获取失败', 'oauth登录失败'
+        ];
+        if (invalidMarkers.some(marker => normalized.includes(marker))) {
+            return MAILBOX_STATUS_META.invalid_credentials;
+        }
+        const networkMarkers = [
+            'timeout', 'timed out', 'connection refused', 'connection reset', 'dns', 'proxy',
+            'ssl', 'certificate', 'handshake', '网络', '超时', '连接被拒绝', '连接被重置',
+            '代理', '无法解析', '服务器不可达'
+        ];
+        if (networkMarkers.some(marker => normalized.includes(marker))) {
+            return MAILBOX_STATUS_META.network_error;
+        }
+        return MAILBOX_STATUS_META.test_error;
     }
 
     function getMailboxOwnerName(mailbox) {
@@ -4536,7 +4615,7 @@
                 const title = mailbox.last_test
                     ? `${mailbox.last_test} ${mailbox.test_result || ''}`
                     : (mailbox.test_result || '尚未检测');
-                return `<td class="mailbox-col-test_status" data-label="${label}"><span class="mailbox-test-tag ${status.className}" title="${escapeAttribute(title)}">${escapeHtml(status.label)}</span></td>`;
+                return `<td class="mailbox-col-test_status" data-label="${label}"><span class="mailbox-test-tag ${status.className}" title="${escapeAttribute(title)}"><span aria-hidden="true">${escapeHtml(status.icon)}</span> ${escapeHtml(status.label)}</span></td>`;
             }
             case 'created_at':
                 return `<td class="mailbox-col-created_at" data-label="${label}">${formatDateTime(mailbox.created_at)}</td>`;
@@ -4667,18 +4746,43 @@
         updateSelectionButtons();
     }
     
+    function mailboxMatchesCurrentScope(mailbox, ignoreTestStatus = false) {
+        const groupId = mailboxGroupMap[mailbox.id] ?? mailboxGroupMap[mailbox.email];
+        const matchesGroup = selectedGroupId === ROOT_GROUP_ID
+            ? true
+            : selectedGroupId === UNGROUPED_GROUP_ID
+                ? !groupId || !getGroupById(groupId)
+                : groupId && (groupId === selectedGroupId || isDescendantGroup(groupId, selectedGroupId));
+        const matchesOwner = ownerFilter ? getMailboxOwnerFilterValue(mailbox) === ownerFilter : true;
+        const matchesTestStatus = ignoreTestStatus || !testStatusFilter
+            ? true
+            : getMailboxTestStatus(mailbox).className === testStatusFilter;
+        return matchesGroup && matchesOwner && matchesTestStatus;
+    }
+
+    function getMailboxesByAccountStatus(status) {
+        return mailboxData.filter(mailbox => (
+            mailboxMatchesCurrentScope(mailbox, true)
+            && getMailboxTestStatus(mailbox).className === status
+        ));
+    }
+
+    function updateStatusDeleteButtons() {
+        const configs = [
+            { id: 'deleteBannedAccountsBtn', status: 'banned', icon: '❌', label: '删除封禁' },
+            { id: 'deleteNormalAccountsBtn', status: 'normal', icon: '✅', label: '删除正常' }
+        ];
+        configs.forEach(config => {
+            const button = document.getElementById(config.id);
+            if (!button) return;
+            const count = getMailboxesByAccountStatus(config.status).length;
+            button.disabled = count === 0;
+            button.textContent = `${config.icon} ${config.label} (${count})`;
+        });
+    }
+
     function renderMailboxView(page = 1) {
-        const filteredByGroup = mailboxData.filter(mailbox => {
-            const groupId = mailboxGroupMap[mailbox.id] ?? mailboxGroupMap[mailbox.email];
-            const matchesGroup = selectedGroupId === ROOT_GROUP_ID
-                ? true
-                : selectedGroupId === UNGROUPED_GROUP_ID
-	                    ? !groupId || !getGroupById(groupId)
-	                    : groupId && (groupId === selectedGroupId || isDescendantGroup(groupId, selectedGroupId));
-	            const matchesOwner = ownerFilter ? getMailboxOwnerFilterValue(mailbox) === ownerFilter : true;
-	            const matchesTestStatus = testStatusFilter ? getMailboxTestStatus(mailbox).className === testStatusFilter : true;
-	            return matchesGroup && matchesOwner && matchesTestStatus;
-	        });
+        const filteredByGroup = mailboxData.filter(mailbox => mailboxMatchesCurrentScope(mailbox));
         const sortedMailboxes = sortMailboxes(filteredByGroup);
         selectedMailboxes.clear();
         const selectAll = document.getElementById('selectAll');
@@ -4693,6 +4797,7 @@
         renderPaginationManual(sortedMailboxes.length, safePage);
         currentVisibleMailboxCount = sortedMailboxes.length;
         updateAdminSummary(currentVisibleMailboxCount);
+        updateStatusDeleteButtons();
     }
 
     function updateAdminSummary(visibleCount = currentVisibleMailboxCount || mailboxData.length) {
@@ -6642,6 +6747,7 @@
         if (!mailbox) return;
         mailbox.last_test = data.last_test || new Date().toISOString();
         mailbox.test_result = data.test_result || data.message || (data.success ? '连接测试成功' : '连接测试失败');
+        mailbox.account_status = data.account_status || (data.success ? 'normal' : 'test_error');
         renderMailboxView(currentPage);
     }
 
@@ -7235,6 +7341,62 @@
         showToast(`批量分组完成：成功 ${successCount} 个${failCount ? `，失败 ${failCount} 个` : ''}`, failCount ? 'info' : 'success');
     }
     
+    async function requestBatchDeleteMailboxIds(ids) {
+        const normalizedIds = ids.map(id => parseInt(id, 10)).filter(id => Number.isFinite(id) && id > 0);
+        const chunkSize = 400;
+        let deletedCount = 0;
+
+        for (let index = 0; index < normalizedIds.length; index += chunkSize) {
+            const chunk = normalizedIds.slice(index, index + chunkSize);
+            const response = await fetch('/admin/api/mailbox', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'batch_delete', ids: chunk })
+            });
+            const data = await readJsonResponse(response);
+            if (!data.success) {
+                throw new Error(data.message || `删除失败（已删除 ${deletedCount} 个）`);
+            }
+            removeGroupMappingByIds(chunk);
+            deletedCount += chunk.length;
+        }
+        return deletedCount;
+    }
+
+    async function deleteMailboxesByStatus(status) {
+        const allowed = {
+            banned: { label: '封禁', icon: '❌', buttonId: 'deleteBannedAccountsBtn' },
+            normal: { label: '正常', icon: '✅', buttonId: 'deleteNormalAccountsBtn' }
+        };
+        const config = allowed[status];
+        if (!config) return;
+
+        const targets = getMailboxesByAccountStatus(status);
+        if (targets.length === 0) {
+            showToast(`当前范围内没有${config.label}账号`, 'info');
+            return;
+        }
+        const scopeLabel = selectedGroupId === ROOT_GROUP_ID ? '当前搜索范围' : '当前分组与搜索范围';
+        if (!confirm(`确定一键删除${scopeLabel}内的 ${targets.length} 个${config.label}账号吗？此操作不可撤销。`)) {
+            return;
+        }
+
+        const button = document.getElementById(config.buttonId);
+        if (button) button.disabled = true;
+        try {
+            const deletedCount = await requestBatchDeleteMailboxIds(targets.map(mailbox => mailbox.id));
+            selectedMailboxes.clear();
+            await loadMailboxes(currentPage, searchQuery);
+            showToast(`${config.icon} 已删除 ${deletedCount} 个${config.label}账号`, 'success');
+        } catch (error) {
+            console.error(`一键删除${config.label}账号失败:`, error);
+            await loadMailboxes(currentPage, searchQuery);
+            showToast(error.message || `一键删除${config.label}账号失败`, 'error');
+        } finally {
+            updateStatusDeleteButtons();
+        }
+    }
+
     // 批量删除邮箱
     async function batchDeleteMailboxes() {
         if (selectedMailboxes.size === 0) {
@@ -7247,30 +7409,13 @@
         }
         
         try {
-            const response = await fetch('/admin/api/mailbox', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    action: 'batch_delete',
-                    ids: Array.from(selectedMailboxes)
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                removeGroupMappingByIds(Array.from(selectedMailboxes));
-                showToast(data.message || '批量删除成功', 'success');
-                selectedMailboxes.clear();
-                loadMailboxes(currentPage, searchQuery);
-            } else {
-                showToast(data.message || '批量删除失败', 'error');
-            }
+            const deletedCount = await requestBatchDeleteMailboxIds(Array.from(selectedMailboxes));
+            showToast(`成功删除 ${deletedCount} 个邮箱`, 'success');
+            selectedMailboxes.clear();
+            loadMailboxes(currentPage, searchQuery);
         } catch (error) {
             console.error('批量删除失败:', error);
-            showToast('网络错误，请稍后重试', 'error');
+            showToast(error.message || '网络错误，请稍后重试', 'error');
         }
     }
     
