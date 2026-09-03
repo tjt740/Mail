@@ -4039,7 +4039,7 @@
         {
             key: 'outlook',
             domains: ['outlook.com', 'hotmail.com', 'live.com', 'msn.com'],
-            server: 'imap-mail.outlook.com',
+            server: 'outlook.office365.com',
             port: 993,
             protocol: 'imap',
             ssl: true,
@@ -6470,7 +6470,13 @@
     }
     
     function inferBatchProviderPreset(content) {
-        const matches = (content || '').match(/[\w.!#$%&'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}/g) || [];
+        // `----` is a field separator in common Outlook OAuth account packs.
+        // Replace explicit separators before matching so their hyphens are not
+        // greedily consumed as part of the email domain.
+        const normalizedContent = String(content || '')
+            .replace(/-{3,}/g, ' ')
+            .replace(/[｜|，,；;\t]/g, ' ');
+        const matches = normalizedContent.match(/[\w.!#$%&'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}/g) || [];
         if (!matches.length) return null;
 
         const domainCounts = {};

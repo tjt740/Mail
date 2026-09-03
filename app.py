@@ -4813,7 +4813,7 @@ def _add_mailbox(db, data):
         remarks = merge_mailbox_remarks(remarks, parsed_account.get('remarks', ''))
 
         if auth_type == 'graph':
-            server = 'imap-mail.outlook.com'
+            server = 'outlook.office365.com'
             port = 993
             protocol = 'imap'
             ssl = 1
@@ -5484,7 +5484,7 @@ def _batch_add_mailbox(db, data):
             row_send_protocol = send_protocol
             row_send_ssl = send_ssl
             if auth_type == 'graph':
-                row_server = 'imap-mail.outlook.com'
+                row_server = 'outlook.office365.com'
                 row_port = 993
                 row_protocol = 'imap'
                 row_ssl = 1
@@ -6137,7 +6137,7 @@ def _test_new_mailbox(data):
         oauth_client_id = parsed_account.get('oauth_client_id') or ''
         oauth_refresh_token = parsed_account.get('oauth_refresh_token') or ''
         if auth_type == 'graph':
-            server = 'imap-mail.outlook.com'
+            server = 'outlook.office365.com'
             port = 993
             protocol = 'imap'
             ssl = True
