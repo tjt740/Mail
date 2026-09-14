@@ -980,13 +980,21 @@
         <div class="system-layout">
         <nav class="system-nav" id="systemNav" aria-label="系统设置栏目">
             <a href="#sec-account" class="system-nav-item active"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 账号设置</a>
+            {% if 'admins' in admin_permissions %}
             <a href="#sec-admins" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 管理员管理</a>
+            {% endif %}
             {% if show_mailbox_access %}
             <a href="#sec-mailbox-access" class="system-nav-item" id="mailboxAccessNav" style="display:none;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 邮箱范围权限</a>
             {% endif %}
+            {% if 'master_key' in admin_permissions %}
             <a href="#sec-masterkey" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 万能秘钥</a>
+            {% endif %}
+            {% if 'settings' in admin_permissions %}
             <a href="#sec-systitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-aim"></use></svg></span> 系统标题</a>
+            {% endif %}
+            {% if 'settings' in admin_permissions %}
             <a href="#sec-pagetitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-tag"></use></svg></span> 页面标题</a>
+            {% endif %}
             <a href="#sec-info" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-info-circle"></use></svg></span> 系统信息</a>
         </nav>
         <div class="system-sections">
@@ -1000,8 +1008,8 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">管理员用户名</label>
-                            <input type="text" class="form-control" id="adminUsername" name="admin_username" 
-                                   placeholder="输入新的管理员用户名" required>
+                            <input type="text" class="form-control" id="adminUsername" readonly title="用户名用于数据归属，不允许修改" name="admin_username"
+                                   placeholder="管理员用户名" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">管理员密码</label>
@@ -1025,25 +1033,36 @@
                 <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 后台管理员管理</h2>
             </div>
             <div class="card-body">
+                <p class="master-key-note">一级管理员可创建二级或三级；二级管理员可创建直属三级；三级管理员不能再创建下级。新账号默认不授予功能权限。</p>
+                <p class="master-key-note">tjt740 为一级；lhm、pink 为内置二级，保留原有功能权限和邮箱范围，不参与普通子账号的功能授权。</p>
                 <div class="table-container">
                     <table class="admin-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 <th>用户名</th>
-                                <th>密码</th>
+                                <th>管理员级别</th>
+                                <th>归属上级</th>
                                 <th>创建时间</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="adminUsersTableBody">
                             <tr>
-                                <td colspan="5" style="text-align: center; color: #6b7280;">加载中...</td>
+                                <td colspan="6" style="text-align: center; color: #6b7280;">加载中...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
+                <form id="adminPermissionsForm" class="inline-form-panel" style="display:none;">
+                    <h3 id="adminPermissionsTitle">功能授权</h3>
+                    <input id="permissionAdminId" type="hidden">
+                    <p class="master-key-note">只能授予自己已有的权限；上级撤权后，下级权限立即受限。标注“全站”的功能会影响共享数据。</p>
+                    <div id="adminPermissionOptions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:16px 0;"></div>
+                    <button type="button" class="btn btn-primary" onclick="saveAdminPermissions()">保存功能授权</button>
+                    <button type="button" class="btn" onclick="document.getElementById('adminPermissionsForm').style.display='none'">取消</button>
+                </form>
                 <form id="resetAdminPasswordForm" class="inline-form-panel">
                     <input type="hidden" id="resetAdminId" name="reset_admin_id">
                     <div class="form-row">
@@ -1053,7 +1072,7 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">新密码</label>
-                            <input type="password" class="form-control" id="resetAdminPassword" placeholder="至少4位">
+                            <input type="password" class="form-control" id="resetAdminPassword" placeholder="至少6位">
                         </div>
                     </div>
                     <div class="form-group">
@@ -1069,17 +1088,34 @@
                 <form id="newAdminForm">
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">新管理员用户名</label>
+                            <label class="form-label" for="newAdminUsername">新管理员用户名</label>
                             <input type="text" class="form-control" id="newAdminUsername" name="new_admin_username" placeholder="输入新管理员用户名">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">新管理员密码</label>
-                            <input type="password" class="form-control" id="newAdminPassword" name="new_admin_password" placeholder="至少4位">
+                            <label class="form-label" for="newAdminLevel">管理员级别</label>
+                            <select class="form-control" id="newAdminLevel" name="admin_level" onchange="renderAdminParentOptions()">
+                                <option value="3">三级管理员</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">确认新管理员密码</label>
-                        <input type="password" class="form-control" id="newAdminConfirmPassword" name="new_admin_confirm_password" placeholder="再次输入密码确认">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="newAdminParentId">归属上级（可选）</label>
+                            <select class="form-control" id="newAdminParentId" name="parent_admin_id" aria-describedby="newAdminParentHelp">
+                                <option value="">不指定（默认归属当前管理员）</option>
+                            </select>
+                            <p class="master-key-note" id="newAdminParentHelp">不选择时，新账号归属当前管理员。</p>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="newAdminPassword">新管理员密码</label>
+                            <input type="password" class="form-control" id="newAdminPassword" name="new_admin_password" placeholder="至少6位">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="newAdminConfirmPassword">确认新管理员密码</label>
+                            <input type="password" class="form-control" id="newAdminConfirmPassword" name="new_admin_confirm_password" placeholder="再次输入密码确认">
+                        </div>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="addAdminAccount()">新增管理员</button>
                 </form>
@@ -1158,6 +1194,7 @@
                 <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 管理员万能秘钥</h2>
             </div>
             <div class="card-body">
+                <p class="master-key-note">最高管理员设置全站万能密钥；下级管理员仅能设置本人密钥，使用范围受本人邮箱授权限制。撤销密钥权限或重置密码会使本人密钥失效。</p>
                 <form id="masterKeyForm">
                     <div class="form-group master-key-row">
                         <div class="master-key-input">
@@ -1383,7 +1420,10 @@
             ).join('');
             targetSelect.value = String(selectedTargetId);
             const restrictedCheckbox = document.getElementById('mailboxAccessRestricted');
-            if (restrictedCheckbox) restrictedCheckbox.checked = mailboxAccessRestricted;
+            if (restrictedCheckbox) {
+                restrictedCheckbox.checked = mailboxAccessRestricted;
+                restrictedCheckbox.disabled = !grantablePermissions.includes('admins') || !grantablePermissions.includes('mailbox_all');
+            }
             renderMailboxAccessGroups();
             renderMailboxAccessList();
             updateMailboxAccessRestriction();
@@ -1550,34 +1590,114 @@
         }
     }
 
+    let grantablePermissions = [];
+    let permissionLabels = {};
+    let adminParentOptions = [];
+    const adminLevelLabels = {1: '一级管理员', 2: '二级管理员', 3: '三级管理员'};
+
+    function renderAdminCreationOptions(levels, parents) {
+        adminParentOptions = parents;
+        document.getElementById('newAdminForm').hidden = levels.length === 0;
+        const select = document.getElementById('newAdminLevel');
+        const selected = Number(select.value);
+        select.replaceChildren();
+        levels.forEach(level => {
+            const option = document.createElement('option');
+            option.value = String(level);
+            option.textContent = adminLevelLabels[level];
+            option.defaultSelected = level === 3;
+            select.appendChild(option);
+        });
+        select.value = String(levels.includes(selected) ? selected : levels.includes(3) ? 3 : levels[0] || '');
+        renderAdminParentOptions();
+    }
+
+    function renderAdminParentOptions() {
+        const level = Number(document.getElementById('newAdminLevel').value);
+        const parents = adminParentOptions.filter(parent => parent.admin_level < level);
+        const select = document.getElementById('newAdminParentId');
+        const selected = select.value;
+        select.options.length = 1;
+        parents.forEach(parent => {
+            const option = document.createElement('option');
+            option.value = String(parent.id);
+            option.textContent = parent.username;
+            option.setAttribute('translate', 'no');
+            select.appendChild(option);
+        });
+        select.value = parents.some(parent => String(parent.id) === selected) ? selected : '';
+    }
+
     function renderAdminUsers(adminUsers, currentAdminId) {
         const tbody = document.getElementById('adminUsersTableBody');
-        if (!tbody) return;
+        tbody.replaceChildren();
+        adminUsers.forEach(admin => {
+            const row = document.createElement('tr');
+            [admin.id, admin.username, adminLevelLabels[admin.admin_level], admin.parent_username || '—', formatDateTime(admin.created_at)].forEach((value, index) => {
+                const cell = document.createElement('td');
+                cell.textContent = value;
+                if (index === 1 || index === 3) cell.setAttribute('translate', 'no');
+                row.appendChild(cell);
+            });
+            const actions = document.createElement('td');
+            const addButton = (label, callback, danger = false) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-small ' + (danger ? 'btn-danger' : 'btn-primary');
+                button.textContent = label;
+                button.style.margin = '3px';
+                button.addEventListener('click', callback);
+                actions.appendChild(button);
+            };
+            if (admin.can_manage) {
+                addButton('功能授权', () => showAdminPermissions(admin));
+                addButton('重置密码', () => showResetAdminPassword(admin.id, admin.username));
+                if (!admin.has_children) addButton('删除', () => deleteAdminAccount(admin.id, admin.username), true);
+            } else {
+                actions.textContent = Number(admin.id) === Number(currentAdminId) ? '当前账号' : admin.is_builtin_admin ? '内置管理员' : '不可管理';
+            }
+            row.appendChild(actions);
+            tbody.appendChild(row);
+        });
+    }
 
-        if (!adminUsers || adminUsers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6b7280;">暂无管理员</td></tr>';
-            return;
-        }
+    function showAdminPermissions(admin) {
+        document.getElementById('permissionAdminId').value = admin.id;
+        document.getElementById('adminPermissionsTitle').textContent = '功能授权 · ' + admin.username;
+        const options = document.getElementById('adminPermissionOptions');
+        options.replaceChildren();
+        Object.entries(permissionLabels).forEach(([key, title]) => {
+            if (admin.admin_level === 3 && ['admins', 'mailbox_access'].includes(key)) return;
+            const label = document.createElement('label');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = key;
+            checkbox.checked = admin.permissions.includes(key);
+            checkbox.disabled = !grantablePermissions.includes(key);
+            label.append(checkbox, document.createTextNode(' ' + title));
+            options.appendChild(label);
+        });
+        document.getElementById('adminPermissionsForm').style.display = 'block';
+    }
 
-        tbody.innerHTML = adminUsers.map(admin => {
-            const adminId = Number(admin.id) || 0;
-            const isCurrent = adminId === Number(currentAdminId);
-            const encodedUsername = encodeURIComponent(admin.username || '');
-            const resetButton = `<button type="button" class="btn btn-primary btn-small" onclick="showResetAdminPassword(${adminId}, decodeURIComponent('${encodedUsername}'))">重置密码</button>`;
-            const deleteButton = isCurrent
-                ? '<button type="button" class="btn btn-small" disabled>当前账号</button>'
-                : `<button type="button" class="btn btn-danger btn-small" onclick="deleteAdminAccount(${adminId}, decodeURIComponent('${encodedUsername}'))">删除</button>`;
-
-            return `
-                <tr>
-                    <td>${adminId}</td>
-                    <td>${escapeHtml(admin.username)}${isCurrent ? '<span class="admin-current-badge">当前登录</span>' : ''}</td>
-                    <td><span class="password-mask">****</span></td>
-                    <td>${escapeHtml(formatDateTime(admin.created_at))}</td>
-                    <td><div class="admin-actions">${resetButton}${deleteButton}</div></td>
-                </tr>
-            `;
-        }).join('');
+    async function saveAdminPermissions() {
+        const form = document.getElementById('adminPermissionsForm');
+        const buttons = form.querySelectorAll('button');
+        buttons.forEach(button => { button.disabled = true; });
+        try {
+            const response = await fetch('/admin/api/system-config', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'update_admin_permissions',
+                    admin_id: Number(document.getElementById('permissionAdminId').value),
+                    permissions: Array.from(form.querySelectorAll('input[type=checkbox]:checked:not(:disabled)')).map(input => input.value)})
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message || '保存失败');
+            showToast(result.message, 'success');
+            form.style.display = 'none';
+            loadCurrentSettings();
+        } catch (error) { showToast(error.message, 'error'); }
+        finally { buttons.forEach(button => { button.disabled = false; }); }
     }
 
     function showResetAdminPassword(adminId, username) {
@@ -1639,7 +1759,10 @@
                         setMasterKeyStatus(data.data.admin_master_key_set);
                     }
 
+                    grantablePermissions = data.data.permissions || [];
+                    permissionLabels = data.data.permission_labels || {};
                     renderAdminUsers(data.data.admin_users || [], data.data.current_admin_id);
+                    renderAdminCreationOptions(data.data.creatable_admin_levels || [], data.data.admin_parent_options || []);
                     setupMailboxAccessManager(Boolean(data.data.can_manage_mailbox_access));
                     
                     // 更新数据库类型显示
@@ -1657,6 +1780,8 @@
         const username = document.getElementById('newAdminUsername').value.trim();
         const password = document.getElementById('newAdminPassword').value;
         const confirmPassword = document.getElementById('newAdminConfirmPassword').value;
+        const parentAdminId = document.getElementById('newAdminParentId').value;
+        const adminLevel = Number(document.getElementById('newAdminLevel').value);
 
         if (!username) {
             showToast('请输入新管理员用户名', 'error');
@@ -1673,8 +1798,8 @@
             return;
         }
 
-        if (password.length < 4) {
-            showToast('密码长度至少4位', 'error');
+        if (password.length < 6) {
+            showToast('密码长度至少6位', 'error');
             return;
         }
 
@@ -1686,7 +1811,9 @@
             body: JSON.stringify({
                 action: 'add_admin',
                 admin_username: username,
-                admin_password: password
+                admin_password: password,
+                admin_level: adminLevel,
+                parent_admin_id: parentAdminId || null
             })
         })
         .then(response => response.json())
@@ -1756,8 +1883,8 @@
             return;
         }
 
-        if (password.length < 4) {
-            showToast('密码长度至少4位', 'error');
+        if (password.length < 6) {
+            showToast('密码长度至少6位', 'error');
             return;
         }
 
@@ -1814,8 +1941,8 @@
             return;
         }
 
-        if (password.length < 4) {
-            showToast('密码长度至少4位', 'error');
+        if (password.length < 6) {
+            showToast('密码长度至少6位', 'error');
             return;
         }
 

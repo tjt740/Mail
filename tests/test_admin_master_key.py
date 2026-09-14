@@ -48,10 +48,13 @@ class AdminMasterKeyTestCase(unittest.TestCase):
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
             INSERT INTO admin_users (username, password) VALUES ('admin', 'test-only');
+            CREATE TABLE admin_mailbox_scopes (restricted_admin_id INTEGER PRIMARY KEY);
             INSERT INTO system_config
                 (config_key, config_value, config_type, description, is_system)
             VALUES ('admin_master_key', '', 'secret', '管理员万能秘钥', 0);
         ''')
+        app_module.security.migrate(connection, 'sqlite')
+        connection.commit()
         connection.close()
 
     def tearDown(self):
@@ -61,6 +64,7 @@ class AdminMasterKeyTestCase(unittest.TestCase):
     def _login(self, client):
         with client.session_transaction() as session:
             session['admin_logged_in'] = True
+            session['admin_session_version'] = 0
             session['admin_id'] = 1
             session['admin_username'] = 'admin'
 

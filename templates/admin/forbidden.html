@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}暂无访问权限{% endblock %}
+{% block body %}
+<main style="max-width:640px;margin:12vh auto;padding:24px;">
+    <h1>暂无访问权限</h1>
+    <p>此功能需要上级管理员授权。授权后刷新页面即可使用。</p>
+    <p><a href="/admin/system" target="_top">返回账号设置</a> · <a href="/admin/logout" target="_top">退出登录</a></p>
+</main>
+{% endblock %}

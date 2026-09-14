@@ -1576,7 +1576,7 @@
                         <button class="btn btn-secondary" type="button" onclick="loadMailLogs(1)"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span> 查询</button>
                         <button class="btn btn-secondary" type="button" onclick="clearLogFilters()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-clear"></use></svg></span> 清空</button>
                         <button class="btn btn-secondary bulk-filter-toggle" type="button" id="bulkFilterToggle" aria-expanded="false" aria-controls="bulkFilterPanel" onclick="toggleBulkFilter()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量筛选<span class="toggle-caret">▾</span></button>
-                        <button class="btn btn-primary" type="button" id="pollNowBtn" onclick="triggerMailPoll()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-sync"></use></svg></span> 立即查询</button>
+                        <button class="btn btn-primary" type="button" id="pollNowBtn" {% if 'settings' not in admin_permissions %}style="display:none" disabled{% endif %} onclick="triggerMailPoll()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-sync"></use></svg></span> 立即查询</button>
                     </div>
                 </div>
                 <div class="bulk-filter-panel" id="bulkFilterPanel" hidden>
@@ -1587,7 +1587,7 @@
                     </div>
                 </div>
 
-                <div class="poller-control" id="pollerControl">
+                <div class="poller-control" id="pollerControl" {% if 'settings' not in admin_permissions %}style="display:none"{% endif %}>
                     <div class="poller-control-row">
                         <label class="poller-switch" title="关闭后自动轮询暂停，约30秒内生效，无需重启">
                             <input type="checkbox" id="autoPollToggle" onchange="setAutoPoll(this.checked)">
@@ -1612,7 +1612,7 @@
                     <div class="poller-backoff-list" id="backoffList" hidden></div>
                 </div>
 
-                <div class="poller-status" id="pollerStatus">
+                <div class="poller-status" id="pollerStatus" {% if 'settings' not in admin_permissions %}style="display:none"{% endif %}>
                     <div class="poller-status-item pending">
                         <span class="poller-status-icon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-info-circle"></use></svg></span></span>
                         <span><span class="poller-status-label">状态</span><span class="poller-status-value">-</span></span>
@@ -2535,7 +2535,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         initSidebarCollapse();
         loadMailLogs(1);
-        loadPollerConfig();
+        {% if 'settings' in admin_permissions %}loadPollerConfig();{% endif %}
         window.setInterval(() => loadMailLogs(currentLogPage, false), LOG_REFRESH_INTERVAL_MS);
 
         function debouncedSearch() {

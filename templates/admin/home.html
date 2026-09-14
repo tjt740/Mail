@@ -489,26 +489,26 @@
             <div class="card-body">
                 <p style="margin-bottom: 16px; color: var(--text-muted, #6e6c64);">欢迎使用邮件查看系统管理控制台，点击下方卡片进入对应模块。</p>
                 <div class="quick-link-grid">
-                    <a class="quick-link" href="#" onclick="goAdmin('/admin/mailbox'); return false;">
+                    {% if 'mailbox' in admin_permissions %}<a class="quick-link" href="#" onclick="goAdmin('/admin/mailbox'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span>
                         <span class="quick-link-text"><b>邮箱管理</b><small>添加、编辑和删除邮箱账号配置</small></span>
-                    </a>
-                    <a class="quick-link" href="#" onclick="goAdmin('/admin/daili'); return false;">
+                    </a>{% endif %}
+                    {% if 'proxies' in admin_permissions %}<a class="quick-link" href="#" onclick="goAdmin('/admin/daili'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span>
                         <span class="quick-link-text"><b>代理池</b><small>管理代理服务器配置</small></span>
-                    </a>
-                    <a class="quick-link" href="#" onclick="goAdmin('/admin/kami'); return false;">
+                    </a>{% endif %}
+                    {% if 'cards' in admin_permissions %}<a class="quick-link" href="#" onclick="goAdmin('/admin/kami'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-key"></use></svg></span>
                         <span class="quick-link-text"><b>卡密管理</b><small>生成和管理访问卡密</small></span>
-                    </a>
-                    <a class="quick-link" href="#" onclick="goAdmin('/admin/kamirizhi'); return false;">
+                    </a>{% endif %}
+                    {% if 'card_logs' in admin_permissions %}<a class="quick-link" href="#" onclick="goAdmin('/admin/kamirizhi'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-file-text"></use></svg></span>
                         <span class="quick-link-text"><b>卡密日志</b><small>查看卡密使用记录</small></span>
-                    </a>
-                    <a class="quick-link" href="#" onclick="goAdmin('/admin/shoujian'); return false;">
+                    </a>{% endif %}
+                    {% if 'mail_logs' in admin_permissions %}<a class="quick-link" href="#" onclick="goAdmin('/admin/shoujian'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span>
                         <span class="quick-link-text"><b>收件日志</b><small>查看邮件接收记录与轮询控制</small></span>
-                    </a>
+                    </a>{% endif %}
                     <a class="quick-link" href="#" onclick="goAdmin('/admin/system'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span>
                         <span class="quick-link-text"><b>系统设置</b><small>配置系统参数和安全选项</small></span>

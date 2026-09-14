@@ -23,6 +23,9 @@ import errno
 import ipaddress
 import re
 import html
+import hashlib
+from functools import wraps
+import admin_security as security
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.message import EmailMessage
@@ -663,6 +666,7 @@ def init_db():
 
             # 创建管理员邮箱可见范围表，保留历史范围并注册默认控制人。
             create_admin_mailbox_scope_tables(db, db_type)
+            security.migrate(db, db_type)
             
             # 提交事务
             if db_type != 'sqlite':
@@ -2672,6 +2676,12 @@ def update_proxy_unified_id(db, table_name, proxy_id, unified_id):
 # 前端页面路由
 # ===============================
 
+@app.context_processor
+def admin_permission_context():
+    permissions = security.effective(get_db(), session.get('admin_id')) if session.get('admin_logged_in') else set()
+    return {'admin_permissions': permissions, 'admin_permission_labels': security.PERMISSIONS}
+
+
 def render_react_app(page_title=None, **props):
     """Render the front-end app while keeping Flask APIs unchanged."""
     system_title = get_system_config('system_title', '邮件查看系统')
@@ -2681,7 +2691,8 @@ def render_react_app(page_title=None, **props):
         'pageTitle': resolved_title,
         'adminUsername': session.get('admin_username', ''),
         'adminLoginTitle': get_system_config('admin_login_title', '管理员登录'),
-        'path': request.path
+        'path': request.path,
+        'adminPermissions': sorted(security.effective(get_db(), session.get('admin_id'))) if session.get('admin_logged_in') else []
     }
     app_props.update(props)
     return render_template(
@@ -2836,25 +2847,26 @@ def api_public_language():
 def admin_index():
     """管理员后台入口"""
     if session.get('admin_logged_in'):
-        return redirect(url_for('admin_home'))
+        return redirect(_admin_landing_url())
     return redirect(url_for('admin_login'))
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     """管理员登录"""
     if session.get('admin_logged_in'):
-        return redirect(url_for('admin_home'))
+        return redirect(_admin_landing_url())
     
     error = ''
     
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
+        password = request.form.get('password', '')
         
         if username and password:
             try:
                 db = get_db()
-                admin = db.execute('SELECT * FROM admin_users WHERE username = ?', (username,)).fetchone()
+                rows = security.query(db, 'SELECT * FROM admin_users WHERE username = ?', (username,))
+                admin = rows[0] if rows else None
                 
                 # 密码验证（支持兼容性检查）
                 if admin:
@@ -2862,19 +2874,31 @@ def admin_login():
                     if admin['password'].startswith('pbkdf2:') or admin['password'].startswith('scrypt:'):
                         # 使用werkzeug验证加密密码
                         if check_password_hash(admin['password'], password):
+                            session.clear()
                             session['admin_logged_in'] = True
                             session['admin_id'] = admin['id']
                             session['admin_username'] = admin['username']
-                            return redirect(url_for('admin_home'))
+                            actor = security.current(db)
+                            if not actor:
+                                session.clear()
+                                return render_template('admin/forbidden.html'), 403
+                            session['admin_session_version'] = actor['session_version']
+                            return redirect(_admin_landing_url())
                         else:
                             error = '用户名或密码错误'
                     else:
                         # 兼容原有明文密码
                         if admin['password'] == password:
+                            session.clear()
                             session['admin_logged_in'] = True
                             session['admin_id'] = admin['id']
                             session['admin_username'] = admin['username']
-                            return redirect(url_for('admin_home'))
+                            actor = security.current(db)
+                            if not actor:
+                                session.clear()
+                                return render_template('admin/forbidden.html'), 403
+                            session['admin_session_version'] = actor['session_version']
+                            return redirect(_admin_landing_url())
                         else:
                             error = '用户名或密码错误'
                 else:
@@ -2895,120 +2919,158 @@ def admin_logout():
     session.clear()
     return redirect(url_for('admin_login'))
 
+@app.before_request
+def validate_admin_session():
+    """Reload identity for every request; deleted/reset accounts lose old sessions."""
+    if not session.get('admin_logged_in'):
+        return
+    db = get_db()
+    if request.method == 'POST' and request.path in ('/admin/api/system-config', '/admin/api/mailbox-access'):
+        # Serialize authority/credential changes, then read fresh grants under the
+        # lock. This prevents deletion vs. child-creation and stale-grant races.
+        if app.config['DATABASE_TYPE'] == 'sqlite':
+            db.execute('BEGIN IMMEDIATE')
+        else:
+            security.query(db, 'SELECT admin_id FROM admin_access ORDER BY admin_id FOR UPDATE')
+    actor = security.current(db)
+    if not actor or session.get('admin_session_version') != actor['session_version']:
+        session.clear()
+        return
+    session['admin_username'] = actor['username']
+
+
+def _admin_feature_allowed(db):
+    path = request.path.removeprefix('/legacy')
+    if path.startswith('/admin/api/'):
+        endpoint = path[len('/admin/api/'):].split('/')[0]
+        features = {
+            'mailbox': 'mailbox', 'mailbox-groups': 'mailbox',
+            'proxies': 'proxies', 'proxy-config': 'proxies',
+            'cards': 'cards', 'card-logs': 'card_logs', 'recycle-bin': 'cards',
+            'process-expired-cards': 'cards', 'mail-logs': 'settings' if request.method == 'POST' else 'mail_logs',
+            'poller': 'settings', 'mailbox-access': 'mailbox_access',
+            'servers': 'mailbox' if request.method == 'GET' else 'settings',
+        }
+        if endpoint == 'system-config':
+            if request.method == 'GET':
+                return True
+            data = request.get_json(silent=True)
+            if not isinstance(data, dict):
+                return False
+            action = data.get('action')
+            if action == 'update_admin':
+                return True
+            feature = {
+                'add_admin': 'admins', 'delete_admin': 'admins',
+                'reset_admin_password': 'admins', 'update_admin_permissions': 'admins',
+                'update_page_titles': 'settings', 'update_system_title': 'settings',
+                'update_admin_master_key': 'master_key',
+            }.get(action)
+        else:
+            feature = features.get(endpoint)
+        if path == '/admin/api/cards/stats' and security.has(db, 'home'):
+            return True
+        return bool(feature and security.has(db, feature))
+    page = path.rsplit('/', 1)[-1]
+    return page in ('system', 'help') or security.has(db, security.PAGE_PERMISSIONS.get(page))
+
+
 def admin_required(f):
-    """管理员权限装饰器"""
+    @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('admin_logged_in'):
+        if not security.current(get_db()):
+            if '/api/' in request.path:
+                return jsonify({'success': False, 'message': '会话已过期，请重新登录'}), 401
             return redirect(url_for('admin_login'))
+        if request.is_json and request.method in ('POST', 'DELETE') and not isinstance(request.get_json(silent=True), dict):
+            return jsonify({'success': False, 'message': '请求内容必须为 JSON 对象'}), 400
+        if not _admin_feature_allowed(get_db()):
+            if '/api/' in request.path:
+                return jsonify({'success': False, 'message': '未获上级授权使用此功能'}), 403
+            return render_template('admin/forbidden.html'), 403
         return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
     return decorated_function
 
-def _get_admin_mailbox_scope(db, admin_id):
-    """返回受限管理员的范围配置；未受限时返回 None。"""
-    admin_id = safe_int(admin_id, 0)
-    if admin_id <= 0:
-        return None
-    db_type = app.config['DATABASE_TYPE']
-    try:
-        if db_type == 'sqlite':
-            row = db.execute('''
-                SELECT s.restricted_admin_id, s.manager_admin_id,
-                       restricted.username AS restricted_username,
-                       manager.username AS manager_username
-                FROM admin_mailbox_scopes s
-                JOIN admin_users restricted ON restricted.id = s.restricted_admin_id
-                JOIN admin_users manager ON manager.id = s.manager_admin_id
-                WHERE s.restricted_admin_id = ?
-            ''', (admin_id,)).fetchone()
-            return dict(row) if row else None
 
-        cursor = db.cursor()
-        cursor.execute('''
-            SELECT s.restricted_admin_id, s.manager_admin_id,
-                   restricted.username AS restricted_username,
-                   manager.username AS manager_username
-            FROM admin_mailbox_scopes s
-            JOIN admin_users restricted ON restricted.id = s.restricted_admin_id
-            JOIN admin_users manager ON manager.id = s.manager_admin_id
-            WHERE s.restricted_admin_id = %s
-        ''', (admin_id,))
-        row = cursor.fetchone()
-        columns = [desc[0] for desc in cursor.description] if cursor.description else []
-        cursor.close()
-        return _row_to_dict(row, columns) if row else None
-    except Exception as e:
-        # 测试库或尚未迁移的旧库没有权限表时，保持原有不受限行为。
-        logger.debug(f"Admin mailbox scope lookup skipped: {e}")
+def _admin_landing_url():
+    db = get_db()
+    for page, feature in security.PAGE_PERMISSIONS.items():
+        if security.has(db, feature):
+            return '/admin/' + page
+    return '/admin/system'
+
+
+def _scope_identity(db):
+    admin_id = getattr(g, 'master_key_admin_id', None)
+    return security.profiles(db).get(admin_id) if admin_id else security.current(db)
+
+
+def _get_admin_mailbox_scope(db, admin_id):
+    actor = security.profiles(db).get(safe_int(admin_id, 0))
+    if actor and security.has(db, 'mailbox_all', actor['id']):
         return None
+    # A missing identity must never mean unrestricted access.
+    return {
+        'restricted_admin_id': actor['id'] if actor else 0,
+        'restricted_username': actor['username'] if actor else '',
+        'manager_admin_id': actor['parent_admin_id'] if actor else None,
+    }
+
 
 def _get_current_admin_mailbox_scope(db=None):
-    if not session.get('admin_logged_in'):
+    db = db or get_db()
+    actor = _scope_identity(db)
+    if not actor and not session.get('admin_logged_in'):
         return None
-    return _get_admin_mailbox_scope(db or get_db(), session.get('admin_id'))
+    return _get_admin_mailbox_scope(db, actor['id'] if actor else 0)
+
+
+def _mailbox_actor_condition(db, admin_id, alias='', visited=None):
+    visited = set() if visited is None else visited
+    actor = security.profiles(db).get(admin_id)
+    if not actor or admin_id in visited:
+        return '1 = 0', []
+    if security.has(db, 'mailbox_all', admin_id):
+        return '1 = 1', []
+    visited.add(admin_id)
+    prefix = f'{alias}.' if alias else ''
+    ph = '?' if app.config['DATABASE_TYPE'] == 'sqlite' else '%s'
+    parent_condition, parent_params = _mailbox_actor_condition(db, actor['parent_admin_id'], alias, visited)
+    # Grants cannot outlive the grantor's own access. Ownership stays independent.
+    condition = f'''(
+        LOWER(TRIM(COALESCE({prefix}created_by_admin, ''))) = LOWER({ph})
+        OR ((
+            EXISTS (SELECT 1 FROM admin_mailbox_permissions amp
+                    WHERE amp.admin_id = {ph} AND amp.mailbox_id = {prefix}id)
+            OR EXISTS (SELECT 1 FROM mailbox_group_mappings scope_mapping
+                       JOIN admin_mailbox_group_permissions scope_grant ON scope_grant.group_id = scope_mapping.group_id
+                       WHERE scope_grant.admin_id = {ph} AND scope_mapping.mailbox_id = {prefix}id)
+        ) AND ({parent_condition}))
+    )'''
+    return condition, [actor['username'], admin_id, admin_id] + parent_params
+
 
 def _mailbox_scope_condition(db, alias=''):
-    """生成当前管理员可见邮箱的 SQL 条件和参数。"""
-    scope = _get_current_admin_mailbox_scope(db)
-    if not scope:
+    # Public card endpoints use the card's binding as their authority.
+    # Administrator routes validate the session before reaching this helper.
+    if not session.get('admin_logged_in') and not getattr(g, 'master_key_admin_id', None):
         return '', []
-    prefix = f'{alias}.' if alias else ''
-    placeholder = '?' if app.config['DATABASE_TYPE'] == 'sqlite' else '%s'
-    condition = f'''(
-        LOWER(TRIM(COALESCE({prefix}created_by_admin, ''))) = LOWER({placeholder})
-        OR EXISTS (
-            SELECT 1 FROM admin_mailbox_permissions amp
-            WHERE amp.admin_id = {placeholder}
-              AND amp.mailbox_id = {prefix}id
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM mailbox_group_mappings scope_mapping
-            JOIN admin_mailbox_group_permissions scope_group_permission
-              ON scope_group_permission.group_id = scope_mapping.group_id
-            WHERE scope_group_permission.admin_id = {placeholder}
-              AND scope_mapping.mailbox_id = {prefix}id
-        )
-    )'''
-    return condition, [
-        session.get('admin_username', ''),
-        scope['restricted_admin_id'],
-        scope['restricted_admin_id'],
-    ]
+    actor = _scope_identity(db)
+    if actor and security.has(db, 'mailbox_all', actor['id']):
+        return '', []
+    return _mailbox_actor_condition(db, actor['id'] if actor else None, alias)
+
 
 def _mailbox_log_scope_condition(db, log_alias='l', email_column='email'):
-    """生成按日志邮箱地址过滤的 SQL 条件。"""
-    scope = _get_current_admin_mailbox_scope(db)
-    if not scope:
+    condition, params = _mailbox_scope_condition(db, 'scope_mailbox')
+    if not condition:
         return '', []
-    placeholder = '?' if app.config['DATABASE_TYPE'] == 'sqlite' else '%s'
-    condition = f'''EXISTS (
-        SELECT 1
-        FROM mail_accounts scope_mailbox
-        WHERE LOWER(TRIM(COALESCE(scope_mailbox.email, ''))) =
-              LOWER(TRIM(COALESCE({log_alias}.{email_column}, '')))
-          AND (
-              LOWER(TRIM(COALESCE(scope_mailbox.created_by_admin, ''))) = LOWER({placeholder})
-              OR EXISTS (
-                  SELECT 1 FROM admin_mailbox_permissions scope_permission
-                  WHERE scope_permission.admin_id = {placeholder}
-                    AND scope_permission.mailbox_id = scope_mailbox.id
-              )
-              OR EXISTS (
-                  SELECT 1
-                  FROM mailbox_group_mappings scope_mapping
-                  JOIN admin_mailbox_group_permissions scope_group_permission
-                    ON scope_group_permission.group_id = scope_mapping.group_id
-                  WHERE scope_group_permission.admin_id = {placeholder}
-                    AND scope_mapping.mailbox_id = scope_mailbox.id
-              )
-          )
-    )'''
-    return condition, [
-        session.get('admin_username', ''),
-        scope['restricted_admin_id'],
-        scope['restricted_admin_id'],
-    ]
+    return f'''EXISTS (
+        SELECT 1 FROM mail_accounts scope_mailbox
+        WHERE LOWER(TRIM(scope_mailbox.email)) = LOWER(TRIM({log_alias}.{email_column}))
+        AND {condition}
+    )''', params
+
 
 def _can_access_mailbox(db, mailbox_id):
     mailbox_id = safe_int(mailbox_id, 0)
@@ -3053,7 +3115,7 @@ def _can_manage_group(db, group_id):
     if not scope:
         return True
     db_type = app.config['DATABASE_TYPE']
-    username = session.get('admin_username', '')
+    username = scope['restricted_username']
     if db_type == 'sqlite':
         row = db.execute('''
             SELECT id FROM mailbox_groups
@@ -3120,7 +3182,7 @@ def _filter_groups_for_current_admin(db, groups, mappings):
             cursor.close()
     except Exception as e:
         logger.debug(f"Admin mailbox group permission lookup skipped: {e}")
-    username = str(session.get('admin_username', '')).strip().lower()
+    username = str(scope['restricted_username']).strip().lower()
     for group in group_dicts:
         if str(group.get('created_by_admin') or '').strip().lower() == username:
             visible_group_ids.add(safe_int(group.get('id'), 0))
@@ -3152,104 +3214,46 @@ def _filter_groups_for_current_admin(db, groups, mappings):
     return visible_groups, visible_mappings
 
 def _current_admin_managed_scope_targets(db):
-    """为已注册的范围控制人返回其他管理员及其实际限制状态。"""
-    current_admin_id = safe_int(session.get('admin_id'), 0)
-    if not _is_admin_mailbox_scope_manager(db, current_admin_id):
-        return []
-    db_type = app.config['DATABASE_TYPE']
-    try:
-        if db_type == 'sqlite':
-            rows = db.execute('''
-                SELECT u.id, u.username,
-                       CASE WHEN s.restricted_admin_id IS NULL THEN 0 ELSE 1 END AS restricted_enabled
-                FROM admin_users u
-                LEFT JOIN admin_mailbox_scopes s
-                  ON s.restricted_admin_id = u.id
-                WHERE u.id <> ?
-                ORDER BY u.username COLLATE NOCASE
-            ''', (current_admin_id,)).fetchall()
-            return [dict(row) for row in rows]
-        cursor = db.cursor()
-        cursor.execute('''
-            SELECT u.id, u.username,
-                   CASE WHEN s.restricted_admin_id IS NULL THEN 0 ELSE 1 END AS restricted_enabled
-            FROM admin_users u
-            LEFT JOIN admin_mailbox_scopes s
-              ON s.restricted_admin_id = u.id
-            WHERE u.id <> %s
-            ORDER BY u.username
-        ''', (current_admin_id,))
-        rows = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description] if cursor.description else []
-        cursor.close()
-        return [_row_to_dict(row, columns) for row in rows]
-    except Exception as e:
-        logger.debug(f"Managed mailbox scope lookup skipped: {e}")
-        return []
+    return [dict(p, restricted_enabled=int(not security.has(db, 'mailbox_all', p['id'])))
+            for p in security.account_list(db)
+            if security.can_manage(db, p['id'], 'mailbox_access')]
+
 
 def _is_admin_mailbox_scope_manager(db, admin_id):
-    """判断管理员是否为持久化的邮箱范围控制人。"""
-    admin_id = safe_int(admin_id, 0)
-    if admin_id <= 0:
-        return False
-    try:
-        if app.config['DATABASE_TYPE'] == 'sqlite':
-            row = db.execute('''
-                SELECT 1 FROM admin_mailbox_scope_managers m
-                JOIN admin_users u ON u.id = m.manager_admin_id
-                WHERE m.manager_admin_id = ? LIMIT 1
-            ''', (admin_id,)).fetchone()
-        else:
-            cursor = db.cursor()
-            cursor.execute('''
-                SELECT 1 FROM admin_mailbox_scope_managers m
-                JOIN admin_users u ON u.id = m.manager_admin_id
-                WHERE m.manager_admin_id = %s LIMIT 1
-            ''', (admin_id,))
-            row = cursor.fetchone()
-            cursor.close()
-        return bool(row)
-    except Exception as e:
-        logger.debug(f"Mailbox scope manager lookup skipped: {e}")
-        return False
+    return security.has(db, 'mailbox_access', safe_int(admin_id, 0))
+
 
 def get_system_config(key, default_value=''):
-    """获取系统配置值"""
-    cursor = None
+    """读取配置，兼容 SQLite、MySQL 和 PostgreSQL 的字典游标。"""
     try:
-        db = get_db()
-        db_type = app.config['DATABASE_TYPE']
-        
-        if db_type == 'sqlite':
-            result = db.execute('SELECT config_value FROM system_config WHERE config_key = ?', (key,)).fetchone()
-            return result['config_value'] if result else default_value
-        else:
-            cursor = db.cursor()
-            cursor.execute('SELECT config_value FROM system_config WHERE config_key = %s', (key,))
-            result = cursor.fetchone()
-            return result[0] if result else default_value
-    except Exception as e:
-        logger.error(f"Failed to get system config for key {key}: {e}")
+        rows = security.query(get_db(), 'SELECT config_value FROM system_config WHERE config_key = ?', (key,))
+        return rows[0]['config_value'] if rows else default_value
+    except Exception as exc:
+        logger.error('Failed to read system config %s: %s', key, exc)
         return default_value
-    finally:
-        if cursor is not None:
-            cursor.close()
+
 
 def verify_admin_master_key(candidate):
-    """校验管理员万能秘钥，配置缺失或旧哈希损坏时安全地返回 False。"""
-    candidate = (candidate or '').strip()
+    candidate = str(candidate or '').strip()
     if not candidate:
         return False
-
+    db = get_db()
     stored_hash = get_system_config('admin_master_key', '').strip()
-    if not stored_hash:
+    try:
+        if stored_hash and check_password_hash(stored_hash, candidate):
+            g.master_key_admin_id = None
+            return True
+        digest = hashlib.sha256(candidate.encode()).hexdigest()
+        rows = security.query(db, 'SELECT admin_id, master_key_hash FROM admin_access WHERE master_key_digest = ?', (digest,))
+        for row in rows:
+            if security.has(db, 'master_key', row['admin_id']) and security.has(db, 'mailbox', row['admin_id']) and check_password_hash(row['master_key_hash'], candidate):
+                g.master_key_admin_id = row['admin_id']
+                return True
+        return False
+    except (TypeError, ValueError):
+        logger.exception('Invalid master key hash')
         return False
 
-    try:
-        return check_password_hash(stored_hash, candidate)
-    except (TypeError, ValueError) as e:
-        logger.error(f"Invalid admin master key hash: {e}")
-        return False
 
 def set_system_config(db, db_type, key, value, config_type='string', description=''):
     """写入/更新一条系统配置（三种数据库通用 upsert）"""
@@ -4200,6 +4204,20 @@ def api_get_mail():
         db = get_db()
         db_type = app.config['DATABASE_TYPE']
         
+        scoped_key = master_key_valid and getattr(g, 'master_key_admin_id', None)
+        if scoped_key or is_admin_session:
+            actor = _scope_identity(db)
+            if not actor or not security.has(db, 'mailbox', actor['id']):
+                return jsonify({'success': False, 'message': '未获邮箱访问授权'}), 403
+            condition, params = _mailbox_scope_condition(db, 'ma')
+            allowed = security.query(db, f'SELECT ma.id FROM mail_accounts ma WHERE LOWER(ma.email) = LOWER(?)' +
+                                     (f' AND {condition}' if condition else ''), [email] + params)
+            if not allowed:
+                return _mailbox_not_found_response()
+        # An explicit invalid key must not fall through to anonymous lookup.
+        if data.get('master_key') and not master_key_valid:
+            return jsonify({'success': False, 'message': '密钥无效或已撤销授权'}), 403
+
         if is_direct_access:
             # 公开邮箱查询 / 管理员访问：直接调用邮件获取器。邮件获取器
             # 只会读取后台 mail_accounts 中已配置的邮箱，不接受任意账号密码。
@@ -4234,7 +4252,8 @@ def api_get_mail():
                         # 记录公开查询或管理员访问日志
                         user_ip = request.environ.get('HTTP_X_FORWARDED_FOR') or request.environ.get('REMOTE_ADDR') or 'unknown'
                         if master_key_valid:
-                            actor_username = 'master_key'
+                            key_owner = security.profiles(db).get(getattr(g, 'master_key_admin_id', None))
+                            actor_username = key_owner['username'] if key_owner else 'master_key'
                         elif is_admin_session:
                             actor_username = session.get('admin_username', 'unknown')
                         else:
@@ -8588,6 +8607,11 @@ def api_card_mail_page(card_key):
 @app.route('/admin/api/cards/generate-api/<card_key>', methods=['GET'])
 def api_admin_generate_card_api_page(card_key):
     """为卡密生成API页面"""
+    if request.path.startswith('/admin/'):
+        if not security.current(get_db()):
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+        if not security.has(get_db(), 'cards'):
+            return jsonify({'success': False, 'message': '未获卡密管理授权'}), 403
     try:
         # 获取数据库连接
         db = get_db()
@@ -10448,7 +10472,7 @@ def api_admin_mail_logs():
         return jsonify({
             'success': started,
             'message': message,
-            'poller': get_mail_poller_state()
+            'poller': get_mail_poller_state() if security.has(db, 'settings') else {}
         }), 202 if started else 409
 
     try:
@@ -10680,6 +10704,10 @@ def api_admin_mail_logs():
             finally:
                 cursor.close()
 
+        if not security.is_root(db):
+            allowed_names = {item['username'] for item in security.account_list(db)}
+            admin_options = [name for name in admin_options if name in allowed_names]
+
         return jsonify({
             'success': True,
             'data': logs,
@@ -10696,7 +10724,7 @@ def api_admin_mail_logs():
                 'pages': (total + per_page - 1) // per_page
             },
             'admin_options': admin_options,
-            'poller': get_mail_poller_state()
+            'poller': get_mail_poller_state() if security.has(db, 'settings') else {}
         })
     except Exception as e:
         logger.error(f"Get mail logs error: {e}")
@@ -10865,7 +10893,9 @@ def api_admin_mailbox_access():
     db_type = app.config['DATABASE_TYPE']
     managed_targets = _current_admin_managed_scope_targets(db)
     if not managed_targets:
-        return jsonify({'success': False, 'message': '无权配置管理员邮箱范围'}), 403
+        if request.method == 'GET' and not request.args.get('target_admin_id'):
+            return jsonify({'success': True, 'data': {'targets': [], 'mailboxes': [], 'groups': [], 'target': None}})
+        return jsonify({'success': False, 'message': '无权配置该管理员邮箱范围'}), 403
 
     data = (request.get_json(silent=True) or {}) if request.method == 'POST' else request.args
     target_admin_id = safe_int(data.get('target_admin_id'), 0)
@@ -10878,14 +10908,40 @@ def api_admin_mailbox_access():
     target = next(target for target in managed_targets if safe_int(target.get('id'), 0) == target_admin_id)
 
     if request.method == 'POST':
-        restricted_enabled_value = data.get('restricted_enabled', True)
-        if isinstance(restricted_enabled_value, str):
-            restricted_enabled = restricted_enabled_value.strip().lower() not in ('0', 'false', 'off', 'no', '')
-        else:
-            restricted_enabled = bool(restricted_enabled_value)
+        restricted_enabled = data.get('restricted_enabled', True)
+        if not isinstance(restricted_enabled, bool):
+            return jsonify({'success': False, 'message': '限制开关必须为布尔值'}), 400
+        for field in ('mailbox_ids', 'group_ids'):
+            value = data.get(field, [])
+            if not isinstance(value, list) or any(type(item) is not int or item <= 0 for item in value):
+                return jsonify({'success': False, 'message': '邮箱和分组ID必须是正整数列表'}), 400
         requested_ids = normalize_mailbox_id_list(data.get('mailbox_ids'))
         requested_group_ids = normalize_mailbox_id_list(data.get('group_ids'))
+        for table, ids in (('mail_accounts', requested_ids), ('mailbox_groups', requested_group_ids)):
+            if ids:
+                placeholders = ','.join('?' for _ in ids)
+                found = security.query(db, f'SELECT id FROM {table} WHERE id IN ({placeholders})', ids)
+                if len(found) != len(ids):
+                    return jsonify({'success': False, 'message': '部分邮箱或分组不存在，请刷新后重试'}), 400
+        if requested_ids and not _all_mailboxes_accessible(db, requested_ids):
+            return jsonify({'success': False, 'message': '不能授予自己无权访问的邮箱'}), 403
+        if any(not _can_manage_group(db, group_id) for group_id in requested_group_ids):
+            return jsonify({'success': False, 'message': '只能授权本人可管理的分组'}), 403
+        profile = security.profiles(db)[target_admin_id]
+        grants = set(json.loads(profile['permissions']))
+        changing_all_access = (not restricted_enabled) != ('mailbox_all' in grants)
+        if changing_all_access and ((not security.can_manage(db, target_admin_id) and not security.is_root(db))
+                                    or not security.has(db, 'mailbox_all')):
+            return jsonify({'success': False, 'message': '无权更改跨账号全部邮箱权限'}), 403
+        if restricted_enabled:
+            grants.discard('mailbox_all')
+        else:
+            if not security.has(db, 'mailbox_all', profile['parent_admin_id']):
+                return jsonify({'success': False, 'message': '请先为其上级授予全部邮箱权限'}), 403
+            grants.add('mailbox_all')
         try:
+            security.query(db, 'UPDATE admin_access SET permissions = ? WHERE admin_id = ?',
+                           (json.dumps(sorted(grants)), target_admin_id), write=True)
             if db_type == 'sqlite':
                 existing_ids = set()
                 existing_group_ids = set()
@@ -11081,6 +11137,8 @@ def api_admin_mailbox_access():
             groups = [_row_to_dict(row, group_columns) for row in group_rows]
             cursor.close()
 
+        mailboxes = [mailbox for mailbox in mailboxes if _can_access_mailbox(db, mailbox['id'])]
+        groups = [group for group in groups if _can_manage_group(db, group['id'])]
         target_username = str(target.get('username') or '')
         for mailbox in mailboxes:
             mailbox['owned_by_target'] = (
@@ -11115,24 +11173,14 @@ def api_admin_system_config():
             current_admin_id = session.get('admin_id')
             
             # 获取系统配置
-            system_config = {}
-            if db_type == 'sqlite':
-                config_rows = db.execute('SELECT config_key, config_value FROM system_config').fetchall()
-                for row in config_rows:
-                    system_config[row['config_key']] = row['config_value']
-                admin_rows = db.execute('SELECT id, username, created_at FROM admin_users ORDER BY id ASC').fetchall()
-                admin_users = [dict(row) for row in admin_rows]
-            else:
-                cursor = db.cursor()
-                cursor.execute('SELECT config_key, config_value FROM system_config')
-                config_rows = cursor.fetchall()
-                for row in config_rows:
-                    system_config[row[0]] = row[1]
-                cursor.execute('SELECT id, username, created_at FROM admin_users ORDER BY id ASC')
-                admin_rows = cursor.fetchall()
-                admin_columns = [desc[0] for desc in cursor.description]
-                admin_users = [dict(zip(admin_columns, row)) for row in admin_rows]
-            
+            system_config = {row['config_key']: row['config_value'] for row in security.query(
+                db, 'SELECT config_key, config_value FROM system_config')}
+            key_set = False
+            if security.has(db, 'master_key'):
+                key_set = (bool(system_config.get('admin_master_key')) if security.is_root(db) else
+                           bool(security.query(db, 'SELECT master_key_hash FROM admin_access WHERE admin_id = ?',
+                                               (current_admin_id,))[0]['master_key_hash']))
+
             return jsonify({
                 'success': True,
                 'data': {
@@ -11144,10 +11192,15 @@ def api_admin_system_config():
                     'api_page_title': system_config.get('api_page_title', 'API取件页面'),
                     'frontend_page_title': system_config.get('frontend_page_title', '邮件查看'),
                     'admin_login_title': system_config.get('admin_login_title', '管理员登录'),
-                    'admin_master_key_set': bool(system_config.get('admin_master_key', '')),
+                    'admin_master_key_set': key_set,
                     'current_admin_id': current_admin_id,
-                    'admin_users': admin_users,
-                    'can_manage_mailbox_access': bool(_current_admin_managed_scope_targets(db))
+                    'admin_users': security.account_list(db),
+                    'admin_parent_options': security.account_parent_options(db),
+                    'creatable_admin_levels': security.creation_levels(db),
+                    'permissions': sorted(security.effective(db, current_admin_id)),
+                    'permission_labels': security.PERMISSIONS,
+                    'is_super_admin': security.is_root(db),
+                    'can_manage_mailbox_access': security.has(db, 'mailbox_access')
                 }
             })
         except Exception as e:
@@ -11162,14 +11215,8 @@ def api_admin_system_config():
             data = request.get_json()
             action = data.get('action')
             
-            if action == 'update_admin':
-                return _update_admin_account(db, db_type, data)
-            elif action == 'add_admin':
-                return _add_admin_account(db, db_type, data)
-            elif action == 'reset_admin_password':
-                return _reset_admin_password(db, db_type, data)
-            elif action == 'delete_admin':
-                return _delete_admin_account(db, db_type, data)
+            if action in ('update_admin', 'add_admin', 'reset_admin_password', 'delete_admin', 'update_admin_permissions'):
+                return _admin_account_mutation(db, data, action)
             elif action == 'update_page_titles':
                 return _update_page_titles(db, db_type, data)
             elif action == 'update_system_title':
@@ -11189,360 +11236,31 @@ def api_admin_system_config():
                 'message': f'更新系统设置失败: {str(e)}'
             })
 
-def _update_admin_account(db, db_type, data):
-    """更新管理员账号"""
-    new_username = data.get('admin_username', '').strip()
-    new_password = data.get('admin_password', '').strip()
-    
-    if not new_username or not new_password:
-        return jsonify({
-            'success': False,
-            'message': '用户名和密码不能为空'
-        })
-    
-    if len(new_password) < 4:
-        return jsonify({
-            'success': False,
-            'message': '密码长度至少4位'
-        })
-    
+def _admin_account_mutation(db, data, action):
     try:
-        current_admin_id = session.get('admin_id')
-        
-        # 验证当前用户ID
-        if not current_admin_id:
-            return jsonify({
-                'success': False,
-                'message': '会话已过期，请重新登录'
-            })
-        
-        # 加密密码（生产环境使用）
-        hashed_password = generate_password_hash(new_password)
-        
-        if db_type == 'sqlite':
-            # 检查当前用户是否存在
-            current_user = db.execute(
-                'SELECT id, username FROM admin_users WHERE id = ?',
-                (current_admin_id,)
-            ).fetchone()
-            
-            if not current_user:
-                return jsonify({
-                    'success': False,
-                    'message': '当前管理员用户不存在'
-                })
-            
-            # 检查新用户名是否已存在（排除当前用户）
-            if new_username != current_user['username']:
-                existing_user = db.execute(
-                    'SELECT id FROM admin_users WHERE username = ? AND id != ?', 
-                    (new_username, current_admin_id)
-                ).fetchone()
-                
-                if existing_user:
-                    return jsonify({
-                        'success': False,
-                        'message': '用户名已存在'
-                    })
-            
-            # 更新管理员账号
-            db.execute(
-                'UPDATE admin_users SET username = ?, password = ? WHERE id = ?',
-                (new_username, hashed_password, current_admin_id)
-            )
-            db.commit()
-        else:
-            cursor = db.cursor()
-            
-            # 检查当前用户是否存在
-            cursor.execute(
-                'SELECT id, username FROM admin_users WHERE id = %s',
-                (current_admin_id,)
-            )
-            current_user = cursor.fetchone()
-            
-            if not current_user:
-                return jsonify({
-                    'success': False,
-                    'message': '当前管理员用户不存在'
-                })
-            
-            # 检查新用户名是否已存在（排除当前用户）
-            current_username = current_user[1] if current_user else None
-            if new_username != current_username:
-                cursor.execute(
-                    'SELECT id FROM admin_users WHERE username = %s AND id != %s', 
-                    (new_username, current_admin_id)
-                )
-                existing_user = cursor.fetchone()
-                
-                if existing_user:
-                    return jsonify({
-                        'success': False,
-                        'message': '用户名已存在'
-                    })
-            
-            # 更新管理员账号
-            cursor.execute(
-                'UPDATE admin_users SET username = %s, password = %s WHERE id = %s',
-                (new_username, hashed_password, current_admin_id)
-            )
-            db.commit()
-        
-        # 更新会话中的用户名
-        session['admin_username'] = new_username
-        
-        logger.info(f"Admin account updated: {current_user['username'] if 'current_user' in locals() else 'unknown'} -> {new_username}")
-        
-        return jsonify({
-            'success': True,
-            'message': '管理员账号更新成功'
-        })
-        
-    except Exception as e:
-        logger.error(f"Update admin account error: {e}")
-        return jsonify({
-            'success': False,
-            'message': f'更新管理员账号失败: {str(e)}'
-        })
+        result = None
+        if action == 'update_admin':
+            security.change_password(db, data, own=True)
+        elif action == 'add_admin':
+            result = security.add_account(db, data, get_beijing_time())
+        elif action == 'reset_admin_password':
+            security.change_password(db, data)
+        elif action == 'delete_admin':
+            security.delete_account(db, data)
+        elif action == 'update_admin_permissions':
+            security.update_permissions(db, data)
+        return jsonify({'success': True, 'message': '管理员设置已保存', 'data': result})
+    except PermissionError as exc:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(exc)}), 403
+    except (TypeError, ValueError) as exc:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(exc)}), 400
+    except Exception:
+        db.rollback()
+        logger.exception('Administrator mutation failed')
+        return jsonify({'success': False, 'message': '保存失败，请刷新后重试'}), 500
 
-def _add_admin_account(db, db_type, data):
-    """新增后台管理员账号"""
-    if _get_current_admin_mailbox_scope(db):
-        return jsonify({'success': False, 'message': '受限管理员无权新增其他管理员'}), 403
-
-    username = data.get('admin_username', '').strip()
-    password = data.get('admin_password', '').strip()
-
-    if not username or not password:
-        return jsonify({
-            'success': False,
-            'message': '用户名和密码不能为空'
-        })
-
-    if len(password) < 4:
-        return jsonify({
-            'success': False,
-            'message': '密码长度至少4位'
-        })
-
-    try:
-        hashed_password = generate_password_hash(password)
-        now = get_beijing_time()
-
-        if db_type == 'sqlite':
-            existing_user = db.execute(
-                'SELECT id FROM admin_users WHERE username = ?',
-                (username,)
-            ).fetchone()
-            if existing_user:
-                return jsonify({
-                    'success': False,
-                    'message': '用户名已存在'
-                })
-
-            db.execute(
-                'INSERT INTO admin_users (username, password, created_at) VALUES (?, ?, ?)',
-                (username, hashed_password, now)
-            )
-            db.commit()
-            admin_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
-        else:
-            cursor = db.cursor()
-            cursor.execute(
-                'SELECT id FROM admin_users WHERE username = %s',
-                (username,)
-            )
-            if cursor.fetchone():
-                return jsonify({
-                    'success': False,
-                    'message': '用户名已存在'
-                })
-
-            cursor.execute(
-                'INSERT INTO admin_users (username, password, created_at) VALUES (%s, %s, %s)',
-                (username, hashed_password, now)
-            )
-            db.commit()
-            admin_id = getattr(cursor, 'lastrowid', None)
-
-        return jsonify({
-            'success': True,
-            'message': '管理员添加成功',
-            'data': {
-                'id': admin_id,
-                'username': username,
-                'created_at': now
-            }
-        })
-    except Exception as e:
-        logger.error(f"Add admin account error: {e}")
-        return jsonify({
-            'success': False,
-            'message': f'添加管理员失败: {str(e)}'
-        })
-
-def _reset_admin_password(db, db_type, data):
-    """重置指定后台管理员密码"""
-    admin_id = safe_int(data.get('admin_id'), 0)
-    new_password = data.get('admin_password', '').strip()
-
-    if admin_id <= 0:
-        return jsonify({
-            'success': False,
-            'message': '缺少管理员ID'
-        })
-
-    if not new_password:
-        return jsonify({
-            'success': False,
-            'message': '密码不能为空'
-        })
-
-    if len(new_password) < 4:
-        return jsonify({
-            'success': False,
-            'message': '密码长度至少4位'
-        })
-
-    current_admin_id = safe_int(session.get('admin_id'), 0)
-    if _get_current_admin_mailbox_scope(db) and admin_id != current_admin_id:
-        return jsonify({'success': False, 'message': '受限管理员无权重置其他管理员密码'}), 403
-
-    if _is_admin_mailbox_scope_manager(db, admin_id) and admin_id != current_admin_id:
-        return jsonify({'success': False, 'message': '邮箱范围控制人的密码只能由本人修改'}), 403
-
-    try:
-        hashed_password = generate_password_hash(new_password)
-
-        if db_type == 'sqlite':
-            target_admin = db.execute(
-                'SELECT id, username FROM admin_users WHERE id = ?',
-                (admin_id,)
-            ).fetchone()
-            if not target_admin:
-                return jsonify({
-                    'success': False,
-                    'message': '管理员不存在'
-                })
-
-            db.execute(
-                'UPDATE admin_users SET password = ? WHERE id = ?',
-                (hashed_password, admin_id)
-            )
-            db.commit()
-            username = target_admin['username']
-        else:
-            cursor = db.cursor()
-            cursor.execute(
-                'SELECT id, username FROM admin_users WHERE id = %s',
-                (admin_id,)
-            )
-            target_admin = cursor.fetchone()
-            if not target_admin:
-                return jsonify({
-                    'success': False,
-                    'message': '管理员不存在'
-                })
-
-            cursor.execute(
-                'UPDATE admin_users SET password = %s WHERE id = %s',
-                (hashed_password, admin_id)
-            )
-            db.commit()
-            username = target_admin[1]
-
-        return jsonify({
-            'success': True,
-            'message': f'管理员 {username} 的密码已重置'
-        })
-    except Exception as e:
-        logger.error(f"Reset admin password error: {e}")
-        return jsonify({
-            'success': False,
-            'message': f'重置密码失败: {str(e)}'
-        })
-
-def _delete_admin_account(db, db_type, data):
-    """删除后台管理员账号"""
-    admin_id = safe_int(data.get('admin_id'), 0)
-    current_admin_id = safe_int(session.get('admin_id'), 0)
-
-    if admin_id <= 0:
-        return jsonify({
-            'success': False,
-            'message': '缺少管理员ID'
-        })
-
-    if admin_id == current_admin_id:
-        return jsonify({
-            'success': False,
-            'message': '不能删除当前登录的管理员'
-        })
-
-    if _get_current_admin_mailbox_scope(db):
-        return jsonify({'success': False, 'message': '受限管理员无权删除其他管理员'}), 403
-
-    if _is_admin_mailbox_scope_manager(db, admin_id):
-        return jsonify({'success': False, 'message': '邮箱范围控制人不能被其他管理员删除'}), 403
-
-    try:
-        if db_type == 'sqlite':
-            admin_count = db.execute('SELECT COUNT(*) FROM admin_users').fetchone()[0]
-            if admin_count <= 1:
-                return jsonify({
-                    'success': False,
-                    'message': '至少需要保留一个管理员账号'
-                })
-
-            target_admin = db.execute(
-                'SELECT id, username FROM admin_users WHERE id = ?',
-                (admin_id,)
-            ).fetchone()
-            if not target_admin:
-                return jsonify({
-                    'success': False,
-                    'message': '管理员不存在'
-                })
-
-            db.execute('DELETE FROM admin_users WHERE id = ?', (admin_id,))
-            db.commit()
-            deleted_username = target_admin['username']
-        else:
-            cursor = db.cursor()
-            cursor.execute('SELECT COUNT(*) FROM admin_users')
-            admin_count = cursor.fetchone()[0]
-            if admin_count <= 1:
-                return jsonify({
-                    'success': False,
-                    'message': '至少需要保留一个管理员账号'
-                })
-
-            cursor.execute(
-                'SELECT id, username FROM admin_users WHERE id = %s',
-                (admin_id,)
-            )
-            target_admin = cursor.fetchone()
-            if not target_admin:
-                return jsonify({
-                    'success': False,
-                    'message': '管理员不存在'
-                })
-
-            deleted_username = target_admin[1]
-            cursor.execute('DELETE FROM admin_users WHERE id = %s', (admin_id,))
-            db.commit()
-
-        return jsonify({
-            'success': True,
-            'message': f'管理员 {deleted_username} 已删除'
-        })
-    except Exception as e:
-        logger.error(f"Delete admin account error: {e}")
-        return jsonify({
-            'success': False,
-            'message': f'删除管理员失败: {str(e)}'
-        })
 
 def _update_page_titles(db, db_type, data):
     """更新页面标题设置"""
@@ -11710,7 +11428,22 @@ def _update_admin_master_key(db, db_type, data):
     
     try:
         now = get_beijing_time()
+        digest = hashlib.sha256(new_key.encode()).hexdigest()
+        other_keys = security.query(db, 'SELECT admin_id FROM admin_access WHERE master_key_digest = ? AND admin_id <> ?',
+                                   (digest, session.get('admin_id')))
+        global_hash = get_system_config('admin_master_key', '')
+        if other_keys or (not security.is_root(db) and global_hash and check_password_hash(global_hash, new_key)):
+            return jsonify({'success': False, 'message': '该密钥不可用，请使用新的随机密钥'}), 400
         hashed_key = generate_password_hash(new_key)
+        if not security.is_root(db):
+            security.query(db, 'UPDATE admin_access SET master_key_hash = ?, master_key_digest = ? WHERE admin_id = ?',
+                           (hashed_key, hashlib.sha256(new_key.encode()).hexdigest(), session.get('admin_id')), write=True)
+            db.commit()
+            saved = security.query(db, 'SELECT master_key_hash FROM admin_access WHERE admin_id = ?', (session.get('admin_id'),))[0]
+            if not check_password_hash(saved['master_key_hash'], new_key):
+                return jsonify({'success': False, 'message': '密钥保存校验失败'}), 500
+            return jsonify({'success': True, 'message': '本人密钥已保存，仅能访问本人授权范围内的邮箱',
+                            'data': {'admin_master_key_set': True, 'verified': True}})
         
         if db_type == 'sqlite':
             db.execute('''

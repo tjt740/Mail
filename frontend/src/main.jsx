@@ -56,12 +56,12 @@ const COLOR_THEME_OPTIONS = [
 ];
 
 const adminMenuDefinitions = [
-  { key: '/admin/home', icon: <DashboardOutlined />, labelKey: '首页' },
-  { key: '/admin/mailbox', icon: <InboxOutlined />, labelKey: '邮箱管理' },
-  { key: '/admin/daili', icon: <ControlOutlined />, labelKey: '代理池' },
-  { key: '/admin/kami', icon: <KeyOutlined />, labelKey: '卡密管理' },
-  { key: '/admin/kamirizhi', icon: <FileTextOutlined />, labelKey: '卡密日志' },
-  { key: '/admin/shoujian', icon: <MailOutlined />, labelKey: '收件日志' },
+  { key: '/admin/home', permission: 'home', icon: <DashboardOutlined />, labelKey: '首页' },
+  { key: '/admin/mailbox', permission: 'mailbox', icon: <InboxOutlined />, labelKey: '邮箱管理' },
+  { key: '/admin/daili', permission: 'proxies', icon: <ControlOutlined />, labelKey: '代理池' },
+  { key: '/admin/kami', permission: 'cards', icon: <KeyOutlined />, labelKey: '卡密管理' },
+  { key: '/admin/kamirizhi', permission: 'card_logs', icon: <FileTextOutlined />, labelKey: '卡密日志' },
+  { key: '/admin/shoujian', permission: 'mail_logs', icon: <MailOutlined />, labelKey: '收件日志' },
   { key: '/admin/system', icon: <SettingOutlined />, labelKey: '系统设置' },
   { key: '/admin/help', icon: <QuestionCircleOutlined />, labelKey: '帮助中心' }
 ];
@@ -373,10 +373,10 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const currentPath = getCurrentPath();
   const adminMenuItems = useMemo(
-    () => adminMenuDefinitions.map((item) => ({ ...item, label: t(item.labelKey) })),
+    () => adminMenuDefinitions.filter((item) => !item.permission || (appProps.adminPermissions || []).includes(item.permission)).map((item) => ({ ...item, label: t(item.labelKey) })),
     [language]
   );
-  const selectedKey = adminMenuItems.some((item) => item.key === currentPath) ? currentPath : '/admin/home';
+  const selectedKey = adminMenuItems.some((item) => item.key === currentPath) ? currentPath : '/admin/system';
   const currentItem = adminMenuItems.find((item) => item.key === selectedKey);
   const legacyUrl = useMemo(() => buildLegacyUrl(selectedKey), [selectedKey]);
   const systemTitle = getSystemTitle(t);
