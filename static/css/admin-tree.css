@@ -1,0 +1,73 @@
+.admin-hierarchy { margin: 4px 0 28px; border: 1px solid var(--border, #e7e4db); border-radius: 14px; overflow: hidden; color: var(--text, #30322e); background: var(--surface, #fff); }
+.admin-hierarchy [hidden] { display: none !important; }
+.admin-tree-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 18px 12px; flex-wrap: wrap; }
+.admin-tree-heading { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.admin-tree-heading h3 { font-size: 16px; line-height: 24px; font-weight: 650; margin: 0; }
+.admin-tree-count { color: var(--text-muted, #73766e); font-size: 12px; }
+.admin-tree-controls { display: flex; align-items: center; gap: 6px; }
+.admin-tree-controls button { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 34px; padding: 0 10px; background: var(--surface, #fff); color: var(--text, #30322e); border: 1px solid var(--border, #e7e4db); border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; transition: background .15s, border-color .15s; }
+.admin-tree-controls button:first-child, .admin-tree-controls button:nth-child(3) { font-size: 20px; }
+.admin-tree-controls button:last-child { margin-left: 4px; }
+.admin-tree-controls button:hover { background: var(--primary-soft, #e8f4ee); border-color: var(--primary-color, #059669); }
+.admin-tree-controls button:disabled { opacity: .4; cursor: default; }
+.admin-tree-zoom { font-size: 12px; min-width: 40px; text-align: center; color: var(--text-muted, #73766e); font-variant-numeric: tabular-nums; }
+.admin-tree-legend { padding: 0 18px 14px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: var(--text-muted, #73766e); }
+.admin-hierarchy [data-level="1"] { --rank: var(--primary-color, #059669); --rank-soft: var(--primary-soft, #e8f4ee); }
+.admin-hierarchy [data-level="2"] { --rank: #4473c5; --rank-soft: #edf3ff; }
+.admin-hierarchy [data-level="3"] { --rank: #8a60b7; --rank-soft: #f4effa; }
+.admin-tree-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.admin-tree-legend > span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--rank); }
+.admin-tree-viewport { position: relative; height: 500px; overflow: hidden; touch-action: none; cursor: grab; background-color: var(--surface-2, #f8faf9); background-image: radial-gradient(var(--border-strong, #dbe3de) 1px, transparent 1px); background-size: 18px 18px; border-block: 1px solid var(--border, #e7e4db); user-select: none; isolation: isolate; }
+.admin-tree-viewport.is-dragging, .admin-tree-viewport.is-dragging * { cursor: grabbing !important; }
+.admin-tree-scene { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; will-change: transform; }
+.admin-tree-scene.is-animating { transition: transform .38s cubic-bezier(.22,.8,.24,1); }
+.admin-tree-edges { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.admin-tree-edges path { stroke: var(--border-strong, #cbd6cf); stroke-width: 1.6; fill: none; transition: d .36s ease, stroke .2s ease; }
+.admin-tree-edges path.is-selected { stroke: var(--primary-color, #059669); stroke-width: 2; }
+.admin-tree-node { position: absolute; width: 248px; height: 124px; border: 1px solid var(--border, #dce4df); border-radius: 12px; background: var(--surface, #fff); box-shadow: 0 3px 12px rgba(27, 49, 36, .055); transition: left .36s ease, top .36s ease, border-color .2s ease, box-shadow .2s ease; overflow: hidden; }
+.admin-tree-node.is-selected { border-color: var(--primary-color, #059669); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #059669) 12%, transparent), 0 5px 16px rgba(27,49,36,.06); }
+.admin-tree-node.is-context { border-style: dashed; }
+.admin-tree-node-main { display: flex; align-items: center; width: 100%; height: 83px; gap: 12px; padding: 14px 16px; background: transparent; border: 0; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.admin-tree-node-main:hover { background: var(--surface-2, #f8faf9); }
+.admin-tree-rank { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 11px; display: grid; place-items: center; font-size: 13px; font-weight: 750; color: var(--rank); background: var(--rank-soft); }
+.admin-tree-node-text { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
+.admin-tree-node-text strong { display: block; font-size: 16px; font-weight: 650; line-height: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-tree-level { font-size: 11px; line-height: 16px; color: var(--text-muted, #73766e); }
+.admin-tree-node-footer { height: 40px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px 0 16px; border-top: 1px solid var(--border, #e7e4db); }
+.admin-tree-node-status { font-size: 11px; color: var(--text-muted, #73766e); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-tree-toggle { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; height: 28px; min-width: 38px; padding: 0 8px; font: inherit; font-size: 12px; color: var(--rank); background: var(--rank-soft); border: 0; border-radius: 7px; cursor: pointer; }
+.admin-tree-hint { margin: 0; padding: 10px 18px; color: var(--text-muted, #73766e); font-size: 11px; line-height: 18px; border-bottom: 1px solid var(--border, #e7e4db); }
+.admin-tree-details { display: flex; flex-direction: column; gap: 14px; padding: 18px; background: var(--surface, #fff); }
+.admin-tree-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.admin-tree-identity strong { font-size: 15px; overflow-wrap: anywhere; }
+.admin-tree-identity span { font-size: 12px; color: var(--text-muted, #73766e); }
+.admin-tree-metadata { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 0; }
+.admin-tree-metadata > div { display: flex; gap: 10px; font-size: 12px; }
+.admin-tree-metadata dt { color: var(--text-muted, #73766e); }
+.admin-tree-metadata dd { margin: 0; overflow-wrap: anywhere; }
+.admin-tree-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.admin-tree-actions .admin-tree-delete { color: var(--danger, #c74444); border-color: color-mix(in srgb, var(--danger, #c74444) 25%, transparent); background: transparent; }
+.admin-tree-readonly { font-size: 12px; color: var(--text-muted, #73766e); }
+.admin-tree-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-muted, #73766e); font-size: 13px; }
+.admin-tree-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.admin-hierarchy button:focus-visible, .admin-tree-viewport:focus-visible { outline: 2px solid var(--primary-color, #059669); outline-offset: -3px; }
+.admin-tree-node.is-new { animation: adminTreeAppear .45s ease both; }
+@keyframes adminTreeAppear { from { opacity: 0; scale: .92; } to { opacity: 1; scale: 1; } }
+.admin-tree-rules { margin: 0 0 20px; font-size: 12px; color: var(--text-muted, #73766e); }
+.admin-tree-rules summary { cursor: pointer; padding: 4px 0 8px; }
+.admin-tree-rules .master-key-note { min-height: auto; margin: 4px 0 8px; font-size: 12px; }
+@media (max-width: 640px) {
+    .admin-tree-toolbar { padding: 14px 12px 10px; gap: 10px; }
+    .admin-tree-heading { width: 100%; justify-content: space-between; }
+    .admin-tree-legend { padding-inline: 12px; gap: 8px 14px; }
+    .admin-tree-viewport { height: 380px; }
+    .admin-tree-controls button { height: 40px; min-width: 40px; }
+    .admin-tree-hint, .admin-tree-details { padding-inline: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .admin-hierarchy *, .admin-hierarchy *::before { transition: none !important; animation: none !important; }
+}
+
+#adminHierarchyError { margin-bottom: 16px; font-size: 13px; color: var(--danger, #c74444); }
+#adminHierarchyError[hidden] { display: none !important; }
+#adminHierarchyError button { margin-left: 12px; }

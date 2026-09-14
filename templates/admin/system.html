@@ -3,6 +3,7 @@
 {% block title %}系统设置 - {{ system_title }}{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-tree.css') }}">
 <style>
     * {
         margin: 0;
@@ -1033,27 +1034,16 @@
                 <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-user"></use></svg></span> 后台管理员管理</h2>
             </div>
             <div class="card-body">
-                <p class="master-key-note">一级管理员可创建二级或三级；二级管理员可创建直属三级；三级管理员不能再创建下级。新账号默认不授予功能权限。</p>
-                <p class="master-key-note">tjt740 为一级；lhm、pink 为内置二级，保留原有功能权限和邮箱范围，不参与普通子账号的功能授权。</p>
-                <div class="table-container">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>用户名</th>
-                                <th>管理员级别</th>
-                                <th>归属上级</th>
-                                <th>创建时间</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="adminUsersTableBody">
-                            <tr>
-                                <td colspan="6" style="text-align: center; color: #6b7280;">加载中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div id="adminHierarchyError" role="alert" hidden>
+                    <span>网络错误，请稍后重试</span>
+                    <button type="button" class="btn btn-small" onclick="loadCurrentSettings()">重试</button>
                 </div>
+                <div id="adminHierarchy"><p role="status">加载中...</p></div>
+                <details class="admin-tree-rules">
+                    <summary>查看层级与授权规则</summary>
+                    <p class="master-key-note">一级管理员可创建二级或三级；二级管理员可创建直属三级；三级管理员不能再创建下级。新账号默认不授予功能权限。</p>
+                    <p class="master-key-note">tjt740 为一级；lhm、pink 为内置二级，保留原有功能权限和邮箱范围，不参与普通子账号的功能授权。</p>
+                </details>
 
                 <form id="adminPermissionsForm" class="inline-form-panel" style="display:none;">
                     <h3 id="adminPermissionsTitle">功能授权</h3>
@@ -1298,6 +1288,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/admin-tree.js') }}"></script>
 <script>
     // Toast 统一走 AdminUI.toast（window.showToast 由 admin-ui.js 提供）
 
@@ -1628,37 +1619,30 @@
         select.value = parents.some(parent => String(parent.id) === selected) ? selected : '';
     }
 
-    function renderAdminUsers(adminUsers, currentAdminId) {
-        const tbody = document.getElementById('adminUsersTableBody');
-        tbody.replaceChildren();
-        adminUsers.forEach(admin => {
-            const row = document.createElement('tr');
-            [admin.id, admin.username, adminLevelLabels[admin.admin_level], admin.parent_username || '—', formatDateTime(admin.created_at)].forEach((value, index) => {
-                const cell = document.createElement('td');
-                cell.textContent = value;
-                if (index === 1 || index === 3) cell.setAttribute('translate', 'no');
-                row.appendChild(cell);
-            });
-            const actions = document.createElement('td');
-            const addButton = (label, callback, danger = false) => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'btn btn-small ' + (danger ? 'btn-danger' : 'btn-primary');
-                button.textContent = label;
-                button.style.margin = '3px';
-                button.addEventListener('click', callback);
-                actions.appendChild(button);
+    let adminHierarchy = null;
+    function renderAdminUsers(adminUsers, currentAdminId, ancestors = [], options = {}) {
+        if (!adminHierarchy) {
+            const openPanel = (callback, id) => {
+                callback();
+                document.getElementById(id).scrollIntoView({
+                    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+                    block: 'nearest'
+                });
             };
-            if (admin.can_manage) {
-                addButton('功能授权', () => showAdminPermissions(admin));
-                addButton('重置密码', () => showResetAdminPassword(admin.id, admin.username));
-                if (!admin.has_children) addButton('删除', () => deleteAdminAccount(admin.id, admin.username), true);
-            } else {
-                actions.textContent = Number(admin.id) === Number(currentAdminId) ? '当前账号' : admin.is_builtin_admin ? '内置管理员' : '不可管理';
-            }
-            row.appendChild(actions);
-            tbody.appendChild(row);
-        });
+            adminHierarchy = window.AdminHierarchy.create(document.getElementById('adminHierarchy'), {
+                formatDate: formatDateTime,
+                permissions: admin => openPanel(() => showAdminPermissions(admin), 'adminPermissionsForm'),
+                reset: admin => openPanel(() => showResetAdminPassword(admin.id, admin.username), 'resetAdminPasswordForm'),
+                remove: admin => deleteAdminAccount(admin.id, admin.username)
+            });
+        }
+        adminHierarchy.setData(adminUsers, ancestors, currentAdminId, options);
+        if (options.focusId) {
+            document.querySelector('#adminHierarchy .admin-tree-viewport').scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+                block: 'center'
+            });
+        }
     }
 
     function showAdminPermissions(admin) {
@@ -1723,11 +1707,16 @@
     });
 
     // 加载当前设置
-    function loadCurrentSettings() {
+    function loadCurrentSettings(options = {}) {
         // 加载当前管理员信息
-        fetch('/admin/api/system-config')
-            .then(response => response.json())
+        return fetch('/admin/api/system-config')
+            .then(response => {
+                if (!response.ok) throw new Error('Settings request failed');
+                return response.json();
+            })
             .then(data => {
+                if (!data.success) throw new Error(data.message || 'Settings request failed');
+                document.getElementById('adminHierarchyError').hidden = true;
                 if (data.success) {
                     // 更新当前管理员用户名到输入框
                     if (data.data.admin_username) {
@@ -1761,7 +1750,7 @@
 
                     grantablePermissions = data.data.permissions || [];
                     permissionLabels = data.data.permission_labels || {};
-                    renderAdminUsers(data.data.admin_users || [], data.data.current_admin_id);
+                    renderAdminUsers(data.data.admin_users || [], data.data.current_admin_id, data.data.admin_ancestors || [], options);
                     renderAdminCreationOptions(data.data.creatable_admin_levels || [], data.data.admin_parent_options || []);
                     setupMailboxAccessManager(Boolean(data.data.can_manage_mailbox_access));
                     
@@ -1773,6 +1762,8 @@
             })
             .catch(error => {
                 console.error('加载系统设置失败:', error);
+                document.getElementById('adminHierarchyError').hidden = false;
+                if (!adminHierarchy) document.getElementById('adminHierarchy').replaceChildren();
             });
     }
 
@@ -1803,6 +1794,9 @@
             return;
         }
 
+        const submitButton = document.querySelector('#newAdminForm button');
+        if (submitButton.disabled) return;
+        submitButton.disabled = true;
         fetch('/admin/api/system-config', {
             method: 'POST',
             headers: {
@@ -1821,7 +1815,7 @@
             if (data.success) {
                 showToast('管理员添加成功', 'success');
                 document.getElementById('newAdminForm').reset();
-                loadCurrentSettings();
+                return loadCurrentSettings({ focusId: data.data?.id });
             } else {
                 showToast(data.message || '添加失败', 'error');
             }
@@ -1829,7 +1823,8 @@
         .catch(error => {
             console.error('添加管理员失败:', error);
             showToast('网络错误，请稍后重试', 'error');
-        });
+        })
+        .finally(() => { submitButton.disabled = false; });
     }
 
     function deleteAdminAccount(adminId, username) {

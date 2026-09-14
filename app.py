@@ -11195,6 +11195,7 @@ def api_admin_system_config():
                     'admin_master_key_set': key_set,
                     'current_admin_id': current_admin_id,
                     'admin_users': security.account_list(db),
+                    'admin_ancestors': security.account_ancestors(db),
                     'admin_parent_options': security.account_parent_options(db),
                     'creatable_admin_levels': security.creation_levels(db),
                     'permissions': sorted(security.effective(db, current_admin_id)),

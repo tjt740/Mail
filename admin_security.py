@@ -227,6 +227,23 @@ def account_parent_options(db):
     ]
 
 
+def account_ancestors(db):
+    """Minimal context for the current branch; never disclose sibling accounts or grants."""
+    actor = current(db)
+    if not actor:
+        return []
+    all_profiles = profiles(db)
+    seen = {actor['id']}
+    result = []
+    parent_id = actor['parent_admin_id']
+    while parent_id in all_profiles and parent_id not in seen:
+        seen.add(parent_id)
+        parent = all_profiles[parent_id]
+        result.append({key: parent[key] for key in ('id', 'username', 'parent_admin_id', 'admin_level')})
+        parent_id = parent['parent_admin_id']
+    return result
+
+
 def account_parent_id(db, value, level):
     actor = current(db)
     if isinstance(value, str):

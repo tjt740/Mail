@@ -77,6 +77,16 @@ class AdminPermissionsTestCase(unittest.TestCase):
         with sqlite3.connect(self.path) as db:
             self.assertIsNone(db.execute('SELECT id FROM admin_users WHERE username = ?', ('newchild',)).fetchone())
 
+    def test_hierarchy_ancestors_only_expose_minimal_current_branch_context(self):
+        root_data = self.root.get('/admin/api/system-config').get_json()['data']
+        self.assertEqual(root_data['admin_ancestors'], [])
+        for client, expected in ((self.parent, {1}), (self.child, {1, self.parent_id})):
+            data = client.get('/admin/api/system-config').get_json()['data']
+            self.assertEqual({node['id'] for node in data['admin_ancestors']}, expected)
+            for node in data['admin_ancestors']:
+                self.assertEqual(set(node), {'id', 'username', 'admin_level', 'parent_admin_id'})
+            self.assertNotIn(self.peer_id, {node['id'] for node in data['admin_users'] + data['admin_ancestors']})
+
     def test_explicit_own_parent_does_not_grant_super_admin(self):
         response = self.parent.post('/admin/api/system-config', json={
             'action': 'add_admin', 'admin_username': 'newchild', 'admin_password': 'password123',
