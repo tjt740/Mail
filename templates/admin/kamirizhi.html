@@ -735,7 +735,7 @@
                 <td>${escapeHtml(log.bound_email || '-')}</td>
                 <td>${escapeHtml(log.mail_subject || '-')}</td>
                 <td>${escapeHtml(log.user_ip || '-')}</td>
-                <td>${formatDateTime(log.created_at)}</td>
+                <td data-i18n-date="${escapeHtml(log.created_at || '')}">${formatDateTime(log.created_at)}</td>
             </tr>
         `).join('');
         if (window.AdminUI) AdminUI.staggerRows(tbody);
@@ -867,15 +867,7 @@
     }
 
     function formatDateTime(dateString) {
-        if (!dateString) return '-';
-        try {
-            const hasTimezone = /[+-]\d{2}:?\d{2}|Z$/.test(dateString);
-            const normalized = dateString.replace(' ', 'T');
-            const date = hasTimezone ? new Date(normalized) : new Date(normalized + '+08:00');
-            return date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-        } catch (e) {
-            return dateString;
-        }
+        return window.AppI18n.formatDate(dateString);
     }
 
     function escapeHtml(text) {

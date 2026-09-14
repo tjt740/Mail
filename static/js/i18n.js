@@ -14,6 +14,9 @@
         en: 'EN',
         vi: 'VI'
     };
+    const LOCALES = { zh: 'zh-CN', en: 'en-US', vi: 'vi-VN' };
+    const reactManaged = document.documentElement.dataset.i18nManaged === 'react';
+    const SKIP_SELECTOR = '[translate="no"], [data-i18n-ignore], [data-i18n-managed="react"], script, style, svg, code, pre';
 
     const dictionary = {
         en: {
@@ -841,11 +844,283 @@
         }
     };
 
+    // Shared by the React shell and legacy screens; add both translations together.
+    const sharedMessages = {
+        "展示系统整体状态：邮箱账号、卡密、代理数量与自动轮询运行情况。点击功能导航卡片进入各模块。": ["Shows mailbox, key and proxy totals, plus automatic polling status. Select a navigation card to open a module.", "Hiển thị tổng số hộp thư, mã, proxy và trạng thái lấy thư tự động. Chọn thẻ điều hướng để mở chức năng."],
+        "邮箱账号总数：已配置的收件邮箱数量。": ["Total mailboxes: the number of configured receiving accounts.", "Tổng số hộp thư: số tài khoản nhận thư đã cấu hình."],
+        "卡密总数：已生成的卡密数量。": ["Total card keys: the number of generated keys.", "Tổng số mã: số mã đã tạo."],
+        "可用代理数量：代理池中可用的代理数。": ["Available proxies: the number of usable proxies in the pool.", "Proxy khả dụng: số proxy có thể sử dụng trong nhóm."],
+        "自动轮询：后台定时收件的当前状态（运行中 / 空闲 / 已暂停 / 已禁用）。": ["Automatic polling: the current scheduled mail retrieval status (running / idle / paused / disabled).", "Lấy thư tự động: trạng thái lấy thư theo lịch (đang chạy / rảnh / tạm dừng / đã tắt)."],
+        "配置用于收件的邮箱账号，支持单个 / 批量添加、分组、测试连通性、手动收件与发件。": ["Configure receiving accounts individually or in bulk, organize groups, test connections, and receive or send mail manually.", "Cấu hình tài khoản nhận thư riêng lẻ hoặc hàng loạt, sắp xếp nhóm, kiểm tra kết nối, nhận và gửi thư thủ công."],
+        "「添加邮箱」下拉：单个添加、批量添加、添加服务器地址。": ["The Add Mailbox menu supports individual accounts, bulk imports and server addresses.", "Menu Thêm hộp thư hỗ trợ thêm riêng lẻ, nhập hàng loạt và địa chỉ máy chủ."],
+        "需填写邮箱、密码/授权码、IMAP/SMTP 服务器与端口；可选 SSL。": ["Enter the email, password or app password, and IMAP/SMTP server and port. SSL is optional.", "Nhập email, mật khẩu hoặc mã ứng dụng, máy chủ và cổng IMAP/SMTP. SSL là tùy chọn."],
+        "OAuth 邮箱（如 Outlook）在备注标记「OAuth登录」，通过刷新令牌收件。": ["OAuth accounts (such as Outlook) are marked “OAuth登录” in Notes and use refresh tokens to retrieve mail.", "Tài khoản OAuth (như Outlook) được đánh dấu “OAuth登录” trong ghi chú và dùng refresh token để lấy thư."],
+        "勾选多行后，底部会滑出批量操作条：批量复制、批量分组、批量删除。": ["Selecting multiple rows opens the bottom action bar for copying, grouping and deleting selected accounts.", "Chọn nhiều dòng để mở thanh thao tác bên dưới: sao chép, phân nhóm và xóa các tài khoản đã chọn."],
+        "「视图」按钮可切换分组显示与自定义显示列。": ["Use the view controls to toggle groups and customize visible columns.", "Dùng điều khiển chế độ xem để bật/tắt nhóm và tùy chỉnh các cột hiển thị."],
+        "编辑 / 收件 / 测试 / 删除 / 更多（备注、发件等）。": ["Edit / Receive / Test / Delete / More (notes, sending mail, etc.).", "Sửa / Nhận thư / Kiểm tra / Xóa / Thêm (ghi chú, gửi thư, v.v.)."],
+        "测试：验证邮箱能否正常登录收件；状态列显示「邮箱正常 / 异常 / 未检测」。": ["Test verifies mailbox login and mail retrieval. The status column shows whether the account is healthy, has an error, or has not been tested.", "Kiểm tra xác minh đăng nhập và nhận thư. Cột trạng thái cho biết tài khoản bình thường, có lỗi hoặc chưa kiểm tra."],
+        "管理 HTTP / SOCKS5 代理，用于通过代理连接邮箱服务器，降低直连被限制的风险。": ["Manage HTTP/SOCKS5 proxies for connecting to mail servers and reducing direct connection restrictions.", "Quản lý proxy HTTP/SOCKS5 để kết nối máy chủ thư và giảm hạn chế kết nối trực tiếp."],
+        "支持添加 HTTP 与 SOCKS5 两类代理。": ["Both HTTP and SOCKS5 proxies are supported.", "Hỗ trợ cả proxy HTTP và SOCKS5."],
+        "「开启代理」会自动选择延迟最低的代理；也可手动切换到指定代理。": ["Enable proxy automatically selects the server with the lowest latency. You can also select one manually.", "Bật proxy tự chọn máy chủ có độ trễ thấp nhất. Bạn cũng có thể chọn thủ công."],
+        "密码列默认打码，点击眼睛图标显示、点击复制图标复制。": ["Passwords are masked by default. Use the eye icon to reveal them or the copy icon to copy them.", "Mật khẩu mặc định được che. Nhấn biểu tượng mắt để hiển thị hoặc biểu tượng sao chép để sao chép."],
+        "当前所有邮箱共用同一个启用中的代理，是潜在的单点瓶颈（见帮助中心的轮询说明）。": ["All mailboxes currently share the active proxy, which can become a bottleneck. See the polling guide in the Help Center.", "Mọi hộp thư hiện dùng chung proxy đang bật, có thể tạo nút thắt. Xem hướng dẫn lấy thư trong Trung tâm trợ giúp."],
+        "生成并管理访问卡密。卡密是前台用户查看邮件的凭证，可限制使用次数、有效期与绑定邮箱。": ["Generate and manage access keys for viewing mail, with usage limits, expiry dates and mailbox bindings.", "Tạo và quản lý mã truy cập để xem thư, với giới hạn sử dụng, thời hạn và liên kết hộp thư."],
+        "单个生成或批量生成；可设置使用次数上限、有效期、收取范围（天数）与关键词过滤。": ["Generate one key or a batch. Set usage limits, expiry, mail age in days and keyword filters.", "Tạo một mã hoặc hàng loạt. Đặt giới hạn sử dụng, thời hạn, số ngày lấy thư và bộ lọc từ khóa."],
+        "可将卡密绑定到一个或多个邮箱，绑定后该卡密只能查询这些邮箱。": ["Bind a key to one or more mailboxes to restrict it to those accounts.", "Liên kết mã với một hoặc nhiều hộp thư để giới hạn mã chỉ truy vấn các tài khoản đó."],
+        "使用情况：已用次数 / 上限，下方为最近使用时间。": ["Usage: uses consumed / limit, with the most recent use shown below.", "Sử dụng: số lần đã dùng / giới hạn, bên dưới là lần dùng gần nhất."],
+        "有效期：到期时间，留空为永久有效。": ["Validity: the expiry date; blank means no expiry.", "Thời hạn: ngày hết hạn; để trống nghĩa là không hết hạn."],
+        "备注 / 过滤：备注文字与收取范围、关键词过滤。": ["Notes / Filters: notes, mail age limits and keyword filters.", "Ghi chú / Bộ lọc: ghi chú, giới hạn tuổi thư và từ khóa."],
+        "删除或过期的卡密进入回收站，可恢复或彻底清理。": ["Deleted or expired keys go to the recycle bin, where they can be restored or permanently removed.", "Mã đã xóa hoặc hết hạn vào thùng rác, có thể khôi phục hoặc xóa vĩnh viễn."],
+        "记录每次卡密的使用与查询：谁在什么时间用哪个卡密查询了哪个邮箱。": ["Records key use and queries: who accessed which mailbox, with which key, and when.", "Ghi lại việc dùng mã và truy vấn: ai truy cập hộp thư nào, bằng mã nào và khi nào."],
+        "卡密 / 绑定邮箱 / 邮件标题 / 使用者IP / 使用时间（北京时间）。": ["Key / Bound mailbox / Mail subject / User IP / Usage time (Beijing time).", "Mã / Hộp thư liên kết / Tiêu đề thư / IP người dùng / Thời gian dùng (giờ Bắc Kinh)."],
+        "action=use 表示成功取件；action=check 表示查询了卡密信息（不消耗次数）。": ["action=use means mail was retrieved successfully; action=check is a key information query and does not consume a use.", "action=use nghĩa là lấy thư thành công; action=check là truy vấn thông tin mã và không tiêu hao lượt dùng."],
+        "「保留天数」设为 0 表示不清理；设为 N 表示自动删除 N 天前的卡密日志。": ["Set retention to 0 to keep all logs, or to N to automatically delete key logs older than N days.", "Đặt số ngày lưu là 0 để giữ mọi nhật ký, hoặc N để tự xóa nhật ký mã cũ hơn N ngày."],
+        "查看后台自动收件的结果，并控制自动轮询的开关、间隔、日志保留与失败退避。": ["View automatic mail retrieval results and control polling, intervals, log retention and failure backoff.", "Xem kết quả lấy thư tự động và điều khiển lấy thư, khoảng cách, lưu nhật ký và tạm ngưng khi lỗi."],
+        "自动轮询：后台按间隔定时收取所有启用邮箱的最新邮件。": ["Automatic polling retrieves the latest mail from all enabled mailboxes at the configured interval.", "Lấy thư tự động lấy thư mới nhất từ mọi hộp thư đang bật theo khoảng cách đã cấu hình."],
+        "立即查询：手动触发一次轮询（会忽略失败退避，相当于立即重试）。": ["Query now manually starts one polling round, ignoring backoff so failed accounts are retried immediately.", "Truy vấn ngay khởi động một lượt lấy thư thủ công, bỏ qua tạm ngưng để thử lại tài khoản lỗi ngay."],
+        "状态值：received 成功 / failed 失败 / processed 已处理。": ["Statuses: received / failed / processed.", "Trạng thái: received (đã nhận) / failed (thất bại) / processed (đã xử lý)."],
+        "自动轮询开关：关闭后暂停定时收件，约 30 秒内生效，无需重启。": ["Turning automatic polling off pauses scheduled retrieval within about 30 seconds, without restarting.", "Tắt lấy thư tự động để tạm dừng trong khoảng 30 giây, không cần khởi động lại."],
+        "间隔(秒)：两次轮询之间的等待时间，最低 30 秒。": ["Interval (seconds): the wait between polling rounds, with a minimum of 30 seconds.", "Khoảng cách (giây): thời gian chờ giữa các lượt lấy thư, tối thiểu 30 giây."],
+        "日志保留(天)：0 为不清理；设为 N 自动删除 N 天前的收件日志，防止数据库膨胀。": ["Retention (days): 0 keeps all logs; N automatically deletes mail logs older than N days to limit database growth.", "Lưu nhật ký (ngày): 0 giữ tất cả; N tự xóa nhật ký nhận thư cũ hơn N ngày để hạn chế kích thước cơ sở dữ liệu."],
+        "退避中 N 个：连续失败的邮箱会被暂时跳过，可展开查看并重置。": ["Accounts in backoff: repeatedly failing mailboxes are temporarily skipped. Expand the list to inspect or reset them.", "Tài khoản đang tạm ngưng: hộp thư lỗi liên tiếp bị bỏ qua tạm thời. Mở danh sách để xem hoặc đặt lại."],
+        "每个邮箱每轮抓取最新 5 封、仅看最近 7 天、仅 INBOX。": ["Each round fetches the latest 5 messages per mailbox, from the last 7 days, in INBOX only.", "Mỗi lượt lấy 5 thư mới nhất mỗi hộp thư, trong 7 ngày gần nhất, chỉ từ INBOX."],
+        "按「邮箱 + Message-ID」去重，避免重复记录。": ["Messages are deduplicated by mailbox and Message-ID to avoid duplicate logs.", "Loại thư trùng theo hộp thư và Message-ID để tránh nhật ký trùng."],
+        "连续失败达阈值（默认 3 次）后进入指数退避（跳过 2→4→8→16 轮），成功后自动恢复。": ["After consecutive failures reach the threshold (3 by default), exponential backoff skips 2→4→8→16 rounds. Successful retrieval resets backoff.", "Khi lỗi liên tiếp đạt ngưỡng (mặc định 3), tạm ngưng theo cấp số nhân bỏ qua 2→4→8→16 lượt. Lấy thư thành công sẽ đặt lại."],
+        "管理管理员账号、万能秘钥、系统与页面标题等。左侧锚点可快速跳转到各设置区块。": ["Manage admin accounts, the master key and system/page titles. Use the left navigation to jump to a settings section.", "Quản lý tài khoản quản trị, khóa chính và tiêu đề hệ thống/trang. Dùng điều hướng bên trái để đến mục cài đặt."],
+        "管理员账号：修改当前管理员用户名与密码。": ["Admin account: change your username and password.", "Tài khoản quản trị: đổi tên đăng nhập và mật khẩu của bạn."],
+        "后台管理员管理：新增/重置/删除其它管理员账号。": ["Manage admins: add, reset or delete other administrator accounts.", "Quản lý quản trị viên: thêm, đặt lại hoặc xóa tài khoản quản trị khác."],
+        "万能秘钥：一个无需卡密即可查询任意邮箱的超级凭证，请妥善保管。": ["Master key: a credential that can query any mailbox without a card key. Keep it secure.", "Khóa chính: thông tin xác thực để truy vấn mọi hộp thư không cần mã. Hãy bảo quản an toàn."],
+        "系统标题 / 页面标题：自定义站点显示名称。": ["System / Page titles: customize the names displayed on the site.", "Tiêu đề hệ thống / trang: tùy chỉnh tên hiển thị trên trang web."],
+        "为什么收不到邮件？": ["Why am I not receiving mail?", "Tại sao tôi không nhận được thư?"],
+        "① 邮箱配置或授权码错误——用「测试」按钮验证；② 该邮箱触发了失败退避，被暂时跳过——在收件日志页展开退避列表并重置；③ 使用了 OAuth 的邮箱刷新令牌失效；④ 代理不可用导致连接失败。": ["Possible causes: incorrect mailbox settings or app password (use Test); the mailbox is in backoff (expand and reset it in Mail Logs); an expired OAuth refresh token; or an unavailable proxy.", "Nguyên nhân có thể: sai cấu hình hoặc mã ứng dụng (dùng Kiểm tra); hộp thư đang tạm ngưng (mở và đặt lại trong Nhật ký thư); refresh token OAuth hết hạn; hoặc proxy không khả dụng."],
+        "自动轮询多久收一次？": ["How often does automatic polling run?", "Lấy thư tự động chạy bao lâu một lần?"],
+        "由「轮询间隔」决定，默认 300 秒（5 分钟），最低 30 秒。可在收件日志页的轮询控制面板调整，改动在当前周期结束后生效。": ["The polling interval defaults to 300 seconds (5 minutes), with a 30-second minimum. Change it in Mail Logs; it takes effect after the current round.", "Khoảng cách mặc định là 300 giây (5 phút), tối thiểu 30 giây. Đổi trong Nhật ký thư; có hiệu lực sau lượt hiện tại."],
+        "卡密的使用次数怎么算？": ["How are key uses counted?", "Lượt sử dụng mã được tính thế nào?"],
+        "每成功取件一次消耗一次；查询卡密信息（check）不消耗次数。次数用完后卡密变为「次数用完」状态，无法再查询。": ["Each successful retrieval consumes one use. A key information query (check) does not. Once the limit is reached, the key is exhausted and cannot query mail.", "Mỗi lần lấy thư thành công tiêu hao một lượt. Truy vấn thông tin mã (check) không tiêu hao. Khi hết lượt, mã không thể truy vấn thư."],
+        "代理怎么用？": ["How do I use a proxy?", "Làm thế nào để dùng proxy?"],
+        "在代理池添加 HTTP/SOCKS5 代理后点击「开启代理」，系统会自动选延迟最低的代理连接邮箱；也可手动切换。": ["Add an HTTP/SOCKS5 proxy in Proxy Pool, then enable it. The lowest latency proxy is selected automatically; you can also switch manually.", "Thêm proxy HTTP/SOCKS5 trong Nhóm proxy rồi bật. Proxy có độ trễ thấp nhất được chọn tự động; bạn cũng có thể đổi thủ công."],
+        "失败退避是什么？": ["What is failure backoff?", "Tạm ngưng thử lại khi lỗi là gì?"],
+        "连续失败达到阈值（默认 3 次）的邮箱会被暂时跳过 2→4→8→16 轮，避免反复空耗子进程与触发服务商限流；该邮箱一旦成功收件就自动恢复正常频率。": ["After repeated failures reach the threshold (3 by default), a mailbox skips 2→4→8→16 rounds to avoid wasted work and provider rate limits. Successful retrieval restores its normal frequency.", "Khi lỗi liên tiếp đạt ngưỡng (mặc định 3), hộp thư bỏ qua 2→4→8→16 lượt để tránh lãng phí và giới hạn nhà cung cấp. Lấy thư thành công sẽ khôi phục tần suất bình thường."],
+        "收件日志越来越多怎么办？": ["How do I limit growing mail logs?", "Làm sao hạn chế nhật ký thư tăng lên?"],
+        "在收件日志页把「日志保留天数」设为一个正数（如 30），系统会自动清理更早的日志。默认 0 为不清理，长期运行建议开启。": ["Set log retention in Mail Logs to a positive number, such as 30, to delete older logs automatically. The default of 0 keeps everything; enable cleanup for long-running systems.", "Đặt số ngày lưu nhật ký trong Nhật ký thư thành số dương, như 30, để tự xóa nhật ký cũ. Mặc định 0 giữ tất cả; nên bật dọn dẹp khi chạy lâu dài."],
+        "页面操作": ["Page actions", "Thao tác trang"],
+        "邮箱账号总数": ["Total mailboxes", "Tổng số hộp thư"],
+        "卡密总数": ["Total card keys", "Tổng số mã"],
+        "可用代理数量": ["Available proxies", "Proxy khả dụng"],
+        "空闲": ["Idle", "Đang rảnh"],
+        "功能导航": ["Navigation", "Điều hướng"],
+        "使用说明": ["User guide", "Hướng dẫn sử dụng"],
+        "欢迎使用邮件查看系统管理控制台，点击下方卡片进入对应模块。": ["Welcome to the mail admin console. Select a card below to open a module.", "Chào mừng đến bảng quản trị thư. Chọn thẻ bên dưới để mở chức năng."],
+        "添加、编辑和删除邮箱账号配置": ["Add, edit and delete mailbox accounts", "Thêm, sửa và xóa tài khoản hộp thư"],
+        "管理代理服务器配置": ["Manage proxy servers", "Quản lý máy chủ proxy"],
+        "生成和管理访问卡密": ["Generate and manage access keys", "Tạo và quản lý mã truy cập"],
+        "查看卡密使用记录": ["View card usage history", "Xem lịch sử sử dụng mã"],
+        "查看邮件接收记录与轮询控制": ["View mail logs and polling controls", "Xem nhật ký nhận thư và điều khiển lấy thư"],
+        "配置系统参数和安全选项": ["Configure system and security settings", "Cấu hình hệ thống và bảo mật"],
+        "首页 · 概览": ["Home · Overview", "Trang chủ · Tổng quan"],
+        "常见问题": ["Frequently asked questions", "Câu hỏi thường gặp"],
+        "统计卡片": ["Statistics cards", "Thẻ thống kê"],
+        "前往帮助中心查看全部说明 →": ["View all guides in the Help Center →", "Xem mọi hướng dẫn tại Trung tâm trợ giúp →"],
+        "单个添加": ["Add one", "Thêm một"],
+        "发送": ["Send", "Gửi"],
+        "（可选，粘贴后自动填充）": ["(Optional; paste to autofill)", "(Tùy chọn; dán để tự điền)"],
+        "支持 ---- / 冒号 / 竖线 / 逗号 / 分号 / Tab / 空格 / key=value / JSON / CSV 表头": ["Supports ----, colons, pipes, commas, semicolons, tabs, spaces, key=value, JSON and CSV headers", "Hỗ trợ ----, dấu hai chấm, gạch dọc, dấu phẩy, chấm phẩy, tab, khoảng trắng, key=value, JSON và tiêu đề CSV"],
+        "测试邮箱": ["Test mailbox", "Kiểm tra hộp thư"],
+        "批量操作": ["Batch actions", "Thao tác hàng loạt"],
+        "行内操作": ["Row actions", "Thao tác trên dòng"],
+        "展开分组": ["Expand groups", "Mở rộng nhóm"],
+        "展开左侧分组": ["Expand the groups sidebar", "Mở thanh nhóm bên trái"],
+        "清除搜索": ["Clear search", "Xóa tìm kiếm"],
+        "按账号状态筛选": ["Filter by account status", "Lọc theo trạng thái tài khoản"],
+        "倒序": ["Descending", "Giảm dần"],
+        "新分组名，回车添加": ["New group name; press Enter to add", "Tên nhóm mới; nhấn Enter để thêm"],
+        "添加HTTP代理": ["Add HTTP proxy", "Thêm proxy HTTP"],
+        "添加SOCKS5代理": ["Add SOCKS5 proxy", "Thêm proxy SOCKS5"],
+        "开启代理": ["Enable proxy", "Bật proxy"],
+        "关闭代理": ["Disable proxy", "Tắt proxy"],
+        "代理状态：": ["Proxy status:", "Trạng thái proxy:"],
+        "未启用": ["Not enabled", "Chưa bật"],
+        "点击\"开启代理\"按钮智能选择延迟最低的代理，或手动切换到指定代理": ["Enable the proxy to select the lowest latency server automatically, or select one manually", "Bật proxy để tự chọn máy chủ có độ trễ thấp nhất hoặc chọn thủ công"],
+        "类型": ["Type", "Loại"],
+        "代理名称": ["Proxy name", "Tên proxy"],
+        "地址:端口": ["Address:port", "Địa chỉ:cổng"],
+        "延迟": ["Latency", "Độ trễ"],
+        "最后检测": ["Last tested", "Kiểm tra lần cuối"],
+        "暂无代理配置": ["No proxies configured", "Chưa cấu hình proxy"],
+        "代理地址 *": ["Proxy address *", "Địa chỉ proxy *"],
+        "端口 *": ["Port *", "Cổng *"],
+        "测试代理": ["Test proxy", "Kiểm tra proxy"],
+        "代理管理": ["Proxy management", "Quản lý proxy"],
+        "注意": ["Note", "Lưu ý"],
+        "搜索代理名称、地址或备注...": ["Search proxy name, address or notes...", "Tìm tên, địa chỉ hoặc ghi chú proxy..."],
+        "留空将默认为空字符串": ["Leave blank for an empty value", "Để trống nếu không có giá trị"],
+        "可选：代理用户名": ["Optional: proxy username", "Tùy chọn: tên đăng nhập proxy"],
+        "可选：代理密码": ["Optional: proxy password", "Tùy chọn: mật khẩu proxy"],
+        "可选：代理备注": ["Optional: proxy notes", "Tùy chọn: ghi chú proxy"],
+        "总卡密数": ["Total keys", "Tổng số mã"],
+        "可用卡密": ["Available keys", "Mã khả dụng"],
+        "已使用": ["Used", "Đã sử dụng"],
+        "已过期": ["Expired", "Đã hết hạn"],
+        "批量生成卡密": ["Generate keys in bulk", "Tạo mã hàng loạt"],
+        "使用情况": ["Usage", "Tình hình sử dụng"],
+        "有效期": ["Validity", "Thời hạn"],
+        "备注 / 过滤": ["Notes / Filters", "Ghi chú / Bộ lọc"],
+        "暂无卡密数据": ["No card keys", "Chưa có mã"],
+        "使用次数限制": ["Usage limit", "Giới hạn sử dụng"],
+        "收取X天内的邮件": ["Fetch mail from the last X days", "Lấy thư trong X ngày gần nhất"],
+        "关键词邮件": ["Subject keywords", "Từ khóa tiêu đề"],
+        "留空则不限制关键词": ["Leave blank to allow all subjects", "Để trống để không lọc tiêu đề"],
+        "支持格式：数字天数（如：1、100）、天数+天字（如：1天、7天）或具体日期时间，留空则永不过期，使用北京时间": ["Enter a number of days (e.g. 1 or 100), days with 天 (e.g. 1天), or a date and time in Beijing time. Leave blank for no expiry.", "Nhập số ngày (ví dụ 1, 100), số ngày kèm 天 (ví dụ 1天) hoặc ngày giờ Bắc Kinh. Để trống để không hết hạn."],
+        "生成数量": ["Number of keys", "Số lượng mã"],
+        "最多一次生成100个": ["Up to 100 keys at a time", "Tối đa 100 mã mỗi lần"],
+        "选择邮箱": ["Select mailboxes", "Chọn hộp thư"],
+        "请选择邮箱账号": ["Select a mailbox account", "Chọn tài khoản hộp thư"],
+        "绑定": ["Bind", "Liên kết"],
+        "编辑卡密": ["Edit key", "Sửa mã"],
+        "生成API": ["Generate API link", "Tạo liên kết API"],
+        "邮箱分组": ["Mailbox groups", "Nhóm hộp thư"],
+        "确定选择": ["Confirm selection", "Xác nhận lựa chọn"],
+        "卡密回收站": ["Key recycle bin", "Thùng rác mã"],
+        "已删除的卡密": ["Deleted keys", "Mã đã xóa"],
+        "已过期的卡密": ["Expired keys", "Mã đã hết hạn"],
+        "已删除的卡密 (": ["Deleted keys (", "Mã đã xóa ("],
+        "已过期的卡密 (": ["Expired keys (", "Mã đã hết hạn ("],
+        "批量恢复": ["Restore selected", "Khôi phục mục đã chọn"],
+        "批量永久删除": ["Delete selected permanently", "Xóa vĩnh viễn mục đã chọn"],
+        "删除封禁": ["Delete blocked", "Xóa tài khoản bị khóa"],
+        "删除正常": ["Delete healthy", "Xóa tài khoản bình thường"],
+        "删除时间": ["Deleted at", "Thời gian xóa"],
+        "删除原因": ["Deletion reason", "Lý do xóa"],
+        "过期原因": ["Expiry reason", "Lý do hết hạn"],
+        "清空回收站": ["Empty recycle bin", "Dọn thùng rác"],
+        "列表字段": ["List fields", "Các trường trong danh sách"],
+        "搜索卡密...": ["Search keys...", "Tìm mã..."],
+        "设置关键词后只收取标题包含关键词的邮件，多个关键词用逗号分隔": ["Fetch only messages whose subjects contain these keywords. Separate keywords with commas.", "Chỉ lấy thư có tiêu đề chứa từ khóa. Phân tách các từ khóa bằng dấu phẩy."],
+        "支持格式：1、7、30、100 或 1天、7天、30天 或具体日期时间": ["Enter days: 1, 7, 30, 100; 1天, 7天, 30天; or a date and time", "Nhập số ngày: 1, 7, 30, 100; 1天, 7天, 30天; hoặc ngày giờ"],
+        "卡密用途说明": ["Describe this key’s purpose", "Mô tả mục đích sử dụng mã"],
+        "批量卡密用途说明": ["Describe the purpose of these keys", "Mô tả mục đích của các mã"],
+        "点击选择按钮选择一个或多个邮箱": ["Use Select to choose one or more mailboxes", "Nhấn Chọn để chọn một hoặc nhiều hộp thư"],
+        "搜索邮箱地址...": ["Search email addresses...", "Tìm địa chỉ email..."],
+        "卡密被使用后，记录会显示在这里": ["Usage records will appear here when a key is used", "Lịch sử sẽ xuất hiện khi mã được sử dụng"],
+        "字段说明": ["Field descriptions", "Mô tả trường"],
+        "定期清理": ["Scheduled cleanup", "Dọn dẹp định kỳ"],
+        "日志保留天数": ["Log retention days", "Số ngày lưu nhật ký"],
+        "成功": ["Success", "Thành công"],
+        "失败": ["Failed", "Thất bại"],
+        "间隔(秒)": ["Interval (seconds)", "Khoảng cách (giây)"],
+        "日志保留(天)": ["Retention (days)", "Lưu nhật ký (ngày)"],
+        "退避中": ["In backoff", "Đang tạm ngưng thử lại"],
+        "个 ▾": ["accounts ▾", "tài khoản ▾"],
+        "未启动": ["Not started", "Chưa khởi động"],
+        "下次轮询": ["Next poll", "Lần lấy thư tiếp theo"],
+        "邮件自动轮询尚未启动": ["Automatic mail polling has not started", "Chưa khởi động lấy thư tự động"],
+        "收件日志 · 轮询控制": ["Mail logs · Polling controls", "Nhật ký thư · Điều khiển lấy thư"],
+        "日志来源": ["Log sources", "Nguồn nhật ký"],
+        "轮询控制面板": ["Polling controls", "Điều khiển lấy thư"],
+        "轮询机制": ["How polling works", "Cách lấy thư định kỳ hoạt động"],
+        "按收件状态筛选：成功/失败/已处理": ["Filter mail status: received / failed / processed", "Lọc trạng thái: đã nhận / thất bại / đã xử lý"],
+        "关闭后自动轮询暂停，约30秒内生效，无需重启": ["Turning this off pauses polling within about 30 seconds, without restarting", "Tắt để dừng lấy thư trong khoảng 30 giây, không cần khởi động lại"],
+        "账号设置": ["Account settings", "Cài đặt tài khoản"],
+        "管理员管理": ["Manage administrators", "Quản lý quản trị viên"],
+        "系统标题": ["System title", "Tiêu đề hệ thống"],
+        "页面标题": ["Page titles", "Tiêu đề trang"],
+        "管理员账号设置": ["Admin account settings", "Cài đặt tài khoản quản trị"],
+        "管理员用户名": ["Admin username", "Tên đăng nhập quản trị"],
+        "管理员密码": ["Admin password", "Mật khẩu quản trị"],
+        "确认密码": ["Confirm password", "Xác nhận mật khẩu"],
+        "更新管理员账号": ["Update admin account", "Cập nhật tài khoản quản trị"],
+        "后台管理员管理": ["Manage admin accounts", "Quản lý tài khoản quản trị"],
+        "创建时间": ["Created at", "Thời gian tạo"],
+        "当前登录": ["Signed in", "Đang đăng nhập"],
+        "当前账号": ["Current account", "Tài khoản hiện tại"],
+        "重置账号": ["Reset account", "Đặt lại tài khoản"],
+        "新密码": ["New password", "Mật khẩu mới"],
+        "确认新密码": ["Confirm new password", "Xác nhận mật khẩu mới"],
+        "保存新密码": ["Save new password", "Lưu mật khẩu mới"],
+        "新管理员用户名": ["New admin username", "Tên đăng nhập quản trị mới"],
+        "新管理员密码": ["New admin password", "Mật khẩu quản trị mới"],
+        "确认新管理员密码": ["Confirm new admin password", "Xác nhận mật khẩu quản trị mới"],
+        "保存后只存储安全哈希，不会回显明文；请以右侧状态为准。": ["Only a secure hash is stored after saving. The plain text will not be shown; check the status on the right.", "Sau khi lưu chỉ giữ mã băm an toàn, không hiển thị văn bản gốc. Xem trạng thái bên phải."],
+        "当前状态": ["Current status", "Trạng thái hiện tại"],
+        "设置万能秘钥": ["Set master key", "Đặt khóa chính"],
+        "系统名称/标题": ["System name / title", "Tên / tiêu đề hệ thống"],
+        "显示在后端管理页面标题中的系统名称，修改后即时生效": ["System name shown in admin page titles; changes apply immediately", "Tên hệ thống trong tiêu đề trang quản trị; thay đổi có hiệu lực ngay"],
+        "更新系统标题": ["Update system title", "Cập nhật tiêu đề hệ thống"],
+        "API取件页面标题": ["API mail page title", "Tiêu đề trang lấy thư API"],
+        "显示在API取件页面的标题": ["Title shown on the API mail page", "Tiêu đề hiển thị trên trang lấy thư API"],
+        "前端取件页面标题": ["Public mail page title", "Tiêu đề trang lấy thư công khai"],
+        "显示在前端取件页面的标题": ["Title shown on the public mail page", "Tiêu đề hiển thị trên trang lấy thư công khai"],
+        "管理员登录页面标题": ["Admin login page title", "Tiêu đề trang đăng nhập quản trị"],
+        "显示在管理员登录页面的标题": ["Title shown on the admin login page", "Tiêu đề hiển thị trên trang đăng nhập quản trị"],
+        "更新页面标题": ["Update page titles", "Cập nhật tiêu đề trang"],
+        "系统名称": ["System name", "Tên hệ thống"],
+        "系统版本": ["System version", "Phiên bản hệ thống"],
+        "数据库类型": ["Database type", "Loại cơ sở dữ liệu"],
+        "设置项": ["Settings", "Cài đặt"],
+        "系统设置栏目": ["System settings sections", "Các mục cài đặt hệ thống"],
+        "输入新的管理员用户名": ["Enter the new admin username", "Nhập tên đăng nhập quản trị mới"],
+        "输入新的管理员密码": ["Enter the new admin password", "Nhập mật khẩu quản trị mới"],
+        "再次输入密码确认": ["Enter the password again", "Nhập lại mật khẩu"],
+        "至少4位": ["At least 4 characters", "Ít nhất 4 ký tự"],
+        "输入新管理员用户名": ["Enter a new admin username", "Nhập tên đăng nhập quản trị mới"],
+        "至少6位，设置后可免卡密取件": ["At least 6 characters; fetch mail without a card key after setup", "Ít nhất 6 ký tự; sau khi đặt có thể lấy thư không cần mã"],
+        "显示或隐藏万能秘钥": ["Show or hide master key", "Hiện hoặc ẩn khóa chính"],
+        "📖 帮助中心": ["📖 Help Center", "📖 Trung tâm trợ giúp"],
+        "这里汇总了各功能模块的使用说明、字段释义与常见问题。每个后台页面右上角也有「使用说明」按钮可随时查看。": ["Find module guides, field descriptions and frequently asked questions here. The User guide button on each admin page also opens contextual help.", "Xem hướng dẫn chức năng, mô tả trường và câu hỏi thường gặp tại đây. Nút Hướng dẫn sử dụng trên mỗi trang quản trị cũng mở trợ giúp tương ứng."],
+        "定时触发": ["Scheduled trigger", "Kích hoạt theo lịch"],
+        "遍历启用邮箱": ["Visit enabled mailboxes", "Duyệt hộp thư đang bật"],
+        "跳过退避中的邮箱": ["Skip mailboxes in backoff", "Bỏ qua hộp thư đang tạm ngưng"],
+        "IMAP 收取最新邮件": ["Fetch latest mail via IMAP", "Lấy thư mới nhất qua IMAP"],
+        "去重写入日志": ["Deduplicate and save logs", "Loại trùng và lưu nhật ký"],
+        "失败则退避/成功则恢复": ["Back off on failure; resume on success", "Tạm ngưng khi lỗi; tiếp tục khi thành công"],
+        '帮助中心': ['Help Center', 'Trung tâm trợ giúp'],
+        '后台管理': ['Admin Console', 'Bảng quản trị'],
+        '后台页面': ['Admin Page', 'Trang quản trị'],
+        '退出': ['Log Out', 'Đăng xuất'],
+        '用户名或密码错误': ['Incorrect username or password', 'Tên đăng nhập hoặc mật khẩu không đúng'],
+        '页面加载中': ['Loading page', 'Đang tải trang'],
+        '页面加载时间较长，请重试': ['This page is taking longer to load. Please retry.', 'Trang tải lâu hơn dự kiến. Vui lòng thử lại.'],
+        '重试': ['Retry', 'Thử lại'],
+        '关闭菜单': ['Close menu', 'Đóng menu'],
+        '邮件文件夹': ['Mail folders', 'Thư mục thư'],
+        '邮箱切换': ['Switch mailbox', 'Chuyển hộp thư'],
+        '正在获取邮件，请稍候': ['Fetching mail, please wait', 'Đang lấy thư, vui lòng chờ'],
+        '全部状态': ['All statuses', 'Tất cả trạng thái'],
+        '账号状态': ['Account status', 'Trạng thái tài khoản'],
+        '未检测': ['Not tested', 'Chưa kiểm tra'],
+        '尚未检测': ['Not tested yet', 'Chưa được kiểm tra'],
+        '正常': ['Healthy', 'Bình thường'],
+        '封禁': ['Blocked', 'Bị khóa'],
+        '凭据失效': ['Invalid credentials', 'Thông tin xác thực không hợp lệ'],
+        '网络异常': ['Network error', 'Lỗi mạng'],
+        '检测异常': ['Test error', 'Lỗi kiểm tra'],
+        '当前为保存前的测试结果。': ['This test was run before saving.', 'Đây là kết quả kiểm tra trước khi lưu.'],
+        '测试请求未返回账号状态': ['The test did not return an account status', 'Kiểm tra không trả về trạng thái tài khoản'],
+        '未获得有效检测结果，已保存的账号状态未更改。': ['No valid test result was received. The saved account status is unchanged.', 'Không nhận được kết quả hợp lệ. Trạng thái tài khoản đã lưu không thay đổi.'],
+        '最后修改时间': ['Last modified', 'Sửa đổi lần cuối'],
+        '操作人': ['Operator', 'Người thao tác'],
+        '（无主题）': ['(No subject)', '(Không có tiêu đề)'],
+        '时间:': ['Time:', 'Thời gian:'],
+        '发件人:': ['From:', 'Người gửi:'],
+        '收件人:': ['To:', 'Người nhận:']
+    };
+    Object.entries(sharedMessages).forEach(([key, values]) => {
+        dictionary.en[key] = values[0];
+        dictionary.vi[key] = values[1];
+    });
+
     const originalText = new WeakMap();
     const originalAttrs = new WeakMap();
     let currentLang = getInitialLanguage();
     let observer = null;
     let isApplying = false;
+    let languageRevision = 0;
+
+    function getParentI18n() {
+        try {
+            return window.parent !== window ? window.parent.AppI18n : null;
+        } catch { return null; }
+    }
 
     function getSavedLanguage() {
         try {
@@ -857,14 +1132,23 @@
 
     function getInitialLanguage() {
         const saved = getSavedLanguage();
-        return SUPPORTED_LANGS.includes(saved) ? saved : DEFAULT_LANG;
+        if (SUPPORTED_LANGS.includes(saved)) return saved;
+        const parent = getParentI18n();
+        if (parent) return parent.language;
+        const browserLanguages = navigator.languages || [navigator.language || ''];
+        for (const locale of browserLanguages) {
+            const language = locale.toLowerCase().split('-')[0];
+            if (SUPPORTED_LANGS.includes(language)) return language;
+        }
+        return 'en';
     }
 
     async function detectLanguageFromIp() {
         // A manual language choice always wins. Without one, ask the server for
         // an IP-country recommendation on every page load so travel/VPN changes
         // are reflected automatically.
-        if (SUPPORTED_LANGS.includes(getSavedLanguage())) return;
+        if (getParentI18n() || SUPPORTED_LANGS.includes(getSavedLanguage())) return;
+        const revision = languageRevision;
         try {
             const response = await fetch('/api/language', {
                 method: 'GET',
@@ -874,14 +1158,10 @@
             if (!response.ok) return;
             const data = await response.json();
             if (!data.success || !SUPPORTED_LANGS.includes(data.language)) return;
-            if (SUPPORTED_LANGS.includes(getSavedLanguage())) return;
-            currentLang = data.language;
-            applyLanguage();
-            window.dispatchEvent(new CustomEvent('app-language-change', {
-                detail: { language: currentLang, automatic: true, country: data.country || null }
-            }));
+            if (revision !== languageRevision || SUPPORTED_LANGS.includes(getSavedLanguage())) return;
+            setLanguage(data.language, { persist: false });
         } catch (error) {
-            // Keep the Chinese default when IP detection is unavailable.
+            // Keep the browser language when IP detection is unavailable.
         }
     }
 
@@ -897,7 +1177,32 @@
         if (exact !== text) return exact;
 
         const t = dictionary[lang] || {};
-        let match = text.match(/^颜色主题\s*[:：]\s*(.+)$/);
+        // Preserve status symbols, but localize the status itself.
+        let match = text.match(/^([○✅❌⚠️]+\s*)(.+)$/u);
+        if (match) return match[1] + translateWithRules(match[2], lang);
+        match = text.match(/^(删除封禁|删除正常|批量恢复|批量永久删除)\s*\((\d+)\)$/);
+        if (match) return `${translateExact(match[1], lang)} (${match[2]})`;
+        match = text.match(/^已选择\s*(\d+)\s*个邮箱(.*)$/);
+        if (match) return lang === 'vi' ? `Đã chọn ${match[1]} hộp thư${match[2]}` : `Selected ${match[1]} mailboxes${match[2]}`;
+        match = text.match(/^(.+) · 使用说明$/);
+        if (match) return `${translateExact(match[1], lang)} · ${translateExact('使用说明', lang)}`;
+        match = text.match(/^例:\s*(.+)$/);
+        if (match) return `${lang === 'vi' ? 'Ví dụ' : 'e.g.'}: ${match[1].replace('QQ邮箱', 'QQ Mail')}`;
+        if (text.startsWith('例如：user@outlook.com----password----client_id----refresh_token')) {
+            return lang === 'vi' ? 'Ví dụ: user@outlook.com----password----client_id----refresh_token; cũng hỗ trợ key=value, JSON hoặc các trường trên nhiều dòng'
+                : 'e.g. user@outlook.com----password----client_id----refresh_token; key=value, JSON and multiline fields are also supported';
+        }
+        if (text.startsWith('每行一个邮箱，也支持 JSON 数组、CSV/TSV 表头和分行字段：')) {
+            const examples = text.split('\n').slice(1, -1).join('\n');
+            return lang === 'vi'
+                ? `Mỗi dòng một hộp thư; cũng hỗ trợ mảng JSON, tiêu đề CSV/TSV và các trường trên nhiều dòng:\n${examples}\nHỗ trợ dấu phẩy, chấm phẩy, gạch dọc, dấu hai chấm, tab, khoảng trắng, JSON và key=value`
+                : `One mailbox per line; JSON arrays, CSV/TSV headers and multiline fields are also supported:\n${examples}\nSupports commas, semicolons, pipes, colons, tabs, spaces, JSON and key=value`;
+        }
+        match = text.match(/^(\d+)\s*封$/);
+        if (match) return lang === 'vi' ? `${match[1]} thư` : `${match[1]} ${match[1] === '1' ? 'message' : 'messages'}`;
+        match = text.match(/^邮件正文：(.+)$/);
+        if (match) return `${translateExact('邮件正文', lang)}: ${match[1]}`;
+        match = text.match(/^颜色主题\s*[:：]\s*(.+)$/);
         if (match) {
             return `${translateExact('颜色主题', lang)}: ${translateExact(match[1], lang)}`;
         }
@@ -1131,14 +1436,14 @@
             return text.replace('（北京时间）', lang === 'vi' ? '(Bắc Kinh)' : '(Beijing Time)');
         }
 
+        if (text.includes('\n')) return text.split('\n').map((line) => translateWithRules(line, lang)).join('\n');
         return t[text] || text;
     }
 
     function shouldSkipNode(node) {
         const parent = node.parentElement;
         if (!parent) return true;
-        const tag = parent.tagName;
-        return ['SCRIPT', 'STYLE', 'SVG', 'PATH', 'USE', 'CODE', 'PRE', 'TEXTAREA'].includes(tag);
+        return !!parent.closest(SKIP_SELECTOR + ', textarea, [data-i18n-date], [data-i18n-number]');
     }
 
     function translateTextNode(node) {
@@ -1155,7 +1460,8 @@
         const trailing = source.match(/\s*$/)[0];
         const trimmed = source.trim();
         const translated = translateWithRules(trimmed, currentLang);
-        node.nodeValue = `${leading}${translated}${trailing}`;
+        const next = `${leading}${translated}${trailing}`;
+        if (value !== next) node.nodeValue = next;
     }
 
     function getOriginalAttrStore(element) {
@@ -1166,12 +1472,21 @@
     }
 
     function shouldTranslateValue(element) {
-        if (element.tagName !== 'INPUT') return true;
+        if (element.tagName !== 'INPUT') return false;
         const type = (element.getAttribute('type') || 'text').toLowerCase();
         return ['button', 'submit', 'reset'].includes(type);
     }
 
     function translateAttributes(element) {
+        if (element.closest(SKIP_SELECTOR)) return;
+        if (element.hasAttribute('data-i18n-date')) {
+            const next = formatDate(element.dataset.i18nDate);
+            if (element.textContent !== next) element.textContent = next;
+        }
+        if (element.hasAttribute('data-i18n-number')) {
+            const next = formatNumber(element.dataset.i18nNumber);
+            if (element.textContent !== next) element.textContent = next;
+        }
         const attrs = ['placeholder', 'title', 'aria-label', 'alt', 'data-label'];
         if (shouldTranslateValue(element)) {
             attrs.push('value');
@@ -1185,7 +1500,8 @@
             if (store[attr] === undefined) {
                 store[attr] = value;
             }
-            element.setAttribute(attr, translateWithRules(store[attr].trim(), currentLang));
+            const next = translateWithRules(store[attr].trim(), currentLang);
+            if (value !== next) element.setAttribute(attr, next);
         });
     }
 
@@ -1198,6 +1514,7 @@
         if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_NODE) return;
 
         if (root.nodeType === Node.ELEMENT_NODE) {
+            if (root.closest(SKIP_SELECTOR)) return;
             translateAttributes(root);
         }
 
@@ -1207,8 +1524,7 @@
             {
                 acceptNode(node) {
                     if (node.nodeType === Node.ELEMENT_NODE) {
-                        const tag = node.tagName;
-                        if (['SCRIPT', 'STYLE', 'SVG', 'PATH', 'USE', 'CODE', 'PRE'].includes(tag)) {
+                        if (node.matches(SKIP_SELECTOR)) {
                             return NodeFilter.FILTER_REJECT;
                         }
                     }
@@ -1250,10 +1566,12 @@
             observer.disconnect();
         }
         try {
-            document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : currentLang;
-            translateTitle();
-            walk(document.body);
-            syncSwitcher();
+            document.documentElement.lang = LOCALES[currentLang];
+            if (!reactManaged) {
+                translateTitle();
+                walk(document.body);
+                syncSwitcher();
+            }
         } finally {
             if (observer) {
                 startObserver();
@@ -1404,23 +1722,24 @@
             subtree: true,
             characterData: true,
             attributes: true,
-            attributeFilter: ['placeholder', 'title', 'aria-label', 'alt', 'value']
+            attributeFilter: ['placeholder', 'title', 'aria-label', 'alt', 'value', 'data-label', 'data-i18n-date', 'data-i18n-number']
         });
     }
 
     function observeChanges() {
         if (observer) observer.disconnect();
+        let queued = false;
+        const roots = new Set();
         observer = new MutationObserver((mutations) => {
             if (isApplying) return;
-            let shouldApply = false;
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList' && mutation.addedNodes.length) {
-                    shouldApply = true;
+                    mutation.addedNodes.forEach((node) => roots.add(node));
                 }
                 if (mutation.type === 'characterData') {
                     const node = mutation.target;
                     originalText.set(node, node.nodeValue);
-                    shouldApply = true;
+                    roots.add(node);
                 }
                 if (mutation.type === 'attributes') {
                     const element = mutation.target;
@@ -1432,26 +1751,62 @@
                     } else {
                         delete store[attr];
                     }
-                    shouldApply = true;
+                    roots.add(element);
                 }
             });
-            if (shouldApply) {
-                window.requestAnimationFrame(applyLanguage);
+            if (roots.size && !queued) {
+                queued = true;
+                // Batch dynamic rows/toasts once, without walking the entire page.
+                queueMicrotask(() => {
+                    queued = false;
+                    observer.disconnect();
+                    try {
+                        roots.forEach((node) => { if (node.isConnected) walk(node); });
+                        roots.clear();
+                    } finally { startObserver(); }
+                });
             }
         });
         startObserver();
     }
 
-    function setLanguage(lang) {
+    function setLanguage(lang, { persist = true, sync = true } = {}) {
         if (!SUPPORTED_LANGS.includes(lang)) return;
-        currentLang = lang;
-        try {
-            localStorage.setItem(STORAGE_KEY, lang);
-        } catch (error) {
-            // The current-page switch still works when storage is unavailable.
+        languageRevision++;
+        if (persist) {
+            try { localStorage.setItem(STORAGE_KEY, lang); } catch { /* In-memory sync still works. */ }
         }
-        applyLanguage();
-        window.dispatchEvent(new CustomEvent('app-language-change', { detail: { language: lang } }));
+        const changed = currentLang !== lang;
+        currentLang = lang;
+        if (changed) {
+            applyLanguage();
+            window.dispatchEvent(new CustomEvent('app-language-change', { detail: { language: lang } }));
+        }
+        if (sync) {
+            const parent = getParentI18n();
+            if (parent) parent.setLanguage(lang, { persist: false });
+            document.querySelectorAll('iframe.legacy-frame').forEach((frame) => {
+                try { frame.contentWindow.AppI18n?.setLanguage(lang, { persist: false, sync: false }); } catch { /* Cross-origin frame. */ }
+            });
+        }
+    }
+
+    function formatNumber(value, options = {}) {
+        const number = Number(value);
+        return Number.isFinite(number) ? new Intl.NumberFormat(LOCALES[currentLang], options).format(number) : String(value);
+    }
+
+    function formatDate(value, options = {}) {
+        if (!value) return '-';
+        // Database timestamps without offsets are stored in Beijing time.
+        let normalized = typeof value === 'string' ? value.replace(' ', 'T') : value;
+        if (typeof normalized === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(normalized)) normalized += '+08:00';
+        const date = new Date(normalized);
+        if (!Number.isFinite(date.getTime())) return String(value);
+        return new Intl.DateTimeFormat(LOCALES[currentLang], {
+            year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+            timeZone: 'Asia/Shanghai', ...options
+        }).format(date);
     }
 
     function patchDialogs() {
@@ -1472,11 +1827,7 @@
         window.addEventListener('storage', (event) => {
             if (event.key !== STORAGE_KEY || !SUPPORTED_LANGS.includes(event.newValue)) return;
             if (event.newValue === currentLang) return;
-            currentLang = event.newValue;
-            applyLanguage();
-            window.dispatchEvent(new CustomEvent('app-language-change', {
-                detail: { language: currentLang, external: true }
-            }));
+            setLanguage(event.newValue, { persist: false });
         });
     }
 
@@ -1485,16 +1836,23 @@
             return currentLang;
         },
         setLanguage,
-        t(text) {
-            return translateWithRules(String(text), currentLang);
-        }
+        t(text, lang = currentLang) {
+            return translateWithRules(String(text), SUPPORTED_LANGS.includes(lang) ? lang : DEFAULT_LANG);
+        },
+        get locale() { return LOCALES[currentLang]; },
+        languages: SUPPORTED_LANGS.map((key) => ({ key, name: LANG_LABELS[key], mark: LANG_MARKS[key] })),
+        formatNumber,
+        formatDate
     };
 
     function init() {
         patchDialogs();
-        createSwitcher();
         applyLanguage();
-        observeChanges();
+        if (!reactManaged) {
+            createSwitcher();
+            applyLanguage();
+            observeChanges();
+        }
         observeExternalLanguageChanges();
         detectLanguageFromIp();
     }

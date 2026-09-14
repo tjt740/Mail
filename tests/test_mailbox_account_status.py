@@ -111,6 +111,32 @@ class MailboxAccountStatusTestCase(unittest.TestCase):
             app_module.app.config['DATABASE_TYPE'] = previous_database_type
             connection.close()
 
+    def test_malformed_test_response_still_persists_detection_error(self):
+        connection = sqlite3.connect(':memory:')
+        connection.row_factory = sqlite3.Row
+        connection.execute('''
+            CREATE TABLE mail_accounts (
+                id INTEGER PRIMARY KEY, email TEXT, last_test TEXT,
+                test_result TEXT, account_status TEXT DEFAULT 'pending'
+            )
+        ''')
+        connection.execute("INSERT INTO mail_accounts (id, email) VALUES (1, 'test@example.com')")
+        try:
+            with patch.dict(app_module.app.config, DATABASE_TYPE='sqlite'):
+                with app_module.app.test_request_context('/'):
+                    for stdout in ('null', '[]', '{}', '{"success": "false"}', 'not json'):
+                        with self.subTest(stdout=stdout):
+                            result = subprocess.CompletedProcess([], 0, stdout=stdout, stderr='')
+                            with patch.object(app_module.subprocess, 'run', return_value=result):
+                                payload = app_module._test_mailbox(connection, {'id': 1}).get_json()
+                            stored = connection.execute('SELECT * FROM mail_accounts WHERE id=1').fetchone()
+                            self.assertFalse(payload['success'])
+                            self.assertEqual(payload['account_status'], 'test_error')
+                            self.assertEqual(stored['account_status'], 'test_error')
+                            self.assertTrue(stored['last_test'])
+        finally:
+            connection.close()
+
 
 if __name__ == '__main__':
     unittest.main()

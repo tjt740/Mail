@@ -1095,6 +1095,7 @@
     .mailbox-test-tag {
         display: inline-flex;
         align-items: center;
+        gap: 5px;
         max-width: 100%;
         border-radius: 999px;
         padding: 4px 9px;
@@ -1120,7 +1121,11 @@
         background: #ffedd5;
     }
 
-    .mailbox-test-tag.network_error,
+    .mailbox-test-tag.network_error {
+        color: #1d4ed8;
+        background: #dbeafe;
+    }
+
     .mailbox-test-tag.test_error {
         color: #854d0e;
         background: #fef9c3;
@@ -1129,6 +1134,35 @@
     .mailbox-test-tag.pending {
         color: #475569;
         background: #f1f5f9;
+    }
+
+    .mailbox-status-icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        fill: currentColor;
+    }
+
+    .mailbox-test-result-panel:not([hidden]) {
+        display: flex;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+    }
+
+    .mailbox-test-result-detail {
+        flex-basis: 100%;
+        color: #475569;
+        white-space: pre-wrap;
+        max-height: 160px;
+        overflow-y: auto;
     }
 
     .btn-delete-normal {
@@ -3290,6 +3324,7 @@
                 
                 <div class="card">
                     <div class="card-body scroll-card-body">
+                        <div id="mailboxLatestTestResult" class="mailbox-test-result-panel" role="status" aria-live="polite" hidden></div>
                         <div class="table-container">
                             <table id="mailboxTable">
                                 <colgroup id="mailboxTableColumns"></colgroup>
@@ -3610,6 +3645,7 @@
                     <label for="remarks">备注</label>
                     <textarea id="remarks" name="remarks" rows="3" placeholder="输入备注信息"></textarea>
                 </div>
+                <div id="mailboxFormTestResult" class="mailbox-test-result-panel" role="status" aria-live="polite" hidden></div>
                 
             </form>
         </div>
@@ -4024,7 +4060,7 @@
         { key: 'group', label: '分组', defaultVisible: false, sortable: true, minWidth: 96, weight: 0.7 },
         { key: 'email', label: '邮箱地址', required: true, defaultVisible: true, minWidth: 300, weight: 3.4 },
         { key: 'server', label: '收/发信息', defaultVisible: false, sortable: true, minWidth: 170, weight: 1.1 },
-        { key: 'test_status', label: '检测状态', defaultVisible: true, filter: 'test_status', minWidth: 126, fixed: true },
+        { key: 'test_status', label: '账号状态', required: true, defaultVisible: true, filter: 'test_status', minWidth: 126, fixed: true },
         { key: 'created_at', label: '添加时间', defaultVisible: true, sortable: true, minWidth: 150, fixed: true },
         { key: 'created_by_admin', label: '操作人', defaultVisible: true, filter: 'owner', minWidth: 126, fixed: true },
         { key: 'updated_at', label: '最后修改时间', defaultVisible: false, sortable: true, minWidth: 178, fixed: true },
@@ -4041,12 +4077,12 @@
         { value: 'test_error', label: '⚠️ 检测异常' }
     ];
     const MAILBOX_STATUS_META = {
-        pending: { className: 'pending', icon: '○', label: '未检测', rank: 5 },
-        normal: { className: 'normal', icon: '✅', label: '正常', rank: 0 },
-        banned: { className: 'banned', icon: '❌', label: '封禁', rank: 1 },
-        invalid_credentials: { className: 'invalid_credentials', icon: '⚠️', label: '凭据失效', rank: 2 },
-        network_error: { className: 'network_error', icon: '⚠️', label: '网络异常', rank: 3 },
-        test_error: { className: 'test_error', icon: '⚠️', label: '检测异常', rank: 4 }
+        pending: { className: 'pending', icon: 'ai-info-circle', label: '未检测', rank: 5 },
+        normal: { className: 'normal', icon: 'ai-check-circle', label: '正常', rank: 0 },
+        banned: { className: 'banned', icon: 'ai-stop', label: '封禁', rank: 1 },
+        invalid_credentials: { className: 'invalid_credentials', icon: 'ai-warning', label: '凭据失效', rank: 2 },
+        network_error: { className: 'network_error', icon: 'ai-global', label: '网络异常', rank: 3 },
+        test_error: { className: 'test_error', icon: 'ai-exclamation-circle', label: '检测异常', rank: 4 }
     };
     let groups = [];
     let mailboxGroupMap = {};
@@ -4407,7 +4443,7 @@
                     .map(option => `<option value="${escapeAttribute(option.value)}" ${testStatusFilter === option.value ? 'selected' : ''}>${escapeHtml(option.label)}</option>`)
                     .join('');
                 return `<th class="mailbox-col-${column.key}">
-                    <select class="mailbox-header-filter" onchange="filterMailboxesByTestStatus(this.value)" onclick="event.stopPropagation()" aria-label="按检测状态筛选">
+                    <select class="mailbox-header-filter" onchange="filterMailboxesByTestStatus(this.value)" onclick="event.stopPropagation()" aria-label="按账号状态筛选">
                         ${options}
                     </select>
                 </th>`;
@@ -4477,13 +4513,12 @@
 
     function getMailboxTestStatus(mailbox) {
         const result = String(mailbox.test_result || '');
+        const storedStatus = String(mailbox.account_status || '').trim().toLowerCase();
+        if (storedStatus && storedStatus !== 'pending' && Object.hasOwn(MAILBOX_STATUS_META, storedStatus)) {
+            return MAILBOX_STATUS_META[storedStatus];
+        }
         if (!mailbox.last_test && !result) {
             return MAILBOX_STATUS_META.pending;
-        }
-
-        const storedStatus = String(mailbox.account_status || '').trim().toLowerCase();
-        if (storedStatus && storedStatus !== 'pending' && MAILBOX_STATUS_META[storedStatus]) {
-            return MAILBOX_STATUS_META[storedStatus];
         }
 
         const normalized = result.toLowerCase();
@@ -4500,7 +4535,8 @@
         if (bannedMarkers.some(marker => normalized.includes(marker))) {
             return MAILBOX_STATUS_META.banned;
         }
-        if (result.includes('成功') || result.includes('正常') || normalized.includes('success')) {
+        if (/^(?:✅\s*)?(?:连接测试成功|邮箱连接测试成功|测试成功|连接成功|正常)(?:$|[，。！!：:\s])/.test(result.trim())
+            || /^(?:success|connection test successful|connection successful)(?:$|[.!:\s])/i.test(result.trim())) {
             return MAILBOX_STATUS_META.normal;
         }
         const invalidMarkers = [
@@ -4522,6 +4558,37 @@
             return MAILBOX_STATUS_META.network_error;
         }
         return MAILBOX_STATUS_META.test_error;
+    }
+
+    function renderMailboxStatusBadge(mailbox) {
+        const status = getMailboxTestStatus(mailbox);
+        const title = [mailbox.last_test, mailbox.test_result].filter(Boolean).join(' ') || status.label;
+        return `<span class="mailbox-test-tag ${status.className}" title="${escapeAttribute(title)}"><svg class="mailbox-status-icon" aria-hidden="true" focusable="false"><use href="#${status.icon}"></use></svg>${escapeHtml(status.label)}</span>`;
+    }
+
+    function renderMailboxTestPanel(panelId, mailbox, note = '') {
+        const panel = document.getElementById(panelId);
+        if (!panel) return;
+        panel.hidden = false;
+        const detail = [mailbox.last_test, mailbox.test_result, note].filter(Boolean).join('\n');
+        panel.innerHTML = `<span>账号状态</span>${renderMailboxStatusBadge(mailbox)}<span>${escapeHtml(mailbox.email || '')}</span><div class="mailbox-test-result-detail">${escapeHtml(detail || '尚未检测')}</div>`;
+    }
+
+    function showMailboxTestOutcome(mailboxId, data) {
+        const mailbox = mailboxData.find(item => String(item.id) === String(mailboxId));
+        const hasStatus = Object.hasOwn(MAILBOX_STATUS_META, data.account_status);
+        const result = {
+            email: mailbox?.email || (!mailboxId ? document.getElementById('email')?.value : '') || '',
+            account_status: hasStatus ? data.account_status : 'test_error',
+            last_test: data.last_test || '',
+            test_result: data.test_result || data.message || '测试请求未返回账号状态'
+        };
+        const note = !hasStatus ? '未获得有效检测结果，已保存的账号状态未更改。'
+            : (!mailboxId ? '当前为保存前的测试结果。' : '');
+        renderMailboxTestPanel('mailboxLatestTestResult', result, note);
+        if (String(document.getElementById('mailboxId')?.value || '') === String(mailboxId || '')) {
+            renderMailboxTestPanel('mailboxFormTestResult', result, note);
+        }
     }
 
     function getMailboxOwnerName(mailbox) {
@@ -4611,19 +4678,15 @@
                     <div>发：${escapeHtml(mailbox.send_server || mailbox.server || '')}</div>
                 </td>`;
             case 'test_status': {
-                const status = getMailboxTestStatus(mailbox);
-                const title = mailbox.last_test
-                    ? `${mailbox.last_test} ${mailbox.test_result || ''}`
-                    : (mailbox.test_result || '尚未检测');
-                return `<td class="mailbox-col-test_status" data-label="${label}"><span class="mailbox-test-tag ${status.className}" title="${escapeAttribute(title)}"><span aria-hidden="true">${escapeHtml(status.icon)}</span> ${escapeHtml(status.label)}</span></td>`;
+                return `<td class="mailbox-col-test_status" data-label="${label}">${renderMailboxStatusBadge(mailbox)}</td>`;
             }
             case 'created_at':
-                return `<td class="mailbox-col-created_at" data-label="${label}">${formatDateTime(mailbox.created_at)}</td>`;
+                return `<td class="mailbox-col-created_at" data-i18n-date="${escapeAttribute(mailbox.created_at || '')}" data-label="${label}">${formatDateTime(mailbox.created_at)}</td>`;
             case 'updated_at':
-                return `<td class="mailbox-col-updated_at" data-label="${label}">${formatDateTime(mailbox.updated_at)}</td>`;
+                return `<td class="mailbox-col-updated_at" data-i18n-date="${escapeAttribute(mailbox.updated_at || '')}" data-label="${label}">${formatDateTime(mailbox.updated_at)}</td>`;
             case 'remarks': {
                 const remarksText = String(mailbox.remarks || '').trim() || '--';
-                return `<td class="mailbox-col-remarks" data-label="${label}"><span class="mailbox-remarks-text" title="${escapeAttribute(remarksText)}">${escapeHtml(remarksText)}</span></td>`;
+                return `<td class="mailbox-col-remarks" data-label="${label}"><span translate="no" class="mailbox-remarks-text" title="${escapeAttribute(remarksText)}">${escapeHtml(remarksText)}</span></td>`;
             }
             case 'actions':
                 return `<td class="mailbox-col-actions" data-label="${label}">
@@ -6556,6 +6619,7 @@
         document.getElementById('mailboxForm').reset();
         resetSingleMailboxImportControls();
         document.getElementById('mailboxId').value = '';
+        renderMailboxTestPanel('mailboxFormTestResult', { account_status: 'pending' });
         document.getElementById('ssl').checked = true;
         document.getElementById('sendSsl').checked = true;
         document.getElementById('sendProtocol').value = 'smtp';
@@ -6711,6 +6775,7 @@
                 document.getElementById('modalTitle').textContent = '编辑邮箱';
                 document.getElementById('formAction').value = 'edit';
                 document.getElementById('mailboxId').value = mailbox.id;
+                renderMailboxTestPanel('mailboxFormTestResult', mailbox);
                 document.getElementById('email').value = mailbox.email;
                 document.getElementById('password').value = mailbox.password;
                 document.getElementById('server').value = mailbox.server;
@@ -6743,11 +6808,13 @@
     
     // 测试邮箱连接
     function updateMailboxTestResult(mailboxId, data) {
-        const mailbox = mailboxData.find(item => item.id === parseInt(mailboxId, 10));
-        if (!mailbox) return;
+        showMailboxTestOutcome(mailboxId, data);
+        const mailbox = mailboxData.find(item => String(item.id) === String(mailboxId));
+        // Request/login failures are not evidence that the mailbox is unhealthy.
+        if (!mailbox || !Object.hasOwn(MAILBOX_STATUS_META, data.account_status)) return;
         mailbox.last_test = data.last_test || new Date().toISOString();
         mailbox.test_result = data.test_result || data.message || (data.success ? '连接测试成功' : '连接测试失败');
-        mailbox.account_status = data.account_status || (data.success ? 'normal' : 'test_error');
+        mailbox.account_status = data.account_status;
         renderMailboxView(currentPage);
     }
 
@@ -6794,7 +6861,8 @@
                 });
                 
                 const data = await readJsonResponse(response);
-                
+                showMailboxTestOutcome('', data);
+
                 if (data.success) {
                     if (!silent) showToast('邮箱连接测试成功', 'success');
                 } else {
@@ -6803,6 +6871,7 @@
                 return data;
             } catch (error) {
                 console.error('测试邮箱失败:', error);
+                showMailboxTestOutcome('', { message: error.message || '测试请求失败' });
                 if (!silent) showToast(error.message || '测试请求失败，请检查服务是否正常运行', 'error');
                 return { success: false, message: error.message || '测试请求失败，请检查服务是否正常运行' };
             } finally {
@@ -6835,6 +6904,7 @@
             return data;
         } catch (error) {
             console.error('测试邮箱失败:', error);
+            showMailboxTestOutcome(targetId, { message: error.message || '测试请求失败' });
             if (!silent) showToast(error.message || '测试请求失败，请检查服务是否正常运行', 'error');
             return { success: false, message: error.message || '测试请求失败，请检查服务是否正常运行' };
         } finally {
@@ -8016,15 +8086,7 @@
     }
     
     function formatDateTime(dateString) {
-        if (!dateString) return '-';
-        try {
-            const hasTimezone = /[+-]\d{2}:?\d{2}|Z$/.test(dateString);
-            const normalized = dateString.replace(' ', 'T');
-            const dateObj = hasTimezone ? new Date(normalized) : new Date(normalized + '+08:00');
-            return dateObj.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-        } catch (e) {
-            return dateString;
-        }
+        return window.AppI18n.formatDate(dateString);
     }
 
     Object.assign(window, {

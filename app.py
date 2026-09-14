@@ -47,6 +47,7 @@ MAILBOX_ACCOUNT_STATUS_BANNED = 'banned'
 MAILBOX_ACCOUNT_STATUS_INVALID = 'invalid_credentials'
 MAILBOX_ACCOUNT_STATUS_NETWORK = 'network_error'
 MAILBOX_ACCOUNT_STATUS_ERROR = 'test_error'
+DEFAULT_MAILBOX_SCOPE_MANAGER_USERNAMES = ('tjt740', 'lhm', 'pink')
 
 
 def classify_mailbox_account_status(test_payload=None, fallback_message=''):
@@ -660,7 +661,7 @@ def init_db():
             # 检查是否有默认管理员，如果没有则创建
             create_default_admin(db, db_type)
 
-            # 创建管理员邮箱可见范围表，并绑定 tjt740 -> lhm 的管理关系
+            # 创建管理员邮箱可见范围表，保留历史范围并注册默认控制人。
             create_admin_mailbox_scope_tables(db, db_type)
             
             # 提交事务
@@ -1042,6 +1043,29 @@ def create_admin_table(db, db_type):
         logger.error(f"Failed to create admin table: {e}")
         raise
 
+def _register_default_mailbox_scope_managers(db, db_type):
+    """按现有账号注册默认控制人，不修改任何已保存的范围或授权。"""
+    placeholder = '?' if db_type == 'sqlite' else '%s'
+    placeholders = ', '.join([placeholder] * len(DEFAULT_MAILBOX_SCOPE_MANAGER_USERNAMES))
+    insert = 'INSERT OR IGNORE' if db_type == 'sqlite' else ('INSERT IGNORE' if db_type == 'mysql' else 'INSERT')
+    conflict = ' ON CONFLICT (manager_admin_id) DO NOTHING' if db_type == 'postgresql' else ''
+    query = f'''
+        {insert} INTO admin_mailbox_scope_managers (manager_admin_id, created_at)
+        SELECT id, {placeholder} FROM admin_users
+        WHERE LOWER(TRIM(username)) IN ({placeholders})
+        {conflict}
+    '''
+    params = (get_beijing_time(), *DEFAULT_MAILBOX_SCOPE_MANAGER_USERNAMES)
+    if db_type == 'sqlite':
+        db.execute(query, params)
+    else:
+        cursor = db.cursor()
+        try:
+            cursor.execute(query, params)
+        finally:
+            cursor.close()
+
+
 def create_admin_mailbox_scope_tables(db, db_type):
     """创建管理员邮箱范围控制、单邮箱授权与分组授权表。"""
     try:
@@ -1264,6 +1288,7 @@ def create_admin_mailbox_scope_tables(db, db_type):
                     ''', (restricted_id, manager_id, now, now))
             cursor.close()
 
+        _register_default_mailbox_scope_managers(db, db_type)
         db.commit()
         logger.info("Admin mailbox scope tables created successfully")
     except Exception as e:
@@ -3127,51 +3152,33 @@ def _filter_groups_for_current_admin(db, groups, mappings):
     return visible_groups, visible_mappings
 
 def _current_admin_managed_scope_targets(db):
-    """仅允许 tjt740 返回可配置的其他管理员。"""
+    """为已注册的范围控制人返回其他管理员及其实际限制状态。"""
     current_admin_id = safe_int(session.get('admin_id'), 0)
-    current_username = str(session.get('admin_username') or '').strip().lower()
-    if current_admin_id <= 0 or current_username != 'tjt740':
+    if not _is_admin_mailbox_scope_manager(db, current_admin_id):
         return []
     db_type = app.config['DATABASE_TYPE']
     try:
         if db_type == 'sqlite':
-            manager = db.execute('''
-                SELECT m.manager_admin_id
-                FROM admin_mailbox_scope_managers m
-                JOIN admin_users u ON u.id = m.manager_admin_id
-                WHERE m.manager_admin_id = ? AND LOWER(TRIM(u.username)) = 'tjt740'
-            ''', (current_admin_id,)).fetchone()
-            if not manager:
-                return []
             rows = db.execute('''
                 SELECT u.id, u.username,
                        CASE WHEN s.restricted_admin_id IS NULL THEN 0 ELSE 1 END AS restricted_enabled
                 FROM admin_users u
                 LEFT JOIN admin_mailbox_scopes s
-                  ON s.restricted_admin_id = u.id AND s.manager_admin_id = ?
+                  ON s.restricted_admin_id = u.id
                 WHERE u.id <> ?
                 ORDER BY u.username COLLATE NOCASE
-            ''', (current_admin_id, current_admin_id)).fetchall()
+            ''', (current_admin_id,)).fetchall()
             return [dict(row) for row in rows]
         cursor = db.cursor()
-        cursor.execute('''
-            SELECT m.manager_admin_id
-            FROM admin_mailbox_scope_managers m
-            JOIN admin_users u ON u.id = m.manager_admin_id
-            WHERE m.manager_admin_id = %s AND LOWER(TRIM(u.username)) = 'tjt740'
-        ''', (current_admin_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            return []
         cursor.execute('''
             SELECT u.id, u.username,
                    CASE WHEN s.restricted_admin_id IS NULL THEN 0 ELSE 1 END AS restricted_enabled
             FROM admin_users u
             LEFT JOIN admin_mailbox_scopes s
-              ON s.restricted_admin_id = u.id AND s.manager_admin_id = %s
+              ON s.restricted_admin_id = u.id
             WHERE u.id <> %s
             ORDER BY u.username
-        ''', (current_admin_id, current_admin_id))
+        ''', (current_admin_id,))
         rows = cursor.fetchall()
         columns = [desc[0] for desc in cursor.description] if cursor.description else []
         cursor.close()
@@ -3188,14 +3195,16 @@ def _is_admin_mailbox_scope_manager(db, admin_id):
     try:
         if app.config['DATABASE_TYPE'] == 'sqlite':
             row = db.execute('''
-                SELECT 1 FROM admin_mailbox_scope_managers
-                WHERE manager_admin_id = ? LIMIT 1
+                SELECT 1 FROM admin_mailbox_scope_managers m
+                JOIN admin_users u ON u.id = m.manager_admin_id
+                WHERE m.manager_admin_id = ? LIMIT 1
             ''', (admin_id,)).fetchone()
         else:
             cursor = db.cursor()
             cursor.execute('''
-                SELECT 1 FROM admin_mailbox_scope_managers
-                WHERE manager_admin_id = %s LIMIT 1
+                SELECT 1 FROM admin_mailbox_scope_managers m
+                JOIN admin_users u ON u.id = m.manager_admin_id
+                WHERE m.manager_admin_id = %s LIMIT 1
             ''', (admin_id,))
             row = cursor.fetchone()
             cursor.close()
@@ -3937,7 +3946,7 @@ def legacy_admin_system():
     """Legacy system settings page embedded by the React shell."""
     return render_template('admin/system.html',
                          admin_username=session.get('admin_username'),
-                         show_mailbox_access=(str(session.get('admin_username') or '').strip().lower() == 'tjt740'),
+                         show_mailbox_access=_is_admin_mailbox_scope_manager(get_db(), session.get('admin_id')),
                          embedded=request.args.get('embedded') == '1')
 
 @app.route('/admin/help')
@@ -5910,7 +5919,9 @@ def _test_mailbox(db, data):
             if result.returncode == 0:
                 try:
                     test_payload = json.loads(result.stdout)
-                except json.JSONDecodeError:
+                    if not isinstance(test_payload, dict) or not isinstance(test_payload.get('success'), bool):
+                        raise ValueError('Invalid mailbox test response')
+                except (json.JSONDecodeError, ValueError):
                     test_payload = {
                         'success': False,
                         'message': '邮箱测试服务响应格式错误',

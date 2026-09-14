@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   App as AntApp,
@@ -32,20 +32,21 @@ import {
   SettingOutlined,
   UserOutlined
 } from '@ant-design/icons';
+import zhCN from 'antd/locale/zh_CN';
+import enUS from 'antd/locale/en_US';
+import viVN from 'antd/locale/vi_VN';
+import '../../static/js/i18n.js';
+import '../../static/js/motion.js';
 import './styles.css';
+import '../../static/css/motion.css';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
 const appProps = window.__MAIL_APP_PROPS__ || {};
-const LANGUAGE_STORAGE_KEY = 'mailSystemLanguage';
 const COLOR_THEME_STORAGE_KEY = 'mailSystemColorTheme';
-const SUPPORTED_LANGUAGES = ['zh', 'en', 'vi'];
-const LANGUAGE_OPTIONS = [
-  { key: 'zh', name: '中文', mark: '中' },
-  { key: 'en', name: 'English', mark: 'EN' },
-  { key: 'vi', name: 'Tiếng Việt', mark: 'VI' }
-];
+const LANGUAGE_OPTIONS = window.AppI18n.languages;
+const ANT_LOCALES = { zh: zhCN, en: enUS, vi: viVN };
 const COLOR_THEME_OPTIONS = [
   { key: 'clay', labelKey: '暖陶橙', primary: '#C96442', secondary: '#B0552F', soft: '#F3E6DF', background: '#F5F4EE', selected: 'rgba(201, 100, 66, 0.12)', selectedText: '#B14E2E' },
   { key: 'ocean', labelKey: '海洋蓝', primary: '#2563EB', secondary: '#1D4ED8', soft: '#DBEAFE', background: '#F3F7FC', selected: 'rgba(37, 99, 235, 0.11)', selectedText: '#1D4ED8' },
@@ -53,68 +54,6 @@ const COLOR_THEME_OPTIONS = [
   { key: 'violet', labelKey: '紫罗兰', primary: '#7C3AED', secondary: '#6D28D9', soft: '#EDE9FE', background: '#F7F4FC', selected: 'rgba(124, 58, 237, 0.11)', selectedText: '#6D28D9' },
   { key: 'rose', labelKey: '玫瑰红', primary: '#E11D48', secondary: '#BE123C', soft: '#FFE4E6', background: '#FCF4F6', selected: 'rgba(225, 29, 72, 0.11)', selectedText: '#BE123C' }
 ];
-
-const translations = {
-  zh: {},
-  en: {
-    '邮件查看系统': 'Mail Viewer System',
-    '管理员登录': 'Admin Login',
-    '用户名': 'Username',
-    '密码': 'Password',
-    '登录': 'Log In',
-    '首页': 'Home',
-    '邮箱管理': 'Mailboxes',
-    '代理池': 'Proxy Pool',
-    '卡密管理': 'Card Keys',
-    '卡密日志': 'Card Logs',
-    '收件日志': 'Mail Logs',
-    '系统设置': 'System Settings',
-    '帮助中心': 'Help Center',
-    '后台管理': 'Admin Console',
-    '后台页面': 'Admin Page',
-    '管理员': 'Administrator',
-    '退出': 'Log Out',
-    '语言': 'Language',
-    '颜色主题': 'Color Theme',
-    '暖陶橙': 'Warm Clay',
-    '海洋蓝': 'Ocean Blue',
-    '翡翠绿': 'Emerald Green',
-    '紫罗兰': 'Violet',
-    '玫瑰红': 'Rose Red',
-    '展开菜单': 'Expand menu',
-    '收起菜单': 'Collapse menu',
-    '用户名或密码错误': 'Incorrect username or password'
-  },
-  vi: {
-    '邮件查看系统': 'Hệ thống xem thư',
-    '管理员登录': 'Đăng nhập quản trị',
-    '用户名': 'Tên đăng nhập',
-    '密码': 'Mật khẩu',
-    '登录': 'Đăng nhập',
-    '首页': 'Trang chủ',
-    '邮箱管理': 'Quản lý hộp thư',
-    '代理池': 'Nhóm proxy',
-    '卡密管理': 'Quản lý mã',
-    '卡密日志': 'Nhật ký mã',
-    '收件日志': 'Nhật ký nhận thư',
-    '系统设置': 'Cài đặt hệ thống',
-    '帮助中心': 'Trung tâm trợ giúp',
-    '后台管理': 'Bảng quản trị',
-    '后台页面': 'Trang quản trị',
-    '管理员': 'Quản trị viên',
-    '退出': 'Đăng xuất',
-    '语言': 'Ngôn ngữ',
-    '颜色主题': 'Chủ đề màu sắc',
-    '暖陶橙': 'Cam đất ấm',
-    '海洋蓝': 'Xanh đại dương',
-    '翡翠绿': 'Xanh ngọc lục bảo',
-    '紫罗兰': 'Tím violet',
-    '玫瑰红': 'Đỏ hoa hồng',
-    '展开菜单': 'Mở rộng menu',
-    '收起菜单': 'Thu gọn menu',
-    '用户名或密码错误': 'Tên đăng nhập hoặc mật khẩu không đúng'
-  }
-};
 
 const adminMenuDefinitions = [
   { key: '/admin/home', icon: <DashboardOutlined />, labelKey: '首页' },
@@ -127,59 +66,15 @@ const adminMenuDefinitions = [
   { key: '/admin/help', icon: <QuestionCircleOutlined />, labelKey: '帮助中心' }
 ];
 
-function getStoredLanguage() {
-  try {
-    const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    return SUPPORTED_LANGUAGES.includes(saved) ? saved : null;
-  } catch {
-    return null;
-  }
-}
-
 function useAppLanguage() {
-  const [language, setLanguageState] = useState(() => getStoredLanguage() || 'zh');
-
+  const [language, setLanguageState] = useState(() => window.AppI18n.language);
   useEffect(() => {
-    document.documentElement.lang = language === 'zh' ? 'zh-CN' : language;
-  }, [language]);
-
-  useEffect(() => {
-    if (getStoredLanguage()) return undefined;
-    let cancelled = false;
-    fetch('/api/language', { headers: { Accept: 'application/json' } })
-      .then((response) => response.json())
-      .then((data) => {
-        if (!cancelled && data.success && SUPPORTED_LANGUAGES.includes(data.language) && !getStoredLanguage()) {
-          setLanguageState(data.language);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    const update = () => setLanguageState(window.AppI18n.language);
+    window.addEventListener('app-language-change', update);
+    update();
+    return () => window.removeEventListener('app-language-change', update);
   }, []);
-
-  useEffect(() => {
-    const onStorage = (event) => {
-      if (event.key === LANGUAGE_STORAGE_KEY && SUPPORTED_LANGUAGES.includes(event.newValue)) {
-        setLanguageState(event.newValue);
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  const setLanguage = useCallback((nextLanguage) => {
-    if (!SUPPORTED_LANGUAGES.includes(nextLanguage)) return;
-    setLanguageState(nextLanguage);
-    try {
-      localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
-    } catch {
-      // Language still changes for the current page when storage is unavailable.
-    }
-  }, []);
-
-  return [language, setLanguage];
+  return [language, window.AppI18n.setLanguage];
 }
 
 function getStoredColorTheme() {
@@ -244,7 +139,7 @@ function useAppColorTheme() {
 }
 
 function translate(language, text) {
-  return translations[language]?.[text] || text;
+  return window.AppI18n.t(text, language);
 }
 
 function getSystemTitle(t) {
@@ -356,6 +251,7 @@ function LoginPage({ language, onLanguageChange, colorTheme, onColorThemeChange,
 
   return (
     <main className="login-page">
+      <AmbientCanvas />
       <div className="login-preferences">
         <ColorThemeSwitcher colorTheme={colorTheme} onChange={onColorThemeChange} t={t} />
         <LanguageSwitcher language={language} onChange={onLanguageChange} t={t} />
@@ -365,7 +261,7 @@ function LoginPage({ language, onLanguageChange, colorTheme, onColorThemeChange,
           <Title level={2}>{title}</Title>
           <Text type="secondary">{systemTitle}</Text>
         </Space>
-        {error ? <div className="login-error">{t(error)}</div> : null}
+        {error ? <div className="login-error" role="alert">{t(error)}</div> : null}
         <form
           method="post"
           action="/admin/login"
@@ -400,15 +296,50 @@ function LoginPage({ language, onLanguageChange, colorTheme, onColorThemeChange,
   );
 }
 
+function AmbientCanvas() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const controller = window.MailMotion?.mount(ref.current, { variant: 'welcome' });
+    return () => controller?.destroy();
+  }, []);
+  return <canvas ref={ref} className="mail-ambient-canvas" aria-hidden="true" />;
+}
+
 function LegacyFrame({ title, src, language }) {
+  const frameRef = useRef(null);
+  const [loaded, setLoaded] = useState(false);
+  const [slow, setSlow] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const t = (text) => translate(language, text);
+
+  const syncLanguage = useCallback(() => {
+    try {
+      frameRef.current?.contentWindow.AppI18n?.setLanguage(language, { persist: false, sync: false });
+    } catch { /* A login redirect may temporarily replace the document. */ }
+  }, [language]);
+
+  useEffect(syncLanguage, [syncLanguage]);
+  useEffect(() => {
+    if (loaded) return undefined;
+    const timer = setTimeout(() => setSlow(true), 12000);
+    return () => clearTimeout(timer);
+  }, [loaded, attempt]);
+
   return (
-    <div className="legacy-frame-wrap">
+    <div className={`legacy-frame-wrap ${loaded ? 'is-loaded' : 'is-loading'}`} aria-busy={!loaded}>
+      {!loaded && <div className="frame-loading" role="status" aria-live="polite">
+        <span className="frame-loading-orbit" aria-hidden="true"><MailOutlined /></span>
+        <span>{t(slow ? '页面加载时间较长，请重试' : '页面加载中')}</span>
+        {slow && <Button onClick={() => { setSlow(false); setAttempt((value) => value + 1); }}>{t('重试')}</Button>}
+      </div>}
       <iframe
-        key={language}
+        key={attempt}
+        ref={frameRef}
         title={title}
         className="legacy-frame"
         src={src}
         loading="eager"
+        onLoad={() => { syncLanguage(); setLoaded(true); setSlow(false); }}
       />
     </div>
   );
@@ -547,6 +478,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
         </Header>
         <Content className="admin-content">
           <LegacyFrame
+            key={legacyUrl}
             title={currentItem?.label || t('后台页面')}
             src={legacyUrl}
             language={language}
@@ -558,16 +490,17 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
 }
 
 function PublicShell({ language }) {
+  const title = translate(language, appProps.pageTitle || '邮件查看');
+  useEffect(() => { document.title = title; }, [title]);
   return (
     <main className="public-app">
-      <LegacyFrame title={appProps.pageTitle || '邮件查看'} src={buildLegacyUrl('/')} language={language} />
+      <LegacyFrame title={title} src={buildLegacyUrl('/')} language={language} />
     </main>
   );
 }
 
-function Router({ colorTheme, onColorThemeChange }) {
+function Router({ language, setLanguage, colorTheme, onColorThemeChange }) {
   const [path, setPath] = useState(getCurrentPath());
-  const [language, setLanguage] = useAppLanguage();
   const t = useCallback((text) => translate(language, text), [language]);
 
   useEffect(() => {
@@ -586,14 +519,22 @@ function Router({ colorTheme, onColorThemeChange }) {
 }
 
 function MailApp() {
+  const [language, setLanguage] = useAppLanguage();
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [colorTheme, setColorTheme] = useAppColorTheme();
   const palette = COLOR_THEME_OPTIONS.find((item) => item.key === colorTheme) || COLOR_THEME_OPTIONS[0];
 
   return (
     <ConfigProvider
+      locale={ANT_LOCALES[language]}
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {
+          // Changing Ant Design's motion flag inserts a provider and remounts
+          // descendants. Keep the tree stable and shorten durations instead.
+          motionDurationFast: reducedMotion ? '0.001s' : '0.16s',
+          motionDurationMid: reducedMotion ? '0.001s' : '0.24s',
+          motionDurationSlow: reducedMotion ? '0.001s' : '0.36s',
           colorPrimary: palette.primary,
           colorInfo: palette.primary,
           colorSuccess: '#10B981',
@@ -616,7 +557,7 @@ function MailApp() {
       }}
     >
       <AntApp>
-        <Router colorTheme={colorTheme} onColorThemeChange={setColorTheme} />
+        <Router language={language} setLanguage={setLanguage} colorTheme={colorTheme} onColorThemeChange={setColorTheme} />
       </AntApp>
     </ConfigProvider>
   );

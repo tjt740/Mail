@@ -97,7 +97,7 @@ class AdminMailboxScopeTestCase(unittest.TestCase):
                 manager_admin_id INTEGER PRIMARY KEY,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
-            INSERT INTO admin_mailbox_scope_managers (manager_admin_id) VALUES (1);
+            INSERT INTO admin_mailbox_scope_managers (manager_admin_id) VALUES (1), (2), (3);
 
             CREATE TABLE admin_mailbox_permissions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -199,7 +199,7 @@ class AdminMailboxScopeTestCase(unittest.TestCase):
             })
             self.assertEqual(forbidden_update.status_code, 403)
 
-    def test_only_tjt740_scope_manager_can_change_grants(self):
+    def test_scope_managers_cannot_change_their_own_scope_or_peer_credentials(self):
         with app_module.app.test_client() as restricted:
             self._login(restricted, 2, 'lhm')
             response = restricted.post('/admin/api/mailbox-access', json={
@@ -311,23 +311,110 @@ class AdminMailboxScopeTestCase(unittest.TestCase):
                 },
             )
 
-    def test_mailbox_access_ui_and_api_are_exclusive_to_tjt740(self):
-        with app_module.app.test_client() as tjt:
-            self._login(tjt, 1, 'tjt740')
-            page = tjt.get('/legacy/admin/system?embedded=1')
-            self.assertEqual(page.status_code, 200)
-            self.assertIn('id="sec-mailbox-access"', page.get_data(as_text=True))
-            self.assertEqual(tjt.get('/admin/api/mailbox-access').status_code, 200)
-
-        for admin_id, username in ((2, 'lhm'), (3, 'pink')):
-            with self.subTest(username=username), app_module.app.test_client() as other:
-                self._login(other, admin_id, username)
-                page = other.get('/legacy/admin/system?embedded=1')
+    def test_all_three_managers_have_the_permission_ui_and_api(self):
+        for admin_id, username in ((1, 'tjt740'), (2, 'lhm'), (3, 'pink')):
+            with self.subTest(username=username), app_module.app.test_client() as client:
+                self._login(client, admin_id, username)
+                page = client.get('/legacy/admin/system?embedded=1')
                 self.assertEqual(page.status_code, 200)
                 page_html = page.get_data(as_text=True)
-                self.assertNotIn('id="sec-mailbox-access"', page_html)
-                self.assertNotIn('id="mailboxAccessNav"', page_html)
-                self.assertEqual(other.get('/admin/api/mailbox-access').status_code, 403)
+                self.assertIn('id="sec-mailbox-access"', page_html)
+                self.assertIn('id="mailboxAccessNav"', page_html)
+                config = client.get('/admin/api/system-config').get_json()
+                self.assertTrue(config['data']['can_manage_mailbox_access'])
+                response = client.get('/admin/api/mailbox-access')
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    {target['id'] for target in response.get_json()['data']['targets']},
+                    {1, 2, 3} - {admin_id},
+                )
+                for method in ('get', 'post'):
+                    response = (client.get(f'/admin/api/mailbox-access?target_admin_id={admin_id}')
+                                if method == 'get' else client.post('/admin/api/mailbox-access', json={
+                                    'target_admin_id': admin_id, 'restricted_enabled': False,
+                                }))
+                    self.assertEqual(response.status_code, 403)
+
+    def test_unregistered_admin_cannot_configure_permissions_even_with_a_manager_name_in_session(self):
+        with sqlite3.connect(self.database_path) as connection:
+            connection.execute("INSERT INTO admin_users (id, username, password) VALUES (4, 'viewer', 'test')")
+        for session_name in ('viewer', 'tjt740', 'lhm', 'pink'):
+            with self.subTest(session_name=session_name), app_module.app.test_client() as client:
+                self._login(client, 4, session_name)
+                page = client.get('/legacy/admin/system?embedded=1').get_data(as_text=True)
+                self.assertNotIn('id="sec-mailbox-access"', page)
+                self.assertNotIn('id="mailboxAccessNav"', page)
+                self.assertFalse(client.get('/admin/api/system-config').get_json()['data']['can_manage_mailbox_access'])
+                self.assertEqual(client.get('/admin/api/mailbox-access').status_code, 403)
+                self.assertEqual(client.post('/admin/api/mailbox-access', json={
+                    'target_admin_id': 2, 'mailbox_ids': [4],
+                }).status_code, 403)
+
+    def test_new_managers_can_save_grants_and_share_the_actual_restriction_state(self):
+        for manager_id, manager_name, target_id, reviewer_id, reviewer_name in (
+            (2, 'lhm', 3, 1, 'tjt740'),
+            (3, 'pink', 2, 1, 'tjt740'),
+            (2, 'lhm', 1, 3, 'pink'),
+            (3, 'pink', 1, 2, 'lhm'),
+        ):
+            with self.subTest(manager=manager_name, target=target_id):
+                with app_module.app.test_client() as manager:
+                    self._login(manager, manager_id, manager_name)
+                    response = manager.post('/admin/api/mailbox-access', json={
+                        'target_admin_id': target_id, 'restricted_enabled': True,
+                        'group_ids': [1], 'mailbox_ids': [4],
+                    })
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTrue(response.get_json()['success'])
+                with sqlite3.connect(self.database_path) as connection:
+                    self.assertEqual(connection.execute(
+                        'SELECT manager_admin_id FROM admin_mailbox_scopes WHERE restricted_admin_id = ?',
+                        (target_id,),
+                    ).fetchone()[0], manager_id)
+                    self.assertEqual(connection.execute(
+                        'SELECT mailbox_id, granted_by_admin_id FROM admin_mailbox_permissions WHERE admin_id = ?',
+                        (target_id,),
+                    ).fetchall(), [(4, manager_id)])
+                with app_module.app.test_client() as reviewer:
+                    self._login(reviewer, reviewer_id, reviewer_name)
+                    data = reviewer.get(f'/admin/api/mailbox-access?target_admin_id={target_id}').get_json()['data']
+                    self.assertTrue(data['restricted_enabled'])
+                    self.assertEqual(data['target']['restricted_enabled'], 1)
+                    self.assertEqual({item['id'] for item in data['mailboxes'] if item['granted']}, {4})
+                    self.assertEqual({item['id'] for item in data['groups'] if item['granted']}, {1})
+                    self.assertEqual(reviewer.post('/admin/api/mailbox-access', json={
+                        'target_admin_id': target_id, 'restricted_enabled': False,
+                    }).status_code, 200)
+                with app_module.app.test_client() as manager:
+                    self._login(manager, manager_id, manager_name)
+                    self.assertFalse(manager.get(
+                        f'/admin/api/mailbox-access?target_admin_id={target_id}'
+                    ).get_json()['data']['restricted_enabled'])
+
+    def test_manager_registration_is_idempotent_and_preserves_existing_grants(self):
+        with sqlite3.connect(self.database_path) as connection:
+            connection.row_factory = sqlite3.Row
+            connection.execute('DELETE FROM admin_mailbox_scope_managers WHERE manager_admin_id IN (2, 3)')
+            connection.execute('INSERT INTO admin_mailbox_permissions (admin_id, mailbox_id, granted_by_admin_id) VALUES (2, 4, 1)')
+            connection.execute('INSERT INTO admin_mailbox_group_permissions (admin_id, group_id, granted_by_admin_id) VALUES (2, 1, 1)')
+            tables = ('admin_mailbox_scopes', 'admin_mailbox_permissions', 'admin_mailbox_group_permissions')
+            before = {table: [tuple(row) for row in connection.execute(f'SELECT * FROM {table}')] for table in tables}
+            for _ in range(2):
+                app_module.create_admin_mailbox_scope_tables(connection, 'sqlite')
+            self.assertEqual({row[0] for row in connection.execute('SELECT manager_admin_id FROM admin_mailbox_scope_managers')}, {1, 2, 3})
+            for table in tables:
+                self.assertEqual([tuple(row) for row in connection.execute(f'SELECT * FROM {table}')], before[table])
+            connection.execute('DELETE FROM admin_mailbox_scopes WHERE restricted_admin_id = 2')
+            app_module.create_admin_mailbox_scope_tables(connection, 'sqlite')
+            self.assertEqual(connection.execute('SELECT COUNT(*) FROM admin_mailbox_scopes').fetchone()[0], 0)
+
+    def test_manager_permission_follows_the_registered_account_id_after_rename(self):
+        with sqlite3.connect(self.database_path) as connection:
+            connection.execute("UPDATE admin_users SET username = 'renamed-lhm' WHERE id = 2")
+        with app_module.app.test_client() as client:
+            self._login(client, 2, 'renamed-lhm')
+            self.assertEqual(client.get('/admin/api/mailbox-access').status_code, 200)
+            self.assertIn('id="sec-mailbox-access"', client.get('/legacy/admin/system').get_data(as_text=True))
 
 
 if __name__ == '__main__':

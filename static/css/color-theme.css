@@ -269,6 +269,12 @@ body.dark-mode .color-theme-option { color: var(--text); }
 body.dark-mode .color-theme-option:hover,
 body.dark-mode .color-theme-option.is-active { background: var(--surface-3); }
 
+#frontendApp .frontend-top-actions {
+    gap: 12px;
+    padding-inline-end: 8px;
+    flex-wrap: nowrap;
+}
+
 #frontendApp .frontend-top-actions .color-theme-switcher {
     width: 44px;
     height: 44px;

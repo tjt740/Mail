@@ -7,7 +7,9 @@
 (function () {
     'use strict';
 
-    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let reduceMotion = motionPreference.matches;
+    motionPreference.addEventListener('change', (event) => { reduceMotion = event.matches; });
 
     /* ------------------------------------------------ Toast */
     function ensureToastStack() {
@@ -39,13 +41,19 @@
 
     /* ------------------------------------------------ Modal */
     const modalStack = [];
+    const modalTimers = new WeakMap();
+    const modalFocus = new WeakMap();
 
     function modalOpen(id) {
         const el = typeof id === 'string' ? document.getElementById(id) : id;
         if (!el) return null;
+        clearTimeout(modalTimers.get(el));
+        if (!modalStack.includes(el)) {
+            modalFocus.set(el, document.activeElement);
+            modalStack.push(el);
+        }
         el.classList.remove('au-leaving');
         el.classList.add('show');
-        modalStack.push(el);
         if (!el.dataset.auModalWired) {
             el.dataset.auModalWired = '1';
             el.addEventListener('mousedown', function (e) {
@@ -53,24 +61,25 @@
             });
         }
         const focusable = el.querySelector('input, select, textarea, button');
-        if (focusable) setTimeout(function () { try { focusable.focus(); } catch (e) { /* noop */ } }, 60);
+        if (focusable) modalTimers.set(el, setTimeout(function () { if (el.classList.contains('show')) focusable.focus(); }, 60));
         return el;
     }
 
     function modalClose(id) {
         const el = typeof id === 'string' ? document.getElementById(id) : id;
         if (!el || !el.classList.contains('show')) return;
+        clearTimeout(modalTimers.get(el));
         const idx = modalStack.indexOf(el);
         if (idx >= 0) modalStack.splice(idx, 1);
-        if (reduceMotion) {
-            el.classList.remove('show');
-            return;
-        }
-        el.classList.add('au-leaving');
-        setTimeout(function () {
+        const finish = function () {
             el.classList.remove('show');
             el.classList.remove('au-leaving');
-        }, 150);
+            const previous = modalFocus.get(el);
+            if (previous?.isConnected) previous.focus({ preventScroll: true });
+        };
+        if (reduceMotion) { finish(); return; }
+        el.classList.add('au-leaving');
+        modalTimers.set(el, setTimeout(finish, 210));
     }
 
     document.addEventListener('keydown', function (e) {
@@ -83,7 +92,7 @@
         if (!el) return;
         opts = opts || {};
         const duration = opts.duration || 800;
-        const formatter = opts.formatter || function (v) { return String(Math.round(v)); };
+        const formatter = opts.formatter || function (v) { return window.AppI18n?.formatNumber(Math.round(v)) || String(Math.round(v)); };
         const numeric = Number(target);
         if (!isFinite(numeric) || reduceMotion) {
             el.textContent = isFinite(numeric) ? formatter(numeric) : String(target);
@@ -94,6 +103,7 @@
             const progress = Math.min((now - startTime) / duration, 1);
             const eased = 1 - Math.pow(1 - progress, 3);
             el.textContent = formatter(numeric * eased);
+            if (reduceMotion) { el.textContent = formatter(numeric); return; }
             if (progress < 1) requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick);
@@ -155,107 +165,10 @@
             '</div>';
     }
 
-    /* ------------------------------------------------ 背景粒子 canvas */
-    function initCanvas(opts) {
-        const canvas = document.getElementById('adminBgCanvas');
-        // 前台页有自己的 #bgCanvas，双重背景没有意义
-        if (!canvas || !canvas.getContext || document.getElementById('bgCanvas')) return;
-        opts = opts || {};
-        const ctx = canvas.getContext('2d');
-        const RGB = opts.rgb || '201, 100, 66';
-        const dotAlpha = opts.dotAlpha || 0.25;
-        const lineAlpha = opts.lineAlpha || 0.12;
-
-        let width = 0;
-        let height = 0;
-        let particles = [];
-        let rafId = null;
-
-        function resize() {
-            const dpr = window.devicePixelRatio || 1;
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = Math.floor(width * dpr);
-            canvas.height = Math.floor(height * dpr);
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            const target = Math.max(12, Math.min(30, Math.floor(width / 48)));
-            while (particles.length < target) {
-                particles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    vx: (Math.random() - 0.5) * 0.3,
-                    vy: (Math.random() - 0.5) * 0.3,
-                    r: 1.1 + Math.random() * 1.6
-                });
-            }
-            particles.length = target;
-        }
-
-        function drawFrame() {
-            ctx.clearRect(0, 0, width, height);
-            for (let i = 0; i < particles.length; i++) {
-                const p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                if (p.x < -20) p.x = width + 20; else if (p.x > width + 20) p.x = -20;
-                if (p.y < -20) p.y = height + 20; else if (p.y > height + 20) p.y = -20;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(' + RGB + ', ' + dotAlpha + ')';
-                ctx.fill();
-            }
-            const linkDistance = 110;
-            for (let i = 0; i < particles.length; i++) {
-                for (let j = i + 1; j < particles.length; j++) {
-                    const dx = particles[i].x - particles[j].x;
-                    const dy = particles[i].y - particles[j].y;
-                    const dist = Math.hypot(dx, dy);
-                    if (dist >= linkDistance) continue;
-                    ctx.beginPath();
-                    ctx.moveTo(particles[i].x, particles[i].y);
-                    ctx.lineTo(particles[j].x, particles[j].y);
-                    ctx.strokeStyle = 'rgba(' + RGB + ', ' + (lineAlpha * (1 - dist / linkDistance)) + ')';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                }
-            }
-        }
-
-        function loop() {
-            drawFrame();
-            rafId = requestAnimationFrame(loop);
-        }
-
-        function start() {
-            if (rafId === null && !reduceMotion) rafId = requestAnimationFrame(loop);
-        }
-
-        function stop() {
-            if (rafId !== null) {
-                cancelAnimationFrame(rafId);
-                rafId = null;
-            }
-        }
-
-        let resizeTimer = null;
-        window.addEventListener('resize', function () {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(function () {
-                resize();
-                if (reduceMotion) drawFrame();
-            }, 150);
-        });
-
-        document.addEventListener('visibilitychange', function () {
-            if (document.hidden) stop(); else start();
-        });
-
-        resize();
-        if (reduceMotion) {
-            drawFrame();
-        } else {
-            start();
-        }
+    /* Shared Canvas renderer, also used by the public page and React login. */
+    function initCanvas() {
+        if (document.getElementById('bgCanvas')) return;
+        return window.MailMotion?.mount(document.getElementById('adminBgCanvas'));
     }
 
     /* ------------------------------------------------ 通用下拉菜单 */
@@ -290,7 +203,7 @@
         clearSkeleton: clearSkeleton,
         emptyState: emptyState,
         initCanvas: initCanvas,
-        reduceMotion: reduceMotion
+        get reduceMotion() { return reduceMotion; }
     };
 
     // 兜底：未删除本地 showToast 的页面仍用其本地版；已删除的页自动接入

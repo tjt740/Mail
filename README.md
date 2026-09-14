@@ -157,6 +157,14 @@ python app.py
 
 > 当前 Flask API、数据库和业务逻辑保持不变；后台页面由组件化前端接管，前台取件页保留原有兼容实现。已构建的 `static/react/` 会随代码提交，普通部署不强制要求服务器安装 Node。
 
+### 国际化与交互动效
+
+- 支持中文、English、Tiếng Việt；优先使用手动选择，否则先使用浏览器语言，再采用服务器的地区推荐。React 与内嵌页面共用 `static/js/i18n.js`，语言切换不刷新页面，并同步组件内置文案、动态提示与带标记的日期。日期按语言格式显示，数据库时间仍按北京时间解释。
+- 新文案在 `i18n.js` 的 `sharedMessages` 中同时补充英文和越南语。使用 `AppI18n.t()`、`formatNumber()`、`formatDate()`；需随语言立即更新的节点可使用 `data-i18n-date` / `data-i18n-number`。邮件正文、用户自定义文本使用 `translate="no"`，避免被界面翻译修改。
+- `static/js/motion.js` 与 `static/css/motion.css` 提供主题光晕、粒子连线、漂浮信封、指针反馈及页面/弹窗过渡。Canvas 在后台或不可见时暂停，限制像素数和粒子数；系统启用“减少动态效果”后显示静态背景。
+- 修改共享脚本或 React 代码后运行 `npm --prefix frontend run build` 更新部署资源。回归检查：`node --test tests/*.cjs` 和 `python -m unittest discover -s tests`（使用已安装依赖的 Python 环境）。
+- 安装 Playwright 和对应浏览器后，可用 `RUN_BROWSER_TESTS=1 node --test tests/test_i18n_motion.cjs` 运行隔离的浏览器回归。也可通过 `PLAYWRIGHT_MODULE` 指定模块路径、`BROWSER_CHANNEL=chrome` 使用本机 Chrome；测试自行启动临时页面服务，不连接业务数据库。
+
 ### 访问系统
 
 - **前端用户界面**：http://localhost:8005

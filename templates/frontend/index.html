@@ -2520,15 +2520,15 @@
                         <button class="back-btn" type="button" onclick="backToList()" aria-label="返回邮件列表"><span class="anticon"><svg aria-hidden="true"><use href="#ai-arrow-left"></use></svg></span> 返回邮件列表</button>
                     </div>
                     <div class="mail-header">
-                        <div class="mail-subject" id="mailSubject"></div>
+                        <div class="mail-subject" id="mailSubject" translate="no"></div>
                         <div class="mail-meta">
                             <div class="mail-meta-item">
                                 <span class="mail-meta-label">发件人:</span>
-                                <span id="mailFrom"></span>
+                                <span id="mailFrom" translate="no"></span>
                             </div>
                             <div class="mail-meta-item">
                                 <span class="mail-meta-label">收件人:</span>
-                                <span id="mailTo"></span>
+                                <span id="mailTo" translate="no"></span>
                             </div>
                             <div class="mail-meta-item">
                                 <span class="mail-meta-label">时间:</span>
@@ -2537,12 +2537,12 @@
                         </div>
                     </div>
                     
-                    <div class="mail-body" id="mailBody"></div>
+                    <div class="mail-body" id="mailBody" translate="no"></div>
                     
                     <!-- Images section -->
                     <div class="mail-images" id="mailImages" style="display: none;">
                         <h4 style="color: #667eea; margin-bottom: 10px;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-camera"></use></svg></span> 图片内容</h4>
-                        <div class="image-container" id="imageContainer"></div>
+                        <div class="image-container" id="imageContainer" translate="no"></div>
                     </div>
                     
                     <!-- Attachments section -->
@@ -2617,6 +2617,7 @@
             listView.style.display = 'none';
         }
         mailDisplay?.classList.add('is-visible');
+        window.MailMotion?.reveal(mailDisplay);
     }
     
     function closeMailModal(shouldResetSelection = false) {
@@ -2625,6 +2626,7 @@
         mailDisplay?.classList.remove('is-visible');
         if (listView) {
             listView.style.display = '';
+            window.MailMotion?.reveal(listView, -1);
         }
         if (shouldResetSelection) {
             mailState.activeMailId = null;
@@ -2641,10 +2643,7 @@
     }
     
     function formatDateTime(value) {
-        if (!value) return '-';
-        const date = new Date(value);
-        if (isNaN(date.getTime())) return value;
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        return window.AppI18n.formatDate(value);
     }
 
     function parseEmailsFromInput(value) {
@@ -2815,6 +2814,7 @@
         closeMailModal(true);
         renderMailboxList();
         renderMailList();
+        window.MailMotion?.reveal(document.getElementById('mailTableBody'));
     }
 
     function switchFolder(folder) {
@@ -2825,6 +2825,7 @@
             btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
         renderMailList();
+        window.MailMotion?.reveal(document.getElementById('mailTableBody'));
         if (mailState.activeMailId) {
             const activeMail = mailState.mails.find(item => item.id === mailState.activeMailId);
             if (activeMail && normalizeFolderName(activeMail.folder) === folder) {
@@ -3012,11 +3013,11 @@
                     row.innerHTML = `
                         <td class="col-index" data-label="序号">${start + idx + 1}</td>
                         <td class="col-mailbox" data-label="邮箱" title="${escapeHtml(mail.mailbox || '-')}">${escapeHtml(mail.mailbox || '-')}</td>
-                        <td class="col-from" data-label="发件人">${escapeHtml(mail.from || '-')}</td>
-                        <td class="col-subject" data-label="标题">${escapeHtml(mail.subject || '（无主题）')}</td>
+                        <td class="col-from" data-label="发件人"><span translate="no">${escapeHtml(mail.from || '-')}</span></td>
+                        <td class="col-subject" data-label="标题"><span translate="no">${escapeHtml(mail.subject || '（无主题）')}</span></td>
                         <td class="col-code" data-label="验证码"><span class="verification-code">${escapeHtml(verificationCode)}</span></td>
-                        <td class="col-to" data-label="收件人">${escapeHtml(mail.to || '-')}</td>
-                        <td class="col-date" data-label="时间">${formatDateTime(mail.date)}</td>
+                        <td class="col-to" data-label="收件人"><span translate="no">${escapeHtml(mail.to || '-')}</span></td>
+                        <td class="col-date" data-label="时间" data-i18n-date="${escapeHtml(mail.date || '').replace(/"/g, '&quot;')}">${escapeHtml(formatDateTime(mail.date))}</td>
                     `;
                     row.addEventListener('click', () => {
                         mailState.activeMailId = normalizeMailId(mail.id);
@@ -3095,6 +3096,7 @@
     function gotoMailPage(page) {
         mailState.page = Math.max(1, page);
         renderMailList();
+        window.MailMotion?.reveal(document.getElementById('mailTableBody'));
     }
 
     const SCROLL_BEHAVIOR = (typeof CSS !== 'undefined' && CSS.supports && CSS.supports('scroll-behavior', 'smooth')) ? 'smooth' : 'auto';
@@ -3105,7 +3107,7 @@
         renderMailList();
         closeMailModal(false);
         if (wrapper) {
-            wrapper.scrollTo({ top: 0, behavior: SCROLL_BEHAVIOR });
+            wrapper.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : SCROLL_BEHAVIOR });
         }
     }
     
@@ -3118,6 +3120,7 @@
         document.getElementById('mailSubject').textContent = mail.subject || '(无主题)';
         document.getElementById('mailFrom').textContent = mail.from || '未知';
         document.getElementById('mailTo').textContent = mail.to || '未知';
+        document.getElementById('mailDate').dataset.i18nDate = mail.date || '';
         document.getElementById('mailDate').textContent = formatDateTime(mail.date);
         
         const mailBodyElement = document.getElementById('mailBody');
@@ -3226,7 +3229,7 @@
                 const imageInfo = document.createElement('div');
                 imageInfo.className = 'image-info';
                 imageInfo.innerHTML = `
-                    <div class="attachment-name">${escapeHtml(image.filename)}</div>
+                    <div class="attachment-name" translate="no">${escapeHtml(image.filename)}</div>
                     <div class="attachment-meta">${formatFileSize(image.size)} • ${image.mime_type}</div>
                 `;
                 
@@ -3257,7 +3260,7 @@
                 attachmentItem.innerHTML = `
                     <div class="attachment-icon">${icon}</div>
                     <div class="attachment-info">
-                        <div class="attachment-name">${escapeHtml(attachment.filename)}</div>
+                        <div class="attachment-name" translate="no">${escapeHtml(attachment.filename)}</div>
                         <div class="attachment-meta">${formatFileSize(attachment.size)} • ${attachment.mime_type}</div>
                     </div>
                     <button class="attachment-download" onclick="downloadAttachment('${attachment.content}', '${escapeHtml(attachment.filename)}', '${attachment.mime_type}')">
@@ -3412,108 +3415,6 @@
 
     renderMailList();
 
-    // 背景粒子网络动效：漂移粒子 + 近距连线，随主题渐变背景一起呼吸
-    (function initBackgroundCanvas() {
-        const canvas = document.getElementById('bgCanvas');
-        if (!canvas || !canvas.getContext) return;
-        const ctx = canvas.getContext('2d');
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        // 主题色粒子：暖色 clay 在浅色（奶油底）与深色主题下都可见
-        const PARTICLE_RGB = '201, 100, 66';
-
-        let width = 0;
-        let height = 0;
-        let particles = [];
-        let rafId = null;
-
-        function resize() {
-            const dpr = window.devicePixelRatio || 1;
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = Math.floor(width * dpr);
-            canvas.height = Math.floor(height * dpr);
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-            const targetCount = Math.max(24, Math.min(60, Math.floor(width / 24)));
-            while (particles.length < targetCount) {
-                particles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    vx: (Math.random() - 0.5) * 0.35,
-                    vy: (Math.random() - 0.5) * 0.35,
-                    r: 1.2 + Math.random() * 1.8
-                });
-            }
-            particles.length = targetCount;
-        }
-
-        function drawFrame() {
-            ctx.clearRect(0, 0, width, height);
-
-            for (const p of particles) {
-                p.x += p.vx;
-                p.y += p.vy;
-                if (p.x < -20) p.x = width + 20; else if (p.x > width + 20) p.x = -20;
-                if (p.y < -20) p.y = height + 20; else if (p.y > height + 20) p.y = -20;
-
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(${PARTICLE_RGB}, 0.35)`;
-                ctx.fill();
-            }
-
-            const linkDistance = 120;
-            for (let i = 0; i < particles.length; i++) {
-                for (let j = i + 1; j < particles.length; j++) {
-                    const dx = particles[i].x - particles[j].x;
-                    const dy = particles[i].y - particles[j].y;
-                    const dist = Math.hypot(dx, dy);
-                    if (dist >= linkDistance) continue;
-                    ctx.beginPath();
-                    ctx.moveTo(particles[i].x, particles[i].y);
-                    ctx.lineTo(particles[j].x, particles[j].y);
-                    ctx.strokeStyle = `rgba(${PARTICLE_RGB}, ${0.18 * (1 - dist / linkDistance)})`;
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                }
-            }
-        }
-
-        function loop() {
-            drawFrame();
-            rafId = requestAnimationFrame(loop);
-        }
-
-        function start() {
-            if (rafId === null && !reduceMotion) rafId = requestAnimationFrame(loop);
-        }
-
-        function stop() {
-            if (rafId !== null) {
-                cancelAnimationFrame(rafId);
-                rafId = null;
-            }
-        }
-
-        let resizeTimer = null;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(() => {
-                resize();
-                if (reduceMotion) drawFrame();
-            }, 150);
-        });
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) stop(); else start();
-        });
-
-        resize();
-        if (reduceMotion) {
-            drawFrame(); // 静态一帧，不做持续动画
-        } else {
-            start();
-        }
-    })();
+    window.MailMotion?.mount(document.getElementById('bgCanvas'), { variant: 'welcome' });
 </script>
 {% endblock %}

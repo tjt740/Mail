@@ -1401,7 +1401,7 @@
                 <td>${renderProxyPassword(proxy.password)}</td>
                 <td>${statusBadge}</td>
                 <td>${proxy.response_time ? proxy.response_time + 'ms' : '-'}</td>
-                <td>${formatDateTime(proxy.last_check)}</td>
+                <td data-i18n-date="${escapeHtml(proxy.last_check || '').replace(/"/g, '&quot;')}">${formatDateTime(proxy.last_check)}</td>
                 <td>${escapeHtml(proxy.remarks || '-')}</td>
                 <td>
                     <div class="actions" style="display: flex; gap: 5px; flex-wrap: wrap;">
@@ -1536,7 +1536,7 @@
                 <td>${renderProxyPassword(proxy.password)}</td>
                 <td>${statusBadge}</td>
                 <td>${proxy.response_time ? proxy.response_time + 'ms' : '-'}</td>
-                <td>${formatDateTime(proxy.last_check)}</td>
+                <td data-i18n-date="${escapeHtml(proxy.last_check || '').replace(/"/g, '&quot;')}">${formatDateTime(proxy.last_check)}</td>
                 <td>${escapeHtml(proxy.remarks || '-')}</td>
                 <td>
                     <div class="actions" style="display: flex; gap: 5px; flex-wrap: wrap;">
@@ -2065,8 +2065,7 @@
     }
 
     function formatDateTime(dateString) {
-        if (!dateString) return '-';
-        return new Date(dateString).toLocaleString('zh-CN');
+        return window.AppI18n.formatDate(dateString);
     }
     
     // 性能优化：防抖函数

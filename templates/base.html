@@ -538,6 +538,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/motion.css') }}">
 </head>
 <body class="preload{% if embedded %} embedded-view{% endif %}">
     {% include '_icons.html' %}
@@ -568,6 +569,7 @@
     {% block body %}{% endblock %}
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <script src="{{ url_for('static', filename='js/color-theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/motion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin-ui.js') }}"></script>
     <script>if (window.AdminUI) { AdminUI.initCanvas(); }</script>
     {% if request.path and '/admin' in request.path %}
