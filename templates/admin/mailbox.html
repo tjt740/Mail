@@ -1522,6 +1522,11 @@
         background: #fffdf9;
     }
 
+    .receive-modal .modal-header {
+        flex-shrink: 0;
+        gap: 16px;
+    }
+
     .receive-body {
         display: grid;
         grid-template-columns: 238px minmax(0, 1fr);
@@ -1940,6 +1945,8 @@
 
     .receive-detail-toolbar {
         display: flex;
+        flex: 1;
+        min-width: 0;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
@@ -3454,6 +3461,10 @@
     <div class="modal-content">
         <div class="modal-header">
             <h3 class="modal-title">收件</h3>
+            <div class="receive-detail-toolbar is-hidden" id="receiveDetailToolbar">
+                <button type="button" class="btn btn-primary btn-small receive-back" onclick="backToReceiveList()">返回列表</button>
+                <span class="receive-detail-folder" id="receiveDetailFolderBadge">收件箱</span>
+            </div>
             <button class="modal-close" onclick="closeReceiveModal()">&times;</button>
         </div>
         <div class="modal-body receive-body">
@@ -3495,10 +3506,6 @@
                 </div>
                 <div id="receiveDetailView" style="display: none;">
                     <div class="receive-detail-shell">
-                        <div class="receive-detail-toolbar">
-                            <button class="btn btn-primary btn-small receive-back" onclick="backToReceiveList()">返回列表</button>
-                            <span class="receive-detail-folder" id="receiveDetailFolderBadge">收件箱</span>
-                        </div>
                         <div class="receive-detail">
                             <div class="receive-detail-header">
                                 <h4 id="receiveDetailSubject">-</h4>
@@ -4765,7 +4772,9 @@
                 page: 1,
                 per_page: 100000,  // 支持加载大量邮箱（最多10万个）
                 search: search,
-                fast: '1'
+                fast: '1',
+                // Keep historical IDs for group filtering; deduplicate before display/pagination.
+                include_legacy_duplicates: '1'
             });
             
             const response = await fetch(`/admin/api/mailbox?${params}`, {
@@ -4821,7 +4830,7 @@
     }
     
     function mailboxMatchesCurrentScope(mailbox, ignoreTestStatus = false) {
-        const groupId = mailboxGroupMap[mailbox.id] ?? mailboxGroupMap[mailbox.email];
+        const groupId = getMailboxGroupId(mailbox);
         const matchesGroup = selectedGroupId === ROOT_GROUP_ID
             ? true
             : selectedGroupId === UNGROUPED_GROUP_ID
@@ -4835,10 +4844,10 @@
     }
 
     function getMailboxesByAccountStatus(status) {
-        return mailboxData.filter(mailbox => (
+        return uniqueMailboxes(mailboxData.filter(mailbox => (
             mailboxMatchesCurrentScope(mailbox, true)
             && getMailboxTestStatus(mailbox).className === status
-        ));
+        )));
     }
 
     function updateStatusDeleteButtons() {
@@ -4855,9 +4864,19 @@
         });
     }
 
+    function uniqueMailboxes(mailboxes) {
+        const seen = new Set();
+        return mailboxes.filter(mailbox => {
+            const key = String(mailbox.email || '').trim().toLowerCase() || `id:${mailbox.id}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    }
+
     function renderMailboxView(page = 1) {
         const filteredByGroup = mailboxData.filter(mailbox => mailboxMatchesCurrentScope(mailbox));
-        const sortedMailboxes = sortMailboxes(filteredByGroup);
+        const sortedMailboxes = sortMailboxes(uniqueMailboxes(filteredByGroup));
         selectedMailboxes.clear();
         const selectAll = document.getElementById('selectAll');
         if (selectAll) selectAll.checked = false;
@@ -4874,7 +4893,7 @@
         updateStatusDeleteButtons();
     }
 
-    function updateAdminSummary(visibleCount = currentVisibleMailboxCount || mailboxData.length) {
+    function updateAdminSummary(visibleCount = currentVisibleMailboxCount) {
         const currentGroup = getGroupById(selectedGroupId);
         const groupEl = document.getElementById('adminCurrentGroup');
         const countEl = document.getElementById('adminMailboxCount');
@@ -4957,8 +4976,13 @@
         return false;
     }
 
+    function getMailboxGroupId(mailbox) {
+        // Historical duplicates can have different groups; do not borrow a sibling ID's mapping.
+        return mailbox.id != null ? mailboxGroupMap[mailbox.id] : mailboxGroupMap[mailbox.email];
+    }
+
     function getMailboxGroupName(mailbox) {
-        const groupId = mailboxGroupMap[mailbox.id] ?? mailboxGroupMap[mailbox.email];
+        const groupId = getMailboxGroupId(mailbox);
         const group = groupId ? getGroupById(groupId) : null;
         if (!group) return '未分组';
         return group.name;
@@ -5373,10 +5397,10 @@
         groups.forEach(group => {
             if (group.id === ROOT_GROUP_ID) {
                 // "所有分组" shows total count of all mailboxes
-                group.mailboxCount = mailboxData.length;
+                group.mailboxCount = uniqueMailboxes(mailboxData).length;
             } else if (group.id === UNGROUPED_GROUP_ID) {
                 // "未分组" shows count of mailboxes not in any group
-                group.mailboxCount = mailboxData.filter(m => !groupedMailboxIds.has(m.id)).length;
+                group.mailboxCount = uniqueMailboxes(mailboxData.filter(m => !groupedMailboxIds.has(m.id))).length;
             } else {
                 // Custom groups: count mailboxes assigned to this group that still exist
                 const mailboxesInGroup = mailboxGroupMappings.filter(m => {
@@ -5384,7 +5408,8 @@
                     const mid = m.mailbox_id || m.mailboxId;
                     return gid === group.id && existingMailboxIds.has(mid);
                 });
-                group.mailboxCount = mailboxesInGroup.length;
+                const memberIds = new Set(mailboxesInGroup.map(m => m.mailbox_id ?? m.mailboxId));
+                group.mailboxCount = uniqueMailboxes(mailboxData.filter(m => memberIds.has(m.id))).length;
             }
         });
     }
@@ -6317,6 +6342,7 @@
     }
 
     function setReceiveView(showDetail) {
+        document.getElementById('receiveDetailToolbar').classList.toggle('is-hidden', !showDetail);
         const listView = document.getElementById('receiveListView');
         const detailView = document.getElementById('receiveDetailView');
         if (listView && detailView) {
@@ -6804,7 +6830,7 @@
                 document.getElementById('remarks').value = mailbox.remarks || '';
                 document.getElementById('testBtn').style.display = 'inline-block';
                 document.getElementById('mailboxForm').dataset.originalEmail = mailbox.email || '';
-                const currentGroupId = mailboxGroupMap[mailbox.id] ?? mailboxGroupMap[mailbox.email] ?? UNGROUPED_GROUP_ID;
+                const currentGroupId = getMailboxGroupId(mailbox) ?? UNGROUPED_GROUP_ID;
                 refreshGroupSelects(currentGroupId, document.getElementById('batchGroupSelect')?.value || UNGROUPED_GROUP_ID);
                 document.getElementById('groupSelect').value = currentGroupId;
                 loadServerOptions();
@@ -7152,17 +7178,6 @@
             const result = await response.json();
             
             if (result.success) {
-                // Update local mailbox group map for all added emails
-                if (group_id) {
-                    const lines = data.batch_content.split('\n');
-                    for (const line of lines) {
-                        const emailMatch = line.match(/[\w.!#$%&'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}/);
-                        if (emailMatch) {
-                            mailboxGroupMap[emailMatch[0]] = group_id;
-                        }
-                    }
-                }
-                
                 const createdMailboxes = result.details?.created_mailboxes || [];
                 showToast(result.message || '批量添加成功', 'success');
                 closeBatchAddModal();

@@ -93,6 +93,7 @@ for (const admin of [true, false]) {
                 await showMail(page, admin, fixture);
                 const frameElement = page.locator(admin ? '.receive-content-frame' : '.mail-content-frame');
                 await frameElement.waitFor({ state: 'visible' });
+                const backBeforeScroll = admin ? await page.locator('.receive-back').boundingBox() : null;
                 await frameElement.scrollIntoViewIfNeeded();
                 const frame = await (await frameElement.elementHandle()).contentFrame();
                 await frame.locator('.button').waitFor();
@@ -115,6 +116,22 @@ for (const admin of [true, false]) {
                     assert.ok(await page.locator('.receive-detail-header').isVisible());
                     assert.ok(await page.locator('.receive-back').isVisible());
                     assert.ok(await page.locator('#receiveDetailSubject').innerText() === 'Account invitation');
+                    assert.equal(await page.locator('#receiveDetailView .receive-back').count(), 0);
+                    await frame.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+                    await page.evaluate(() => {
+                        for (const id of ['receiveDetailView']) {
+                            const el = document.getElementById(id);
+                            el.scrollTop = el.scrollHeight;
+                        }
+                        const body = document.querySelector('.receive-body');
+                        body.scrollTop = body.scrollHeight;
+                    });
+                    const backAfterScroll = await page.locator('.receive-back').boundingBox();
+                    assert.equal(backAfterScroll.y, backBeforeScroll.y, 'Back must stay in the fixed modal header');
+                    assert.ok(await page.locator('.receive-back').evaluate(el => {
+                        const box = el.getBoundingClientRect();
+                        return el.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+                    }), 'Mail content must never cover the Back button');
                 }
                 if (process.env.MAIL_SCREENSHOT_DIR) {
                     fs.mkdirSync(process.env.MAIL_SCREENSHOT_DIR, { recursive: true });
@@ -129,6 +146,7 @@ for (const admin of [true, false]) {
                 if (admin) {
                     await page.locator('.receive-back').click();
                     assert.ok(await page.locator('#receiveListView').isVisible());
+                    assert.ok(await page.locator('#receiveDetailToolbar').isHidden());
                 }
             } finally { await page.close(); }
         });
@@ -154,5 +172,42 @@ test('HTML scripts, event handlers and navigation cannot escape the mail frame',
         assert.equal(await element.getAttribute('referrerpolicy'), 'no-referrer');
         assert.equal(await page.evaluate(() => window.mailCodeRan), undefined);
         assert.equal(page.url(), origin + '/admin/mailbox');
+    } finally { await page.close(); }
+});
+
+test('mailbox list deduplicates before pagination and preserves group/owner filtering', async () => {
+    const page = await browser.newPage();
+    try {
+        await page.goto(origin + '/admin/mailbox');
+        await page.waitForLoadState('networkidle');
+        await page.evaluate(() => {
+            mailboxData = Array.from({ length: 21 }, (_, i) => ({ id: i + 1, email: `user${i}@example.com`, created_by_admin: 'owner-a' }));
+            mailboxData.push({ id: 22, email: ' USER0@EXAMPLE.COM ', created_by_admin: 'owner-b' });
+            mailboxData.push({ id: 23, email: 'User0@example.com', created_by_admin: 'owner-b' });
+            mailboxData.push({ id: 24, email: 'user0@example.com', created_by_admin: 'owner-a' });
+            groups = [{ id: ROOT_GROUP_ID, name: '所有分组' }, { id: UNGROUPED_GROUP_ID, name: '未分组' },
+                { id: 1, name: 'A' }, { id: 2, name: 'B' }];
+            mailboxGroupMappings = [{ mailbox_id: 1, group_id: 1 }, { mailbox_id: 22, group_id: 2 }, { mailbox_id: 23, group_id: 2 }];
+            rebuildMailboxGroupMapFromMappings();
+            recalculateGroupCounts();
+            selectedGroupId = ROOT_GROUP_ID;
+            perPage = 20;
+            renderMailboxView(1);
+        });
+        assert.equal(await page.locator('#mailboxTable tbody tr').count(), 20);
+        assert.equal(await page.locator('#adminMailboxCount').innerText(), '21');
+        await page.evaluate(() => renderMailboxView(2));
+        assert.equal(await page.locator('#mailboxTable tbody tr').count(), 1);
+        for (const groupId of [1, 2]) {
+            await page.evaluate(id => { selectedGroupId = id; renderMailboxView(1); }, groupId);
+            assert.equal(await page.locator('#mailboxTable tbody tr').count(), 1);
+            assert.equal(await page.locator('#adminMailboxCount').innerText(), '1');
+            assert.equal(await page.evaluate(id => getGroupById(id).mailboxCount, groupId), 1);
+        }
+        await page.evaluate(() => { selectedGroupId = UNGROUPED_GROUP_ID; renderMailboxView(1); });
+        assert.equal(await page.locator('#adminMailboxCount').innerText(), '21');
+        await page.evaluate(() => { selectedGroupId = ROOT_GROUP_ID; ownerFilter = 'owner-b'; renderMailboxView(1); });
+        assert.equal(await page.locator('#mailboxTable tbody tr').count(), 1);
+        assert.equal(await page.locator('#adminMailboxCount').innerText(), '1');
     } finally { await page.close(); }
 });
