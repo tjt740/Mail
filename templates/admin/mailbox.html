@@ -1791,6 +1791,7 @@
         padding: 0;
         display: flex;
         flex-direction: column;
+        min-width: 0;
         min-height: 0;
         overflow: hidden;
         box-shadow: 0 18px 38px rgba(92, 72, 52, 0.08);
@@ -1929,6 +1930,7 @@
     }
 
     .receive-detail-shell {
+        min-width: 0;
         min-height: 100%;
         padding: 14px;
         display: flex;
@@ -1967,6 +1969,7 @@
         display: flex;
         flex-direction: column;
         gap: 12px;
+        min-width: 0;
         min-height: 0;
     }
 
@@ -2020,6 +2023,7 @@
     }
 
     .receive-detail-content {
+        min-width: 0;
         min-height: 360px;
         overflow: auto;
         padding: 16px;
@@ -2028,6 +2032,7 @@
         background: #fff;
         color: #1f2937;
         line-height: 1.65;
+        overflow-wrap: anywhere;
         box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
     }
 
@@ -2035,14 +2040,19 @@
         color: #94a3b8;
     }
 
-    .receive-detail-content img,
-    .receive-detail-content table {
-        max-width: 100%;
+    .receive-detail-content--html {
+        padding: 0;
+        min-height: 0;
+        overflow: hidden;
     }
 
-    .receive-detail-content table {
+    .receive-content-frame {
+        display: block;
         width: 100%;
-        overflow-wrap: anywhere;
+        min-width: 0;
+        height: clamp(360px, 55vh, 640px);
+        border: 0;
+        background: #fff;
     }
 
     .receive-detail-images {
@@ -3869,6 +3879,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/mail-content.js') }}"></script>
 <script>
     const SIDEBAR_COLLAPSE_KEY = 'adminSidebarCollapsed';
     const MAILBOX_GROUP_PANEL_KEY = 'mailboxGroupPanelCollapsedV2';
@@ -6443,16 +6454,17 @@
         `;
         const body = document.getElementById('receiveDetailBody');
         if (body) {
-            if (mail.bodyType === 'html') {
-                // Display HTML emails
-                // Note: In admin context, emails are fetched from trusted sources
-                // For production, consider adding DOMPurify for HTML sanitization
-                body.innerHTML = mail.body || '（无正文）';
+            const isHtml = (mail.bodyType || '').toLowerCase() === 'html';
+            body.classList.toggle('receive-detail-content--html', isHtml);
+            if (isHtml) {
+                body.replaceChildren(window.MailContent.createFrame(mail.body || '（无正文）', {
+                    title: `邮件正文：${mail.subject || '无主题'}`,
+                    className: 'receive-content-frame'
+                }));
                 body.style.whiteSpace = 'normal';
             } else {
-                // Display text emails
                 body.textContent = mail.body || '（无正文）';
-                body.style.whiteSpace = 'pre-line';
+                body.style.whiteSpace = 'pre-wrap';
             }
         }
         // Display images (matching frontend inbox page behavior)
