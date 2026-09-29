@@ -25,7 +25,7 @@ PERMISSIONS = {
     'master_key': '设置和使用本人万能密钥',
 }
 PAGE_PERMISSIONS = {
-    'home': 'home', 'mailbox': 'mailbox', 'daili': 'proxies', 'kami': 'cards',
+    'home': 'home', 'mailbox': 'mailbox', 'account-data': 'mailbox', 'daili': 'proxies', 'kami': 'cards',
     'kamirizhi': 'card_logs', 'shoujian': 'mail_logs',
 }
 

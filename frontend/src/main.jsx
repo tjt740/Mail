@@ -38,6 +38,7 @@ import viVN from 'antd/locale/vi_VN';
 import '../../static/js/i18n.js';
 import '../../static/js/motion.js';
 import './styles.css';
+import AccountDataPage from './AccountDataPage.jsx';
 import '../../static/css/motion.css';
 
 const { Header, Sider, Content } = Layout;
@@ -62,6 +63,7 @@ const adminMenuDefinitions = [
   { key: '/admin/kami', permission: 'cards', icon: <KeyOutlined />, labelKey: '卡密管理' },
   { key: '/admin/kamirizhi', permission: 'card_logs', icon: <FileTextOutlined />, labelKey: '卡密日志' },
   { key: '/admin/shoujian', permission: 'mail_logs', icon: <MailOutlined />, labelKey: '收件日志' },
+  { key: '/admin/account-data', permission: 'mailbox', icon: <FileTextOutlined />, labelKey: '账号资料' },
   { key: '/admin/system', icon: <SettingOutlined />, labelKey: '系统设置' },
   { key: '/admin/help', icon: <QuestionCircleOutlined />, labelKey: '帮助中心' }
 ];
@@ -477,12 +479,12 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
           </Space>
         </Header>
         <Content className="admin-content">
-          <LegacyFrame
+          {selectedKey === '/admin/account-data' ? <AccountDataPage t={t} language={language} /> : <LegacyFrame
             key={legacyUrl}
             title={currentItem?.label || t('后台页面')}
             src={legacyUrl}
             language={language}
-          />
+          />}
         </Content>
       </Layout>
     </Layout>

@@ -1,0 +1,39 @@
+.account-data-page { padding: 20px; display: grid; gap: 18px; min-width: 0; overflow: auto; height: 100%; }
+.account-page-intro, .account-results-toolbar, .account-record-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.account-page-intro { margin-bottom: 24px; }
+.account-page-intro h4 { margin: 0 0 5px; }
+.account-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.account-filter-grid label, .account-filter-field { display: grid; gap: 7px; min-width: 0; }
+.account-filter-grid label > span:first-child, .account-filter-field > span:first-child { font-size: 13px; font-weight: 500; }
+.account-filter-grid .ant-select, .account-date-range { width: 100%; }
+.account-filter-actions { margin-top: 18px; }
+.account-format-hint { margin-top: 18px; font-size: 13px; overflow-wrap: anywhere; }
+.account-selection-hint { margin: 6px 0 18px; font-size: 12px; }
+.account-result-list { min-height: 130px; display: grid; gap: 12px; }
+.account-record { border: 1px solid #e9e5df; border-radius: 10px; padding: 16px; min-width: 0; background: #fff; }
+.account-record.is-selected { border-color: var(--app-primary, #C96442); background: var(--app-primary-soft, #F3E6DF); }
+.account-record-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
+.account-record-identity strong { overflow-wrap: anywhere; }
+.account-credential-line { margin: 14px 0; padding: 12px; border-radius: 6px; background: #f7f7f5; white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 120px; font: 13px/1.7 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.account-record-meta { display: flex; flex-wrap: wrap; gap: 8px 22px; color: #726c61; font-size: 12px; }
+.account-pagination { margin-top: 24px; justify-content: flex-end; flex-wrap: wrap; }
+.account-detail-modal .ant-modal-body { max-height: 70vh; overflow: auto; }
+.account-detail-modal .ant-descriptions { margin-top: 22px; }
+.account-detail-modal .ant-descriptions-item-label { width: 170px; }
+.account-detail-value { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.account-detail-value pre { flex: 1; min-width: 0; margin: 0; max-height: 180px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.account-detail-loading { padding: 50px; text-align: center; }
+@media (max-width: 1100px) { .account-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .account-data-page { padding: 12px; gap: 12px; }
+  .account-data-page .ant-card-body { padding: 16px; }
+  .account-filter-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .account-date-range-popup .ant-picker-panels { flex-direction: column; }
+  .account-date-range-popup .ant-picker-panel-container { max-height: min(70vh, 360px); overflow-y: auto; }
+  .account-record { padding: 12px; }
+  .account-record-heading { align-items: flex-start; gap: 10px; }
+  .account-record-identity { flex-basis: 100%; }
+  .account-detail-modal .ant-descriptions-item-label { width: 110px; }
+  .account-detail-value { flex-direction: column; }
+  .account-detail-value pre { width: 100%; }
+}

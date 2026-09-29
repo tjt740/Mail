@@ -68,6 +68,7 @@ jobs:
             --exclude 'db/*.sqlite-shm' \
             --exclude 'db/*.db-wal' \
             --exclude 'db/*.db-shm' \
+            --exclude 'db/flask_secret.key' \
             --exclude 'db/backups/' \
             --exclude 'db/backup*/' \
             --exclude 'logs/' \

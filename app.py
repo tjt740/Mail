@@ -3804,6 +3804,12 @@ def admin_daili():
     """代理池管理页面"""
     return render_react_app(page_title=f'代理池 - {get_system_config("system_title", "邮件查看系统")}')
 
+@app.route('/admin/account-data')
+@admin_required
+def admin_account_data():
+    """Dedicated account credentials browser in the React shell."""
+    return render_react_app(page_title=f'账号资料 - {get_system_config("system_title", "邮件查看系统")}')
+
 @app.route('/admin/kami')
 @admin_required
 def admin_kami():
@@ -4546,23 +4552,16 @@ def api_admin_mailbox():
                 if not _can_access_mailbox(db, mailbox_id_int):
                     return _mailbox_not_found_response()
                     
-                if db_type == 'sqlite':
-                    account = db.execute('SELECT * FROM mail_accounts WHERE id = ?', (mailbox_id_int,)).fetchone()
-                else:
-                    cursor = db.cursor()
-                    cursor.execute('SELECT * FROM mail_accounts WHERE id = %s', (mailbox_id_int,))
-                    result = cursor.fetchone()
-                    if result:
-                        columns = [desc[0] for desc in cursor.description]
-                        account = dict(zip(columns, result))
-                    else:
-                        account = None
+                accounts = security.query(db, 'SELECT * FROM mail_accounts WHERE id = ?', (mailbox_id_int,))
+                account = accounts[0] if accounts else None
                 
                 if account:
-                    return jsonify({
+                    response = jsonify({
                         'success': True,
-                        'data': dict(account) if db_type == 'sqlite' else account
+                        'data': account
                     })
+                    response.headers['Cache-Control'] = 'no-store'
+                    return response
                 else:
                     return jsonify({
                         'success': False,
@@ -4718,6 +4717,153 @@ def api_admin_mailbox():
                 'success': False,
                 'message': f'删除失败: {str(e)}'
             })
+
+def _account_data_response(payload):
+    response = jsonify(payload)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+def _account_data_groups(db):
+    """Group names/paths belonging to visible accounts, including parent categories."""
+    condition, params = _mailbox_scope_condition(db, 'ma')
+    visible = security.query(db, f'''SELECT DISTINCT m.group_id FROM mailbox_group_mappings m
+        JOIN mail_accounts ma ON ma.id = m.mailbox_id
+        WHERE {condition or '1 = 1'}''', params)
+    groups = security.query(db, 'SELECT id, name, parent_id FROM mailbox_groups ORDER BY sort_order, id')
+    by_id = {group['id']: group for group in groups}
+    visible_ids = {row['group_id'] for row in visible}
+    pending = list(visible_ids)
+    while pending:
+        parent_id = by_id.get(pending.pop(), {}).get('parent_id')
+        if parent_id in by_id and parent_id not in visible_ids:
+            visible_ids.add(parent_id)
+            pending.append(parent_id)
+    return [group for group in groups if group['id'] in visible_ids]
+
+
+@app.route('/admin/api/mailbox/account-data/filters', methods=['GET'])
+@admin_required
+def api_account_data_filters():
+    db = get_db()
+    condition, params = _mailbox_scope_condition(db, 'ma')
+    owners = security.query(db, f'''SELECT DISTINCT COALESCE(ma.created_by_admin, '') AS owner
+        FROM mail_accounts ma WHERE {condition or '1 = 1'} ORDER BY owner''', params)
+    return _account_data_response({'success': True, 'owners': [row['owner'] for row in owners],
+                                   'groups': _account_data_groups(db)})
+
+
+@app.route('/admin/api/mailbox/account-data', methods=['GET'])
+@admin_required
+def api_account_data():
+    db = get_db()
+    try:
+        page = max(1, int(request.args.get('page', '1')))
+        per_page = min(100, max(1, int(request.args.get('per_page', '20'))))
+        start = request.args.get('start_date', '').strip()
+        end = request.args.get('end_date', '').strip()
+        start_date = datetime.strptime(start, '%Y-%m-%d') if start else None
+        end_date = datetime.strptime(end, '%Y-%m-%d') if end else None
+        if start_date and end_date and start_date > end_date:
+            raise ValueError('reversed date range')
+        end_exclusive = (end_date + timedelta(days=1)).strftime('%Y-%m-%d') if end_date else None
+        group = request.args.get('group_id', '').strip()
+        if group and group != 'ungrouped' and int(group) <= 0:
+            raise ValueError('invalid group')
+    except (ValueError, OverflowError):
+        return jsonify({'success': False, 'message': '筛选参数无效，请检查日期范围和分类'}), 400
+
+    conditions = []
+    params = []
+    scope, scope_params = _mailbox_scope_condition(db, 'ma')
+    if scope:
+        conditions.append(scope)
+        params.extend(scope_params)
+    search = request.args.get('search', '').strip()
+    if search:
+        # Treat wildcard characters as literal account-search text.
+        search = search.lower().replace('!', '!!').replace('%', '!%').replace('_', '!_')
+        conditions.append("(LOWER(ma.email) LIKE ? ESCAPE '!' OR LOWER(ma.username) LIKE ? ESCAPE '!')")
+        params.extend([f'%{search}%', f'%{search}%'])
+    if 'owner' in request.args:
+        conditions.append("COALESCE(ma.created_by_admin, '') = ?")
+        params.append(request.args['owner'])
+    if start_date:
+        conditions.append('ma.created_at >= ?')
+        params.append(start_date.strftime('%Y-%m-%d'))
+    if end_exclusive:
+        conditions.append('ma.created_at < ?')
+        params.append(end_exclusive)
+    auth_type = request.args.get('auth_type', '').strip()
+    if auth_type:
+        conditions.append('ma.auth_type = ?')
+        params.append(auth_type)
+    account_status = request.args.get('account_status', '').strip()
+    if account_status:
+        conditions.append('ma.account_status = ?')
+        params.append(account_status)
+    if group == 'ungrouped':
+        conditions.append('NOT EXISTS (SELECT 1 FROM mailbox_group_mappings gm WHERE gm.mailbox_id = ma.id)')
+    elif group:
+        # Selecting a parent category includes descendants; account scope still applies.
+        groups = security.query(db, 'SELECT id, parent_id FROM mailbox_groups')
+        descendants = {int(group)}
+        children = {}
+        for item in groups:
+            children.setdefault(item['parent_id'], []).append(item['id'])
+        pending = list(descendants)
+        while pending:
+            for child in children.get(pending.pop(), []):
+                if child not in descendants:
+                    descendants.add(child)
+                    pending.append(child)
+        conditions.append(f'''EXISTS (SELECT 1 FROM mailbox_group_mappings gm
+            WHERE gm.mailbox_id = ma.id AND gm.group_id IN ({','.join('?' for _ in descendants)}))''')
+        params.extend(sorted(descendants))
+    where = 'WHERE ' + ' AND '.join(conditions) if conditions else ''
+    total = security.query(db, f'SELECT COUNT(*) AS count FROM mail_accounts ma {where}', params)[0]['count']
+    page = min(page, max(1, (total + per_page - 1) // per_page))
+    rows = security.query(db, f'''SELECT ma.id, ma.email, ma.username, ma.password, ma.auth_type,
+        ma.oauth_client_id, ma.oauth_refresh_token, ma.created_by_admin, ma.created_at, ma.remarks
+        FROM mail_accounts ma {where} ORDER BY ma.created_at DESC, ma.id DESC LIMIT ? OFFSET ?''',
+        params + [per_page, (page - 1) * per_page])
+    groups_by_mailbox = {}
+    if rows:
+        mappings = security.query(db, f'''SELECT gm.mailbox_id, g.id, g.name FROM mailbox_group_mappings gm
+            JOIN mailbox_groups g ON g.id = gm.group_id
+            WHERE gm.mailbox_id IN ({','.join('?' for _ in rows)}) ORDER BY g.sort_order, g.id''',
+            [row['id'] for row in rows])
+        for mapping in mappings:
+            groups_by_mailbox.setdefault(mapping['mailbox_id'], []).append({'id': mapping['id'], 'name': mapping['name']})
+    for row in rows:
+        row['groups'] = groups_by_mailbox.get(row['id'], [])
+    return _account_data_response({'success': True, 'data': rows,
+                                   'pagination': {'page': page, 'per_page': per_page, 'total': total}})
+
+
+@app.route('/admin/api/mailbox/account-data/copy', methods=['POST'])
+@admin_required
+def api_copy_account_data():
+    ids = (request.get_json(silent=True) or {}).get('ids')
+    if not isinstance(ids, list) or not ids or len(ids) > 5000 or any(type(item) is not int or item <= 0 for item in ids):
+        return jsonify({'success': False, 'message': '请选择 1 至 5000 个账号'}), 400
+    ids = list(dict.fromkeys(ids))
+    db = get_db()
+    scope, params = _mailbox_scope_condition(db, 'ma')
+    accounts = {}
+    # Bounded queries also support SQLite builds with a low SQL parameter limit.
+    for offset in range(0, len(ids), 200):
+        batch = ids[offset:offset + 200]
+        rows = security.query(db, f'''SELECT ma.id, ma.email, ma.password, ma.oauth_client_id, ma.oauth_refresh_token
+            FROM mail_accounts ma WHERE ma.id IN ({','.join('?' for _ in batch)})
+            AND {scope or '1 = 1'}''', batch + params)
+        accounts.update({row['id']: row for row in rows})
+    if len(accounts) != len(ids):
+        return _mailbox_not_found_response()
+    lines = ['----'.join(str(accounts[mailbox_id].get(key) or '') for key in
+                        ('email', 'password', 'oauth_client_id', 'oauth_refresh_token')) for mailbox_id in ids]
+    return _account_data_response({'success': True, 'text': '\n'.join(lines), 'count': len(lines)})
+
 
 @app.route('/admin/api/mailbox/search', methods=['GET'])
 @admin_required

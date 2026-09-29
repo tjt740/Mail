@@ -77,6 +77,120 @@ class AdminPermissionsTestCase(unittest.TestCase):
         with sqlite3.connect(self.path) as db:
             self.assertIsNone(db.execute('SELECT id FROM admin_users WHERE username = ?', ('newchild',)).fetchone())
 
+    def test_mailbox_details_return_current_credentials_without_caching_or_list_loading(self):
+        with sqlite3.connect(self.path) as db:
+            db.execute('''UPDATE mail_accounts SET auth_type = ?, oauth_client_id = ?,
+                          oauth_refresh_token = ?, password = ? WHERE id = 4''',
+                       ('oauth', 'fixture-client-id', 'fixture-token', 'fixture-password'))
+        response = self.child.get('/admin/api/mailbox?id=4')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        data = response.get_json()['data']
+        for key, value in {'auth_type': 'oauth', 'oauth_client_id': 'fixture-client-id',
+                           'oauth_refresh_token': 'fixture-token', 'password': 'fixture-password'}.items():
+            self.assertEqual(data[key], value)
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE mail_accounts SET oauth_refresh_token = 'rotated-fixture-token' WHERE id = 4")
+        self.assertEqual(self.child.get('/admin/api/mailbox?id=4').get_json()['data']['oauth_refresh_token'],
+                         'rotated-fixture-token')
+        for row in self.child.get('/admin/api/mailbox?fast=1').get_json()['data']:
+            self.assertTrue({'password', 'oauth_client_id', 'oauth_refresh_token'}.isdisjoint(row))
+
+    def test_mailbox_details_enforce_session_feature_and_mailbox_scope(self):
+        anonymous = app_module.app.test_client()
+        self.assertEqual(anonymous.get('/admin/api/mailbox?id=4').status_code, 401)
+        for mailbox_id in (1, 2, 3, 999999):
+            response = self.child.get(f'/admin/api/mailbox?id={mailbox_id}')
+            self.assertEqual(response.status_code, 404)
+            self.assertNotIn('data', response.get_json())
+        self.assertEqual(self.grant(self.parent, self.child_id, []).status_code, 200)
+        self.assertEqual(self.child.get('/admin/api/mailbox?id=4').status_code, 403)
+
+    def account_data_fixture(self):
+        with sqlite3.connect(self.path) as db:
+            for mailbox_id, auth, created_at in ((1, 'password', '2026-09-27 23:59:59'),
+                                                 (2, 'oauth', '2026-09-28 00:00:00'),
+                                                 (3, 'graph', '2026-09-28 23:59:59'),
+                                                 (4, 'oauth', '2026-09-29 00:00:00')):
+                db.execute('''UPDATE mail_accounts SET auth_type = ?, created_at = ?,
+                    oauth_client_id = ?, oauth_refresh_token = ? WHERE id = ?''',
+                           (auth, created_at, f'client-{mailbox_id}', f'token-{mailbox_id}', mailbox_id))
+            db.execute("INSERT INTO mailbox_groups (id, name, parent_id) VALUES (1, 'Parent category', NULL), (2, 'Child category', 1)")
+            db.execute('INSERT INTO mailbox_group_mappings (mailbox_id, group_id) VALUES (2, 2), (3, 1), (4, 2)')
+
+    def test_account_data_filters_pagination_and_inclusive_date_range(self):
+        self.account_data_fixture()
+        cases = [({'start_date': '2026-09-28', 'end_date': '2026-09-28'}, [3, 2]),
+                 ({'owner': 'parent', 'group_id': '1', 'auth_type': 'oauth', 'search': 'PARENT'}, [2]),
+                 ({'group_id': '2'}, [4, 2]), ({'group_id': 'ungrouped'}, [1]),
+                 ({'search': 'does-not-exist'}, []), ({'search': '%'}, []),
+                 ({'owner': ''}, [])]
+        for query, expected in cases:
+            with self.subTest(query=query):
+                response = self.root.get('/admin/api/mailbox/account-data', query_string=query)
+                self.assertEqual(response.status_code, 200, response.get_json())
+                self.assertEqual([row['id'] for row in response.get_json()['data']], expected)
+                self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        response = self.root.get('/admin/api/mailbox/account-data?page=2&per_page=2').get_json()
+        self.assertEqual(response['pagination'], {'page': 2, 'per_page': 2, 'total': 4})
+        self.assertEqual([row['id'] for row in response['data']], [2, 1])
+        self.assertEqual(response['data'][0]['groups'], [{'id': 2, 'name': 'Child category'}])
+        for query in ({'start_date': 'invalid'}, {'start_date': '2026-09-29', 'end_date': '2026-09-28'},
+                      {'group_id': 'invalid'}, {'page': 'invalid'}):
+            self.assertEqual(self.root.get('/admin/api/mailbox/account-data', query_string=query).status_code, 400)
+
+    def test_account_data_metadata_pages_and_copy_obey_scope_and_feature_grants(self):
+        self.account_data_fixture()
+        self.assertEqual(self.child.get('/admin/account-data').status_code, 200)
+        self.assertEqual([row['id'] for row in self.child.get('/admin/api/mailbox/account-data').get_json()['data']], [4])
+        filters = self.child.get('/admin/api/mailbox/account-data/filters').get_json()
+        self.assertEqual(filters['owners'], ['child'])
+        self.assertEqual({row['id'] for row in filters['groups']}, {1, 2})
+        self.assertEqual(self.child.get('/admin/api/mailbox/account-data?owner=peer').get_json()['data'], [])
+        denied = self.child.post('/admin/api/mailbox/account-data/copy', json={'ids': [4, 3]})
+        self.assertEqual(denied.status_code, 404)
+        self.assertNotIn('text', denied.get_json())
+        self.assertEqual(app_module.app.test_client().get('/admin/api/mailbox/account-data').status_code, 401)
+        self.assertEqual(self.grant(self.parent, self.child_id, []).status_code, 200)
+        for url in ('/admin/account-data', '/admin/api/mailbox/account-data', '/admin/api/mailbox/account-data/filters'):
+            self.assertEqual(self.child.get(url).status_code, 403)
+        self.assertEqual(self.child.post('/admin/api/mailbox/account-data/copy', json={'ids': [4]}).status_code, 403)
+
+    def test_account_data_status_filter_applies_before_pagination_and_respects_scope(self):
+        self.account_data_fixture()
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE mail_accounts SET account_status = 'normal' WHERE id IN (1, 2)")
+            db.execute("UPDATE mail_accounts SET account_status = 'banned' WHERE id = 3")
+        response = self.root.get('/admin/api/mailbox/account-data?account_status=normal&per_page=1&page=2')
+        data = response.get_json()
+        self.assertEqual(data['pagination'], {'page': 2, 'per_page': 1, 'total': 2})
+        self.assertEqual([row['id'] for row in data['data']], [1])
+        data = self.root.get('/admin/api/mailbox/account-data?account_status=normal&owner=parent&group_id=1').get_json()
+        self.assertEqual([row['id'] for row in data['data']], [2])
+        self.assertEqual(self.root.get('/admin/api/mailbox/account-data?account_status=').get_json()['pagination']['total'], 4)
+        self.assertEqual(self.child.get('/admin/api/mailbox/account-data?account_status=normal').get_json()['data'], [])
+        for status in ('normal', 'banned', 'pending', 'invalid_credentials', 'network_error', 'test_error'):
+            with self.subTest(status=status):
+                with sqlite3.connect(self.path) as db:
+                    db.execute('UPDATE mail_accounts SET account_status = ? WHERE id = 4', (status,))
+                data = self.child.get('/admin/api/mailbox/account-data', query_string={'account_status': status}).get_json()
+                self.assertEqual([row['id'] for row in data['data']], [4])
+                self.assertEqual(data['pagination']['total'], 1)
+
+    def test_account_data_copy_preserves_selection_order_latest_values_and_empty_fields(self):
+        self.account_data_fixture()
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE mail_accounts SET oauth_refresh_token = 'updated-token' WHERE id = 2")
+            db.execute("UPDATE mail_accounts SET oauth_client_id = '', oauth_refresh_token = '' WHERE id = 1")
+        response = self.root.post('/admin/api/mailbox/account-data/copy', json={'ids': [2, 1, 2]})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        self.assertEqual(response.get_json()['text'], 'parent@example.com----test----client-2----updated-token\ntjt740@example.com----test--------')
+        self.assertEqual(response.get_json()['count'], 2)
+        for ids in ([], [0], [True], ['2'], [1.5], '1,2', [1] * 5001):
+            self.assertEqual(self.root.post('/admin/api/mailbox/account-data/copy', json={'ids': ids}).status_code, 400)
+        self.assertEqual(self.root.post('/admin/api/mailbox/account-data/copy', json={'ids': [999999]}).status_code, 404)
+
     def test_hierarchy_ancestors_only_expose_minimal_current_branch_context(self):
         root_data = self.root.get('/admin/api/system-config').get_json()['data']
         self.assertEqual(root_data['admin_ancestors'], [])
