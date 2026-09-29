@@ -4,6 +4,7 @@ import { CopyOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import 'dayjs/locale/vi';
+import AdminOwnerTag from './AdminOwnerTag.jsx';
 import './account-data.css';
 
 const INITIAL_FILTERS = { search: '', owner: undefined, group_id: undefined, auth_type: undefined, account_status: 'normal', start_date: '', end_date: '' };
@@ -180,11 +181,12 @@ export default function AccountDataPage({ t }) {
 
   function detailValue(key, { secret = false, date = false, boolean = false } = {}) {
     const value = detail?.[key];
+    if (key === 'created_by_admin' && !value) return <AdminOwnerTag owner={value} t={t} />;
     if (value === null || value === undefined || value === '') return <Typography.Text type="secondary">{t('未设置')}</Typography.Text>;
     const text = secret && !revealed.has(key) ? '••••••••' : date ? dateText(value)
       : boolean ? t(value === 1 || value === true || value === '1' ? '已开启' : '已关闭') : String(value);
     return <div className="account-detail-value">
-      <pre translate="no">{text}</pre>
+      {key === 'created_by_admin' ? <span className="account-detail-owner"><AdminOwnerTag owner={value} t={t} /></span> : <pre translate="no">{text}</pre>}
       <Space size={4}>
         {secret && <Button size="small" aria-pressed={revealed.has(key)} onClick={() => setRevealed(previous => {
           const next = new Set(previous); next.has(key) ? next.delete(key) : next.add(key); return next;
@@ -203,15 +205,10 @@ export default function AccountDataPage({ t }) {
 
   return <div className="account-data-page">
     <Card className="account-filter-card">
-      <div className="account-page-intro">
-        <div><Typography.Title level={4}>{t('账号资料')}</Typography.Title>
-          <Typography.Text type="secondary">{t('每行一个账号，支持筛选、跨页勾选和复制。')}</Typography.Text></div>
-        <Button icon={<ReloadOutlined />} disabled={loading} onClick={() => setRevision(value => value + 1)}>{t('刷新')}</Button>
-      </div>
       <form onSubmit={event => { event.preventDefault(); applyFilters(); }}>
         <div className="account-filter-grid">
           <label><span>{t('账号搜索')}</span><Input aria-label={t('账号搜索')} allowClear prefix={<SearchOutlined />} placeholder={t('搜索邮箱或登录用户名')} value={draft.search} onChange={event => updateDraft('search', event.target.value)} /></label>
-          <label><span>{t('创建人')}</span><Select aria-label={t('创建人')} allowClear showSearch optionFilterProp="label" placeholder={t('全部创建人')} value={draft.owner} onChange={value => updateDraft('owner', value)} options={metadata.owners.map(owner => ({ value: owner, label: owner || t('历史数据') }))} /></label>
+          <label><span>{t('创建人')}</span><Select aria-label={t('创建人')} allowClear showSearch optionFilterProp="label" placeholder={t('全部创建人')} value={draft.owner} onChange={value => updateDraft('owner', value)} options={metadata.owners.map(owner => ({ value: owner, label: owner || t('历史数据') }))} optionRender={option => <AdminOwnerTag owner={option.value} t={t} />} labelRender={option => <AdminOwnerTag owner={option.value} t={t} />} /></label>
           <label><span>{t('分类（邮箱分组）')}</span><Select aria-label={t('分类（邮箱分组）')} allowClear showSearch optionFilterProp="label" placeholder={t('全部分类')} value={draft.group_id} onChange={value => updateDraft('group_id', value)} options={[{ value: 'ungrouped', label: t('未分组') }, ...metadata.groups.map(group => ({ value: String(group.id), label: groupPath(group, metadata.groups) }))]} /></label>
           <label><span>{t('认证方式')}</span><Select aria-label={t('认证方式')} allowClear placeholder={t('全部认证方式')} value={draft.auth_type} onChange={value => updateDraft('auth_type', value)} options={AUTH_OPTIONS.map(value => ({ value, label: value === 'password' ? t('密码登录') : value === 'graph' ? 'Graph API' : 'OAuth' }))} /></label>
           <label><span>{t('账号状态')}</span><Select aria-label={t('账号状态')} value={draft.account_status} onChange={value => updateDraft('account_status', value)} options={STATUS_OPTIONS.map(option => ({ ...option, label: t(option.label) }))} /></label>
@@ -220,6 +217,7 @@ export default function AccountDataPage({ t }) {
             <DatePicker.RangePicker
               className="account-date-range"
               classNames={{ popup: { root: 'account-date-range-popup' } }}
+              popupAlign={{ overflow: { adjustX: true, adjustY: true, shiftX: true, shiftY: true } }}
               format="YYYY-MM-DD"
               placeholder={[t('开始日期'), t('结束日期')]}
               allowEmpty={[true, true]}
@@ -228,10 +226,11 @@ export default function AccountDataPage({ t }) {
             />
           </div>
         </div>
-        <Space className="account-filter-actions">
+        <div className="account-filter-actions">
           <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>{t('筛选')}</Button>
           <Button onClick={() => { setDraft(INITIAL_FILTERS); applyFilters(INITIAL_FILTERS); }}>{t('重置')}</Button>
-        </Space>
+          <Button icon={<ReloadOutlined />} disabled={loading} onClick={() => setRevision(value => value + 1)}>{t('刷新')}</Button>
+        </div>
       </form>
       {metadataError && <Alert type="error" showIcon title={t(metadataError)} />}
     </Card>
@@ -257,7 +256,7 @@ export default function AccountDataPage({ t }) {
               <Space><Button size="small" icon={<CopyOutlined />} disabled={copying} onClick={() => copyAccounts([row.id])}>{t('复制')}</Button><Button size="small" onClick={() => { setDetail(null); setDetailId(row.id); }}>{t('详情')}</Button></Space>
             </div>
             <pre className="account-credential-line" translate="no">{accountLine(row, showCredentials)}</pre>
-            <div className="account-record-meta"><span>{t('创建人')}：<span translate="no">{row.created_by_admin || t('历史数据')}</span></span><span>{t('添加时间')}：{dateText(row.created_at)}</span><span>{t('分类')}：{row.groups.length ? row.groups.map(group => <Tag key={group.id}><span translate="no">{group.name}</span></Tag>) : t('未分组')}</span></div>
+            <div className="account-record-meta"><span>{t('创建人')}：<AdminOwnerTag owner={row.created_by_admin} t={t} /></span><span>{t('添加时间')}：{dateText(row.created_at)}</span><span>{t('分类')}：{row.groups.length ? row.groups.map(group => <Tag key={group.id}><span translate="no">{group.name}</span></Tag>) : t('未分组')}</span></div>
           </article>)}
         </div></Spin>}
       <Pagination className="account-pagination" current={pagination.page} pageSize={query.perPage} total={pagination.total} disabled={loading} showSizeChanger pageSizeOptions={[20, 50, 100]} onChange={(page, perPage) => setQuery(previous => ({ ...previous, page: perPage === previous.perPage ? page : 1, perPage }))} />

@@ -16,6 +16,9 @@ const accounts = Array.from({ length: 22 }, (_, index) => ({
     protocol: 'imap', ssl: 1, send_server: '', send_port: 0, send_ssl: 0, account_status: 'normal',
     remarks: '<img src=x onerror="window.detailXss=true">'
 }));
+['pink', 'tjt740', 'lhm', 'operations-administrator-with-a-long-name'].forEach((owner, index) => {
+    accounts[index + 2].created_by_admin = owner;
+});
 for (const [index, status] of ['banned', 'pending', 'invalid_credentials', 'network_error', 'test_error'].entries()) {
     accounts.push({ ...accounts[1], id: 23 + index, email: `status-${status}@example.com`, account_status: status });
 }
@@ -34,7 +37,7 @@ before(async () => {
         if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin/api/')) {
             res.setHeader('Content-Type', 'application/json');
             let data = { success: true, language: 'zh' };
-            if (url.pathname.endsWith('/account-data/filters')) data = { ...data, owners: ['alice', 'bob'], groups: [{ id: 1, name: 'Category A', parent_id: null }] };
+            if (url.pathname.endsWith('/account-data/filters')) data = { ...data, owners: [...new Set(accounts.map(row => row.created_by_admin))], groups: [{ id: 1, name: 'Category A', parent_id: null }] };
             else if (url.pathname.endsWith('/account-data/copy')) {
                 let body = ''; for await (const chunk of req) body += chunk;
                 const { ids } = JSON.parse(body);
@@ -67,7 +70,7 @@ before(async () => {
 after(async () => { await browser?.close(); if (server) await new Promise(resolve => server.close(resolve)); });
 
 async function newPage(width = 1440, initialPath = '/admin/account-data') {
-    const page = await browser.newPage({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });
+    const page = await browser.newPage({ viewport: { width, height: width === 320 ? 640 : width === 390 ? 844 : 1000 }, reducedMotion: 'reduce' });
     page.setDefaultTimeout(10000);
     await page.addInitScript(() => {
         localStorage.setItem('mailSystemLanguage', 'zh');
@@ -81,13 +84,13 @@ async function newPage(width = 1440, initialPath = '/admin/account-data') {
 }
 const record = (page, id) => page.locator(`[data-account-id="${id}"]`);
 
-for (const width of [1440, 390]) {
+for (const width of [1440, 768, 390, 320]) {
     test(`independent menu, full account lines and individual details work at ${width}px`, async () => {
         const page = await newPage(width, '/admin/mailbox');
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         try {
-            if (width === 390) await page.getByRole('button', { name: '展开菜单' }).click();
+            if (width <= 768) await page.getByRole('button', { name: '展开菜单' }).click();
             await page.getByRole('menuitem', { name: /账号资料/ }).click();
             await record(page, 1).waitFor();
             assert.ok(page.url().endsWith('/admin/account-data'));
@@ -105,6 +108,18 @@ for (const width of [1440, 390]) {
             }
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1), false);
             assert.equal(await page.locator('.account-data-page').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
+            assert.equal(await page.locator('.account-record').evaluateAll(rows => rows.some(el => el.scrollWidth > el.clientWidth + 1)), false);
+            await page.getByPlaceholder('开始日期', { exact: true }).click();
+            await page.locator('.account-date-range-popup').waitFor({ state: 'visible' });
+            await page.waitForFunction(() => {
+                const rect = document.querySelector('.account-date-range-popup').getBoundingClientRect();
+                return rect.left >= -1 && rect.top >= -1 && rect.right <= window.innerWidth + 1 && rect.bottom <= window.innerHeight + 1;
+            });
+            await page.getByPlaceholder('开始日期', { exact: true }).press('Escape');
+            if (process.env.ACCOUNT_DATA_SCREENSHOT_DIR) {
+                await record(page, 3).scrollIntoViewIfNeeded();
+                await page.screenshot({ path: path.join(process.env.ACCOUNT_DATA_SCREENSHOT_DIR, `account-records-${width}.png`) });
+            }
             await record(page, 1).getByRole('button', { name: /详\s*情/ }).click();
             await page.getByRole('dialog').getByText('fixture-client-1', { exact: true }).waitFor();
             assert.equal(await page.getByRole('dialog').locator('img').count(), 0);

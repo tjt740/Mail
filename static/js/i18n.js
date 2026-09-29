@@ -1136,7 +1136,6 @@
         '账号状态': ['Account status', 'Trạng thái tài khoản'],
         '邮箱详情': ['Mailbox details', 'Chi tiết hộp thư'],
         '账号资料': ['Account data', 'Dữ liệu tài khoản'],
-        '每行一个账号，支持筛选、跨页勾选和复制。': ['One account per entry. Filter, select across pages, and copy.', 'Mỗi mục một tài khoản. Lọc, chọn qua nhiều trang và sao chép.'],
         '账号搜索': ['Account search', 'Tìm tài khoản'],
         '搜索邮箱或登录用户名': ['Search email or login username', 'Tìm email hoặc tên đăng nhập'],
         '创建人': ['Created by', 'Người tạo'],
