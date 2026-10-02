@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -21,6 +22,8 @@ class PublicAccessAndLanguageTestCase(unittest.TestCase):
             DATABASE_TYPE='sqlite',
             TESTING=True,
         )
+        with sqlite3.connect(self.database_path) as db:
+            db.execute('CREATE TABLE system_config (config_key TEXT PRIMARY KEY, config_value TEXT)')
 
     def tearDown(self):
         app_module.app.config.update(self.original_config)

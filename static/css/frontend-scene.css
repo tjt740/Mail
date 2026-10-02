@@ -116,6 +116,14 @@ body.frontend-mail-page #frontendApp :is(.highlight-input, .mail-list-panel, .ma
 body.frontend-mail-page #frontendApp :is(.query-input-label, .query-count-field label, .folder-heading, .mail-table th, .mail-subject, .mail-body--text, .mail-meta, .mail-meta-item) { color: var(--scene-text) !important; }
 body.frontend-mail-page #frontendApp :is(.query-hint, .mail-list-empty, .mail-meta-label, .pagination-info, .page-size-control) { color: var(--scene-muted) !important; }
 body.frontend-mail-page #frontendApp .highlight-input::placeholder { color: var(--scene-muted); opacity: .8; }
+body.frontend-mail-page #frontendApp .query-key-field { grid-area: key; display: grid; gap: 7px; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--scene-border); }
+body.frontend-mail-page #frontendApp .query-key-field[hidden] { display: none !important; }
+body.frontend-mail-page #frontendApp .query-key-field label { color: var(--scene-text); font-size: 13px; font-weight: 600; }
+body.frontend-mail-page #frontendApp .query-key-field input { width: 100%; max-width: 560px; height: 44px; min-width: 0; }
+body.frontend-mail-page #frontendApp .query-key-field small { color: var(--scene-muted); font-size: 12px; line-height: 1.5; }
+@media (min-width: 901px) { body.frontend-mail-page #frontendApp .query-control-block:has(.query-key-field:not([hidden])) { grid-template-areas: "key key key" "label count-label ." "email count-input button"; } }
+@media (min-width: 561px) and (max-width: 900px) { body.frontend-mail-page #frontendApp .query-control-block:has(.query-key-field:not([hidden])) { grid-template-areas: "key key" "label label" "email email" "count button"; } }
+@media (max-width: 560px) { body.frontend-mail-page #frontendApp .query-control-block:has(.query-key-field:not([hidden])) { grid-template-areas: "key" "label" "email" "count" "button"; } }
 body.frontend-mail-page #frontendApp .mail-table td { color: var(--scene-text); border-color: var(--scene-border); }
 body.frontend-mail-page #frontendApp .mail-table tbody tr { background: transparent !important; }
 body.frontend-mail-page #frontendApp .mail-table tbody tr:not(:has(.mail-list-empty)):hover { background: var(--scene-soft) !important; }

@@ -2652,6 +2652,7 @@ def legacy_index():
     return render_template(
         'frontend/index.html',
         page_title=frontend_title,
+        public_mail_key_required=_public_mail_key_required(),
         embedded=request.args.get('embedded') == '1'
     )
 
@@ -2898,6 +2899,8 @@ def _admin_feature_allowed(db):
             action = data.get('action')
             if action == 'update_admin':
                 return True
+            if action == 'update_public_mail_key':
+                return _can_manage_public_mail_key(db)
             feature = {
                 'add_admin': 'admins', 'delete_admin': 'admins',
                 'reset_admin_password': 'admins', 'update_admin_permissions': 'admins',
@@ -3169,6 +3172,31 @@ def get_system_config(key, default_value=''):
     except Exception as exc:
         logger.error('Failed to read system config %s: %s', key, exc)
         return default_value
+
+
+def _can_manage_public_mail_key(db):
+    """This site-wide switch belongs only to the persisted tjt740 root account."""
+    actor = security.current(db)
+    return bool(actor and security.is_root(db) and actor['username'].strip().lower() == 'tjt740')
+
+
+def _public_mail_key_required():
+    # Unlike cosmetic settings, a read failure must not silently disable access control.
+    rows = security.query(get_db(), 'SELECT config_value FROM system_config WHERE config_key = ?',
+                          ('public_mail_key_required',))
+    return bool(rows and rows[0]['config_value'] != '0')
+
+
+@app.route('/api/public-mail-config')
+def api_public_mail_config():
+    try:
+        response = jsonify(success=True, key_required=_public_mail_key_required())
+    except Exception:
+        logger.exception('Public mail access configuration unavailable')
+        response = jsonify(success=False, message='暂时无法确认取件方式，请稍后重试')
+        response.status_code = 503
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 def verify_admin_master_key(candidate):
@@ -3965,6 +3993,7 @@ def legacy_admin_system():
     """Legacy system settings page embedded by the React shell."""
     return render_template('admin/system.html',
                          admin_username=session.get('admin_username'),
+                         can_manage_public_mail_key=_can_manage_public_mail_key(get_db()),
                          show_mailbox_access=_is_admin_mailbox_scope_manager(get_db(), session.get('admin_id')),
                          embedded=request.args.get('embedded') == '1')
 
@@ -4165,13 +4194,7 @@ def api_card_info():
 
 @app.route('/api/get_mail', methods=['POST'])
 def api_get_mail():
-    """获取邮件 API。
-
-    Public callers may fetch any mailbox already configured in the admin
-    database by entering its address. Card-key requests remain compatible with
-    older generated links, but the public home page no longer requires or
-    exposes credentials.
-    """
+    """取件：前台地址查询遵守密钥开关，后台和卡密取件保留各自的授权校验。"""
     try:
         data = request.get_json()
         if not data:
@@ -4232,6 +4255,9 @@ def api_get_mail():
         # An explicit invalid key must not fall through to anonymous lookup.
         if data.get('master_key') and not master_key_valid:
             return jsonify({'success': False, 'message': '密钥无效或已撤销授权'}), 403
+        if not is_admin_session and not card_key and _public_mail_key_required() and not master_key_valid:
+            return jsonify(success=False, code='mail_key_required', key_required=True,
+                           message='请输入有效密钥后再获取邮件'), 403
 
         if is_direct_access:
             # 公开邮箱查询 / 管理员访问：直接调用邮件获取器。邮件获取器
@@ -11235,7 +11261,9 @@ def api_admin_system_config():
                     'permissions': sorted(security.effective(db, current_admin_id)),
                     'permission_labels': security.PERMISSIONS,
                     'is_super_admin': security.is_root(db),
-                    'can_manage_mailbox_access': security.has(db, 'mailbox_access')
+                    'can_manage_mailbox_access': security.has(db, 'mailbox_access'),
+                    **({'public_mail_key_required': _public_mail_key_required()}
+                        if _can_manage_public_mail_key(db) else {})
                 }
             })
         except Exception as e:
@@ -11258,6 +11286,8 @@ def api_admin_system_config():
                 return _update_system_title(db, db_type, data)
             elif action == 'update_admin_master_key':
                 return _update_admin_master_key(db, db_type, data)
+            elif action == 'update_public_mail_key':
+                return _update_public_mail_key(db, db_type, data)
             else:
                 return jsonify({
                     'success': False,
@@ -11435,6 +11465,20 @@ def _update_system_title(db, db_type, data):
             'success': False,
             'message': f'更新系统标题失败: {str(e)}'
         })
+
+def _update_public_mail_key(db, db_type, data):
+    if not _can_manage_public_mail_key(db):
+        return jsonify(success=False, message='无权修改前台密钥设置'), 403
+    enabled = data.get('enabled')
+    if not isinstance(enabled, bool):
+        return jsonify(success=False, message='请选择开启或关闭'), 400
+    if enabled and not get_system_config('admin_master_key', ''):
+        return jsonify(success=False, message='请先设置万能秘钥，再开启前台密钥取件'), 400
+    set_system_config(db, db_type, 'public_mail_key_required', '1' if enabled else '0',
+                      'boolean', '前台邮箱查询是否需要有效密钥')
+    return jsonify(success=True, message='前台密钥设置已保存',
+                   data={'public_mail_key_required': _public_mail_key_required()})
+
 
 def _update_admin_master_key(db, db_type, data):
     """更新管理员万能秘钥（哈希存储）"""

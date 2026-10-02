@@ -28,6 +28,7 @@ with app.test_request_context('/'):
         }
         if (pathname.startsWith('/api/')) {
             res.setHeader('Content-Type', 'application/json');
+            if (pathname === '/api/public-mail-config') return res.end(JSON.stringify({ success: true, key_required: false }));
             return res.end(JSON.stringify({ success: true, language: 'zh', mails: [{ id: 'scene-fixture', subject: 'Scene test letter', from: 'sender@example.com', to: 'reader@example.com', body: 'Your verification code: 123456', body_type: 'text', date: '2026-10-02 10:00:00' }] }));
         }
         res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(html);

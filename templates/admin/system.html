@@ -902,6 +902,12 @@
         line-height: 20px;
     }
 
+    .public-mail-access { max-width: 760px; padding: 18px; margin-bottom: 24px; border: 1px solid var(--border, #dedbd4); border-radius: 14px; background: var(--surface-2, #f8f7f4); }
+    .public-mail-access-label { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-weight: 600; cursor: pointer; }
+    .public-mail-access input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--primary-color); cursor: pointer; }
+    .public-mail-access input:disabled { cursor: wait; }
+    .public-mail-access .master-key-note { min-height: 0; margin: 10px 0 0; }
+
     @media (max-width: 768px) {
         .system-sections .card-header,
         .system-sections .card-body {
@@ -988,7 +994,7 @@
             <a href="#sec-mailbox-access" class="system-nav-item" id="mailboxAccessNav" style="display:none;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 邮箱范围权限</a>
             {% endif %}
             {% if 'master_key' in admin_permissions %}
-            <a href="#sec-masterkey" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 万能秘钥</a>
+            <a href="#sec-masterkey" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> {% if can_manage_public_mail_key %}前台密钥{% else %}万能秘钥{% endif %}</a>
             {% endif %}
             {% if 'settings' in admin_permissions %}
             <a href="#sec-systitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-aim"></use></svg></span> 系统标题</a>
@@ -1179,11 +1185,23 @@
         {% endif %}
 
         <!-- 管理员万能秘钥 -->
+        {% if 'master_key' in admin_permissions %}
         <div class="card" id="sec-masterkey" hidden>
             <div class="card-header">
-                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> 管理员万能秘钥</h2>
+                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> {% if can_manage_public_mail_key %}前台密钥{% else %}管理员万能秘钥{% endif %}</h2>
             </div>
             <div class="card-body">
+                {% if can_manage_public_mail_key %}
+                <div class="public-mail-access">
+                    <label class="public-mail-access-label" for="publicMailKeyRequired">
+                        <span>前台取件需要密钥</span>
+                        <input type="checkbox" role="switch" id="publicMailKeyRequired" disabled onchange="updatePublicMailKey(this)">
+                    </label>
+                    <p class="master-key-note">开启后，前台显示密钥输入框，验证通过后才能取件；关闭后恢复邮箱直接取件。</p>
+                    <p class="master-key-note">此开关仅 tjt740 本人可见、可修改。</p>
+                    <p class="master-key-note" id="publicMailKeyStatus" role="status" aria-live="polite">正在读取取件设置…</p>
+                </div>
+                {% endif %}
                 <p class="master-key-note">最高管理员设置全站万能密钥；下级管理员仅能设置本人密钥，使用范围受本人邮箱授权限制。撤销密钥权限或重置密码会使本人密钥失效。</p>
                 <form id="masterKeyForm">
                     <div class="form-group master-key-row">
@@ -1204,6 +1222,7 @@
                 </form>
             </div>
         </div>
+        {% endif %}
 
         <!-- 系统标题设置 -->
         <div class="card" id="sec-systitle" hidden>
@@ -1338,6 +1357,41 @@
         }
         if (submitBtn) {
             submitBtn.textContent = isSet ? '修改万能秘钥' : '设置万能秘钥';
+        }
+    }
+
+    function setPublicMailKeyStatus(enabled) {
+        const input = document.getElementById('publicMailKeyRequired');
+        if (!input) return;
+        input.checked = enabled;
+        input.disabled = false;
+        document.getElementById('publicMailKeyStatus').textContent = enabled
+            ? '已开启：前台取件必须验证密钥' : '已关闭：前台可直接用邮箱取件';
+    }
+
+    async function updatePublicMailKey(input) {
+        const enabled = input.checked;
+        input.disabled = true;
+        try {
+            const response = await fetch('/admin/api/system-config', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update_public_mail_key', enabled })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success || typeof data.data?.public_mail_key_required !== 'boolean') throw new Error(data.message || '更新失败');
+            setPublicMailKeyStatus(data.data.public_mail_key_required);
+            showToast('前台密钥设置已保存', 'success');
+        } catch (error) {
+            // A lost response may still have saved the setting. Read back instead of guessing.
+            try {
+                const response = await fetch('/admin/api/system-config', { cache: 'no-store' });
+                const saved = await response.json();
+                if (!response.ok || !saved.success || typeof saved.data?.public_mail_key_required !== 'boolean') throw new Error();
+                setPublicMailKeyStatus(saved.data.public_mail_key_required);
+            } catch (_) {
+                document.getElementById('publicMailKeyStatus').textContent = '暂时无法确认取件设置，请刷新页面重试';
+            }
+            showToast(error.message || '网络错误，请稍后重试', 'error');
         }
     }
 
@@ -1747,6 +1801,9 @@
                     if (typeof data.data.admin_master_key_set !== 'undefined') {
                         setMasterKeyStatus(data.data.admin_master_key_set);
                     }
+                    if (typeof data.data.public_mail_key_required === 'boolean') {
+                        setPublicMailKeyStatus(data.data.public_mail_key_required);
+                    }
 
                     grantablePermissions = data.data.permissions || [];
                     permissionLabels = data.data.permission_labels || {};
@@ -1762,6 +1819,8 @@
             })
             .catch(error => {
                 console.error('加载系统设置失败:', error);
+                const keyStatus = document.getElementById('publicMailKeyStatus');
+                if (keyStatus) keyStatus.textContent = '暂时无法确认取件设置，请刷新页面重试';
                 document.getElementById('adminHierarchyError').hidden = false;
                 if (!adminHierarchy) document.getElementById('adminHierarchy').replaceChildren();
             });

@@ -2503,6 +2503,11 @@
     <div class="mail-input-card">
             <div class="control-row">
                 <div class="control-block query-control-block">
+                    <div class="query-key-field" id="publicMailKeyField" {% if not public_mail_key_required %}hidden{% endif %}>
+                        <label for="publicMailKeyInput">取件密钥</label>
+                        <input type="password" id="publicMailKeyInput" class="form-control highlight-input" placeholder="请输入取件密钥" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="publicMailKeyHint" {% if public_mail_key_required %}required{% else %}disabled{% endif %}>
+                        <small id="publicMailKeyHint">验证密钥后获取邮件，密钥仅用于本次页面取件。</small>
+                    </div>
                     <label for="emailInput" class="query-input-label">
                         <span class="query-label-icon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
                         <span>邮箱查询</span>
@@ -2643,6 +2648,33 @@
     };
     const REQUEST_FOLDER_MAP = { inbox: 'INBOX', trash: 'Trash' };
     const EMAIL_REGEX = /[\w.!#$%&'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}/g;
+    let publicMailKeyRequired = {{ public_mail_key_required|default(false)|tojson }};
+
+    function applyPublicMailPolicy(required) {
+        publicMailKeyRequired = required;
+        document.getElementById('publicMailKeyField').hidden = !required;
+        const input = document.getElementById('publicMailKeyInput');
+        input.required = required;
+        input.disabled = !required;
+        if (!required) input.value = '';
+    }
+
+    async function refreshPublicMailPolicy() {
+        const response = await fetch('/api/public-mail-config', { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok || !data.success || typeof data.key_required !== 'boolean') {
+            throw new Error('暂时无法确认取件方式，请稍后重试');
+        }
+        applyPublicMailPolicy(data.key_required);
+    }
+
+    // Refresh when returning to this page and before every batch; never persist the key.
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) refreshPublicMailPolicy().catch(() => {});
+    });
+    document.getElementById('publicMailKeyInput').addEventListener('keydown', event => {
+        if (event.key === 'Enter') getMail();
+    });
     
     document.getElementById('emailInput').addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -2947,6 +2979,19 @@
             showToast('单次最多支持 50 个邮箱，请分批查询', 'error');
             return;
         }
+
+        try {
+            await refreshPublicMailPolicy();
+        } catch (error) {
+            showToast(error.message, 'error');
+            return;
+        }
+        const masterKey = publicMailKeyRequired ? document.getElementById('publicMailKeyInput').value.trim() : '';
+        if (publicMailKeyRequired && !masterKey) {
+            showToast('请输入有效密钥后再获取邮件', 'error');
+            document.getElementById('publicMailKeyInput').focus();
+            return;
+        }
         
         closeMailModal(false);
         toggleLoading(true);
@@ -2962,6 +3007,7 @@
                     email_limit: emailLimit,
                     folder: requestFolder
                 };
+                if (masterKey) requestData.master_key = masterKey;
 
                 const response = await fetch('/api/get_mail', {
                     method: 'POST',
@@ -2973,6 +3019,7 @@
                 });
 
                 const data = await response.json();
+                if (data.code === 'mail_key_required') applyPublicMailPolicy(true);
                 return { email, data };
             });
             

@@ -450,6 +450,111 @@ class AdminPermissionsTestCase(unittest.TestCase):
             run.assert_called_once()
         self.assertTrue(anonymous.post('/api/card_info', json={'card_key': 'global-secret-123'}).get_json()['success'])
 
+    def test_public_key_switch_is_private_and_only_the_persisted_tjt740_root_can_change_it(self):
+        self.key(self.root, 'global-secret-123')
+        self.assertIn('id="publicMailKeyRequired"', self.root.get('/legacy/admin/system').get_data(as_text=True))
+        for client in (self.parent, self.child):
+            with self.subTest(client=client):
+                self.assertNotIn('id="publicMailKeyRequired"', client.get('/legacy/admin/system').get_data(as_text=True))
+                self.assertNotIn('public_mail_key_required', client.get('/admin/api/system-config').get_json()['data'])
+                with client.session_transaction() as session:
+                    session['admin_username'] = 'tjt740'
+                response = client.post('/admin/api/system-config', json={
+                    'action': 'update_public_mail_key', 'enabled': True, 'admin_username': 'tjt740', 'admin_id': 1,
+                })
+                self.assertEqual(response.status_code, 403)
+        with sqlite3.connect(self.path) as db:
+            db.execute('UPDATE admin_users SET username = ? WHERE id = 1', ('another-root',))
+        self.assertEqual(self.root.post('/admin/api/system-config', json={
+            'action': 'update_public_mail_key', 'enabled': True,
+        }).status_code, 403)
+
+    def test_public_key_switch_defaults_off_requires_a_key_and_strict_boolean(self):
+        anonymous = app_module.app.test_client()
+        response = anonymous.get('/api/public-mail-config')
+        self.assertEqual(response.get_json(), {'success': True, 'key_required': False})
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        self.assertEqual(self.root.post('/admin/api/system-config', json={
+            'action': 'update_public_mail_key', 'enabled': True,
+        }).status_code, 400)
+        self.key(self.root, 'global-secret-123')
+        for enabled in ('false', 'true', 1, None, [], {}):
+            self.assertEqual(self.root.post('/admin/api/system-config', json={
+                'action': 'update_public_mail_key', 'enabled': enabled,
+            }).status_code, 400)
+        self.assertFalse(anonymous.get('/api/public-mail-config').get_json()['key_required'])
+
+    def test_enabled_public_key_policy_blocks_anonymous_bypasses_and_accepts_valid_keys(self):
+        self.key(self.root, 'global-secret-123')
+        response = self.root.post('/admin/api/system-config', json={'action': 'update_public_mail_key', 'enabled': True})
+        self.assertTrue(response.get_json()['data']['public_mail_key_required'])
+        anonymous = app_module.app.test_client()
+        self.assertEqual(anonymous.get('/api/public-mail-config').get_json(), {'success': True, 'key_required': True})
+        page = anonymous.get('/legacy/').get_data(as_text=True)
+        self.assertIn('id="publicMailKeyField" >', page)
+        self.assertNotIn('global-secret-123', page)
+        with patch.object(app_module.subprocess, 'run', return_value=SimpleNamespace(returncode=1, stdout='', stderr='probe')) as run:
+            for extra in ({}, {'admin_access': True}, {'preview_only': True}, {'master_key': ''}, {'master_key': 'invalid'},
+                          {'key_required': False}, {'public_mail_key_required': False}):
+                response = anonymous.post('/api/get_mail', json={'email': 'peer@example.com', **extra})
+                self.assertEqual(response.status_code, 403, extra)
+                run.assert_not_called()
+            denied_card = anonymous.post('/api/get_mail', json={'email': 'peer@example.com', 'card_key': 'invalid'})
+            self.assertFalse(denied_card.get_json()['success'])
+            run.assert_not_called()
+            response = anonymous.post('/api/get_mail', json={'email': 'peer@example.com', 'master_key': 'global-secret-123'})
+            self.assertIn('probe', response.get_json()['message'])
+            run.assert_called_once()
+            self.assertNotIn('global-secret-123', str(run.call_args))
+
+    def test_key_policy_preserves_personal_key_scope_and_authenticated_admin_access(self):
+        self.key(self.root, 'global-secret-123')
+        self.key(self.child, 'child-secret-123')
+        self.root.post('/admin/api/system-config', json={'action': 'update_public_mail_key', 'enabled': True})
+        anonymous = app_module.app.test_client()
+        with patch.object(app_module.subprocess, 'run', return_value=SimpleNamespace(returncode=1, stdout='', stderr='probe')) as run:
+            self.assertEqual(anonymous.post('/api/get_mail', json={
+                'email': 'peer@example.com', 'master_key': 'child-secret-123',
+            }).status_code, 404)
+            run.assert_not_called()
+            self.assertIn('probe', anonymous.post('/api/get_mail', json={
+                'email': 'child@example.com', 'master_key': 'child-secret-123',
+            }).get_json()['message'])
+            self.assertEqual(self.child.post('/api/get_mail', json={
+                'email': 'peer@example.com', 'admin_access': True,
+            }).status_code, 404)
+            self.assertIn('probe', self.child.post('/api/get_mail', json={
+                'email': 'child@example.com', 'admin_access': True,
+            }).get_json()['message'])
+            self.assertEqual(run.call_count, 2)
+            self.assertEqual(self.child.post('/api/get_mail', json={'email': 'child@example.com'}).status_code, 403)
+            self.grant(self.parent, self.child_id, ['mailbox'])
+            self.assertEqual(anonymous.post('/api/get_mail', json={
+                'email': 'child@example.com', 'master_key': 'child-secret-123',
+            }).status_code, 403)
+            self.assertEqual(run.call_count, 2)
+
+    def test_disabling_key_policy_restores_public_lookup_without_erasing_saved_keys(self):
+        self.key(self.root, 'global-secret-123')
+        for enabled in (True, False):
+            self.root.post('/admin/api/system-config', json={'action': 'update_public_mail_key', 'enabled': enabled})
+        fresh = app_module.app.test_client()
+        self.assertFalse(fresh.get('/api/public-mail-config').get_json()['key_required'])
+        self.assertIn('id="publicMailKeyField" hidden', fresh.get('/legacy/').get_data(as_text=True))
+        self.assertTrue(self.root.get('/admin/api/system-config').get_json()['data']['admin_master_key_set'])
+        with patch.object(app_module.subprocess, 'run', return_value=SimpleNamespace(returncode=1, stdout='', stderr='probe')) as run:
+            self.assertIn('probe', fresh.post('/api/get_mail', json={'email': 'peer@example.com'}).get_json()['message'])
+            run.assert_called_once()
+
+    def test_policy_read_failure_cannot_enable_anonymous_lookup(self):
+        anonymous = app_module.app.test_client()
+        with patch.object(app_module, '_public_mail_key_required', side_effect=RuntimeError('configuration unavailable')):
+            self.assertEqual(anonymous.get('/api/public-mail-config').status_code, 503)
+            with patch.object(app_module.subprocess, 'run') as run:
+                response = anonymous.post('/api/get_mail', json={'email': 'peer@example.com'})
+                self.assertFalse(response.get_json()['success'])
+                run.assert_not_called()
+
     def test_revoked_ancestor_key_permission_destroys_descendant_key(self):
         self.assertEqual(self.key(self.child, 'child-secret-123').status_code, 200)
         self.assertEqual(self.grant(self.root, self.parent_id, ['mailbox', 'admins']).status_code, 200)
