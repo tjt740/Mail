@@ -15,7 +15,6 @@ import {
   theme
 } from 'antd';
 import {
-  ApiOutlined,
   BgColorsOutlined,
   CheckOutlined,
   ControlOutlined,
@@ -37,9 +36,12 @@ import enUS from 'antd/locale/en_US';
 import viVN from 'antd/locale/vi_VN';
 import '../../static/js/i18n.js';
 import '../../static/js/motion.js';
+import '../../static/js/theme-palettes.js';
 import './styles.css';
 import AccountDataPage from './AccountDataPage.jsx';
+import MailboxBrand from './MailboxBrand.jsx';
 import '../../static/css/motion.css';
+import '../../static/css/scene-themes.css';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -48,13 +50,7 @@ const appProps = window.__MAIL_APP_PROPS__ || {};
 const COLOR_THEME_STORAGE_KEY = 'mailSystemColorTheme';
 const LANGUAGE_OPTIONS = window.AppI18n.languages;
 const ANT_LOCALES = { zh: zhCN, en: enUS, vi: viVN };
-const COLOR_THEME_OPTIONS = [
-  { key: 'clay', labelKey: '暖陶橙', primary: '#C96442', secondary: '#B0552F', soft: '#F3E6DF', background: '#F5F4EE', selected: 'rgba(201, 100, 66, 0.12)', selectedText: '#B14E2E' },
-  { key: 'ocean', labelKey: '海洋蓝', primary: '#2563EB', secondary: '#1D4ED8', soft: '#DBEAFE', background: '#F3F7FC', selected: 'rgba(37, 99, 235, 0.11)', selectedText: '#1D4ED8' },
-  { key: 'emerald', labelKey: '翡翠绿', primary: '#059669', secondary: '#047857', soft: '#D1FAE5', background: '#F2F8F5', selected: 'rgba(5, 150, 105, 0.11)', selectedText: '#047857' },
-  { key: 'violet', labelKey: '紫罗兰', primary: '#7C3AED', secondary: '#6D28D9', soft: '#EDE9FE', background: '#F7F4FC', selected: 'rgba(124, 58, 237, 0.11)', selectedText: '#6D28D9' },
-  { key: 'rose', labelKey: '玫瑰红', primary: '#E11D48', secondary: '#BE123C', soft: '#FFE4E6', background: '#FCF4F6', selected: 'rgba(225, 29, 72, 0.11)', selectedText: '#BE123C' }
-];
+const COLOR_THEME_OPTIONS = window.MailThemes.themes.map(item => ({ ...item, labelKey: item.name }));
 
 const adminMenuDefinitions = [
   { key: '/admin/home', permission: 'home', icon: <DashboardOutlined />, labelKey: '首页' },
@@ -82,19 +78,17 @@ function useAppLanguage() {
 function getStoredColorTheme() {
   try {
     const saved = localStorage.getItem(COLOR_THEME_STORAGE_KEY);
-    return COLOR_THEME_OPTIONS.some((item) => item.key === saved) ? saved : 'clay';
+    return COLOR_THEME_OPTIONS.some((item) => item.key === saved) ? saved : window.MailThemes.defaultTheme;
   } catch {
-    return 'clay';
+    return window.MailThemes.defaultTheme;
   }
 }
 
 function applyColorThemeToDocument(colorTheme) {
-  const palette = COLOR_THEME_OPTIONS.find((item) => item.key === colorTheme) || COLOR_THEME_OPTIONS[0];
-  document.documentElement.dataset.colorTheme = palette.key;
-  document.documentElement.style.setProperty('--app-primary', palette.primary);
-  document.documentElement.style.setProperty('--app-secondary', palette.secondary);
-  document.documentElement.style.setProperty('--app-primary-soft', palette.soft);
-  document.documentElement.style.setProperty('--app-background', palette.background);
+  const palette = window.MailThemes.apply(colorTheme);
+  document.querySelectorAll('iframe.legacy-frame').forEach(frame => {
+    try { frame.contentWindow.AppColorTheme?.setTheme(colorTheme, { persist: false, sync: false }); } catch { /* Same-origin frames only. */ }
+  });
   document.querySelectorAll('meta[name="theme-color"], meta[name="msapplication-TileColor"]').forEach((meta) => {
     meta.setAttribute('content', palette.primary);
   });
@@ -194,9 +188,10 @@ function ColorThemeSwitcher({ colorTheme, onChange, t, className = '' }) {
         <span
           className="react-color-theme-swatch"
           aria-hidden="true"
-          style={{ '--swatch-primary': item.primary, '--swatch-secondary': item.secondary }}
+          data-scene-swatch={item.key}
+          style={{ '--swatch-primary': item.primary, '--swatch-secondary': item.gold }}
         />
-        <span className="react-color-theme-name">{t(item.labelKey)}</span>
+        <span className="react-color-theme-name">{t(item.labelKey)}{item.description && <small>{t(item.description)}</small>}</span>
         <CheckOutlined className="react-color-theme-check" aria-hidden="true" />
       </span>
     )
@@ -307,7 +302,7 @@ function AmbientCanvas() {
   return <canvas ref={ref} className="mail-ambient-canvas" aria-hidden="true" />;
 }
 
-function LegacyFrame({ title, src, language }) {
+function LegacyFrame({ title, src, language, colorTheme }) {
   const frameRef = useRef(null);
   const [loaded, setLoaded] = useState(false);
   const [slow, setSlow] = useState(false);
@@ -317,8 +312,9 @@ function LegacyFrame({ title, src, language }) {
   const syncLanguage = useCallback(() => {
     try {
       frameRef.current?.contentWindow.AppI18n?.setLanguage(language, { persist: false, sync: false });
+      if (colorTheme) frameRef.current?.contentWindow.AppColorTheme?.setTheme(colorTheme, { persist: false, sync: false });
     } catch { /* A login redirect may temporarily replace the document. */ }
-  }, [language]);
+  }, [language, colorTheme]);
 
   useEffect(syncLanguage, [syncLanguage]);
   useEffect(() => {
@@ -429,7 +425,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
           className="admin-sider"
         >
           <div className="brand">
-            <ApiOutlined />
+            <MailboxBrand label={systemTitle} />
             {!collapsed ? <span>{systemTitle}</span> : null}
           </div>
           {adminMenu}
@@ -445,7 +441,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
         styles={{ body: { padding: 0 } }}
       >
         <div className="brand admin-mobile-brand">
-          <ApiOutlined />
+          <MailboxBrand label={systemTitle} />
           <span>{systemTitle}</span>
         </div>
         {adminMenu}
@@ -484,6 +480,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
             title={currentItem?.label || t('后台页面')}
             src={legacyUrl}
             language={language}
+            colorTheme={colorTheme}
           />}
         </Content>
       </Layout>
@@ -530,7 +527,7 @@ function MailApp() {
     <ConfigProvider
       locale={ANT_LOCALES[language]}
       theme={{
-        algorithm: theme.defaultAlgorithm,
+        algorithm: palette.dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           // Changing Ant Design's motion flag inserts a provider and remounts
           // descendants. Keep the tree stable and shorten durations instead.
@@ -539,6 +536,13 @@ function MailApp() {
           motionDurationSlow: reducedMotion ? '0.001s' : '0.36s',
           colorPrimary: palette.primary,
           colorInfo: palette.primary,
+          colorBgBase: palette.surface,
+          colorBgContainer: palette.surface,
+          colorBgElevated: palette.surface2,
+          colorText: palette.text,
+          colorTextSecondary: palette.muted,
+          colorTextLightSolid: palette.dark ? '#102130' : '#ffffff',
+          colorBorder: palette.border,
           colorSuccess: '#10B981',
           colorWarning: '#F97316',
           colorError: '#DC2626',
@@ -547,13 +551,15 @@ function MailApp() {
         },
         components: {
           Layout: {
-            headerBg: '#FFFFFF',
-            siderBg: '#FFFFFF',
+            headerBg: palette.surface,
+            siderBg: palette.surface,
             bodyBg: palette.background
           },
           Menu: {
-            itemSelectedBg: palette.selected,
-            itemSelectedColor: palette.selectedText
+            itemBg: palette.surface,
+            itemColor: palette.muted,
+            itemSelectedBg: palette.soft,
+            itemSelectedColor: palette.primary
           }
         }
       }}

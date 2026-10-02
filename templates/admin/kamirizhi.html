@@ -772,7 +772,7 @@
             if (startPage > 1) {
                 html += `<button class="page-btn" onclick="loadCardLogs(1)">1</button>`;
                 if (startPage > 2) {
-                    html += '<span class="page-btn" style="border: none; cursor: default;">...</span>';
+                    html += '<span class="page-ellipsis">...</span>';
                 }
             }
             
@@ -783,7 +783,7 @@
             
             if (endPage < pagination.pages) {
                 if (endPage < pagination.pages - 1) {
-                    html += '<span class="page-btn" style="border: none; cursor: default;">...</span>';
+                    html += '<span class="page-ellipsis">...</span>';
                 }
                 html += `<button class="page-btn" onclick="loadCardLogs(${pagination.pages})">${pagination.pages}</button>`;
             }

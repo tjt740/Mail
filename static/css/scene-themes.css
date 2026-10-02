@@ -1,0 +1,104 @@
+/* Shared scene surfaces. Text/data stay independent of decorative weather. */
+:root {
+    --accent-cyan: #007f9d; --accent-mint: #168364; --accent-gold: #a56b08; --accent-violet: #7851c2; --accent-coral: #c45869;
+    --scene-hero-bg: linear-gradient(115deg, #e0f3ff, #d8efe6 70%, #ffe8af);
+    --scene-hero-text: #193d63;
+}
+html[data-i18n-managed="react"] body { background: var(--app-bg); color: var(--text); }
+:root[data-color-theme] body.embedded-view { background: var(--app-bg) !important; }
+.admin-app, .admin-app > .ant-layout, .admin-content {
+    background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--accent-cyan) 9%, transparent), transparent 45%), radial-gradient(ellipse at 100% 80%, color-mix(in srgb, var(--accent-violet) 7%, transparent), transparent 55%), var(--app-bg) !important;
+}
+.admin-sider, .admin-header, .admin-mobile-drawer .ant-drawer-content { background: var(--surface) !important; border-color: var(--border) !important; }
+.brand { color: var(--text); }
+.admin-title, .admin-user { color: var(--text) !important; }
+.legacy-frame-wrap { border-color: var(--border) !important; background: var(--app-bg); }
+.admin-sider .ant-menu, .admin-mobile-drawer .ant-menu { background: transparent !important; }
+.admin-sider .ant-menu-item:nth-child(5n+1) .anticon { color: var(--accent-cyan); }
+.admin-sider .ant-menu-item:nth-child(5n+2) .anticon { color: var(--accent-mint); }
+.admin-sider .ant-menu-item:nth-child(5n+3) .anticon { color: var(--accent-violet); }
+.admin-sider .ant-menu-item:nth-child(5n+4) .anticon { color: var(--accent-gold); }
+.admin-sider .ant-menu-item:nth-child(5n) .anticon { color: var(--accent-coral); }
+.react-color-theme-button, .react-language-button, .color-theme-trigger { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
+.react-color-theme-dropdown .ant-dropdown-menu, .react-language-dropdown .ant-dropdown-menu, .color-theme-menu { background: var(--surface-2) !important; border-color: var(--border) !important; max-height: min(72vh, 600px); overflow-y: auto; }
+.react-color-theme-dropdown .ant-dropdown-menu { width: 260px; }
+.react-color-theme-name, .react-language-name, .color-theme-name, .react-language-dropdown .ant-dropdown-menu-item { color: var(--text) !important; }
+.react-color-theme-name small { display: block; margin-top: 3px; font-size: 10px; font-weight: 400; color: var(--text-muted); }
+.react-color-theme-option { min-height: 52px; }
+.react-color-theme-swatch[data-scene-swatch="sunny"] { background: radial-gradient(circle at 75% 25%, #ffe58a 0 20%, transparent 22%), linear-gradient(145deg, #6ecbff, #e4f9f0); }
+.react-color-theme-swatch[data-scene-swatch="night"] { background: radial-gradient(circle at 70% 25%, #fff2c6 0 14%, transparent 16%), linear-gradient(145deg, #1b2850, #8a6bd0); }
+.react-color-theme-swatch[data-scene-swatch="rain"] { background: repeating-linear-gradient(115deg, transparent 0 7px, #91daed60 8px 9px, transparent 10px 15px), linear-gradient(145deg, #193c57, #645275); }
+.react-color-theme-swatch, .color-theme-swatch { border-color: var(--surface) !important; }
+.react-language-mark { background: var(--surface-3); color: var(--text-muted); }
+.react-language-dropdown .ant-dropdown-menu-item:hover, .react-language-dropdown .ant-dropdown-menu-item-selected, .color-theme-option:hover, .color-theme-option.is-active { background: var(--primary-soft) !important; color: var(--primary-color) !important; }
+.login-page { background: var(--scene-hero-bg); }
+.login-card { background: var(--surface); }
+.login-form label { color: var(--text); }
+.account-record { background: var(--surface); border-color: var(--border); }
+.account-credential-line { background: var(--surface-2); color: var(--text); }
+.account-record-meta { color: var(--text-muted); }
+.mailbox-brand { --mail-light: var(--accent-gold); --mail-mid: var(--accent-cyan); --mail-dark: var(--app-secondary); }
+
+/* Four independent accents make information easier to scan. */
+.monitor-hero { background: var(--scene-hero-bg); color: var(--scene-hero-text); border: 1px solid color-mix(in srgb, var(--accent-cyan) 20%, var(--border)); }
+.monitor-hero h2 { color: var(--scene-hero-text); }
+.monitor-hero :is(p, .monitor-eyebrow, .monitor-sync, small) { color: color-mix(in srgb, var(--scene-hero-text) 78%, transparent); }
+.monitor-refresh { color: var(--scene-hero-text); background: color-mix(in srgb, var(--surface) 30%, transparent); border-color: color-mix(in srgb, var(--scene-hero-text) 25%, transparent); }
+.monitor-refresh:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.monitor-metric, .stat-card, .quick-link { --tile-accent: var(--accent-cyan); }
+:is(.monitor-metric, .stat-card, .quick-link):nth-child(4n+2) { --tile-accent: var(--accent-mint); }
+:is(.monitor-metric, .stat-card, .quick-link):nth-child(4n+3) { --tile-accent: var(--accent-violet); }
+:is(.monitor-metric, .stat-card, .quick-link):nth-child(4n+4) { --tile-accent: var(--accent-coral); }
+.monitor-metric, .stat-card { background: linear-gradient(135deg, color-mix(in srgb, var(--tile-accent) 12%, var(--surface)), var(--surface)) !important; border-color: color-mix(in srgb, var(--tile-accent) 24%, var(--border)) !important; }
+.monitor-metric-symbol { color: var(--tile-accent); background: color-mix(in srgb, var(--tile-accent) 10%, var(--surface)); border-radius: 10px; width: 34px; height: 34px; display: grid; place-items: center; font-size: 21px; }
+.monitor-metric > strong, .stat-number { color: var(--tile-accent) !important; }
+.monitor-panel, .monitor-donut > div { background: var(--surface); border-color: var(--border); }
+.monitor-panel h3, .monitor-donut strong, .monitor-health-item b, .monitor-facts dd, .monitor-resource strong { color: var(--text); }
+.monitor-metric-label, .monitor-panel :is(p, small, dt, time), .monitor-panel header p, .monitor-metric-note, .monitor-donut span, .monitor-health-item, .monitor-resource > div:first-child, .monitor-legend, .monitor-attention-counts span, .monitor-recent > div { color: var(--text-muted); }
+.monitor-panel-icon { color: var(--accent-violet); }
+.monitor-chart-days button { color: var(--text-muted); }
+.monitor-chart-days button[aria-pressed="true"] { color: var(--primary-color); background: var(--primary-soft); }
+.monitor-legend i.received { background: var(--accent-cyan); }
+.monitor-legend i.failed { background: var(--accent-coral); }
+button.monitor-health-item:hover, .monitor-attention-counts button:hover { background: var(--surface-3); }
+.monitor-state { background: var(--surface-3); color: var(--text-muted); }
+.monitor-state[data-running="true"] { background: color-mix(in srgb, var(--accent-mint) 15%, var(--surface)); color: var(--accent-mint); }
+.monitor-meter { background: var(--surface-3); }
+.monitor-meter span { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-violet)); }
+#monitorCardBar { background: linear-gradient(90deg, var(--accent-mint), var(--accent-gold)); }
+.monitor-attention-counts { border-color: var(--border); }
+.monitor-attention-counts b { color: var(--accent-coral); }
+.monitor-attention-counts > :nth-child(2) b { color: var(--accent-gold); }
+.monitor-attention-counts > :nth-child(3) b { color: var(--accent-violet); }
+.monitor-service-orbit span { border-color: color-mix(in srgb, var(--accent-violet) 35%, transparent); }
+.monitor-service-orbit span:nth-child(2) { border-color: color-mix(in srgb, var(--accent-cyan) 45%, transparent); }
+.monitor-service-orbit b { color: var(--accent-gold); }
+.monitor-error:not([hidden]) { background: var(--surface-2); border-color: var(--accent-coral); color: var(--accent-coral); }
+.quick-link { background: linear-gradient(135deg, color-mix(in srgb, var(--tile-accent) 8%, var(--surface)), var(--surface)) !important; border-color: color-mix(in srgb, var(--tile-accent) 22%, var(--border)) !important; }
+.quick-link-icon { color: var(--tile-accent) !important; }
+
+/* Legacy forms, lists, popovers and mail-management panels. */
+.mailbox-workspace { --workspace-line: var(--border); --workspace-muted: var(--text-muted); }
+:is(.group-panel, .mailbox-search-field, .group-context-menu, .mailbox-more-menu, .au-dropdown-menu, .field-menu, .receive-mailbox-navigation button) { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
+.mailbox-workspace :is(.mailbox-heading-copy h2, .mailbox-list-count strong, .mailbox-email-open, .mailbox-empty strong) { color: var(--text); }
+.mailbox-workspace :is(.mailbox-status-views button, .mailbox-list-count, .mailbox-email-group, .mailbox-email-copy, .pagination-info, .group-actions-button, .mailbox-filter-context, .mailbox-empty, .mailbox-more-menu .btn-small) { color: var(--text-muted); }
+.mailbox-workspace .mailbox-status-views b, .mailbox-workspace #mailboxBulkBar { color: var(--text-muted); background: var(--surface-2); border-color: var(--border); }
+.mailbox-workspace .group-item:hover { background: var(--surface-3) !important; }
+.mailbox-workspace .group-item.active { background: var(--primary-soft) !important; color: var(--primary-color) !important; }
+.mailbox-workspace .mailbox-more-menu .btn-small { background: var(--surface); }
+.mailbox-workspace .mailbox-more-menu .btn-small:hover { background: var(--surface-3); }
+:root[data-theme-mode="dark"] :is(.pagination-container, .toolbar, .mailbox-access-panel, .mailbox-access-item, .mailbox-access-panel-header, .admin-tree, .admin-tree-node, .settings-nav, .section-nav, .receive-list-wrap, .mail-detail, .mailbox-latest-test-result) { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
+:root[data-theme-mode="dark"] :is(.card-title, .quick-link-title, .group-name, .mailbox-access-email, .settings-tab, .settings-nav-item) { color: var(--text) !important; }
+:root[data-theme-mode="dark"] :is(.card-description, .quick-link-desc, .master-key-note, .mailbox-access-meta, .mailbox-access-panel-help, .mailbox-access-summary, .help-text, .form-text, .stat-label) { color: var(--text-muted) !important; }
+:root[data-theme-mode="dark"] .btn-secondary { color: var(--text) !important; background: var(--surface-3) !important; border-color: var(--border) !important; }
+:root[data-theme-mode="dark"] .btn-primary { color: #102130 !important; }
+:root[data-theme-mode="dark"] .btn-success { color: var(--accent-mint) !important; background: color-mix(in srgb, var(--accent-mint) 12%, var(--surface)) !important; }
+:root[data-theme-mode="dark"] .btn-danger { color: var(--accent-coral) !important; background: color-mix(in srgb, var(--accent-coral) 12%, var(--surface)) !important; }
+:root[data-theme-mode="dark"] .btn-warning { color: var(--accent-gold) !important; background: color-mix(in srgb, var(--accent-gold) 12%, var(--surface)) !important; }
+:root[data-theme-mode="dark"] input::placeholder, :root[data-theme-mode="dark"] textarea::placeholder { color: var(--text-muted) !important; opacity: .8; }
+:root[data-theme-mode="dark"] .modal { background: #020816ad !important; }
+:root[data-theme-mode="dark"] :is(.au-toast, .au-confirm, .admin-help-popover) { color: var(--text) !important; background: var(--surface-2) !important; border-color: var(--border) !important; }
+:root[data-theme-mode="dark"] [style*="color: #6b7280"] { color: var(--text-muted) !important; }
+:root[data-theme-mode="dark"] .inline-form-panel { background: var(--surface-2); border-color: var(--border); }
+:root[data-theme-mode="dark"] .password-mask { color: var(--text-muted); }
+@media (max-width: 640px) { .monitor-metric-symbol { width: 25px; height: 25px; font-size: 17px; } }

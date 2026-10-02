@@ -168,7 +168,7 @@
     /* Shared Canvas renderer, also used by the public page and React login. */
     function initCanvas() {
         if (document.getElementById('bgCanvas')) return;
-        return window.MailMotion?.mount(document.getElementById('adminBgCanvas'));
+        return window.MailMotion?.mount(document.getElementById('adminBgCanvas'), { variant: 'admin' });
     }
 
     /* ------------------------------------------------ 通用下拉菜单 */

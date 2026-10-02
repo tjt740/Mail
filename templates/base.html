@@ -18,14 +18,14 @@
     <meta name="theme-color" content="#C96442">
     <meta name="msapplication-TileColor" content="#C96442">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <script src="{{ url_for('static', filename='js/theme-palettes.js') }}"></script>
     <script>
         (function () {
             try {
                 var savedColorTheme = localStorage.getItem('mailSystemColorTheme');
-                var supportedColorThemes = ['clay', 'ocean', 'emerald', 'violet', 'rose'];
-                document.documentElement.dataset.colorTheme = supportedColorThemes.indexOf(savedColorTheme) >= 0 ? savedColorTheme : 'clay';
+                window.MailThemes.apply(savedColorTheme);
             } catch (error) {
-                document.documentElement.dataset.colorTheme = 'clay';
+                window.MailThemes.apply('sunny');
             }
         })();
     </script>
@@ -539,6 +539,10 @@
         }
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/motion.css') }}">
+    {% block page_styles %}{% endblock %}
+    {% if request.path and '/admin' in request.path %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/scene-themes.css') }}">
+    {% endif %}
 </head>
 <body class="preload{% if embedded %} embedded-view{% endif %}">
     {% include '_icons.html' %}
@@ -573,6 +577,8 @@
     <script src="{{ url_for('static', filename='js/admin-ui.js') }}"></script>
     <script>if (window.AdminUI) { AdminUI.initCanvas(); }</script>
     {% if request.path and '/admin' in request.path %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-motion.css') }}">
+    <script src="{{ url_for('static', filename='js/admin-motion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin-help.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin-help-ui.js') }}"></script>
     {% endif %}

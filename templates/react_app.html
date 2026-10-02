@@ -15,14 +15,14 @@
     <meta name="theme-color" content="#C96442">
     <meta name="msapplication-TileColor" content="#C96442">
 
+    <script src="{{ url_for('static', filename='js/theme-palettes.js') }}"></script>
     <script>
         (function () {
             try {
                 var savedColorTheme = localStorage.getItem('mailSystemColorTheme');
-                var supportedColorThemes = ['clay', 'ocean', 'emerald', 'violet', 'rose'];
-                document.documentElement.dataset.colorTheme = supportedColorThemes.indexOf(savedColorTheme) >= 0 ? savedColorTheme : 'clay';
+                window.MailThemes.apply(savedColorTheme);
             } catch (error) {
-                document.documentElement.dataset.colorTheme = 'clay';
+                window.MailThemes.apply('sunny');
             }
         })();
     </script>

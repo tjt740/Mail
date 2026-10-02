@@ -1195,8 +1195,7 @@
         grid-template-columns: minmax(0, 1fr) 126px 126px;
         grid-template-areas:
             "label count button"
-            "email count button"
-            "hint hint hint";
+            "email count button";
         gap: 8px 12px;
         align-items: start;
     }
@@ -1467,8 +1466,7 @@
             grid-template-areas:
                 "label label"
                 "email email"
-                "count button"
-                "hint hint";
+                "count button";
         }
 
         #frontendApp .query-control-block .get-mail-btn {
@@ -1517,8 +1515,7 @@
                 "label"
                 "email"
                 "count"
-                "button"
-                "hint";
+                "button";
         }
 
         #frontendApp .query-control-block .get-mail-btn {
@@ -2200,13 +2197,9 @@
             grid-template-areas:
                 "label label"
                 "email email"
-                "count button"
-                "hint hint";
+                "count button";
         }
 
-        #frontendApp .query-control-block .get-mail-btn {
-            margin-top: 27px !important;
-        }
     }
 
     @media (max-width: 560px) {
@@ -2271,8 +2264,7 @@
                 "label"
                 "email"
                 "count"
-                "button"
-                "hint";
+                "button";
             padding: 13px !important;
             border-radius: 14px !important;
         }
@@ -2404,7 +2396,59 @@
             font-size: 15px;
         }
     }
+    @media (min-width: 901px) {
+        #frontendApp .query-control-block {
+            --query-control-height: 58px;
+            grid-template-areas:
+                "label count-label ."
+                "email count-input button";
+        }
+
+        #frontendApp .query-count-field {
+            display: contents;
+        }
+
+        #frontendApp .query-count-field label {
+            grid-area: count-label;
+            align-self: center;
+            height: auto;
+        }
+
+        #frontendApp .query-control-block .count-input {
+            grid-area: count-input;
+        }
+
+        #frontendApp .query-control-block :is(.email-query-input, .count-input, .get-mail-btn) {
+            height: var(--query-control-height) !important;
+            min-height: var(--query-control-height);
+            max-height: var(--query-control-height);
+            margin: 0 !important;
+        }
+    }
+
+    @media (min-width: 561px) and (max-width: 900px) {
+        #frontendApp .query-control-block .get-mail-btn {
+            align-self: end;
+            height: 44px !important;
+            margin: 0 !important;
+        }
+    }
+
 </style>
+{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/frontend-scene.css') }}">
+<script>
+    (function () {
+        let scene = 'day';
+        try {
+            const saved = localStorage.getItem('mailScene');
+            scene = ['day', 'night', 'rain'].includes(saved) ? saved : (matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'day');
+        } catch (_) {}
+        document.documentElement.dataset.mailScene = scene;
+    })();
+</script>
 {% endblock %}
 
 {% block body %}
@@ -2427,6 +2471,35 @@
             </div>
         </div>
     
+    <section class="scene-hero" aria-labelledby="sceneHeading">
+        <canvas id="sceneCanvas" aria-hidden="true"></canvas>
+        <div class="scene-copy">
+            <p class="scene-eyebrow"><span class="scene-live-dot" aria-hidden="true"></span><span>你的云端邮局</span></p>
+            <h2 id="sceneHeading"><span>每一封来信，</span><span>都值得期待。</span></h2>
+            <p class="scene-description">让光影流转，让消息抵达。</p>
+            <div class="scene-controls" role="group" aria-label="场景切换">
+                <button type="button" data-scene="day" aria-pressed="true"><span aria-hidden="true">☀</span><span>白天</span></button>
+                <button type="button" data-scene="night" aria-pressed="false"><span aria-hidden="true">☾</span><span>黑夜</span></button>
+                <button type="button" data-scene="rain" aria-pressed="false"><span aria-hidden="true">☂</span><span>雨夜</span></button>
+            </div>
+        </div>
+        <div class="scene-art" aria-hidden="true">
+            <div class="scene-orbit scene-orbit-one"></div>
+            <div class="scene-orbit scene-orbit-two"></div>
+            <div class="scene-envelope-float">
+                <div class="scene-envelope">
+                    <div class="scene-envelope-back"></div>
+                    <div class="scene-letter"><i></i><i></i><i></i></div>
+                    <div class="scene-envelope-front"></div>
+                    <div class="scene-envelope-seal"><svg><use href="#ai-mail"></use></svg></div>
+                </div>
+            </div>
+            <span class="scene-satellite scene-satellite-one">✦</span>
+            <span class="scene-satellite scene-satellite-two">✧</span>
+            <div class="scene-envelope-shadow"></div>
+        </div>
+    </section>
+
     <div class="mail-input-card">
             <div class="control-row">
                 <div class="control-block query-control-block">
@@ -2443,10 +2516,6 @@
                         <span class="anticon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
                         <span>获取邮件</span>
                     </button>
-                    <div class="query-hint">
-                        <span class="query-hint-icon" aria-hidden="true"><svg><use href="#ai-safety-certificate"></use></svg></span>
-                        <span>无需卡密或密钥，输入邮局后台已添加的邮箱即可查询；支持换行、逗号、空格、竖线分隔，默认每个邮箱查询 10 封。</span>
-                    </div>
                 </div>
             </div>
 
@@ -3061,7 +3130,7 @@
             if (startPage > 1) {
                 html += `<button class="page-btn" onclick="gotoMailPage(1)">1</button>`;
                 if (startPage > 2) {
-                    html += '<span class="page-btn" style="border: none; cursor: default;">...</span>';
+                    html += '<span class="page-ellipsis">...</span>';
                 }
             }
             for (let i = startPage; i <= endPage; i++) {
@@ -3070,7 +3139,7 @@
             }
             if (endPage < totalPages) {
                 if (endPage < totalPages - 1) {
-                    html += '<span class="page-btn" style="border: none; cursor: default;">...</span>';
+                    html += '<span class="page-ellipsis">...</span>';
                 }
                 html += `<button class="page-btn" onclick="gotoMailPage(${totalPages})">${totalPages}</button>`;
             }
@@ -3353,6 +3422,6 @@
 
     renderMailList();
 
-    window.MailMotion?.mount(document.getElementById('bgCanvas'), { variant: 'welcome' });
 </script>
+<script src="{{ url_for('static', filename='js/frontend-scene.js') }}"></script>
 {% endblock %}

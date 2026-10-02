@@ -2,14 +2,8 @@
     'use strict';
 
     const STORAGE_KEY = 'mailSystemColorTheme';
-    const DEFAULT_THEME = 'clay';
-    const THEMES = [
-        { key: 'clay', name: '暖陶橙', color: '#C96442', secondary: '#B0552F' },
-        { key: 'ocean', name: '海洋蓝', color: '#2563EB', secondary: '#1D4ED8' },
-        { key: 'emerald', name: '翡翠绿', color: '#059669', secondary: '#047857' },
-        { key: 'violet', name: '紫罗兰', color: '#7C3AED', secondary: '#6D28D9' },
-        { key: 'rose', name: '玫瑰红', color: '#E11D48', secondary: '#BE123C' }
-    ];
+    const DEFAULT_THEME = window.MailThemes.defaultTheme;
+    const THEMES = window.MailThemes.themes.map(item => ({ ...item, color: item.primary }));
     let currentTheme = readStoredTheme();
 
     function isSupported(theme) {
@@ -17,6 +11,10 @@
     }
 
     function readStoredTheme() {
+        try {
+            const parentTheme = window.parent !== window ? window.parent.document.documentElement.dataset.colorTheme : null;
+            if (isSupported(parentTheme)) return parentTheme;
+        } catch (_) { /* Independent or cross-origin pages use their own preference. */ }
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
             return isSupported(saved) ? saved : DEFAULT_THEME;
@@ -29,7 +27,7 @@
         const nextTheme = isSupported(theme) ? theme : DEFAULT_THEME;
         const config = THEMES.find((item) => item.key === nextTheme) || THEMES[0];
         currentTheme = nextTheme;
-        document.documentElement.dataset.colorTheme = nextTheme;
+        window.MailThemes.apply(nextTheme);
         document.querySelectorAll('meta[name="theme-color"], meta[name="msapplication-TileColor"]').forEach((meta) => {
             meta.setAttribute('content', config.color);
         });
@@ -108,6 +106,9 @@
                 setMenuOpen(false);
                 applyTheme(theme.key, true);
                 window.dispatchEvent(new CustomEvent('app-color-theme-change', { detail: { theme: theme.key } }));
+                if (window.parent !== window) {
+                    try { window.parent.dispatchEvent(new CustomEvent('app-color-theme-change', { detail: { theme: theme.key } })); } catch (_) {}
+                }
                 trigger.focus();
             });
             menu.appendChild(option);
@@ -169,9 +170,12 @@
     window.AppColorTheme = {
         get theme() { return currentTheme; },
         themes: THEMES.map((item) => ({ ...item })),
-        setTheme(theme) {
-            applyTheme(theme, true);
-            window.dispatchEvent(new CustomEvent('app-color-theme-change', { detail: { theme } }));
+        setTheme(theme, { persist = true, sync = true } = {}) {
+            applyTheme(theme, persist);
+            window.dispatchEvent(new CustomEvent('app-color-theme-change', { detail: { theme: currentTheme } }));
+            if (sync && window.parent !== window) {
+                try { window.parent.dispatchEvent(new CustomEvent('app-color-theme-change', { detail: { theme: currentTheme } })); } catch (_) {}
+            }
         }
     };
 

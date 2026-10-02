@@ -447,7 +447,7 @@
 </div>
 
 <!-- Main Content -->
-<div class="main-content">
+<div class="main-content monitor-home" data-mailbox-access="{{ 'true' if 'mailbox' in admin_permissions else 'false' }}">
         <div class="header">
             <div style="display: flex; align-items: center; gap: 15px;">
                 <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span></button>
@@ -463,23 +463,59 @@
     </div>
     
     <div class="content">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number" id="statAccounts" data-value="{{ account_count }}">{{ account_count }}</div>
-                <div class="stat-label">邮箱账号总数</div>
+        <section class="monitor-hero" aria-labelledby="monitorTitle">
+            <canvas id="monitorScene" aria-hidden="true"></canvas>
+            <div class="monitor-hero-copy">
+                <span class="monitor-eyebrow">MAIL OPERATIONS</span>
+                <h2 id="monitorTitle">邮局运行总览</h2>
+                <p>邮箱健康、收件动态与服务状态，一眼掌握。</p>
+                <div class="monitor-sync"><span id="monitorSyncDot" class="monitor-sync-dot"></span><span id="monitorUpdated" role="status">正在同步监测数据…</span></div>
             </div>
-            <div class="stat-card">
-                <div class="stat-number" id="statCards" data-value="{{ card_count }}">{{ card_count }}</div>
-                <div class="stat-label">卡密总数</div>
+            <div class="monitor-hero-actions">
+                <button type="button" class="monitor-refresh" id="monitorRefresh">刷新数据 <span aria-hidden="true">↻</span></button>
+                <small>每 30 秒自动刷新 · 北京时间</small>
             </div>
-            <div class="stat-card">
-                <div class="stat-number" id="statProxies" data-value="{{ available_proxy_count }}">{{ available_proxy_count }}</div>
-                <div class="stat-label">可用代理数量</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="statPollerState" style="font-size: 26px;">—</div>
-                <div class="stat-label">自动轮询</div>
-            </div>
+        </section>
+        <div class="monitor-error" id="monitorError" role="alert" hidden></div>
+        <div class="monitor-metrics">
+            <article class="monitor-metric depth-card"><span class="monitor-metric-label">可见邮箱</span><strong id="metricTotal">—</strong><span class="monitor-metric-note">当前管理员可访问的邮箱</span><span class="monitor-metric-symbol" aria-hidden="true">@</span></article>
+            <article class="monitor-metric depth-card"><span class="monitor-metric-label">正常邮箱占比</span><strong id="metricHealth">—</strong><span class="monitor-metric-note" id="metricHealthNote">按最近一次检测结果</span><span class="monitor-metric-symbol" aria-hidden="true">◎</span></article>
+            <article class="monitor-metric depth-card"><span class="monitor-metric-label">今日收件记录</span><strong id="metricReceived">—</strong><span class="monitor-metric-note">按日志记录时间统计</span><span class="monitor-metric-symbol" aria-hidden="true">↓</span></article>
+            <article class="monitor-metric depth-card"><span class="monitor-metric-label">今日失败记录</span><strong id="metricFailed">—</strong><span class="monitor-metric-note">失败记录不等于失效邮箱</span><span class="monitor-metric-symbol" aria-hidden="true">!</span></article>
+        </div>
+        <div class="monitor-grid">
+            <section class="monitor-panel monitor-trend">
+                <header><div><h3>收件趋势</h3><p>最近 7 天 · 按日志记录数统计</p></div><div class="monitor-legend"><span><i class="received"></i>收件</span><span><i class="failed"></i>失败</span></div></header>
+                <div class="monitor-chart-wrap"><canvas id="monitorTrend" role="img" aria-label="最近七天收件与失败记录趋势"></canvas><p id="monitorChartFallback" hidden>选择下方日期查看记录数</p></div>
+                <div class="monitor-chart-days" id="monitorChartDays" aria-label="选择日期查看记录数"></div>
+                <p class="monitor-chart-detail" id="monitorChartDetail" role="status">正在加载…</p>
+            </section>
+            <section class="monitor-panel monitor-health">
+                <header><div><h3>邮箱健康分布</h3><p>最近一次检测结果</p></div>{% if 'mailbox' in admin_permissions %}<button class="monitor-text-link" onclick="goAdmin('/admin/mailbox')">管理邮箱 →</button>{% endif %}</header>
+                <div class="monitor-health-content"><div class="monitor-donut" id="monitorDonut"><div><strong id="monitorHealthCount">—</strong><span>正常邮箱</span></div></div><div class="monitor-health-list" id="monitorHealthList"></div></div>
+                <p class="monitor-footnote">未检测与网络异常均不计为正常。</p>
+            </section>
+            <section class="monitor-panel">
+                <header><div><h3>自动轮询</h3><p>后台收件任务</p></div><span class="monitor-state" id="monitorPollerState">—</span></header>
+                <div class="monitor-service-orbit" aria-hidden="true"><span></span><span></span><span></span><b>↻</b></div>
+                <dl class="monitor-facts" id="monitorPollerFacts"><dt>正在加载…</dt></dl>
+            </section>
+            <section class="monitor-panel">
+                <header><div><h3>资源余量</h3><p>代理与访问卡密</p></div><span class="monitor-panel-icon" aria-hidden="true">◈</span></header>
+                <div class="monitor-resource"><div><span>启用代理</span><strong id="monitorProxyCount">—</strong></div><div class="monitor-meter"><span id="monitorProxyBar"></span></div><small id="monitorProxyDetail">正在加载…</small></div>
+                <div class="monitor-resource"><div><span>可用卡密</span><strong id="monitorCardCount">—</strong></div><div class="monitor-meter"><span id="monitorCardBar"></span></div><small id="monitorCardDetail">正在加载…</small></div>
+                <p class="monitor-footnote">代理启用状态不代表实时连通性。</p>
+            </section>
+            <section class="monitor-panel monitor-attention">
+                <header><div><h3>需要关注</h3><p>邮箱检测与近期失败</p></div><span class="monitor-panel-icon" aria-hidden="true">↗</span></header>
+                <div class="monitor-attention-counts">
+                    {% for status, id, label in [('invalid', 'monitorInvalid', '无效邮箱'), ('retry', 'monitorRetry', '待重试'), ('pending', 'monitorPending', '未检测')] %}
+                    {% if 'mailbox' in admin_permissions %}<button type="button" onclick="MailDashboard.goMailbox('{{ status }}')"><b id="{{ id }}">—</b><span>{{ label }}</span></button>{% else %}<div><b id="{{ id }}">—</b><span>{{ label }}</span></div>{% endif %}
+                    {% endfor %}
+                </div>
+                <div id="monitorRecentFailures" class="monitor-recent"></div>
+                {% if 'mail_logs' in admin_permissions %}<button class="monitor-text-link" onclick="goAdmin('/admin/shoujian')">查看收件日志 →</button>{% endif %}
+            </section>
         </div>
 
         <div class="card">
@@ -489,27 +525,27 @@
             <div class="card-body">
                 <p style="margin-bottom: 16px; color: var(--text-muted, #6e6c64);">欢迎使用邮件查看系统管理控制台，点击下方卡片进入对应模块。</p>
                 <div class="quick-link-grid">
-                    {% if 'mailbox' in admin_permissions %}<a class="quick-link" href="#" onclick="goAdmin('/admin/mailbox'); return false;">
+                    {% if 'mailbox' in admin_permissions %}<a class="quick-link depth-card" href="#" onclick="goAdmin('/admin/mailbox'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span>
                         <span class="quick-link-text"><b>邮箱管理</b><small>添加、编辑和删除邮箱账号配置</small></span>
                     </a>{% endif %}
-                    {% if 'proxies' in admin_permissions %}<a class="quick-link" href="#" onclick="goAdmin('/admin/daili'); return false;">
+                    {% if 'proxies' in admin_permissions %}<a class="quick-link depth-card" href="#" onclick="goAdmin('/admin/daili'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span>
                         <span class="quick-link-text"><b>代理池</b><small>管理代理服务器配置</small></span>
                     </a>{% endif %}
-                    {% if 'cards' in admin_permissions %}<a class="quick-link" href="#" onclick="goAdmin('/admin/kami'); return false;">
+                    {% if 'cards' in admin_permissions %}<a class="quick-link depth-card" href="#" onclick="goAdmin('/admin/kami'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-key"></use></svg></span>
                         <span class="quick-link-text"><b>卡密管理</b><small>生成和管理访问卡密</small></span>
                     </a>{% endif %}
-                    {% if 'card_logs' in admin_permissions %}<a class="quick-link" href="#" onclick="goAdmin('/admin/kamirizhi'); return false;">
+                    {% if 'card_logs' in admin_permissions %}<a class="quick-link depth-card" href="#" onclick="goAdmin('/admin/kamirizhi'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-file-text"></use></svg></span>
                         <span class="quick-link-text"><b>卡密日志</b><small>查看卡密使用记录</small></span>
                     </a>{% endif %}
-                    {% if 'mail_logs' in admin_permissions %}<a class="quick-link" href="#" onclick="goAdmin('/admin/shoujian'); return false;">
+                    {% if 'mail_logs' in admin_permissions %}<a class="quick-link depth-card" href="#" onclick="goAdmin('/admin/shoujian'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span>
                         <span class="quick-link-text"><b>收件日志</b><small>查看邮件接收记录与轮询控制</small></span>
                     </a>{% endif %}
-                    <a class="quick-link" href="#" onclick="goAdmin('/admin/system'); return false;">
+                    <a class="quick-link depth-card" href="#" onclick="goAdmin('/admin/system'); return false;">
                         <span class="quick-link-icon anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span>
                         <span class="quick-link-text"><b>系统设置</b><small>配置系统参数和安全选项</small></span>
                     </a>
@@ -520,7 +556,12 @@
 </div>
 {% endblock %}
 
+{% block page_styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
+{% endblock %}
+
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
 <script>
     const SIDEBAR_COLLAPSE_KEY = 'adminSidebarCollapsed';
 
@@ -545,8 +586,12 @@
 
     function toggleSidebarCollapse() {
         const shouldCollapse = !document.body.classList.contains('sidebar-collapsed');
-        localStorage.setItem(SIDEBAR_COLLAPSE_KEY, shouldCollapse ? '1' : '0');
+        try { localStorage.setItem(SIDEBAR_COLLAPSE_KEY, shouldCollapse ? '1' : '0'); } catch (_) {}
         applySidebarState(shouldCollapse);
+    }
+
+    function readSidebarPreference() {
+        try { return localStorage.getItem(SIDEBAR_COLLAPSE_KEY) !== '0'; } catch (_) { return true; }
     }
 
     function initSidebarCollapse() {
@@ -554,15 +599,11 @@
         if (toggleBtn) {
             toggleBtn.addEventListener('click', toggleSidebarCollapse);
         }
-        const saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY);
-        const shouldCollapse = saved === null ? true : saved === '1';
-        applySidebarState(shouldCollapse);
+        applySidebarState(readSidebarPreference());
     }
 
     function handleSidebarResize() {
-        const saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY);
-        const shouldCollapse = saved === null ? true : saved === '1';
-        applySidebarState(shouldCollapse);
+        applySidebarState(readSidebarPreference());
         if (window.innerWidth > 768) {
             closeMobileMenu();
         }
@@ -602,32 +643,10 @@
         catch (e) { window.location.href = path; }
     }
 
-    // 统计数字滚动动画 + 轮询状态
-    function initHomeDashboard() {
-        if (window.AdminUI) {
-            ['statAccounts', 'statCards', 'statProxies'].forEach(function (id) {
-                const el = document.getElementById(id);
-                if (el) AdminUI.countUp(el, parseInt(el.dataset.value, 10) || 0);
-            });
-        }
-        fetch('/admin/api/poller/config')
-            .then(function (r) { return r.headers.get('content-type', '').includes('application/json') ? r.json() : null; })
-            .then(function (data) {
-                const el = document.getElementById('statPollerState');
-                if (!el || !data) return;
-                const st = data.state || {};
-                const cfg = data.config || {};
-                if (cfg.env_kill_switch) el.textContent = '已禁用';
-                else if (!cfg.auto_poll_enabled) el.textContent = '已暂停';
-                else el.textContent = st.running ? '运行中' : '空闲';
-            })
-            .catch(function () { /* 忽略 */ });
-    }
-
     // Close mobile menu when clicking on navigation items
     document.addEventListener('DOMContentLoaded', function() {
         initSidebarCollapse();
-        initHomeDashboard();
+        window.MailDashboard?.init();
         const navItems = document.querySelectorAll('.nav-item');
         navItems.forEach(item => {
             item.addEventListener('click', function() {

@@ -1155,12 +1155,31 @@
         overflow-y: auto;
     }
 
-    .btn-delete-normal {
-        color: #fff;
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    .mailbox-health-tools {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
     }
 
-    .status-delete-button:disabled {
+    .mailbox-health-hint {
+        flex-basis: 100%;
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-secondary, #64748b);
+    }
+
+    #mailboxBatchProgress {
+        margin-top: 10px;
+    }
+
+    .mailbox-health-tools button[aria-pressed="true"] {
+        outline: 2px solid var(--app-primary, #C96442);
+        outline-offset: 2px;
+    }
+
+    .mailbox-health-tools button:disabled {
         opacity: 0.45;
         cursor: not-allowed;
         transform: none !important;
@@ -2993,7 +3012,13 @@
         }
 
         #mailboxTable td.mailbox-col-select {
-            display: none !important;
+            display: grid !important;
+        }
+
+        #mailboxTable .mailbox-checkbox {
+            width: 20px;
+            height: 20px;
+            margin: 0;
         }
 
         #mailboxTable td.mailbox-col-created_at,
@@ -3109,8 +3134,23 @@
             min-height: 38px;
         }
 
-        .au-bulk-bar {
-            display: none !important;
+        #mailboxBulkBar {
+            width: calc(100vw - 24px);
+            max-width: calc(100vw - 24px);
+            box-sizing: border-box;
+            bottom: 12px;
+            border-radius: 16px;
+            padding: 10px;
+            gap: 8px;
+        }
+
+        #mailboxBulkBar .au-bulk-count {
+            flex-basis: 100%;
+            text-align: center;
+        }
+
+        #mailboxBulkBar .btn {
+            min-height: 38px;
         }
     }
 
@@ -3181,7 +3221,7 @@
 </div>
 
 <!-- Main Content -->
-    <div class="main-content">
+    <div class="main-content mailbox-workspace">
         <div class="header">
             <div style="display: flex; align-items: center; gap: 15px;">
                 <button class="sidebar-toggle" id="sidebarToggle" aria-label="展开侧边栏"><span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span></button>
@@ -3200,72 +3240,88 @@
         <div class="content-grid">
             <div class="group-panel" id="groupPanel">
                 <div class="group-header">
-                    <span>分组管理</span>
-                    <button type="button" class="group-panel-header-toggle" onclick="toggleMailboxGroupPanel()" title="收起分组" aria-label="收起分组">
-                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-fold"></use></svg></span>
-                    </button>
+                    <span>邮箱分组</span>
+                    <button class="group-panel-header-toggle" type="button" onclick="openGroupModal('add')" title="新建分组" aria-label="新建分组">+</button>
                 </div>
+                <input class="group-search" id="groupSearchInput" type="search" placeholder="查找分组" aria-label="查找分组" oninput="renderGroupTree()">
                 <ul class="group-tree" id="groupTree"></ul>
                 <div class="group-empty" id="groupEmptyHint" style="display: none;">暂无自定义分组</div>
             </div>
             
             <div class="mail-panel">
+                <div class="mailbox-workspace-heading">
+                    <div class="mailbox-heading-copy">
+                        <span class="mailbox-eyebrow">邮箱工作台</span>
+                        <h2 id="adminCurrentGroup">所有分组</h2>
+                        <p>按分组找到邮箱，点击地址即可收件。</p>
+                    </div>
+                    <div class="mailbox-heading-actions">
+                        <button class="btn btn-secondary" id="groupPanelToggle" type="button" onclick="toggleMailboxGroupPanel()" aria-expanded="true">分组管理</button>
+                        <div class="au-dropdown">
+                            <button class="btn btn-primary au-dropdown-toggle" type="button">添加邮箱 <span aria-hidden="true">▾</span></button>
+                            <div class="au-dropdown-menu">
+                                <button class="au-dropdown-item" type="button" onclick="showAddModal()">单个添加</button>
+                                <button class="au-dropdown-item" type="button" onclick="showBatchAddModal()">批量添加</button>
+                                <div class="au-dropdown-divider"></div>
+                                <button class="au-dropdown-item" type="button" onclick="showServerModal()">服务器地址管理</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="card toolbar-card">
                     <div class="card-body toolbar-card-body">
-                        <div class="toolbar-row">
-                            <div class="button-group">
-                                <div class="au-dropdown">
-                                    <button class="btn btn-primary au-dropdown-toggle" type="button">
-                                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span> 添加邮箱 <span aria-hidden="true">▾</span>
-                                    </button>
-                                    <div class="au-dropdown-menu">
-                                        <button class="au-dropdown-item" type="button" onclick="showAddModal()">
-                                            <span class="anticon"><svg aria-hidden="true"><use href="#ai-plus"></use></svg></span> 单个添加
-                                        </button>
-                                        <button class="au-dropdown-item" type="button" onclick="showBatchAddModal()">
-                                            <span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量添加
-                                        </button>
-                                        <div class="au-dropdown-divider"></div>
-                                        <button class="au-dropdown-item" type="button" onclick="showServerModal()">
-                                            <span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span> 添加服务器地址
-                                        </button>
-                                    </div>
-                                </div>
-                                <button class="btn btn-secondary group-panel-toggle" id="groupPanelToggle" type="button" onclick="toggleMailboxGroupPanel()" aria-expanded="false">
-                                    <span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span> 显示分组
-                                </button>
-                                <div class="column-config">
-                                    <button class="btn btn-secondary column-config-toggle" id="columnConfigBtn" type="button" onclick="toggleColumnConfig(event)">
-                                        <span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span> 显示列
-                                    </button>
-                                    <div class="column-config-menu" id="columnConfigMenu" aria-hidden="true"></div>
-                                </div>
-                                <button class="btn btn-danger status-delete-button" id="deleteBannedAccountsBtn" type="button" onclick="deleteMailboxesByStatus('banned')" disabled>
-                                    ❌ 删除封禁 (0)
-                                </button>
-                                <button class="btn btn-delete-normal status-delete-button" id="deleteNormalAccountsBtn" type="button" onclick="deleteMailboxesByStatus('normal')" disabled>
-                                    ✅ 删除正常 (0)
-                                </button>
+                        <div class="mailbox-find-row">
+                            <div class="mailbox-search-field">
+                                <span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span>
+                                <input type="search" id="searchInput" placeholder="在当前分组搜索邮箱、备注或服务器" aria-label="搜索邮箱" oninput="searchMailboxes()">
+                                <button type="button" class="mailbox-clear-search" onclick="clearMailboxSearch()" title="清除搜索" aria-label="清除搜索">×</button>
                             </div>
-                            <div class="admin-summary" id="mailboxAdminSummary">
-                                <span class="admin-summary-admin">管理员：<strong>{{ admin_username }}</strong></span>
-                                <span>当前分组：<strong id="adminCurrentGroup">所有分组</strong></span>
-                                <span>邮箱：<strong id="adminMailboxCount">0</strong></span>
-                                <span class="admin-summary-selected">已选：<strong id="adminSelectedCount">0</strong></span>
-                            </div>
-	                            <div class="search-controls">
-	                                <div class="search-box">
-	                                    <input type="text" id="searchInput" placeholder="搜索邮箱地址或服务器..." onkeyup="searchMailboxes()">
-	                                    <button class="btn btn-primary" type="button" aria-label="搜索邮箱" title="搜索" onclick="searchMailboxes()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-search"></use></svg></span><span class="search-button-label">搜索</span></button>
-	                                    <button class="btn btn-danger" type="button" aria-label="清除搜索" title="清除" onclick="clearMailboxSearch()"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span><span class="search-button-label">清除</span></button>
-	                                </div>
-                            </div>
+                            <select id="groupFilterSelect" class="mailbox-mobile-group" aria-label="选择邮箱分组" onchange="setSelectedGroup(this.value)"></select>
+                            <select id="ownerFilterSelect" aria-label="按操作人筛选" onchange="filterMailboxesByOwner(this.value)"><option value="">全部操作人</option></select>
+                            <button class="btn btn-secondary" id="resetMailboxFiltersBtn" type="button" onclick="resetMailboxFilters()" disabled>重置筛选</button>
+                        </div>
+                        <div class="mailbox-status-views" role="group" aria-label="按账号状态筛选">
+                            <button type="button" data-status-view="" onclick="filterMailboxesByTestStatus('')" aria-pressed="true"><span>全部邮箱</span><b data-status-count="">0</b></button>
+                            <button type="button" data-status-view="normal" onclick="filterMailboxesByTestStatus('normal')" aria-pressed="false"><span class="status-dot normal"></span><span>正常</span><b data-status-count="normal">0</b></button>
+                            <button type="button" data-status-view="pending" onclick="filterMailboxesByTestStatus('pending')" aria-pressed="false"><span class="status-dot pending"></span><span>未检测</span><b data-status-count="pending">0</b></button>
+                            <button type="button" id="filterInvalidAccountsBtn" data-status-view="invalid" onclick="filterMailboxesByTestStatus('invalid')" aria-pressed="false"><span class="status-dot invalid"></span><span>无效邮箱</span><b data-status-count="invalid">0</b></button>
+                            <button type="button" data-status-view="retry" onclick="filterMailboxesByTestStatus('retry')" aria-pressed="false"><span class="status-dot retry"></span><span>待重试</span><b data-status-count="retry">0</b></button>
+                        </div>
+                        <div class="mailbox-filter-context" id="mailboxFilterContext" hidden></div>
+                        <div id="mailboxBatchProgress" class="mailbox-test-result-panel" hidden>
+                            <span id="mailboxBatchProgressText" role="status" aria-live="polite"></span>
+                            <button class="btn btn-secondary" id="stopBatchTestBtn" type="button" onclick="stopBatchMailboxTests()">停止测试</button>
                         </div>
                     </div>
                 </div>
                 
                 <div class="card">
                     <div class="card-body scroll-card-body">
+                        <div class="mailbox-list-toolbar">
+                            <div class="mailbox-list-count"><strong id="adminMailboxCount">0</strong><span>个邮箱</span><span class="mailbox-list-tip">点击邮箱地址收件</span></div>
+                            <div class="mailbox-list-tools">
+                                <button class="btn btn-secondary" id="selectFilteredMailboxesBtn" type="button" onclick="selectFilteredMailboxes()" disabled>全选筛选结果 (0)</button>
+                                <button class="btn btn-secondary" id="batchTestFilteredBtn" type="button" onclick="batchTestMailboxes('filtered')" disabled>测试筛选结果 (0)</button>
+                                <div class="column-config">
+                                    <button class="btn btn-secondary column-config-toggle" id="columnConfigBtn" type="button" onclick="toggleColumnConfig(event)" title="显示列" aria-label="显示列"><span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span></button>
+                                    <div class="column-config-menu" id="columnConfigMenu" aria-hidden="true"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mailbox-bulk-bar" id="mailboxBulkBar">
+                            <span class="au-bulk-count">已选 <b id="bulkSelectedCount">0</b> 个邮箱</span>
+                            <button class="btn btn-success" type="button" onclick="copySelectedMailboxes()">
+                                <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span> 批量复制
+                            </button>
+                            <button class="btn btn-secondary" type="button" onclick="showBatchGroupModal()">
+                                <span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量分组
+                            </button>
+                            <button class="btn btn-secondary" id="batchTestSelectedBtn" type="button" onclick="batchTestMailboxes('selected')">测试选中邮箱</button>
+                            <button class="btn btn-danger" id="batchDeleteMailboxesBtn" type="button" onclick="batchDeleteMailboxes()">
+                                <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除
+                            </button>
+                            <button class="btn" type="button" onclick="clearMailboxSelection()">取消选择</button>
+                        </div>
                         <div id="mailboxLatestTestResult" class="mailbox-test-result-panel" role="status" aria-live="polite" hidden></div>
                         <div class="table-container">
                             <table id="mailboxTable">
@@ -3396,6 +3452,11 @@
             <div class="receive-sidebar">
                 <div>
                     <div class="receive-mailbox-label">当前邮箱</div>
+                    <div class="receive-mailbox-navigation">
+                        <button type="button" id="receivePreviousMailbox" onclick="navigateReceiveMailbox(-1)" aria-label="上一邮箱">←</button>
+                        <span id="receiveMailboxPosition"></span>
+                        <button type="button" id="receiveNextMailbox" onclick="navigateReceiveMailbox(1)" aria-label="下一邮箱">→</button>
+                    </div>
                     <div class="receive-mailbox-copy-row">
                         <div class="receive-mailbox-value" id="receiveMailboxLabel">-</div>
                         <button class="receive-copy-btn" type="button" onclick="copyCurrentReceiveMailbox()" title="复制邮箱" aria-label="复制邮箱">
@@ -3794,27 +3855,14 @@
     </div>
 </div>
 
-<!-- 选中邮箱时滑入的批量操作条 -->
-<div class="au-bulk-bar" id="mailboxBulkBar">
-    <span class="au-bulk-count">已选 <b id="bulkSelectedCount">0</b> 个邮箱</span>
-    <button class="btn btn-success" type="button" onclick="copySelectedMailboxes()">
-        <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span> 批量复制
-    </button>
-    <button class="btn btn-secondary" type="button" onclick="showBatchGroupModal()">
-        <span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量分组
-    </button>
-    <button class="btn btn-danger" type="button" onclick="batchDeleteMailboxes()">
-        <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除
-    </button>
-    <button class="btn" type="button" onclick="clearMailboxSelection()">取消选择</button>
-</div>
 {% endblock %}
 
 {% block scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mailbox-workspace.css') }}">
 <script src="{{ url_for('static', filename='js/mail-content.js') }}"></script>
 <script>
     const SIDEBAR_COLLAPSE_KEY = 'adminSidebarCollapsed';
-    const MAILBOX_GROUP_PANEL_KEY = 'mailboxGroupPanelCollapsedV2';
+    const MAILBOX_GROUP_PANEL_KEY = 'mailboxGroupPanelCollapsedV3';
     const MAILBOX_COLUMN_STORAGE_KEY = 'mailboxTableVisibleColumnsV8';
     const CURRENT_ADMIN_USERNAME = {{ admin_username|tojson }};
 
@@ -3841,9 +3889,7 @@
         const headerToggle = document.querySelector('.group-panel-header-toggle');
 
         if (toggleBtn) {
-            toggleBtn.innerHTML = collapsed
-                ? '<span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-unfold"></use></svg></span> 显示分组'
-                : '<span class="anticon"><svg aria-hidden="true"><use href="#ai-menu-fold"></use></svg></span> 隐藏分组';
+            toggleBtn.textContent = '分组管理';
             toggleBtn.setAttribute('aria-expanded', (!collapsed).toString());
             toggleBtn.title = collapsed ? '展开左侧分组' : '收起左侧分组';
         }
@@ -3873,7 +3919,7 @@
 
     function initMailboxGroupPanel() {
         const saved = getStoredPreference(MAILBOX_GROUP_PANEL_KEY);
-        const shouldCollapse = saved === null ? true : saved === '1';
+        const shouldCollapse = saved === null ? window.innerWidth < 1000 : saved === '1';
         applyMailboxGroupPanelState(shouldCollapse);
     }
 
@@ -3982,7 +4028,12 @@
     let perPage = window.matchMedia('(max-width: 640px)').matches ? 20 : 100;
     let searchQuery = '';
     let ownerFilter = '';
-    let testStatusFilter = '';
+    let testStatusFilter = new URLSearchParams(window.location.search).get('status') || '';
+    if (!['', 'normal', 'pending', 'invalid', 'retry', 'banned', 'invalid_credentials', 'network_error', 'test_error'].includes(testStatusFilter)) testStatusFilter = '';
+    let mailboxBatchTest = null;
+    let mailboxLoadRequestId = 0;
+    let receiveMailboxIds = [];
+    let lastMailboxFilterKey = null;
     let totalPages = 1;
     let selectedMailboxes = new Set();
     let selectedServers = new Set();
@@ -4001,17 +4052,19 @@
     const MAILBOX_COLUMNS = [
         { key: 'select', label: '', required: true, defaultVisible: true, minWidth: 44, fixed: true },
         { key: 'group', label: '分组', defaultVisible: false, sortable: true, minWidth: 96, weight: 0.7 },
-        { key: 'email', label: '邮箱地址', required: true, defaultVisible: true, minWidth: 300, weight: 3.4 },
+        { key: 'email', label: '邮箱地址', required: true, defaultVisible: true, minWidth: 230, weight: 3.4 },
         { key: 'server', label: '收/发信息', defaultVisible: false, sortable: true, minWidth: 170, weight: 1.1 },
-        { key: 'test_status', label: '账号状态', required: true, defaultVisible: true, filter: 'test_status', minWidth: 126, fixed: true },
-        { key: 'created_at', label: '添加时间', defaultVisible: true, sortable: true, minWidth: 150, fixed: true },
-        { key: 'created_by_admin', label: '操作人', defaultVisible: true, filter: 'owner', minWidth: 126, fixed: true },
+        { key: 'test_status', label: '账号状态', required: true, defaultVisible: true, filter: 'test_status', minWidth: 110, fixed: true },
+        { key: 'created_at', label: '添加时间', defaultVisible: false, sortable: true, minWidth: 150, fixed: true },
+        { key: 'created_by_admin', label: '操作人', defaultVisible: true, filter: 'owner', minWidth: 105, fixed: true },
         { key: 'updated_at', label: '最后修改时间', defaultVisible: false, sortable: true, minWidth: 178, fixed: true },
-        { key: 'remarks', label: '备注', defaultVisible: true, minWidth: 150, weight: 1.7, priorityGrow: true },
-        { key: 'actions', label: '操作', required: true, defaultVisible: true, minWidth: 236, fixed: true }
+        { key: 'remarks', label: '备注', defaultVisible: true, minWidth: 120, weight: 1.7, priorityGrow: true },
+        { key: 'actions', label: '操作', required: true, defaultVisible: true, minWidth: 145, fixed: true }
     ];
     const MAILBOX_TEST_STATUS_FILTERS = [
         { value: '', label: '全部状态' },
+        { value: 'invalid', label: '无效邮箱（封禁 / 凭据失效）' },
+        { value: 'retry', label: '待重试' },
         { value: 'pending', label: '○ 未检测' },
         { value: 'normal', label: '✅ 正常' },
         { value: 'banned', label: '❌ 封禁' },
@@ -4159,7 +4212,8 @@
                 const emailCell = target.closest('.mailbox-email-cell');
                 if (emailCell) {
                     const mailboxId = parseInt(emailCell.dataset.mailboxId, 10);
-                    copyMailboxEmail(emailCell.dataset.email || '', mailboxId);
+                    if (target.closest('.mailbox-email-copy')) copyMailboxEmail(emailCell.dataset.email || '', mailboxId);
+                    else if (target.closest('.mailbox-email-open')) openReceiveModal(mailboxId);
                     return;
                 }
 
@@ -4381,26 +4435,8 @@
             if (column.key === 'select') {
                 return '<th class="mailbox-col-select"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>';
             }
-            if (column.filter === 'test_status') {
-                const options = MAILBOX_TEST_STATUS_FILTERS
-                    .map(option => `<option value="${escapeAttribute(option.value)}" ${testStatusFilter === option.value ? 'selected' : ''}>${escapeHtml(option.label)}</option>`)
-                    .join('');
-                return `<th class="mailbox-col-${column.key}">
-                    <select class="mailbox-header-filter" onchange="filterMailboxesByTestStatus(this.value)" onclick="event.stopPropagation()" aria-label="按账号状态筛选">
-                        ${options}
-                    </select>
-                </th>`;
-            }
-            if (column.filter === 'owner') {
-                const ownerOptions = getMailboxOwnerFilterValues()
-                    .map(owner => `<option value="${escapeAttribute(owner)}" ${ownerFilter === owner ? 'selected' : ''}>${escapeHtml(getMailboxOwnerFilterLabel(owner))}</option>`)
-                    .join('');
-                return `<th class="mailbox-col-${column.key}">
-                    <select class="mailbox-header-filter" onchange="filterMailboxesByOwner(this.value)" onclick="event.stopPropagation()" aria-label="按操作人筛选">
-                        <option value="" ${ownerFilter ? '' : 'selected'}>操作人</option>
-                        ${ownerOptions}
-                    </select>
-                </th>`;
+            if (column.filter) {
+                return `<th class="mailbox-col-${column.key}">${escapeHtml(column.label)}</th>`;
             }
             if (column.sortable) {
                 const isActive = mailboxSortKey === column.key;
@@ -4597,13 +4633,13 @@
         const label = mailboxCellLabel(column, column.key === 'select' ? '选择' : '');
         switch (column.key) {
             case 'select':
-                return `<td class="mailbox-col-select" data-label="${label}"><input type="checkbox" class="mailbox-checkbox" value="${mailbox.id}" data-mailbox-id="${mailbox.id}" ${selectedMailboxes.has(mailbox.id) ? 'checked' : ''}></td>`;
+                return `<td class="mailbox-col-select" data-label="${label}"><input type="checkbox" class="mailbox-checkbox" value="${mailbox.id}" data-mailbox-id="${mailbox.id}" ${selectedMailboxes.has(Number(mailbox.id)) ? 'checked' : ''}></td>`;
             case 'group':
                 return `<td class="mailbox-col-group" data-label="${label}">${escapeHtml(getMailboxGroupName(mailbox))}</td>`;
             case 'email':
-                return `<td class="mailbox-col-email mailbox-email-cell" data-label="${label}" data-email="${escapeAttribute(mailbox.email)}" data-mailbox-id="${mailbox.id}" title="点击复制邮箱">
+                return `<td class="mailbox-col-email mailbox-email-cell" data-label="${label}" data-email="${escapeAttribute(mailbox.email)}" data-mailbox-id="${mailbox.id}" title="点击邮箱地址收件">
                     <span class="mailbox-email-content">
-                        <span class="mailbox-email-text">${escapeHtml(mailbox.email)}</span>
+                        <span class="mailbox-email-identity"><button type="button" class="mailbox-email-text mailbox-email-open" translate="no">${escapeHtml(mailbox.email)}</button><small class="mailbox-email-group">${escapeHtml(getMailboxGroupName(mailbox))}</small></span>
                         <button class="mailbox-email-copy" type="button" title="复制邮箱" aria-label="复制邮箱">
                             <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span>
                         </button>
@@ -4634,17 +4670,15 @@
             case 'actions':
                 return `<td class="mailbox-col-actions" data-label="${label}">
                     <div class="mailbox-actions">
-                        <button class="btn btn-success btn-small" data-action="edit" data-mailbox-id="${mailbox.id}">编辑</button>
                         <button class="btn btn-primary btn-small" data-action="receive" data-mailbox-id="${mailbox.id}">收件</button>
-                        <button class="btn btn-primary btn-small desktop-priority-action" data-action="test" data-mailbox-id="${mailbox.id}">测试</button>
-                        <button class="btn btn-danger btn-small desktop-priority-action" data-action="delete" data-mailbox-id="${mailbox.id}">删除</button>
                         <span class="mailbox-actions-more">
                             <button class="btn btn-secondary btn-small" type="button" data-action="more" data-mailbox-id="${mailbox.id}" aria-haspopup="true" aria-expanded="false">更多</button>
                             <span class="mailbox-more-menu" role="menu">
+                                <button class="btn btn-secondary btn-small" type="button" data-action="edit" data-mailbox-id="${mailbox.id}">编辑邮箱</button>
                                 <button class="btn btn-success btn-small" type="button" data-action="remarks" data-mailbox-id="${mailbox.id}">备注</button>
                                 <button class="btn btn-primary btn-small" type="button" data-action="send" data-mailbox-id="${mailbox.id}">发件</button>
-                                <button class="btn btn-primary btn-small mobile-only-action" type="button" data-action="test" data-mailbox-id="${mailbox.id}">测试</button>
-                                <button class="btn btn-danger btn-small mobile-only-action" type="button" data-action="delete" data-mailbox-id="${mailbox.id}">删除</button>
+                                <button class="btn btn-secondary btn-small" type="button" data-action="test" data-mailbox-id="${mailbox.id}">测试</button>
+                                <button class="btn btn-danger btn-small" type="button" data-action="delete" data-mailbox-id="${mailbox.id}">删除</button>
                             </span>
                         </span>
                     </div>
@@ -4690,13 +4724,14 @@
     // 加载邮箱列表
     async function loadMailboxes(page = 1, search = '') {
         try {
+            const requestId = ++mailboxLoadRequestId;
             currentPage = page;
             searchQuery = search;
             
             const params = new URLSearchParams({
                 page: 1,
                 per_page: 100000,  // 支持加载大量邮箱（最多10万个）
-                search: search,
+                search: '',
                 fast: '1',
                 // Keep historical IDs for group filtering; deduplicate before display/pagination.
                 include_legacy_duplicates: '1'
@@ -4710,6 +4745,7 @@
             });
             
             const data = await response.json();
+            if (requestId !== mailboxLoadRequestId) return;
             
             if (data.success) {
                 mailboxData = data.data || [];
@@ -4737,7 +4773,7 @@
         
         if (mailboxes.length === 0) {
             const colCount = visibleColumns.length || 1;
-            tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align: center; color: #6b7280;">暂无邮箱账号</td></tr>`;
+            tbody.innerHTML = `<tr class="mailbox-empty-row"><td colspan="${colCount}"><div class="mailbox-empty"><strong>没有符合条件的邮箱</strong><span>试试其他关键词、切换分组，或添加一个邮箱。</span><button type="button" class="btn btn-secondary" onclick="resetMailboxFilters()">重置筛选</button></div></td></tr>`;
             return;
         }
         
@@ -4764,29 +4800,101 @@
         const matchesOwner = ownerFilter ? getMailboxOwnerFilterValue(mailbox) === ownerFilter : true;
         const matchesTestStatus = ignoreTestStatus || !testStatusFilter
             ? true
-            : getMailboxTestStatus(mailbox).className === testStatusFilter;
-        return matchesGroup && matchesOwner && matchesTestStatus;
+            : mailboxMatchesTestStatus(mailbox, testStatusFilter);
+        const query = searchQuery.trim().toLowerCase();
+        const matchesSearch = !query || [mailbox.email, mailbox.server, mailbox.remarks, mailbox.created_by_admin].some(value => String(value || '').toLowerCase().includes(query));
+        return matchesGroup && matchesOwner && matchesTestStatus && matchesSearch;
     }
 
-    function getMailboxesByAccountStatus(status) {
-        return uniqueMailboxes(mailboxData.filter(mailbox => (
-            mailboxMatchesCurrentScope(mailbox, true)
-            && getMailboxTestStatus(mailbox).className === status
-        )));
+    function mailboxMatchesTestStatus(mailbox, status) {
+        const actual = getMailboxTestStatus(mailbox).className;
+        if (status === 'retry') return actual === 'network_error' || actual === 'test_error';
+        return status === 'invalid'
+            ? actual === 'banned' || actual === 'invalid_credentials'
+            : actual === status;
     }
 
-    function updateStatusDeleteButtons() {
+    function getFilteredMailboxes() {
+        return uniqueMailboxes(mailboxData.filter(mailbox => mailboxMatchesCurrentScope(mailbox)));
+    }
+
+    function updateMailboxHealthTools() {
+        const count = getFilteredMailboxes().length;
+        const testing = Boolean(mailboxBatchTest?.running);
         const configs = [
-            { id: 'deleteBannedAccountsBtn', status: 'banned', icon: '❌', label: '删除封禁' },
-            { id: 'deleteNormalAccountsBtn', status: 'normal', icon: '✅', label: '删除正常' }
+            { id: 'batchTestFilteredBtn', label: '测试筛选结果', count, disabled: testing || count === 0 },
+            { id: 'selectFilteredMailboxesBtn', label: '全选筛选结果', count, disabled: count === 0 }
         ];
         configs.forEach(config => {
             const button = document.getElementById(config.id);
             if (!button) return;
-            const count = getMailboxesByAccountStatus(config.status).length;
-            button.disabled = count === 0;
-            button.textContent = `${config.icon} ${config.label} (${count})`;
+            button.disabled = config.disabled;
+            button.textContent = `${config.label} (${config.count})`;
         });
+        updateMailboxWorkspaceFilters();
+        for (const id of ['batchTestSelectedBtn', 'batchDeleteMailboxesBtn']) {
+            const button = document.getElementById(id);
+            if (button) button.disabled = testing || selectedMailboxes.size === 0;
+        }
+    }
+
+    function updateMailboxWorkspaceFilters() {
+        const scope = uniqueMailboxes(mailboxData.filter(mailbox => mailboxMatchesCurrentScope(mailbox, true)));
+        document.querySelectorAll('[data-status-count]').forEach(element => {
+            const status = element.dataset.statusCount;
+            element.textContent = String(status ? scope.filter(mailbox => mailboxMatchesTestStatus(mailbox, status)).length : scope.length);
+        });
+        document.querySelectorAll('[data-status-view]').forEach(button => {
+            button.setAttribute('aria-pressed', String(button.dataset.statusView === testStatusFilter));
+        });
+        const owner = document.getElementById('ownerFilterSelect');
+        if (owner) owner.value = ownerFilter;
+        const reset = document.getElementById('resetMailboxFiltersBtn');
+        if (reset) reset.disabled = !searchQuery && !ownerFilter && !testStatusFilter;
+        const groupSelect = document.getElementById('groupFilterSelect');
+        if (groupSelect) groupSelect.value = selectedGroupId;
+        const context = document.getElementById('mailboxFilterContext');
+        if (context) {
+            const hints = {
+                invalid: '封禁或凭据失效的邮箱。可编辑凭据后重试，或勾选后批量删除。',
+                retry: '网络或检测异常，尚不能判断邮箱无效。可以批量重试。',
+                pending: '这些邮箱尚未测试，可勾选测试或测试全部筛选结果。'
+            };
+            context.textContent = hints[testStatusFilter] || '';
+            context.hidden = !context.textContent;
+        }
+    }
+
+    function renderWorkspaceGroupOptions() {
+        const select = document.getElementById('groupFilterSelect');
+        if (!select) return;
+        const options = [];
+        const append = (group, depth = 0) => {
+            options.push(`<option value="${escapeAttribute(group.id)}">${escapeHtml('　'.repeat(depth) + group.name)}</option>`);
+            groups.filter(item => item.parentId === group.id).forEach(child => append(child, depth + 1));
+        };
+        groups.filter(group => !group.parentId).forEach(group => append(group));
+        select.innerHTML = options.join('');
+        select.value = selectedGroupId;
+    }
+
+    function groupMatchesSearch(group, visited = new Set()) {
+        const query = (document.getElementById('groupSearchInput')?.value || '').trim().toLowerCase();
+        if (!query || group.name.toLowerCase().includes(query)) return true;
+        if (visited.has(group.id)) return false;
+        visited.add(group.id);
+        return groups.some(child => child.parentId === group.id && groupMatchesSearch(child, visited));
+    }
+
+    function selectFilteredMailboxes() {
+        selectedMailboxes.clear();
+        getFilteredMailboxes().forEach(mailbox => selectedMailboxes.add(Number(mailbox.id)));
+        document.querySelectorAll('.mailbox-checkbox').forEach(checkbox => {
+            checkbox.checked = selectedMailboxes.has(Number(checkbox.value));
+        });
+        const selectAll = document.getElementById('selectAll');
+        if (selectAll) selectAll.checked = selectedMailboxes.size > 0;
+        updateSelectionButtons();
     }
 
     function uniqueMailboxes(mailboxes) {
@@ -4799,10 +4907,20 @@
         });
     }
 
-    function renderMailboxView(page = 1) {
+    function renderMailboxView(page = 1, preserveSelection = true) {
         const filteredByGroup = mailboxData.filter(mailbox => mailboxMatchesCurrentScope(mailbox));
         const sortedMailboxes = sortMailboxes(uniqueMailboxes(filteredByGroup));
-        selectedMailboxes.clear();
+        const filterKey = JSON.stringify([selectedGroupId, ownerFilter, testStatusFilter, searchQuery]);
+        if (lastMailboxFilterKey !== filterKey) selectedMailboxes.clear();
+        lastMailboxFilterKey = filterKey;
+        if (preserveSelection) {
+            const visibleIds = new Set(sortedMailboxes.map(mailbox => Number(mailbox.id)));
+            for (const id of selectedMailboxes) {
+                if (!visibleIds.has(Number(id))) selectedMailboxes.delete(id);
+            }
+        } else {
+            selectedMailboxes.clear();
+        }
         const selectAll = document.getElementById('selectAll');
         if (selectAll) selectAll.checked = false;
         updateBatchDeleteButton();
@@ -4815,7 +4933,7 @@
         renderPaginationManual(sortedMailboxes.length, safePage);
         currentVisibleMailboxCount = sortedMailboxes.length;
         updateAdminSummary(currentVisibleMailboxCount);
-        updateStatusDeleteButtons();
+        updateMailboxHealthTools();
     }
 
     function updateAdminSummary(visibleCount = currentVisibleMailboxCount) {
@@ -4861,7 +4979,7 @@
             if (startPage > 1) {
                 html += `<button class="page-btn" onclick="renderMailboxView(1)">1</button>`;
                 if (startPage > 2) {
-                    html += '<span class="page-btn" style="border: none; cursor: default;">...</span>';
+                    html += '<span class="page-ellipsis">...</span>';
                 }
             }
             
@@ -4872,7 +4990,7 @@
             
             if (endPage < totalPages) {
                 if (endPage < totalPages - 1) {
-                    html += '<span class="page-btn" style="border: none; cursor: default;">...</span>';
+                    html += '<span class="page-ellipsis">...</span>';
                 }
                 html += `<button class="page-btn" onclick="renderMailboxView(${totalPages})">${totalPages}</button>`;
             }
@@ -5331,7 +5449,7 @@
                 const mailboxesInGroup = mailboxGroupMappings.filter(m => {
                     const gid = m.group_id || m.groupId;
                     const mid = m.mailbox_id || m.mailboxId;
-                    return gid === group.id && existingMailboxIds.has(mid);
+                    return (gid === group.id || isDescendantGroup(gid, group.id)) && existingMailboxIds.has(mid);
                 });
                 const memberIds = new Set(mailboxesInGroup.map(m => m.mailbox_id ?? m.mailboxId));
                 group.mailboxCount = uniqueMailboxes(mailboxData.filter(m => memberIds.has(m.id))).length;
@@ -5392,9 +5510,19 @@
         // Load collapsed groups state from localStorage (browser-specific)
         loadGroupCollapseState();
         
-        selectedGroupId = ROOT_GROUP_ID;
+        const savedGroup = getStoredPreference(`mailboxActiveGroup:${CURRENT_ADMIN_USERNAME}`);
+        const restoredGroup = new URLSearchParams(window.location.search).get('group') === 'all' ? null : groups.find(group => String(group.id) === savedGroup);
+        selectedGroupId = restoredGroup?.id || ROOT_GROUP_ID;
+        let ancestor = getGroupById(selectedGroupId)?.parentId;
+        const seenAncestors = new Set();
+        while (ancestor && !seenAncestors.has(ancestor)) {
+            seenAncestors.add(ancestor);
+            collapsedGroups[ancestor] = false;
+            ancestor = getGroupById(ancestor)?.parentId;
+        }
         renderGroupTree();
         refreshGroupSelects();
+        renderMailboxView(1);
     }
     
     function loadGroupCollapseState() {
@@ -5443,9 +5571,10 @@
         if (root) topGroups.push(root);
         if (ungrouped) topGroups.push(ungrouped);
         getTopLevelCustomGroups().forEach(g => topGroups.push(g));
-        topGroups.forEach(group => {
+        topGroups.filter(group => groupMatchesSearch(group)).forEach(group => {
             tree.appendChild(createGroupNode(group, 0));
         });
+        renderWorkspaceGroupOptions();
         const hasCustomGroup = groups.some(g => ![ROOT_GROUP_ID, UNGROUPED_GROUP_ID].includes(g.id));
         if (hint) {
             hint.style.display = hasCustomGroup ? 'none' : 'block';
@@ -5457,8 +5586,15 @@
         const item = document.createElement('div');
         item.className = 'group-item' + (selectedGroupId === group.id ? ' active' : '');
         item.dataset.groupId = group.id;
+        item.tabIndex = 0;
+        item.setAttribute('role', 'button');
+        item.setAttribute('aria-current', String(selectedGroupId === group.id));
+        item.addEventListener('keydown', event => {
+            if (event.target !== item) return;
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedGroup(group.id); }
+        });
         item.style.paddingLeft = `${10 + depth * 12}px`;
-        const children = groups.filter(g => g.parentId === group.id);
+        const children = groups.filter(g => g.parentId === group.id && groupMatchesSearch(g));
         const hasChildren = children.length > 0;
 
         const toggle = document.createElement('span');
@@ -5489,7 +5625,7 @@
         // Hide count for parent groups that have child groups (except "所有分组" and "未分组")
         const shouldShowCount = group.mailboxCount !== undefined && 
                                 group.mailboxCount !== null && 
-                                (!hasChildren || group.id === ROOT_GROUP_ID || group.id === UNGROUPED_GROUP_ID);
+                                true;
         
         if (shouldShowCount) {
             const count = document.createElement('span');
@@ -5503,6 +5639,18 @@
 
         item.appendChild(toggle);
         item.appendChild(name);
+        const actions = document.createElement('button');
+        actions.type = 'button';
+        actions.className = 'group-actions-button';
+        actions.textContent = '⋯';
+        actions.title = '分组操作';
+        actions.setAttribute('aria-label', '分组操作');
+        actions.addEventListener('click', event => {
+            event.stopPropagation();
+            const rect = actions.getBoundingClientRect();
+            showGroupContextMenu({ pageX: Math.min(rect.left, window.innerWidth - 180) + window.scrollX, pageY: rect.bottom + window.scrollY }, group.id);
+        });
+        item.appendChild(actions);
         item.addEventListener('click', (e) => {
             e.stopPropagation();
             setSelectedGroup(group.id);
@@ -5525,7 +5673,7 @@
         if (hasChildren) {
             const ul = document.createElement('ul');
             ul.className = 'group-children';
-            if (collapsedGroups[group.id]) {
+            if (collapsedGroups[group.id] && !document.getElementById('groupSearchInput').value.trim()) {
                 ul.style.display = 'none';
             }
             children.forEach(child => ul.appendChild(createGroupNode(child, depth + 1)));
@@ -5536,7 +5684,8 @@
     }
 
     function setSelectedGroup(groupId) {
-        selectedGroupId = groupId || ROOT_GROUP_ID;
+        selectedGroupId = [ROOT_GROUP_ID, UNGROUPED_GROUP_ID].includes(groupId) ? groupId : (Number(groupId) || ROOT_GROUP_ID);
+        setStoredPreference(`mailboxActiveGroup:${CURRENT_ADMIN_USERNAME}`, String(selectedGroupId));
         renderGroupTree();
         renderMailboxView(1);
     }
@@ -5854,15 +6003,22 @@
     // 清除邮箱搜索
     function clearMailboxSearch() {
         document.getElementById('searchInput').value = '';
+        searchQuery = '';
+        renderMailboxView(1);
+    }
+
+    function resetMailboxFilters() {
         ownerFilter = '';
         testStatusFilter = '';
-        loadMailboxes(1, '');
+        clearMailboxSearch();
+        renderOwnerFilterOptions();
     }
-    
+
     // 搜索邮箱
     function searchMailboxes() {
         const search = document.getElementById('searchInput').value.trim();
-        loadMailboxes(1, search);
+        searchQuery = search;
+        renderMailboxView(1);
     }
     
     // 改变每页显示数量
@@ -5907,7 +6063,12 @@
     }
 
     function openReceiveModal(mailboxId) {
-        receiveState.mailboxId = mailboxId;
+        if (!document.getElementById('receiveModal').classList.contains('show')) {
+            receiveMailboxIds = sortMailboxes(getFilteredMailboxes()).map(mailbox => Number(mailbox.id));
+        }
+        receiveState.fetchToken += 1;
+        receiveState.mailboxId = Number(mailboxId);
+        updateReceiveMailboxNavigation();
         receiveState.folder = 'inbox';
         receiveState.page = 1;
         receiveState.perPage = 100;
@@ -5932,6 +6093,19 @@
                 fetchMailboxMails({ silentAuto: true });
             }
         }, 0);
+    }
+
+    function updateReceiveMailboxNavigation() {
+        const index = receiveMailboxIds.indexOf(Number(receiveState.mailboxId));
+        document.getElementById('receiveMailboxPosition').textContent = `${Math.max(0, index + 1)} / ${receiveMailboxIds.length}`;
+        document.getElementById('receivePreviousMailbox').disabled = index <= 0;
+        document.getElementById('receiveNextMailbox').disabled = index < 0 || index >= receiveMailboxIds.length - 1;
+    }
+
+    function navigateReceiveMailbox(direction) {
+        const index = receiveMailboxIds.indexOf(Number(receiveState.mailboxId));
+        const id = receiveMailboxIds[index + direction];
+        if (id) openReceiveModal(id);
     }
 
     function closeReceiveModal() {
@@ -6166,8 +6340,9 @@
                 });
                 
                 // Save all mails to store
-                store[targetMailboxId] = allMails;
-                saveReceiveStore(store);
+                const latestStore = loadReceiveStore();
+                latestStore[targetMailboxId] = allMails;
+                saveReceiveStore(latestStore);
                 
                 // Remove loading toast
                 removeToast(loadingToastId);
@@ -6344,7 +6519,7 @@
             if (startPage > 1) {
                 html += `<button class="page-btn" onclick="gotoReceivePage(1)">1</button>`;
                 if (startPage > 2) {
-                    html += '<span class="page-btn" style="border: none; cursor: default;">...</span>';
+                    html += '<span class="page-ellipsis">...</span>';
                 }
             }
             for (let i = startPage; i <= endPage; i++) {
@@ -6353,7 +6528,7 @@
             }
             if (endPage < totalPages) {
                 if (endPage < totalPages - 1) {
-                    html += '<span class="page-btn" style="border: none; cursor: default;">...</span>';
+                    html += '<span class="page-ellipsis">...</span>';
                 }
                 html += `<button class="page-btn" onclick="gotoReceivePage(${totalPages})">${totalPages}</button>`;
             }
@@ -6770,15 +6945,15 @@
     }
     
     // 测试邮箱连接
-    function updateMailboxTestResult(mailboxId, data) {
-        showMailboxTestOutcome(mailboxId, data);
+    function updateMailboxTestResult(mailboxId, data, options = {}) {
+        if (!options.batch) showMailboxTestOutcome(mailboxId, data);
         const mailbox = mailboxData.find(item => String(item.id) === String(mailboxId));
         // Request/login failures are not evidence that the mailbox is unhealthy.
         if (!mailbox || !Object.hasOwn(MAILBOX_STATUS_META, data.account_status)) return;
         mailbox.last_test = data.last_test || new Date().toISOString();
         mailbox.test_result = data.test_result || data.message || (data.success ? '连接测试成功' : '连接测试失败');
         mailbox.account_status = data.account_status;
-        renderMailboxView(currentPage);
+        if (!options.batch) renderMailboxView(currentPage);
     }
 
     async function testMailbox(id = null, options = {}) {
@@ -6857,7 +7032,7 @@
             });
             
             const data = await readJsonResponse(response);
-            updateMailboxTestResult(targetId, data);
+            updateMailboxTestResult(targetId, data, options);
             
             if (data.success) {
                 if (!silent) showToast('邮箱连接测试成功', 'success');
@@ -6867,7 +7042,7 @@
             return data;
         } catch (error) {
             console.error('测试邮箱失败:', error);
-            showMailboxTestOutcome(targetId, { message: error.message || '测试请求失败' });
+            if (!options.batch) showMailboxTestOutcome(targetId, { message: error.message || '测试请求失败' });
             if (!silent) showToast(error.message || '测试请求失败，请检查服务是否正常运行', 'error');
             return { success: false, message: error.message || '测试请求失败，请检查服务是否正常运行' };
         } finally {
@@ -6929,6 +7104,10 @@
     
     // 删除邮箱
     async function deleteMailbox(id) {
+        if (mailboxBatchTest?.running) {
+            showToast('请先停止批量测试，等待进行中的测试完成后再删除', 'info');
+            return;
+        }
         if (!confirm('确定要删除这个邮箱账号吗？')) {
             return;
         }
@@ -7120,26 +7299,75 @@
     }
 
     async function runBatchImportMailboxTests(createdMailboxes) {
-        const targets = (createdMailboxes || [])
-            .map(item => parseInt(item.id, 10))
-            .filter(id => Number.isFinite(id) && id > 0);
-        if (targets.length === 0) return;
+        if (mailboxBatchTest?.running) {
+            showToast('已有批量测试正在运行，新导入邮箱可稍后筛选未检测并测试', 'info');
+            return;
+        }
+        await runBatchMailboxTests(createdMailboxes);
+    }
 
-        showToast(`开始检测批量导入的 ${targets.length} 个邮箱...`, 'info');
-        let successCount = 0;
-        let failCount = 0;
-        for (const mailboxId of targets) {
-            const result = await testMailbox(mailboxId, { silent: true });
-            if (result?.success) {
-                successCount += 1;
-            } else {
-                failCount += 1;
+    async function batchTestMailboxes(scope) {
+        const targets = getFilteredMailboxes().filter(mailbox => (
+            scope === 'filtered' || selectedMailboxes.has(Number(mailbox.id))
+        ));
+        await runBatchMailboxTests(targets);
+    }
+
+    function renderBatchMailboxProgress() {
+        const state = mailboxBatchTest;
+        if (!state) return;
+        const panel = document.getElementById('mailboxBatchProgress');
+        const text = document.getElementById('mailboxBatchProgressText');
+        const stop = document.getElementById('stopBatchTestBtn');
+        panel.hidden = false;
+        const label = state.running
+            ? (state.stopped ? '正在停止（等待进行中的测试完成）' : '批量测试中')
+            : (state.stopped ? '批量测试已停止' : '批量测试完成');
+        text.textContent = `${label}：${state.completed} / ${state.total}；正常 ${state.normal}，无效 ${state.invalid}，待重试 ${state.retry}`;
+        stop.hidden = !state.running;
+        stop.disabled = state.stopped;
+    }
+
+    function stopBatchMailboxTests() {
+        if (!mailboxBatchTest?.running) return;
+        mailboxBatchTest.stopped = true;
+        renderBatchMailboxProgress();
+    }
+
+    async function runBatchMailboxTests(mailboxes) {
+        if (mailboxBatchTest?.running) return;
+        // Freeze IDs before testing: results may change the active status filter.
+        const ids = [...new Set(mailboxes.map(mailbox => Number(mailbox.id)))].filter(id => Number.isInteger(id) && id > 0);
+        if (!ids.length) {
+            showToast('请选择要测试的邮箱', 'info');
+            return;
+        }
+        const state = { running: true, stopped: false, total: ids.length, completed: 0, normal: 0, invalid: 0, retry: 0 };
+        mailboxBatchTest = state;
+        updateMailboxHealthTools();
+        renderBatchMailboxProgress();
+        let nextIndex = 0;
+        async function worker() {
+            while (!state.stopped && nextIndex < ids.length) {
+                const id = ids[nextIndex++];
+                const result = await testMailbox(id, { silent: true, batch: true });
+                state.completed++;
+                if (result?.account_status === 'normal') state.normal++;
+                else if (['banned', 'invalid_credentials'].includes(result?.account_status)) state.invalid++;
+                else state.retry++;
+                renderBatchMailboxProgress();
             }
         }
-        renderMailboxView(currentPage);
-        showToast(`批量导入检测完成：成功 ${successCount} 个，失败 ${failCount} 个`, failCount ? 'info' : 'success');
+        try {
+            await Promise.all(Array.from({ length: Math.min(3, ids.length) }, () => worker()));
+        } finally {
+            state.running = false;
+            renderMailboxView(currentPage, true);
+            renderBatchMailboxProgress();
+            updateMailboxHealthTools();
+        }
     }
-    
+
     // ========== 选择管理功能 ==========
 
     async function writeTextToClipboard(text) {
@@ -7265,13 +7493,20 @@
         const countEl = document.getElementById('bulkSelectedCount');
         if (countEl) countEl.textContent = String(selectedMailboxes.size);
         if (bar) bar.classList.toggle('visible', selectedMailboxes.size > 0);
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = Array.from(document.querySelectorAll('.mailbox-checkbox'));
+        if (selectAll) {
+            selectAll.checked = checkboxes.length > 0 && checkboxes.every(checkbox => checkbox.checked);
+            selectAll.indeterminate = !selectAll.checked && checkboxes.some(checkbox => checkbox.checked);
+        }
         updateAdminSummary();
+        updateMailboxHealthTools();
     }
 
     function clearMailboxSelection() {
         selectedMailboxes.clear();
         document.querySelectorAll('.mailbox-checkbox').forEach(cb => { cb.checked = false; });
-        const selectAll = document.getElementById('selectAllCheckbox');
+        const selectAll = document.getElementById('selectAll');
         if (selectAll) selectAll.checked = false;
         updateSelectionButtons();
     }
@@ -7385,48 +7620,18 @@
         return deletedCount;
     }
 
-    async function deleteMailboxesByStatus(status) {
-        const allowed = {
-            banned: { label: '封禁', icon: '❌', buttonId: 'deleteBannedAccountsBtn' },
-            normal: { label: '正常', icon: '✅', buttonId: 'deleteNormalAccountsBtn' }
-        };
-        const config = allowed[status];
-        if (!config) return;
-
-        const targets = getMailboxesByAccountStatus(status);
-        if (targets.length === 0) {
-            showToast(`当前范围内没有${config.label}账号`, 'info');
-            return;
-        }
-        const scopeLabel = selectedGroupId === ROOT_GROUP_ID ? '当前搜索范围' : '当前分组与搜索范围';
-        if (!confirm(`确定一键删除${scopeLabel}内的 ${targets.length} 个${config.label}账号吗？此操作不可撤销。`)) {
-            return;
-        }
-
-        const button = document.getElementById(config.buttonId);
-        if (button) button.disabled = true;
-        try {
-            const deletedCount = await requestBatchDeleteMailboxIds(targets.map(mailbox => mailbox.id));
-            selectedMailboxes.clear();
-            await loadMailboxes(currentPage, searchQuery);
-            showToast(`${config.icon} 已删除 ${deletedCount} 个${config.label}账号`, 'success');
-        } catch (error) {
-            console.error(`一键删除${config.label}账号失败:`, error);
-            await loadMailboxes(currentPage, searchQuery);
-            showToast(error.message || `一键删除${config.label}账号失败`, 'error');
-        } finally {
-            updateStatusDeleteButtons();
-        }
-    }
-
     // 批量删除邮箱
     async function batchDeleteMailboxes() {
+        if (mailboxBatchTest?.running) {
+            showToast('请先停止批量测试，等待进行中的测试完成后再删除', 'info');
+            return;
+        }
         if (selectedMailboxes.size === 0) {
             showToast('请选择要删除的邮箱', 'error');
             return;
         }
         
-        if (!confirm(`确定要删除选中的 ${selectedMailboxes.size} 个邮箱账号吗？`)) {
+        if (!confirm(`确定要永久删除选中的 ${selectedMailboxes.size} 个邮箱账号吗？包含跨页选中的邮箱，此操作不可撤销。`)) {
             return;
         }
         
@@ -7434,8 +7639,9 @@
             const deletedCount = await requestBatchDeleteMailboxIds(Array.from(selectedMailboxes));
             showToast(`成功删除 ${deletedCount} 个邮箱`, 'success');
             selectedMailboxes.clear();
-            loadMailboxes(currentPage, searchQuery);
+            await loadMailboxes(currentPage, searchQuery);
         } catch (error) {
+            await loadMailboxes(currentPage, searchQuery);
             console.error('批量删除失败:', error);
             showToast(error.message || '网络错误，请稍后重试', 'error');
         }

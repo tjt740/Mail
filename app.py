@@ -2882,7 +2882,7 @@ def _admin_feature_allowed(db):
     if path.startswith('/admin/api/'):
         endpoint = path[len('/admin/api/'):].split('/')[0]
         features = {
-            'mailbox': 'mailbox', 'mailbox-groups': 'mailbox',
+            'dashboard': 'home', 'mailbox': 'mailbox', 'mailbox-groups': 'mailbox',
             'proxies': 'proxies', 'proxy-config': 'proxies',
             'cards': 'cards', 'card-logs': 'card_logs', 'recycle-bin': 'cards',
             'process-expired-cards': 'cards', 'mail-logs': 'settings' if request.method == 'POST' else 'mail_logs',
@@ -3834,18 +3834,89 @@ def admin_system():
     """系统设置页面"""
     return render_react_app(page_title=f'系统设置 - {get_system_config("system_title", "邮件查看系统")}')
 
+@app.route('/admin/api/dashboard')
+@admin_required
+def api_admin_dashboard():
+    """Small, permission-scoped monitoring snapshot; never returns credentials or mail bodies."""
+    db = get_db()
+    try:
+        now = get_beijing_time()
+        today = datetime.strptime(now[:10], '%Y-%m-%d')
+        start = (today - timedelta(days=6)).strftime('%Y-%m-%d')
+        end = (today + timedelta(days=1)).strftime('%Y-%m-%d')
+        scope, params = _mailbox_scope_condition(db, 'ma')
+        where = _unique_mailbox_where(f'WHERE {scope}' if scope else '')
+        rows = security.query(db, f'''SELECT ma.account_status, COUNT(*) AS count
+            FROM mail_accounts ma {where} GROUP BY ma.account_status''', params)
+        health = {key: 0 for key in ('normal', 'banned', 'invalid_credentials', 'network_error', 'test_error', 'pending')}
+        for row in rows:
+            status = row['account_status'] or 'pending'
+            health[status if status in health else 'test_error'] += int(row['count'])
+        total = sum(health.values())
+        trend = None
+        recent_failures = None
+        if security.has(db, 'mail_logs'):
+            log_scope, log_params = _mailbox_log_scope_condition(db, 'l')
+            log_where = 'l.created_at >= ? AND l.created_at < ?'
+            if log_scope:
+                log_where += f' AND {log_scope}'
+            rows = security.query(db, f'''SELECT DATE(l.created_at) AS day, l.status, COUNT(*) AS count
+                FROM mail_logs l WHERE {log_where} GROUP BY DATE(l.created_at), l.status''',
+                [start, end] + log_params)
+            days = {(today - timedelta(days=i)).strftime('%Y-%m-%d'): {'received': 0, 'processed': 0, 'failed': 0} for i in range(6, -1, -1)}
+            for row in rows:
+                day = str(row['day'])[:10]
+                if day in days and row['status'] in days[day]:
+                    days[day][row['status']] += int(row['count'])
+            trend = [dict(day=day, **counts) for day, counts in days.items()]
+            recent_failures = security.query(db, f'''SELECT l.email, l.created_at
+                FROM mail_logs l WHERE {log_where} AND l.status = 'failed'
+                ORDER BY l.created_at DESC, l.id DESC LIMIT 5''', [start, end] + log_params)
+            recent_failures = [dict(email=row['email'], created_at=str(row['created_at'])) for row in recent_failures]
+        proxies = None
+        if security.has(db, 'proxies'):
+            proxies = {'total': 0, 'enabled': 0, 'tested': 0, 'latency_ms': None}
+            latency_sum = latency_count = 0
+            for table in ('http_proxies', 'socks5_proxies'):
+                row = security.query(db, f'''SELECT COUNT(*) AS total,
+                    SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS enabled,
+                    SUM(CASE WHEN last_check IS NOT NULL THEN 1 ELSE 0 END) AS tested,
+                    SUM(CASE WHEN last_check IS NOT NULL AND response_time > 0 THEN response_time ELSE 0 END) AS latency_sum,
+                    SUM(CASE WHEN last_check IS NOT NULL AND response_time > 0 THEN 1 ELSE 0 END) AS latency_count FROM {table}''')[0]
+                for key in ('total', 'enabled', 'tested'):
+                    proxies[key] += int(row[key] or 0)
+                latency_sum += float(row['latency_sum'] or 0)
+                latency_count += int(row['latency_count'] or 0)
+            if latency_count:
+                proxies['latency_ms'] = round(latency_sum / latency_count)
+        cards = None
+        if security.has(db, 'cards'):
+            row = security.query(db, '''SELECT COUNT(*) AS total,
+                SUM(CASE WHEN status = 1 AND (expired_at IS NULL OR expired_at > ?) AND used_count < usage_limit THEN 1 ELSE 0 END) AS active,
+                SUM(CASE WHEN expired_at IS NOT NULL AND expired_at <= ? THEN 1 ELSE 0 END) AS expired FROM cards''', [now, now])[0]
+            cards = {key: int(value or 0) for key, value in row.items()}
+        poller = None
+        if security.has(db, 'settings'):
+            state = get_mail_poller_state()
+            poller = {key: state.get(key) for key in ('started', 'running', 'last_started_at', 'last_finished_at',
+                      'last_checked_count', 'last_new_count', 'last_failed_count', 'next_run_at')}
+            poller.update(enabled=_is_mail_auto_poll_enabled(), interval=_get_mail_poll_interval())
+        response = jsonify(success=True, updated_at=now, timezone='Asia/Shanghai',
+            mailboxes={'total': total, 'health': health}, trend=trend, recent_failures=recent_failures,
+            proxies=proxies, cards=cards, poller=poller)
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+    except Exception:
+        logger.exception('Dashboard snapshot failed')
+        return jsonify(success=False, message='监测数据暂时不可用，请稍后重试'), 500
+
+
 @app.route('/legacy/admin/home')
 @admin_required
 def legacy_admin_home():
     """Legacy admin dashboard embedded by the React shell."""
-    account_count = get_account_count()
-    card_count = get_card_count()
-    available_proxy_count = get_available_proxy_count()
     return render_template('admin/home.html',
                          admin_username=session.get('admin_username'),
-                         account_count=account_count,
-                         card_count=card_count,
-                         available_proxy_count=available_proxy_count,
                          embedded=request.args.get('embedded') == '1')
 
 @app.route('/legacy/admin/mailbox')

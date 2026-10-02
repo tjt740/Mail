@@ -485,6 +485,23 @@ td.wrap, th.wrap, .cell-wrap { white-space: normal !important; }
 .modal-close:hover { color: var(--text) !important; }
 
 /* ------------------------------------------------------------ pagination */
+.page-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1;
+    vertical-align: middle;
+    cursor: default;
+}
+
 .page-btn {
     border: 1px solid var(--border-strong) !important;
     background: var(--surface) !important;

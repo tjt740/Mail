@@ -4,8 +4,41 @@
     const instances = new Map();
     const palettes = {
         clay: [201, 100, 66], ocean: [37, 99, 235], emerald: [5, 150, 105],
-        violet: [124, 58, 237], rose: [225, 29, 72]
+        violet: [124, 58, 237], rose: [225, 29, 72],
+        sunny: [38, 120, 206], night: [163, 175, 255], rain: [104, 216, 224]
     };
+
+    function drawWeather(ctx, width, height, time, scene, { hero = false, coarse = false } = {}) {
+        if (!['sunny', 'night', 'rain'].includes(scene)) return;
+        ctx.save();
+        if (scene === 'rain') {
+            const count = coarse ? 20 : 42;
+            ctx.strokeStyle = hero ? 'rgba(158,220,245,.24)' : 'rgba(158,220,245,.14)'; ctx.lineWidth = .8;
+            for (let i = 0; i < count; i++) {
+                const x = (i * 137.5 + time * 27) % (width + 30) - 15;
+                const y = (i * 83.7 + time * (95 + i % 4 * 13)) % (height + 50) - 25;
+                ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-7,y+23); ctx.stroke();
+            }
+        } else if (scene === 'night') {
+            for (let i=0; i < (coarse ? 18 : 36); i++) {
+                const x = (i * 137.5 + 43) % width, y = (i * 83.7 + 23) % height;
+                ctx.fillStyle = `rgba(225,226,255,${.2 + (1 + Math.sin(time*.6+i))*.17})`;
+                ctx.beginPath(); ctx.arc(x,y,i%5===0?1.6:.8,0,Math.PI*2); ctx.fill();
+            }
+        }
+        if (scene !== 'rain') {
+            const x = width * .87, y = hero ? height*.28 : height*.12, radius = hero ? 21 : 30;
+            const glow = ctx.createRadialGradient(x,y,0,x,y,radius*3.2);
+            glow.addColorStop(0,scene==='sunny'?'rgba(255,211,107,.55)':'rgba(220,210,255,.2)'); glow.addColorStop(1,'rgba(220,210,255,0)');
+            ctx.fillStyle=glow;ctx.fillRect(x-radius*3.2,y-radius*3.2,radius*6.4,radius*6.4);
+            ctx.fillStyle=scene==='sunny'?'#ffe5a0':'#e4defa';ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
+            if(scene==='sunny') {
+                ctx.fillStyle='rgba(255,255,255,.3)';
+                for(let i=0;i<3;i++){const xx=width*(.55+i*.15)+Math.sin(time*.08+i)*12;ctx.beginPath();ctx.ellipse(xx,height*.23+i*12,38,9,0,0,Math.PI*2);ctx.fill();}
+            }
+        }
+        ctx.restore();
+    }
 
     function mount(canvas, { variant = 'workspace' } = {}) {
         if (!canvas || !canvas.getContext) return null;
@@ -52,6 +85,7 @@
             time += dt;
             color = color.map((value, index) => value + (targetColor[index] - value) * (reduced.matches ? 1 : Math.min(1, dt * 5)));
             ctx.clearRect(0, 0, width, height);
+            drawWeather(ctx, width, height, time, document.documentElement.dataset.colorTheme, { coarse: coarse.matches });
             // Slowly drifting, layered light fields behind the page surfaces.
             for (let i = 0; i < 3; i++) {
                 const x = width * (0.16 + i * 0.34) + Math.sin(time * 0.12 + i * 2) * width * 0.06;
@@ -63,6 +97,20 @@
                 glow.addColorStop(1, rgba(0));
                 ctx.fillStyle = glow;
                 ctx.fillRect(0, 0, width, height);
+            }
+            if (variant === 'admin') {
+                // Three tilted orbital paths add depth without another animation loop.
+                for (let orbit = 0; orbit < 3; orbit++) {
+                    ctx.save();
+                    ctx.translate(width * (orbit % 2 ? .85 : .12), height * (.25 + orbit * .25));
+                    ctx.rotate(time * .025 + orbit * .9);
+                    ctx.scale(1, .38 + orbit * .08);
+                    ctx.beginPath(); ctx.arc(0, 0, 80 + orbit * 30, 0, Math.PI * 2);
+                    ctx.strokeStyle = rgba(.09); ctx.lineWidth = 1; ctx.stroke();
+                    const angle = time * .22 + orbit * 2;
+                    ctx.beginPath(); ctx.arc(Math.cos(angle) * (80 + orbit * 30), Math.sin(angle) * (80 + orbit * 30), 3, 0, Math.PI * 2);
+                    ctx.fillStyle = rgba(.25); ctx.fill(); ctx.restore();
+                }
             }
             particles.forEach((p) => {
                 p.x = (p.x + p.vx * dt / width + 1) % 1;
@@ -195,5 +243,5 @@
         animation.onfinish = finish;
         animation.oncancel = finish;
     }
-    window.MailMotion = { mount, reveal };
+    window.MailMotion = { mount, reveal, drawWeather };
 })();
