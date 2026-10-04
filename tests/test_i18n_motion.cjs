@@ -161,6 +161,34 @@ test('Canvas gracefully tolerates unavailable 2D contexts', () => {
     assert.equal(env.scheduled.size, 0);
 });
 
+test('rain has irregular depth and changing wind, with stable samples and a smaller mobile budget', () => {
+    const env = environment(); env.load('motion.js');
+    function sample(time, coarse = false) {
+        const strokes = [];
+        let points = [];
+        const ctx = new Proxy({}, {
+            get: (target, key) => {
+                if (key === 'createRadialGradient') return () => ({ addColorStop() {} });
+                if (key === 'beginPath') return () => { points = []; };
+                if (key === 'moveTo' || key === 'lineTo') return (x, y) => points.push([x, y]);
+                if (key === 'stroke') return () => { if (points.length === 2) strokes.push({ points, width: target.lineWidth }); };
+                return () => {};
+            },
+            set: (target, key, value) => { target[key] = value; return true; }
+        });
+        env.window.MailMotion.drawWeather(ctx, 1200, 700, time, 'rain', { coarse });
+        return strokes;
+    }
+    const first = sample(0), later = sample(6);
+    assert.deepEqual(sample(0), first, 'reduced motion must produce a stable weather frame');
+    assert.ok(first.length > 50 && first.length <= 170);
+    assert.ok(sample(0, true).length < first.length, 'mobile rain must have a smaller drawing budget');
+    assert.ok(new Set(first.map(line => line.width.toFixed(2))).size > 10, 'rain should have varied depth');
+    const meanSlope = lines => lines.reduce((sum, { points: [[x0,y0],[x1,y1]] }) => sum + (x1-x0)/(y1-y0), 0) / lines.length;
+    assert.ok(Math.abs(meanSlope(first) - meanSlope(later)) > .03, 'gusts should visibly change the rain angle');
+    assert.ok([...first, ...later].every(line => line.points.flat().every(Number.isFinite)));
+});
+
 // Optional real-browser regression against the built React shell and shared
 // locale code. No Flask instance, application database or email API is used.
 test('browser: language and reduced-motion changes preserve state and dropdown positioning', {

@@ -13,11 +13,11 @@ import json, sys
 app=Flask(__name__,template_folder=sys.argv[1]+'/templates')
 app.jinja_env.globals['url_for']=lambda endpoint,**kw:'/static/'+kw['filename'] if endpoint=='static' else '/'+endpoint
 result={}
-for name in ['home','mailbox','system']:
+for name in ['home','mailbox','system','daili','kami','kamirizhi','shoujian','help']:
  with app.test_request_context('/legacy/admin/'+name):
   result[name]=render_template('admin/'+name+'.html', embedded=True, admin_username='fixture', admin_permissions=['home','mailbox','settings','mail_logs'], system_title='Mail', admin_users=[], admin_master_key_set=False)
 print(json.dumps(result))
-`, root], { encoding: 'utf8', maxBuffer: 3 * 1024 * 1024 });
+`, root], { encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 });
     const pages = JSON.parse(html);
     server = http.createServer((req, res) => {
         const url = new URL(req.url, 'http://localhost');
@@ -58,16 +58,18 @@ test('scene themes synchronize, persist and keep live iframe forms intact', asyn
         await page.goto(origin + '/admin/home'); await themeState(page, 'sunny');
         const frame = page.frames().find(frame => frame.url().includes('/legacy/'));
         const timeOrigin = await frame.evaluate(() => performance.timeOrigin);
-        for (const [key, label] of [['sunny','晴天'],['night','夜间'],['rain','雨夜']]) {
+        for (const [key, label] of [['sunny','晴天'],['night','夜间'],['rain','雨夜'],['clay','暖陶橙'],['ocean','海洋蓝'],['emerald','翡翠绿'],['violet','紫罗兰'],['rose','玫瑰红']]) {
             await choose(page, label); await themeState(page, key);
             assert.equal(await frame.evaluate(() => performance.timeOrigin), timeOrigin);
             const styles = await frame.locator('.monitor-metric').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).backgroundImage));
             assert.equal(new Set(styles).size, 4);
+            assert.deepEqual(await contrastFailures(page, '.admin-header'), []);
             if (process.env.SCREENSHOT_DIR) {
                 fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
                 await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, key+'.png'), fullPage: true });
             }
         }
+        await choose(page, '雨夜'); await themeState(page, 'rain');
         await page.reload(); await themeState(page, 'rain');
         await page.goto(origin + '/admin/mailbox'); await themeState(page, 'rain');
         const mailbox = page.frames().find(frame => frame.url().includes('/legacy/'));
@@ -99,5 +101,48 @@ test('theme sync works without local storage and on a narrow screen', async () =
         await page.emulateMedia({ reducedMotion: 'reduce' });
         await frame.waitForFunction(() => !MailDashboard.scene.animating);
         assert.deepEqual(errors, []);
+    } finally { await page.close(); }
+});
+
+test('rain animates both weather layers, remains bounded and freezes for reduced motion', async () => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1050 }, reducedMotion: 'no-preference' });
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    try {
+        await page.goto(origin + '/admin/home'); await themeState(page, 'sunny');
+        await choose(page, '雨夜'); await themeState(page, 'rain');
+        const frame = page.frames().find(frame => frame.url().includes('/legacy/'));
+        await frame.waitForFunction(() => MailDashboard.scene?.frameCount > 15);
+        for (const id of ['adminBgCanvas', 'monitorScene']) {
+            const before = await frame.locator('#' + id).evaluate(canvas => canvas.toDataURL());
+            await frame.waitForFunction(({ id, before }) => document.getElementById(id).toDataURL() !== before, { id, before });
+            assert.equal(await frame.locator('#' + id).evaluate(canvas => canvas.width * canvas.height <= 2404000), true);
+        }
+        if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'rain-wind-active.png'), fullPage: true });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await frame.waitForFunction(() => !MailDashboard.scene.animating);
+        const snapshots = await frame.evaluate(() => ['adminBgCanvas', 'monitorScene'].map(id => document.getElementById(id).toDataURL()));
+        const settled = await frame.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(['adminBgCanvas', 'monitorScene'].map(id => document.getElementById(id).toDataURL()))))));
+        assert.deepEqual(settled, snapshots);
+        assert.deepEqual(errors, []);
+    } finally { await page.close(); }
+});
+
+const { contrastFailures } = require('./theme_contrast.cjs');
+test('all palettes keep every admin page readable', async () => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1050 }, reducedMotion: 'reduce' });
+    const failures = [];
+    try {
+        for (const name of ['home', 'system', 'daili', 'kami', 'kamirizhi', 'shoujian', 'help']) {
+            await page.goto(origin + '/legacy/admin/' + name);
+            await page.waitForFunction(() => window.MailThemes);
+            // Wait for synthetic API responses and the page's initial render.
+            await page.waitForLoadState('networkidle');
+            for (const theme of ['sunny','night','rain','clay','ocean','emerald','violet','rose']) {
+                await page.evaluate(theme => MailThemes.apply(theme), theme);
+                failures.push(...(await contrastFailures(page, '.content')).map(item => ({ page: name, theme, ...item })));
+            }
+        }
+        if (process.env.CONTRAST_REPORT) fs.writeFileSync(process.env.CONTRAST_REPORT, JSON.stringify(failures, null, 2));
+        assert.equal(failures.length, 0, JSON.stringify(failures.slice(0, 15)));
     } finally { await page.close(); }
 });

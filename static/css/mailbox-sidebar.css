@@ -1,0 +1,95 @@
+/* A persistent edge handle on desktop; an overlay drawer on smaller screens. */
+.mailbox-workspace .content-grid {
+    --group-panel-width: 216px;
+    --group-slide-duration: 360ms;
+    --group-slide-ease: cubic-bezier(.22, 1, .36, 1);
+    position: relative;
+    grid-template-columns: var(--group-panel-width) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 24px;
+    transition: none;
+}
+.mailbox-workspace .content-grid.group-panel-ready {
+    transition: grid-template-columns var(--group-slide-duration) var(--group-slide-ease), gap var(--group-slide-duration) var(--group-slide-ease);
+}
+.mailbox-workspace .content-grid.group-panel-collapsed { grid-template-columns: 28px minmax(0, 1fr); gap: 12px; }
+.mailbox-workspace .group-sidebar { position: relative; min-width: 0; min-height: 0; }
+.mailbox-workspace .group-panel-clip { height: 100%; overflow: hidden; border-radius: 12px; }
+.mailbox-workspace .group-panel {
+    width: var(--group-panel-width);
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    animation: none;
+    transition: none;
+}
+.mailbox-workspace .group-panel-ready .group-panel { transition: opacity 220ms ease, transform var(--group-slide-duration) var(--group-slide-ease), visibility 0s; }
+.mailbox-workspace .group-panel-collapsed .group-panel { opacity: 0; transform: translateX(-18px); visibility: hidden; pointer-events: none; transition-delay: 0s, 0s, var(--group-slide-duration); }
+.mailbox-workspace .group-header { padding-right: 20px; }
+.mailbox-workspace .group-sidebar-handle {
+    position: absolute;
+    right: -14px;
+    top: 16px;
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 28%, var(--border));
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--primary-color);
+    box-shadow: 0 3px 10px #10213012;
+    cursor: pointer;
+    transition: right var(--group-slide-duration) var(--group-slide-ease), background-color 160ms ease;
+}
+.mailbox-workspace .group-sidebar-handle:hover { background: var(--primary-soft); }
+.mailbox-workspace .group-sidebar-handle:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 3px; }
+.mailbox-workspace .group-sidebar-handle svg { width: 20px; height: 20px; transition: transform var(--group-slide-duration) var(--group-slide-ease); }
+.mailbox-workspace .group-panel-collapsed .group-sidebar-handle { right: 0; }
+.mailbox-workspace .group-panel-collapsed .group-sidebar-handle svg { transform: rotate(180deg); }
+.mailbox-workspace .group-sidebar-mobile-toggle, .mailbox-workspace .group-panel-backdrop { display: none !important; }
+@media (min-width: 1000px) and (max-width: 1100px) {
+    .mailbox-workspace .content-grid { --group-panel-width: 185px; gap: 16px; }
+    .mailbox-workspace .content-grid.group-panel-collapsed { gap: 12px; }
+}
+@media (max-width: 999px) {
+    .mailbox-workspace .content-grid, .mailbox-workspace .content-grid.group-panel-collapsed {
+        --group-panel-width: min(300px, calc(100vw - 56px));
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
+        gap: 0;
+    }
+    .mailbox-workspace .group-sidebar {
+        position: fixed;
+        z-index: 1041;
+        left: 12px;
+        top: 12px;
+        bottom: 12px;
+        width: var(--group-panel-width);
+        visibility: visible;
+        transform: translateX(0);
+    }
+    .mailbox-workspace .group-panel-ready .group-sidebar { transition: transform var(--group-slide-duration) var(--group-slide-ease), visibility 0s; }
+    .mailbox-workspace .group-panel-collapsed .group-sidebar { transform: translateX(calc(-100% - 24px)); visibility: hidden; transition-delay: 0s, var(--group-slide-duration); }
+    .mailbox-workspace .group-panel, .mailbox-workspace .group-panel-collapsed .group-panel { width: 100%; opacity: 1; transform: none; visibility: inherit; transition: none; }
+    .mailbox-workspace .group-sidebar-handle, .mailbox-workspace .group-panel-collapsed .group-sidebar-handle { right: -14px; }
+    .mailbox-workspace .group-sidebar-mobile-toggle { display: inline-flex !important; gap: 7px; }
+    .mailbox-workspace .group-sidebar-mobile-toggle svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .mailbox-workspace .group-panel-backdrop {
+        display: block !important;
+        position: fixed;
+        inset: 0;
+        z-index: 1040;
+        background: #0b17234d;
+        opacity: 1;
+        visibility: visible;
+    }
+    .mailbox-workspace .group-panel-ready .group-panel-backdrop { transition: opacity 240ms ease, visibility 0s; }
+    .mailbox-workspace .group-panel-collapsed .group-panel-backdrop { opacity: 0; visibility: hidden; pointer-events: none; transition-delay: 0s, 240ms; }
+    html.mailbox-groups-open, html.mailbox-groups-open body { overflow: hidden !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mailbox-workspace .content-grid.group-panel-ready { transition: none; }
+}

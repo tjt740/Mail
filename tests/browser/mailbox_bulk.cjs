@@ -20,7 +20,7 @@ from flask import Flask, render_template
 import sys
 app = Flask(__name__, template_folder=sys.argv[1] + '/templates')
 app.jinja_env.globals['url_for'] = lambda endpoint, **kw: '/static/' + kw['filename'] if endpoint == 'static' else '/' + endpoint
-with app.test_request_context('/'):
+with app.test_request_context('/legacy/admin/mailbox'):
     print(render_template('admin/mailbox.html', embedded=True, admin_username='fixture'))
 `, root], { encoding: 'utf8', maxBuffer: 2 * 1024 * 1024 });
     server = http.createServer(async (req, res) => {
@@ -61,7 +61,9 @@ with app.test_request_context('/'):
                     }
                 } else {
                     const query = url.searchParams.get('search') || '';
-                    payload.data = accounts.filter(a => a.email.includes(query));
+                    payload.data = url.searchParams.has('id')
+                        ? accounts.find(a => a.id === Number(url.searchParams.get('id')))
+                        : accounts.filter(a => a.email.includes(query));
                 }
             }
             return res.end(JSON.stringify(payload));
@@ -76,11 +78,66 @@ after(async () => { await browser?.close(); if (server) await new Promise(resolv
 async function newPage(viewport = { width: 1440, height: 1000 }) {
     accounts = seed(); tested = []; deleted = []; received = []; active = 0; maxActive = 0; delay = 20; failure = false;
     const page = await browser.newPage({ viewport, reducedMotion: 'reduce' });
+    if (process.env.DEBUG_UI) {
+        page.on('pageerror', error => console.error(error));
+        page.on('console', message => { if (message.type() === 'error') console.error(message.text()); });
+    }
     page.setDefaultTimeout(8000);
     await page.goto(origin);
     await page.waitForFunction(() => document.querySelector('#batchTestFilteredBtn').textContent.includes('(66)'));
     return page;
 }
+
+for (const width of [1440, 768, 390]) test(`add menu stays visible and priority actions work at ${width}px`, async () => {
+    const page = await newPage({ width, height: 1000 });
+    try {
+        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), false);
+        const menu = page.locator('.mailbox-heading-actions .au-dropdown-menu');
+        const toggle = page.locator('.mailbox-heading-actions .au-dropdown-toggle');
+        await toggle.click();
+        const bounds = await menu.boundingBox();
+        assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width, 'the entire add menu must fit the viewport');
+        for (const item of await menu.locator('button').all()) {
+            assert.equal(await item.evaluate(button => {
+                const rect = button.getBoundingClientRect();
+                return button.contains(document.elementFromPoint(rect.right - 2, rect.y + rect.height / 2));
+            }), true, 'menu items must not be clipped or covered by the filter card');
+        }
+        if (process.env.SCREENSHOT_DIR) {
+            fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-add-menu-${width}.png`) });
+        }
+        await menu.getByRole('button', { name: '服务器地址管理', exact: true }).click();
+        assert.equal(await page.locator('#serverModal').isVisible(), true);
+        await page.locator('#serverModal .modal-close').click();
+
+        const actions = page.locator('#mailboxTable tbody tr').first().locator('.mailbox-actions');
+        const buttons = actions.locator(':scope > button, :scope > .mailbox-actions-more > button');
+        assert.deepEqual(await buttons.allTextContents(), ['收件', '测试', '备注', '更多']);
+        await buttons.first().scrollIntoViewIfNeeded();
+        const boxes = await buttons.evaluateAll(items => items.map(item => {
+            const rect = item.getBoundingClientRect();
+            const range = document.createRange(); range.selectNodeContents(item);
+            const text = range.getBoundingClientRect();
+            return { y: rect.y, height: rect.height, textOffset: Math.abs(text.x + text.width / 2 - rect.x - rect.width / 2) };
+        }));
+        assert.equal(new Set(boxes.map(box => box.y)).size, 1, 'all four action buttons should share a row');
+        assert.equal(new Set(boxes.map(box => box.height)).size, 1, 'all four action buttons should have equal height');
+        assert.ok(boxes.every(box => box.textOffset < 1), 'button labels should be horizontally centered');
+
+        await actions.locator('[data-action="test"]').click();
+        await page.waitForFunction(() => document.querySelector('#mailboxLatestTestResult').textContent.includes('Fixture result'));
+        assert.deepEqual(tested, [66]);
+        await actions.locator('[data-action="remarks"]').click();
+        await page.locator('#remarksModal.show').waitFor();
+        assert.equal(await page.locator('#remarksMailboxId').inputValue(), '66');
+        await page.locator('#remarksModal .modal-close').click();
+        await actions.locator('[data-action="more"]').click();
+        assert.deepEqual(await actions.locator('.mailbox-more-menu button').allTextContents(), ['编辑邮箱', '发件', '删除']);
+        await actions.locator('[data-action="send"]').click();
+        assert.equal(await page.locator('#sendMailModal').isVisible(), true);
+    } finally { await page.close(); }
+});
 
 test('dashboard status navigation overrides a remembered group', async () => {
     const page = await newPage();
@@ -89,6 +146,53 @@ test('dashboard status navigation overrides a remembered group', async () => {
         await page.goto(origin + '/?status=invalid&group=all');
         await page.waitForFunction(() => document.querySelector('#batchTestFilteredBtn').textContent.includes('(22)'));
         assert.equal(await page.locator('[data-status-view="invalid"]').getAttribute('aria-pressed'), 'true');
+    } finally { await page.close(); }
+});
+
+test('mailbox themes update surfaces and multicolor Canvas without resetting filters', async () => {
+    const page = await newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    try {
+        await page.locator('#searchInput').fill('account1');
+        const themes = await page.evaluate(() => MailThemes.themes.map(theme => theme.key));
+        const backgrounds = new Set();
+        const canvases = new Set();
+        for (const theme of themes) {
+            await page.evaluate(key => AppColorTheme.setTheme(key), theme);
+            const result = await page.evaluate(() => {
+                const style = element => getComputedStyle(element);
+                return {
+                    background: style(document.querySelector('.mailbox-workspace-heading')).backgroundImage,
+                    colors: [...document.querySelector('.mailbox-actions').querySelectorAll(':scope > button, :scope > .mailbox-actions-more > button')].map(button => style(button).backgroundColor),
+                    canvas: document.querySelector('#adminBgCanvas').toDataURL()
+                };
+            });
+            assert.equal(result.background.includes('gradient'), true);
+            assert.equal(new Set(result.colors).size, 4, 'receive, test, notes and more must have independent background colors');
+            backgrounds.add(result.background);
+            canvases.add(result.canvas);
+            assert.equal(await page.locator('#searchInput').inputValue(), 'account1');
+            assert.equal(await page.locator('#adminMailboxCount').innerText(), '11');
+            if (process.env.SCREENSHOT_DIR && ['emerald', 'night', 'rose'].includes(theme)) {
+                fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+                await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-theme-${theme}.png`) });
+            }
+        }
+        assert.equal(backgrounds.size, themes.length, 'each theme must have a distinct heading gradient');
+        assert.equal(canvases.size, themes.length, 'Canvas must repaint when the theme changes');
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        const before = await page.locator('#adminBgCanvas').evaluate(canvas => canvas.toDataURL());
+        await page.waitForFunction(previous => document.querySelector('#adminBgCanvas').toDataURL() !== previous, before);
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        // Let the preference event settle, then verify there are no further animated draws.
+        const stable = await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(document.querySelector('#adminBgCanvas').toDataURL()))));
+        const after = await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(document.querySelector('#adminBgCanvas').toDataURL())))));
+        assert.equal(after, stable);
+        await page.setViewportSize({ width: 390, height: 844 });
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'mailbox-theme-mobile.png') });
+        assert.deepEqual(errors, []);
     } finally { await page.close(); }
 });
 
@@ -125,8 +229,19 @@ test('filtered tests respect owner, group, search and status; freeze targets as 
         await page.waitForFunction(() => document.querySelector('#mailboxBatchProgressText').textContent.startsWith('批量测试完成'));
         assert.deepEqual(tested.sort((a,b) => a-b), [1, 13, 14, 19]);
         assert.equal(maxActive, 3);
-        assert.match(await page.locator('#mailboxBatchProgressText').innerText(), /4 \/ 4；正常 3，无效 1，待重试 0/);
+        assert.match(await page.locator('#mailboxBatchProgressText').innerText(), /4 \/ 4\s+正常\s+3\s+无效\s+1\s+待重试\s+0/);
+        assert.equal(await page.locator('#stopBatchTestBtn').isVisible(), false);
+        const colors = await page.locator('#mailboxBatchProgress .mailbox-test-tag').evaluateAll(tags => tags.map(tag => getComputedStyle(tag).color));
+        assert.equal(new Set(colors).size, 3, 'healthy, invalid and retry results must have distinct colors');
         assert.match(await page.locator('#batchTestFilteredBtn').innerText(), /\(1\)/);
+        await page.evaluate(() => AppI18n.setLanguage('en'));
+        assert.match(await page.locator('#mailboxBatchProgressText').innerText(), /Batch test complete/);
+        assert.match(await page.locator('#mailboxBatchProgress .banned').innerText(), /Invalid\s+1/);
+        assert.match(await page.locator('#mailboxBatchProgress .test_error').innerText(), /Retry needed\s+0/);
+        await page.evaluate(() => AppI18n.setLanguage('zh'));
+        if (process.env.SCREENSHOT_DIR) {
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'mailbox-batch-complete.png') });
+        }
     } finally { await page.close(); }
 });
 
@@ -139,7 +254,7 @@ test('selected testing keeps other accounts untouched; request failures preserve
         await page.locator('#batchTestSelectedBtn').click();
         await page.waitForFunction(() => document.querySelector('#mailboxBatchProgressText').textContent.startsWith('批量测试完成'));
         assert.deepEqual(tested.sort((a,b) => a-b), [1, 6]);
-        assert.match(await page.locator('#mailboxBatchProgressText').innerText(), /待重试 2/);
+        assert.match(await page.locator('#mailboxBatchProgressText').innerText(), /待重试\s+2/);
         assert.deepEqual(await page.evaluate(() => mailboxData.filter(a => [1,6].includes(a.id)).map(a => a.account_status)), ['banned', 'normal']);
         assert.equal(await page.locator('#bulkSelectedCount').innerText(), '2');
     } finally { await page.close(); }
@@ -154,12 +269,22 @@ test('stop waits for active tests, blocks overlapping runs and leaves remaining 
         await page.waitForFunction(() => document.querySelectorAll('[data-action="test"]:disabled').length === 3);
         assert.equal(await page.locator('#batchDeleteMailboxesBtn').isDisabled(), true);
         assert.equal(await page.locator('#batchTestFilteredBtn').isDisabled(), true);
+        const alignment = await page.evaluate(() => {
+            const button = document.querySelector('#stopBatchTestBtn').getBoundingClientRect();
+            const status = document.querySelector('#mailboxBatchProgressText').getBoundingClientRect();
+            return Math.abs(button.y + button.height / 2 - status.y - status.height / 2);
+        });
+        assert.ok(alignment < 1, 'stop button and status summary should be vertically centered');
+        if (process.env.SCREENSHOT_DIR) {
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'mailbox-batch-running.png') });
+        }
         await page.locator('#stopBatchTestBtn').click();
         await page.waitForFunction(() => document.querySelector('#mailboxBatchProgressText').textContent.startsWith('批量测试已停止'));
         assert.equal(tested.length, 3);
         assert.equal(active, 0);
         assert.deepEqual(accounts.slice(3), seed().slice(3));
-        assert.match(await page.locator('#mailboxBatchProgressText').innerText(), /3 \/ 66；正常 1，无效 1，待重试 1/);
+        assert.match(await page.locator('#mailboxBatchProgressText').innerText(), /3 \/ 66\s+正常\s+1\s+无效\s+1\s+待重试\s+1/);
+        assert.equal(await page.locator('#stopBatchTestBtn').isVisible(), false);
         assert.equal(await page.locator('#batchDeleteMailboxesBtn').isEnabled(), true);
     } finally { await page.close(); }
 });
@@ -192,10 +317,229 @@ test('mobile tools remain inside viewport and labels translate', async () => {
     } finally { await page.close(); }
 });
 
+test('sidebar handle animates reversibly, preserves filters and remembers desktop width state', async () => {
+    const page = await newPage();
+    try {
+        await page.locator('#searchInput').fill('account1');
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await page.waitForFunction(() => document.querySelector('.group-panel-ready'));
+        const samples = await page.evaluate(async () => {
+            const panel = document.querySelector('.mail-panel');
+            const handle = document.querySelector('#groupPanelToggle');
+            const x = () => panel.getBoundingClientRect().x;
+            const start = x();
+            handle.click();
+            const during = [];
+            const sampleUntil = milliseconds => new Promise(resolve => {
+                const began = performance.now();
+                function sample(now) {
+                    during.push(x());
+                    if (now - began < milliseconds) requestAnimationFrame(sample);
+                    else resolve();
+                }
+                requestAnimationFrame(sample);
+            });
+            await sampleUntil(110);
+            const reverseAt = x();
+            handle.click();
+            await sampleUntil(430);
+            return { start, reverseAt, end: x(), during };
+        });
+        assert.ok(samples.reverseAt < samples.start - 20, 'mail list should expand during the slide');
+        assert.ok(Math.abs(samples.end - samples.start) < 1, 'reversing an unfinished slide should restore the expanded sidebar');
+        assert.ok(new Set(samples.during.map(Math.round)).size > 3, 'layout should interpolate across frames');
+        const handle = page.locator('#groupPanelToggle');
+        await handle.click();
+        await page.waitForFunction(() => getComputedStyle(document.querySelector('#groupPanel')).visibility === 'hidden');
+        assert.equal(await handle.getAttribute('aria-expanded'), 'false');
+        assert.equal(await handle.getAttribute('title'), '展开分组侧栏');
+        assert.equal(await page.locator('#groupPanel').evaluate(panel => panel.inert), true);
+        assert.equal(await page.locator('.group-panel-header-toggle').getAttribute('aria-label'), '新建分组');
+        assert.equal(await page.locator('#searchInput').inputValue(), 'account1');
+        assert.equal(await page.locator('#adminMailboxCount').innerText(), '11');
+        if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'sidebar-collapsed.png') });
+        await page.reload();
+        await page.waitForFunction(() => document.querySelector('.group-panel-ready'));
+        assert.equal(await handle.getAttribute('aria-expanded'), 'false');
+        await page.evaluate(() => AppI18n.setLanguage('en'));
+        assert.equal(await handle.getAttribute('title'), 'Show groups sidebar');
+        await handle.click();
+        assert.equal(await handle.getAttribute('title'), 'Hide groups sidebar');
+        await page.evaluate(() => AppI18n.setLanguage('zh'));
+        assert.equal(await handle.getAttribute('title'), '收起分组侧栏');
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.waitForFunction(() => document.querySelector('#mobileGroupPanelToggle').getAttribute('aria-expanded') === 'false');
+        await page.setViewportSize({ width: 1440, height: 1000 });
+        await page.waitForFunction(() => document.querySelector('#groupPanelToggle').getAttribute('aria-expanded') === 'true');
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await handle.click();
+        assert.equal(await page.locator('#groupPanel').isVisible(), false, 'reduced motion should close immediately');
+        assert.equal(await page.locator('.content-grid').evaluate(grid => getComputedStyle(grid).transitionDuration), '0s');
+    } finally { await page.close(); }
+});
+
+test('mobile groups drawer overlays the list, returns focus and closes on selection, Escape or backdrop', async () => {
+    const page = await newPage({ width: 390, height: 844 });
+    try {
+        const trigger = page.locator('#mobileGroupPanelToggle');
+        assert.equal(await page.locator('#groupPanel').isVisible(), false);
+        const listBefore = await page.locator('.mail-panel').boundingBox();
+        await trigger.click();
+        assert.equal(await page.locator('#groupSidebar').getAttribute('aria-modal'), 'true');
+        assert.equal(await page.locator('#groupSearchInput').evaluate(input => input === document.activeElement), true);
+        assert.equal(await page.locator('.mail-panel').evaluate(panel => panel.inert), true);
+        const listAfter = await page.locator('.mail-panel').boundingBox();
+        assert.deepEqual(listAfter, listBefore, 'opening the drawer must not move the mailbox list');
+        await page.locator('#groupPanelToggle').focus();
+        await page.keyboard.press('Tab');
+        assert.equal(await page.locator('.group-panel-header-toggle').evaluate(button => button === document.activeElement), true);
+        await page.keyboard.press('Shift+Tab');
+        assert.equal(await page.locator('#groupPanelToggle').evaluate(button => button === document.activeElement), true);
+        if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'sidebar-mobile-open.png') });
+        await page.locator('#groupSearchInput').fill('客户');
+        await page.locator('.group-item[data-group-id="2"]').click();
+        assert.equal(await page.locator('#adminCurrentGroup').innerText(), '客户服务');
+        assert.equal(await page.locator('#groupPanel').isVisible(), false);
+        assert.equal(await trigger.evaluate(button => button === document.activeElement), true);
+        assert.equal(await page.locator('.mail-panel').evaluate(panel => panel.inert), false);
+        await trigger.click();
+        await page.keyboard.press('Escape');
+        assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
+        await trigger.click();
+        await page.mouse.click(380, 420);
+        assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        assert.equal(await page.evaluate(() => document.documentElement.classList.contains('mailbox-groups-open')), false);
+    } finally { await page.close(); }
+});
+
+test('menus and modals animate out, reopen safely, and keep keyboard focus usable', async () => {
+    const page = await newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    try {
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        const trigger = page.locator('.au-dropdown-toggle');
+        const menu = page.locator('.au-dropdown-menu');
+        await trigger.click();
+        await page.waitForFunction(() => !document.querySelector('.au-dropdown-menu').getAnimations().length);
+        await page.evaluate(() => document.querySelector('.au-dropdown-toggle').click());
+        assert.equal(await menu.evaluate(element => element.inert && element.getAnimations().length > 0), true, 'closed menus must stop accepting input while fading out');
+        await page.evaluate(() => document.querySelector('.au-dropdown-toggle').click());
+        await menu.getByRole('button', { name: '单个添加', exact: true }).click();
+        const modal = page.locator('#mailboxModal');
+        assert.equal(await modal.getAttribute('aria-modal'), 'true');
+        assert.equal(await modal.evaluate(element => element.contains(document.activeElement)), true);
+        await page.evaluate(() => closeModal());
+        assert.equal(await modal.evaluate(element => element.classList.contains('is-closing') && element.inert), true);
+        await page.evaluate(() => { showAddModal(); document.querySelector('#singleImportContent').value = 'draft@example.com'; });
+        await page.waitForFunction(() => !document.querySelector('#mailboxModal').getAnimations().length);
+        assert.equal(await modal.getAttribute('aria-hidden'), 'false');
+        assert.equal(await page.locator('#singleImportContent').inputValue(), 'draft@example.com', 'an old close callback must not clear a reopened form');
+        await modal.locator('.modal-footer button').last().focus();
+        await page.keyboard.press('Tab');
+        assert.equal(await modal.locator('.modal-close').evaluate(button => button === document.activeElement), true);
+        await page.keyboard.press('Escape');
+        await modal.waitFor({ state: 'hidden' });
+        assert.equal(await trigger.evaluate(button => button === document.activeElement), true);
+        await page.locator('#columnConfigBtn').click();
+        await page.keyboard.press('Escape');
+        await page.locator('#columnConfigMenu').waitFor({ state: 'hidden' });
+        assert.equal(await page.locator('#columnConfigBtn').evaluate(button => button === document.activeElement), true);
+        await page.locator('#mailboxTable [data-action="more"]').first().click();
+        await page.keyboard.press('Escape');
+        await page.locator('.mailbox-more-menu').first().waitFor({ state: 'hidden' });
+        assert.deepEqual(errors, []);
+    } finally { await page.close(); }
+});
+
+test('group and bulk disclosure transitions preserve nodes and finish cleanly after quick reversal', async () => {
+    const page = await newPage();
+    try {
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        const heights = await page.evaluate(async () => {
+            const item = document.querySelector('.group-item[data-group-id="1"]');
+            const button = item.querySelector('.group-toggle');
+            const children = item.parentElement.querySelector('.group-children');
+            button.click();
+            const values = [];
+            const began = performance.now();
+            await new Promise(resolve => {
+                function frame(now) {
+                    values.push(children.getBoundingClientRect().height);
+                    if (now - began < 95) requestAnimationFrame(frame); else resolve();
+                }
+                requestAnimationFrame(frame);
+            });
+            button.click(); button.click();
+            return { values, sameNode: item === document.querySelector('.group-item[data-group-id="1"]') };
+        });
+        assert.equal(heights.sameNode, true, 'expanding children must not rebuild the group tree');
+        assert.ok(new Set(heights.values.map(Math.round)).size > 2, 'children must slide open over multiple frames');
+        await page.waitForFunction(() => !document.querySelector('.group-children').getAnimations().length);
+        assert.equal(await page.locator('.group-item[data-group-id="2"]').isVisible(), true);
+        await page.locator('#selectFilteredMailboxesBtn').click();
+        await page.waitForFunction(() => !document.querySelector('#mailboxBulkBar').getAnimations().length);
+        const barHeight = await page.locator('#mailboxBulkBar').evaluate(bar => bar.getBoundingClientRect().height);
+        assert.ok(barHeight > 30);
+        await page.evaluate(() => { clearMailboxSelection(); selectFilteredMailboxes(); });
+        await page.waitForFunction(() => !document.querySelector('#mailboxBulkBar').getAnimations().length);
+        assert.equal(await page.locator('#mailboxBulkBar').evaluate(bar => bar.getBoundingClientRect().height), barHeight);
+        await page.evaluate(() => clearMailboxSelection());
+        await page.locator('#mailboxBulkBar').waitFor({ state: 'hidden' });
+        await page.locator('#searchInput').fill('account1');
+        assert.equal(await page.locator('#mailboxTable tbody tr').evaluateAll(rows => rows.every(row => !row.classList.contains('au-row-enter') && getComputedStyle(row).animationName === 'none')), true, 'results should not replay per-row stagger animations');
+    } finally { await page.close(); }
+});
+
+test('live reduced motion completes pending dismissals and resets modal scroll lock', async () => {
+    const page = await newPage({ width: 390, height: 844 });
+    try {
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await page.evaluate(() => { showAddModal(); closeModal(); });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.locator('#mailboxModal').waitFor({ state: 'hidden' });
+        assert.equal(await page.evaluate(() => document.documentElement.classList.contains('mailbox-modal-open')), false);
+        await page.evaluate(() => { const id = showToast('Fixture toast', 'success', 0); removeToast(id); });
+        assert.equal(await page.locator('.toast').count(), 0);
+        await page.locator('#mobileGroupPanelToggle').click();
+        await page.locator('.group-panel-header-toggle').click();
+        await page.locator('#groupNameInput').fill('Fixture draft');
+        await page.keyboard.press('Escape');
+        assert.equal(await page.locator('#groupModal').isVisible(), false);
+        assert.equal(await page.locator('#groupPanel').isVisible(), true, 'Escape should only close the top surface');
+        assert.equal(await page.locator('.group-panel-header-toggle').evaluate(button => button === document.activeElement), true);
+    } finally { await page.close(); }
+});
+
 test('group browsing is visible, searchable, remembers the last group and keeps counts stable during mailbox search', async () => {
     const page = await newPage();
     try {
         assert.equal(await page.locator('#groupPanel').isVisible(), true);
+        const group = page.locator('.group-item[data-group-id="1"]');
+        const toggle = group.locator('.group-toggle');
+        await toggle.click();
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+        assert.equal(await page.locator('.group-item[data-group-id="2"]').isVisible(), true);
+        await toggle.press('Enter');
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+        assert.equal(await page.locator('.group-item[data-group-id="2"]').isVisible(), false);
+        const actions = group.locator('.group-actions-button');
+        await actions.click();
+        assert.equal(await actions.getAttribute('aria-expanded'), 'true');
+        assert.equal(await page.locator('#groupContextMenu').isVisible(), true);
+        if (process.env.SCREENSHOT_DIR) {
+            fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'group-arrows.png') });
+        }
+        await actions.click();
+        assert.equal(await actions.getAttribute('aria-expanded'), 'false');
+        assert.equal(await page.locator('#groupContextMenu').isVisible(), false);
+        await actions.click();
+        await page.keyboard.press('Escape');
+        assert.equal(await actions.getAttribute('aria-expanded'), 'false');
+        assert.equal(await page.locator('#groupContextMenu').isVisible(), false);
+        assert.equal(await page.locator('#adminCurrentGroup').innerText(), '所有分组');
         await page.locator('#groupSearchInput').fill('客户');
         await page.locator('.group-item[data-group-id="2"]').click();
         assert.equal(await page.locator('#adminCurrentGroup').innerText(), '客户服务');
@@ -215,7 +559,7 @@ test('group browsing is visible, searchable, remembers the last group and keeps 
     } finally { await page.close(); }
 });
 
-test('opening an address reads mail, next and previous stay in group, and copy is a separate action', async () => {
+test('addresses and icons copy without receiving; the receive action keeps mailbox navigation in group', async () => {
     const page = await newPage();
     try {
         await page.locator('#groupSearchInput').fill('客户');
@@ -224,7 +568,32 @@ test('opening an address reads mail, next and previous stay in group, and copy i
         await page.locator('tr[data-mailbox-id="30"] .mailbox-email-copy').click();
         assert.equal(await page.evaluate(() => window.copiedAddress), 'account30@example.com');
         assert.equal(await page.locator('#receiveModal').isVisible(), false);
-        await page.locator('tr[data-mailbox-id="30"] .mailbox-email-open').click();
+        const cell = page.locator('tr[data-mailbox-id="30"] .mailbox-email-cell');
+        for (const width of [1440, 390]) {
+            await page.setViewportSize({ width, height: 1000 });
+            await page.evaluate(() => { window.copiedAddress = null; });
+            await cell.locator('.mailbox-email-address').click();
+            assert.equal(await page.evaluate(() => window.copiedAddress), 'account30@example.com');
+            assert.equal(await page.locator('#receiveModal').isVisible(), false);
+            assert.deepEqual(received, [], 'copying an address must not request any email');
+            const alignment = await cell.evaluate(element => {
+                const address = element.querySelector('.mailbox-email-address').getBoundingClientRect();
+                const icon = element.querySelector('.mailbox-email-copy').getBoundingClientRect();
+                const group = element.querySelector('.mailbox-email-group').getBoundingClientRect();
+                return { centers: Math.abs(address.y + address.height / 2 - icon.y - icon.height / 2), left: Math.abs(address.x - group.x), groupBelow: group.y >= address.bottom };
+            });
+            assert.ok(alignment.centers < 1 && alignment.left < 1 && alignment.groupBelow, 'copy icon aligns with the address, group label sits below');
+            if (process.env.SCREENSHOT_DIR) {
+                fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+                await cell.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-copy-${width}.png`) });
+            }
+        }
+        await page.evaluate(() => { window.copiedAddress = null; });
+        await cell.locator('.mailbox-email-address').press('Enter');
+        assert.equal(await page.evaluate(() => window.copiedAddress), 'account30@example.com');
+        assert.deepEqual(received, []);
+        await page.setViewportSize({ width: 1440, height: 1000 });
+        await page.locator('tr[data-mailbox-id="30"] [data-action="receive"]').click();
         await page.waitForFunction(() => document.querySelector('#receiveTableBody').textContent.includes('Mail for account30@example.com'));
         assert.equal(await page.locator('#receivePreviousMailbox').isDisabled(), true);
         await page.locator('#receiveNextMailbox').click();
@@ -271,5 +640,64 @@ test('mobile group picker and list scrolling keep pagination after the last mail
         assert.ok(positions.pagination >= positions.last, 'pagination must follow, not cover, mobile mailboxes');
         assert.equal(positions.overflow, false);
         if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'workspace-mobile.png') });
+    } finally { await page.close(); }
+});
+
+const { contrastFailures } = require('./theme_contrast.cjs');
+for (const width of [1440, 390]) test(`all eight palettes keep lists, menus, receive states and forms readable at ${width}px`, async () => {
+    const page = await newPage({ width, height: 1000 });
+    const failures = [];
+    try {
+        const themes = await page.evaluate(() => MailThemes.themes.map(theme => theme.key));
+        for (const theme of themes) {
+            await page.evaluate(theme => { MailThemes.apply(theme); document.dispatchEvent(new CustomEvent('color-theme-change')); }, theme);
+            const check = async label => failures.push(...(await contrastFailures(page)).map(item => ({ theme, state: label, ...item })));
+            await check('mailbox');
+            if (width > 640) {
+                await page.locator('#columnConfigBtn').click();
+                await check('columns-menu');
+                await page.keyboard.press('Escape');
+            }
+            if (width > 1000) {
+                await page.locator('.group-actions-button').first().click();
+                await check('group-menu');
+                await page.keyboard.press('Escape');
+            }
+            await page.locator('.mailbox-heading-actions .au-dropdown-toggle').click();
+            await check('add-menu');
+            await page.getByRole('button', { name: '单个添加', exact: true }).click();
+            await page.locator('#mailboxModal.show').waitFor();
+            await check('add-form');
+            await page.locator('#mailboxModal .modal-close').click();
+            const fetched = page.waitForResponse(response => response.url().endsWith('/api/get_mail'));
+            await page.locator('#mailboxTable tbody tr').first().locator('[data-action="receive"]').click();
+            await fetched;
+            await page.waitForFunction(() => !receiveState.isFetching && receiveState.mails.length > 0);
+            await page.evaluate(() => {
+                receiveState.mails = Array.from({ length: 12 }, (_, i) => ({ id: String(i), folder: 'inbox', subject: 'Theme fixture — 邮件标题 ' + i, from: 'sender@example.com', to: 'reader@example.com', receivedAt: '2026-10-04T08:00:00Z', body: 'Confirmation code: 123456\n这是一封用于检查主题的示例邮件。', bodyType: 'text' }));
+                receiveState.perPage = 10;
+                renderReceiveList();
+            });
+            await check('receive-list');
+            // Match the reported mixed state: cached messages plus a failed refresh.
+            await page.evaluate(() => {
+                const panel = document.querySelector('.receive-error-panel');
+                panel.classList.remove('is-hidden'); panel.style.display = 'block'; panel.hidden = false;
+                panel.querySelector('.receive-error-title').textContent = 'Microsoft OAuth 登录失败';
+                panel.querySelector('.receive-error-detail').textContent = '登录凭据已过期，请重新登录。Fixture diagnostic only.';
+            });
+            await check('receive-error');
+            assert.equal(await page.locator('#receiveErrorPanel').isVisible(), true);
+            assert.equal(await page.locator('#receiveTableBody tr').count(), 10);
+            const modal = await page.locator('#receiveModal .modal-content').boundingBox();
+            assert.ok(modal.x >= 0 && modal.x + modal.width <= width);
+            if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `receive-${theme}-${width}.png`) });
+            await page.locator('#receiveTableBody tr').first().click();
+            await check('receive-detail');
+            if (process.env.SCREENSHOT_DIR && ['rain', 'clay'].includes(theme)) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `receive-detail-${theme}-${width}.png`) });
+            await page.locator('#receiveModal .modal-close').click();
+        }
+        if (process.env.CONTRAST_REPORT) fs.writeFileSync(process.env.CONTRAST_REPORT + width, JSON.stringify(failures, null, 2));
+        assert.equal(failures.length, 0, JSON.stringify(failures.slice(0, 15)));
     } finally { await page.close(); }
 });

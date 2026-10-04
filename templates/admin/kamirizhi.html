@@ -20,9 +20,9 @@
     
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: #f8fafc;
+        background: var(--surface-2);
         line-height: 1.6;
-        color: #334155;
+        color: var(--text);
         transition: var(--transition);
     }
     
@@ -104,10 +104,10 @@
         width: 36px;
         height: 36px;
         border-radius: 10px;
-        border: 1px solid #e5e7eb;
-        background: #fff;
+        border: 1px solid var(--border);
+        background: var(--surface);
         cursor: pointer;
-        color: #4b5563;
+        color: var(--text-muted);
         transition: var(--transition);
         box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
@@ -167,7 +167,7 @@
     }
     
     .header {
-        background: white;
+        background: var(--surface);
         height: var(--header-height);
         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         display: flex;
@@ -182,7 +182,7 @@
     .header-title {
         font-size: 24px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
     }
     
     .header-actions {
@@ -195,7 +195,7 @@
         display: flex;
         align-items: center;
         gap: 15px;
-        color: #64748b;
+        color: var(--text-muted);
     }
     
     .logout-btn {
@@ -225,7 +225,7 @@
     
     /* Cards */
     .card {
-        background: white;
+        background: var(--surface);
         border-radius: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
         overflow: hidden;
@@ -240,14 +240,14 @@
     
     .card-header {
         padding: 20px 25px;
-        border-bottom: 1px solid #f1f5f9;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
     }
     
     .card-title {
         font-size: 18px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
         margin: 0;
     }
     
@@ -258,12 +258,12 @@
     .feature-intro {
         text-align: center;
         padding: 40px 20px;
-        color: #6b7280;
+        color: var(--text-muted);
     }
     
     .feature-intro h3 {
         font-size: 20px;
-        color: #374151;
+        color: var(--text);
         margin-bottom: 15px;
     }
     
@@ -315,7 +315,7 @@
     .search-box input {
         flex: 1;
         padding: 10px 12px;
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
     }
@@ -352,19 +352,19 @@
     
     table th, table td {
         padding: 12px 10px;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--border);
         text-align: left;
     }
     
     table th {
-        background: #f8fafc;
+        background: var(--surface-2);
         font-weight: 600;
     }
     
     .pagination-container {
         position: sticky;
         bottom: 0;
-        background: #fff;
+        background: var(--surface);
         padding: 10px 0 6px;
         margin-top: 8px;
         display: flex;
@@ -383,7 +383,7 @@
     }
     
 .pagination-info {
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 14px;
     }
 
@@ -391,21 +391,21 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 14px;
     }
 
     .page-size-control select {
         padding: 8px 12px;
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
     }
     
     .page-btn {
         padding: 8px 12px;
-        border: 1px solid #e5e7eb;
-        background: white;
+        border: 1px solid var(--border);
+        background: var(--surface);
         border-radius: 6px;
         cursor: pointer;
     }
@@ -423,7 +423,7 @@
         border: none;
         font-size: 24px;
         cursor: pointer;
-        color: #64748b;
+        color: var(--text-muted);
         transition: var(--transition);
     }
     
@@ -588,7 +588,7 @@
                         </thead>
                         <tbody id="cardLogBody">
                             <tr>
-                                <td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">正在加载...</td>
+                                <td colspan="6" style="text-align:center; padding:20px; color: var(--text-muted);">正在加载...</td>
                             </tr>
                         </tbody>
                     </table>

@@ -10,6 +10,8 @@ html[data-i18n-managed="react"] body { background: var(--app-bg); color: var(--t
     background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--accent-cyan) 9%, transparent), transparent 45%), radial-gradient(ellipse at 100% 80%, color-mix(in srgb, var(--accent-violet) 7%, transparent), transparent 55%), var(--app-bg) !important;
 }
 .admin-sider, .admin-header, .admin-mobile-drawer .ant-drawer-content { background: var(--surface) !important; border-color: var(--border) !important; }
+.admin-sider, .admin-mobile-drawer .ant-drawer-content { background: linear-gradient(165deg, color-mix(in srgb, var(--primary-color) 10%, var(--surface)), var(--surface) 45%, color-mix(in srgb, var(--accent-violet) 10%, var(--surface))) !important; }
+.admin-header { background: linear-gradient(100deg, color-mix(in srgb, var(--accent-cyan) 8%, var(--surface)), var(--surface) 55%, color-mix(in srgb, var(--accent-coral) 8%, var(--surface))) !important; }
 .brand { color: var(--text); }
 .admin-title, .admin-user { color: var(--text) !important; }
 .legacy-frame-wrap { border-color: var(--border) !important; background: var(--app-bg); }
@@ -42,7 +44,7 @@ html[data-i18n-managed="react"] body { background: var(--app-bg); color: var(--t
 /* Four independent accents make information easier to scan. */
 .monitor-hero { background: var(--scene-hero-bg); color: var(--scene-hero-text); border: 1px solid color-mix(in srgb, var(--accent-cyan) 20%, var(--border)); }
 .monitor-hero h2 { color: var(--scene-hero-text); }
-.monitor-hero :is(p, .monitor-eyebrow, .monitor-sync, small) { color: color-mix(in srgb, var(--scene-hero-text) 78%, transparent); }
+.monitor-hero :is(p, .monitor-eyebrow, .monitor-sync, small) { color: color-mix(in srgb, var(--scene-hero-text) 92%, transparent); }
 .monitor-refresh { color: var(--scene-hero-text); background: color-mix(in srgb, var(--surface) 30%, transparent); border-color: color-mix(in srgb, var(--scene-hero-text) 25%, transparent); }
 .monitor-refresh:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); }
 .monitor-metric, .stat-card, .quick-link { --tile-accent: var(--accent-cyan); }
@@ -80,7 +82,7 @@ button.monitor-health-item:hover, .monitor-attention-counts button:hover { backg
 /* Legacy forms, lists, popovers and mail-management panels. */
 .mailbox-workspace { --workspace-line: var(--border); --workspace-muted: var(--text-muted); }
 :is(.group-panel, .mailbox-search-field, .group-context-menu, .mailbox-more-menu, .au-dropdown-menu, .field-menu, .receive-mailbox-navigation button) { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
-.mailbox-workspace :is(.mailbox-heading-copy h2, .mailbox-list-count strong, .mailbox-email-open, .mailbox-empty strong) { color: var(--text); }
+.mailbox-workspace :is(.mailbox-heading-copy h2, .mailbox-list-count strong, .mailbox-email-address, .mailbox-empty strong) { color: var(--text); }
 .mailbox-workspace :is(.mailbox-status-views button, .mailbox-list-count, .mailbox-email-group, .mailbox-email-copy, .pagination-info, .group-actions-button, .mailbox-filter-context, .mailbox-empty, .mailbox-more-menu .btn-small) { color: var(--text-muted); }
 .mailbox-workspace .mailbox-status-views b, .mailbox-workspace #mailboxBulkBar { color: var(--text-muted); background: var(--surface-2); border-color: var(--border); }
 .mailbox-workspace .group-item:hover { background: var(--surface-3) !important; }
@@ -91,14 +93,90 @@ button.monitor-health-item:hover, .monitor-attention-counts button:hover { backg
 :root[data-theme-mode="dark"] :is(.card-title, .quick-link-title, .group-name, .mailbox-access-email, .settings-tab, .settings-nav-item) { color: var(--text) !important; }
 :root[data-theme-mode="dark"] :is(.card-description, .quick-link-desc, .master-key-note, .mailbox-access-meta, .mailbox-access-panel-help, .mailbox-access-summary, .help-text, .form-text, .stat-label) { color: var(--text-muted) !important; }
 :root[data-theme-mode="dark"] .btn-secondary { color: var(--text) !important; background: var(--surface-3) !important; border-color: var(--border) !important; }
-:root[data-theme-mode="dark"] .btn-primary { color: #102130 !important; }
-:root[data-theme-mode="dark"] .btn-success { color: var(--accent-mint) !important; background: color-mix(in srgb, var(--accent-mint) 12%, var(--surface)) !important; }
-:root[data-theme-mode="dark"] .btn-danger { color: var(--accent-coral) !important; background: color-mix(in srgb, var(--accent-coral) 12%, var(--surface)) !important; }
-:root[data-theme-mode="dark"] .btn-warning { color: var(--accent-gold) !important; background: color-mix(in srgb, var(--accent-gold) 12%, var(--surface)) !important; }
-:root[data-theme-mode="dark"] input::placeholder, :root[data-theme-mode="dark"] textarea::placeholder { color: var(--text-muted) !important; opacity: .8; }
 :root[data-theme-mode="dark"] .modal { background: #020816ad !important; }
 :root[data-theme-mode="dark"] :is(.au-toast, .au-confirm, .admin-help-popover) { color: var(--text) !important; background: var(--surface-2) !important; border-color: var(--border) !important; }
 :root[data-theme-mode="dark"] [style*="color: #6b7280"] { color: var(--text-muted) !important; }
 :root[data-theme-mode="dark"] .inline-form-panel { background: var(--surface-2); border-color: var(--border); }
 :root[data-theme-mode="dark"] .password-mask { color: var(--text-muted); }
 @media (max-width: 640px) { .monitor-metric-symbol { width: 25px; height: 25px; font-size: 17px; } }
+
+/* Complete foreground/background pairs for shared legacy components. These also
+   cover dialogs outside .mailbox-workspace and update while a dialog is open. */
+:root { --on-primary: #fff; }
+:root .btn-primary,
+:root .page-btn.active,
+:root .kami-toolbar .btn-search,
+:root .email-item-select-btn,
+:root .email-list-item-select-btn {
+    color: var(--on-primary) !important;
+    background: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+:root .btn-primary:hover, :root .kami-toolbar .btn-search:hover { background: var(--secondary-color) !important; }
+:root .kami-toolbar :is(.btn-secondary, .btn-clear) { color: var(--text) !important; background: var(--surface) !important; border-color: var(--border) !important; }
+:root :is(.btn-success, .btn-danger, .btn-warning) {
+    --button-accent: var(--accent-mint);
+    color: var(--button-accent) !important;
+    background: color-mix(in srgb, var(--button-accent) 10%, var(--surface)) !important;
+    border-color: color-mix(in srgb, var(--button-accent) 45%, var(--border)) !important;
+}
+:root .btn-danger { --button-accent: var(--accent-coral); }
+:root .btn-warning { --button-accent: var(--accent-gold); }
+:root :is(.btn-success, .btn-danger, .btn-warning):hover { background: color-mix(in srgb, var(--button-accent) 18%, var(--surface)) !important; }
+:root .btn[hidden], :root .btn[style*="display: none"], :root .btn[style*="display:none"] { display: none !important; }
+:root :is(input, textarea)::placeholder { color: var(--text-muted) !important; opacity: 1; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--primary-color); }
+.help-hero { background: var(--scene-hero-bg); color: var(--scene-hero-text); }
+:is(.email-group-header, .group-list-item.active) { color: var(--on-primary); }
+.email-group-header:hover { background: var(--secondary-color); }
+.subgroup .email-group-header { background: var(--surface-3); color: var(--accent-violet); }
+.subgroup .email-group-header:hover { background: var(--primary-soft); }
+.selected-email-tag { background: var(--surface-3); color: var(--text); }
+.email-list-item.selected { background: color-mix(in srgb, var(--accent-mint) 10%, var(--surface)); }
+
+/* Status colors remain semantic in every palette. */
+:is(.status-badge, .log-count-badge, .source-badge, .admin-current-badge, .log-message, .alert, .receive-error-panel, .receive-info-panel, .detail-error, .stat-icon) { --status-accent: var(--text-muted); }
+:is(.status-active, .status-received, .status-online, .log-count-badge.success, .log-message.success, .alert-success, .stat-card.success .stat-icon) { --status-accent: var(--accent-mint); }
+:is(.status-expired, .status-failed, .status-offline, .log-count-badge.failed, .log-message.error, .alert-error, .receive-error-panel, .detail-error, .stat-card.failed .stat-icon) { --status-accent: var(--accent-coral); }
+:is(.status-used, .status-unknown, .alert-warning) { --status-accent: var(--accent-gold); }
+:is(.status-processed, .admin-current-badge, .log-message.info, .alert-info, .receive-info-panel, .stat-card.interval .stat-icon) { --status-accent: var(--accent-cyan); }
+:root :is(.status-badge, .log-count-badge, .source-badge, .admin-current-badge, .log-message, .alert, .receive-error-panel, .receive-info-panel, .detail-error, .stat-icon) {
+    color: var(--status-accent);
+    background: color-mix(in srgb, var(--status-accent) 10%, var(--surface));
+    border-color: color-mix(in srgb, var(--status-accent) 30%, var(--border));
+}
+.receive-error-detail { color: inherit; }
+.poller-status-item { --poller-accent: var(--text-muted); background: var(--surface-2); border-color: var(--border); }
+.poller-status-item.running { --poller-accent: var(--accent-cyan); }
+.poller-status-item.idle { --poller-accent: var(--accent-mint); }
+.poller-status-item.result { --poller-accent: var(--accent-gold); }
+.poller-status-item:is(.running, .idle, .result) { background: color-mix(in srgb, var(--poller-accent) 8%, var(--surface)); border-color: color-mix(in srgb, var(--poller-accent) 30%, var(--border)); }
+.poller-status-item .poller-status-icon { color: var(--poller-accent); background: var(--surface); }
+.poller-status-item.time .poller-status-icon { color: var(--accent-violet); }
+.poller-backoff-item .backoff-error { color: var(--accent-gold); }
+
+/* Owner tags preserve their distinct colors without bright blocks in dark mode. */
+:root .mailbox-owner-tag { --owner-accent: var(--accent-cyan); color: var(--owner-accent); background: color-mix(in srgb, var(--owner-accent) 12%, var(--surface)); --owner-shadow: color-mix(in srgb, var(--owner-accent) 24%, transparent); }
+:root .mailbox-owner-tag.unknown { --owner-accent: var(--text-muted); }
+:root .mailbox-owner-tag.owner-tjt740 { --owner-accent: var(--accent-mint); }
+:root .mailbox-owner-tag.owner-pink { --owner-accent: var(--accent-coral); }
+:root .mailbox-owner-tag.owner-lhm { --owner-accent: var(--accent-violet); }
+:root .mailbox-owner-tag.owner-animated::after { background: linear-gradient(120deg, transparent 20%, color-mix(in srgb, var(--owner-accent) 12%, transparent), transparent 80%); }
+.status-badge.online { --status-accent: var(--accent-mint); }
+.status-badge.offline { --status-accent: var(--accent-coral); }
+.status-badge.testing { --status-accent: var(--accent-gold); }
+:root :is(.au-toast, .toast) { --toast-accent: var(--accent-cyan); background: var(--surface-2) !important; color: var(--text) !important; border: 1px solid var(--toast-accent); border-left-width: 4px; }
+:root :is(.au-toast, .toast).success { --toast-accent: var(--accent-mint); }
+:root :is(.au-toast, .toast).error { --toast-accent: var(--accent-coral); }
+:root :is(.au-toast, .toast).warning { --toast-accent: var(--accent-gold); }
+:root :is(.au-toast, .toast) .anticon { color: var(--toast-accent); }
+.required-mark { color: var(--accent-coral); }
+.ah-q { color: var(--text); background: var(--surface-3); }
+.ah-q:hover { color: var(--on-primary); }
+@media (prefers-reduced-motion: reduce) {
+    /* React/Ant Design manages its own motion lifecycle; disabling its animation
+       names here would strand dropdowns in their hidden enter state. */
+    :root[data-color-theme]:not([data-i18n-managed="react"]) *,
+    :root[data-color-theme]:not([data-i18n-managed="react"]) *::before,
+    :root[data-color-theme]:not([data-i18n-managed="react"]) *::after { transition: none !important; animation: none !important; }
+}

@@ -20,9 +20,9 @@
     
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: #f8fafc;
+        background: var(--surface-2);
         line-height: 1.6;
-        color: #334155;
+        color: var(--text);
         transition: var(--transition);
     }
     
@@ -104,10 +104,10 @@
         width: 36px;
         height: 36px;
         border-radius: 10px;
-        border: 1px solid #e5e7eb;
-        background: #fff;
+        border: 1px solid var(--border);
+        background: var(--surface);
         cursor: pointer;
-        color: #4b5563;
+        color: var(--text-muted);
         transition: var(--transition);
         box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
@@ -167,7 +167,7 @@
     }
     
     .header {
-        background: white;
+        background: var(--surface);
         height: var(--header-height);
         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         display: flex;
@@ -182,7 +182,7 @@
     .header-title {
         font-size: 24px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
     }
     
     .header-actions {
@@ -195,7 +195,7 @@
         display: flex;
         align-items: center;
         gap: 15px;
-        color: #64748b;
+        color: var(--text-muted);
     }
     
     .logout-btn {
@@ -225,7 +225,7 @@
     
     /* Cards */
     .card {
-        background: white;
+        background: var(--surface);
         border-radius: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
         overflow: hidden;
@@ -240,14 +240,14 @@
     
     .card-header {
         padding: 20px 25px;
-        border-bottom: 1px solid #f1f5f9;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
     }
     
     .card-title {
         font-size: 18px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
         margin: 0;
     }
     
@@ -385,11 +385,11 @@
         flex: 1;
         min-width: 200px; /* Increased from 150px for better appearance */
         padding: 10px 16px; /* Enhanced padding for better visual appeal */
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
         transition: all 0.3s ease;
-        background: #ffffff;
+        background: var(--surface);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     
@@ -401,7 +401,7 @@
     }
     
     .search-box input::placeholder {
-        color: #9ca3af;
+        color: var(--text-muted);
         font-style: italic;
     }
 
@@ -446,10 +446,10 @@
 
     .kami-toolbar .btn-secondary,
     .kami-toolbar .btn-clear {
-        background: #fff !important;
+        background: var(--surface) !important;
         background-image: none !important;
-        border: 1px solid #d9d5c9 !important;
-        color: #3f3b34 !important;
+        border: 1px solid var(--border) !important;
+        color: var(--text) !important;
     }
 
     .kami-toolbar .btn-search {
@@ -466,7 +466,7 @@
 
     .kami-toolbar .btn-secondary:hover,
     .kami-toolbar .btn-clear:hover {
-        background: #f5f4ee !important;
+        background: var(--surface-3) !important;
         filter: none;
     }
 
@@ -477,7 +477,7 @@
     
     .page-controls select {
         padding: 8px 12px;
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
     }
@@ -506,26 +506,26 @@
     .table {
         width: 100%;
         border-collapse: collapse;
-        background: white;
+        background: var(--surface);
     }
     
     .table th {
-        background: #f8fafc;
+        background: var(--surface-2);
         padding: 12px;
         text-align: left;
         font-weight: 600;
-        color: #374151;
-        border-bottom: 2px solid #e5e7eb;
+        color: var(--text);
+        border-bottom: 2px solid var(--border);
     }
     
     .table td {
         padding: 12px;
-        border-bottom: 1px solid #f3f4f6;
+        border-bottom: 1px solid var(--border);
         vertical-align: middle;
     }
     
     .table tbody tr:hover {
-        background: #f9fafb;
+        background: var(--surface-2);
     }
     
     .status-badge {
@@ -552,15 +552,15 @@
     }
     
     .status-disabled {
-        background: #f3f4f6;
-        color: #6b7280;
+        background: var(--surface-3);
+        color: var(--text-muted);
     }
     
     /* Pagination */
 .pagination-container {
     position: sticky;
     bottom: 0;
-    background: #fff;
+    background: var(--surface);
     padding: 10px 0 6px;
     margin-top: 8px;
     display: flex;
@@ -573,7 +573,7 @@
 }
 
 .pagination-info {
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 14px;
     margin-right: 20px;
 }
@@ -582,22 +582,22 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 14px;
 }
 
 .page-size-control select {
     padding: 8px 12px;
-    border: 2px solid #e5e7eb;
+    border: 2px solid var(--border);
     border-radius: 8px;
     font-size: 14px;
 }
     
     .page-btn {
         padding: 8px 12px;
-        border: 1px solid #e5e7eb;
-        background: white;
-        color: #374151;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
         text-decoration: none;
         border-radius: 6px;
         transition: var(--transition);
@@ -605,8 +605,8 @@
     }
     
     .page-btn:hover {
-        background: #f3f4f6;
-        border-color: #d1d5db;
+        background: var(--surface-3);
+        border-color: var(--border);
     }
     
     .page-btn.active {
@@ -645,7 +645,7 @@
     }
     
     .modal-content {
-        background: white;
+        background: var(--surface);
         border-radius: 15px;
         padding: 0;
         max-width: 500px;
@@ -669,7 +669,7 @@
     
     .modal-header {
         padding: 20px 25px;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--border);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -678,14 +678,14 @@
     .modal-title {
         font-size: 18px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
     }
     
     .modal-close {
         background: none;
         border: none;
         font-size: 24px;
-        color: #6b7280;
+        color: var(--text-muted);
         cursor: pointer;
         padding: 0;
         width: 30px;
@@ -698,8 +698,8 @@
     }
     
     .modal-close:hover {
-        background: #f3f4f6;
-        color: #374151;
+        background: var(--surface-3);
+        color: var(--text);
     }
     
     .modal-body {
@@ -708,7 +708,7 @@
     
     .modal-footer {
         padding: 20px 25px;
-        border-top: 1px solid #f1f5f9;
+        border-top: 1px solid var(--border);
         display: flex;
         justify-content: flex-end;
         gap: 10px;
@@ -723,13 +723,13 @@
         display: block;
         margin-bottom: 8px;
         font-weight: 500;
-        color: #374151;
+        color: var(--text);
     }
     
     .form-control {
         width: 100%;
         padding: 10px 12px;
-        border: 1px solid #d1d5db;
+        border: 1px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
         transition: var(--transition);
@@ -770,7 +770,7 @@
     }
     
     .stat-card {
-        background: white;
+        background: var(--surface);
         padding: 20px;
         border-radius: 12px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -781,27 +781,27 @@
     .stat-number {
         font-size: 28px;
         font-weight: 700;
-        color: #1e293b;
+        color: var(--text);
         margin-bottom: 5px;
     }
     
     .stat-label {
         font-size: 14px;
-        color: #6b7280;
+        color: var(--text-muted);
     }
     
     /* Loading */
     .loading {
         text-align: center;
         padding: 40px;
-        color: #6b7280;
+        color: var(--text-muted);
     }
     
     .spinner {
         display: inline-block;
         width: 30px;
         height: 30px;
-        border: 3px solid #f3f4f6;
+        border: 3px solid var(--border);
         border-top: 3px solid var(--primary-color);
         border-radius: 50%;
         animation: spin 1s linear infinite;
@@ -893,7 +893,7 @@
         border: none;
         font-size: 24px;
         cursor: pointer;
-        color: #64748b;
+        color: var(--text-muted);
         transition: var(--transition);
     }
     
@@ -1006,7 +1006,7 @@
     /* 邮箱选择模态框样式 */
     .email-group-container {
         margin-bottom: 20px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--border);
         border-radius: 8px;
         overflow: hidden;
     }
@@ -1037,12 +1037,12 @@
     }
     
     .email-group-list {
-        background: white;
+        background: var(--surface);
     }
     
     .email-item {
         padding: 10px 15px;
-        border-bottom: 1px solid #f3f4f6;
+        border-bottom: 1px solid var(--border);
         cursor: pointer;
         transition: all 0.2s ease;
         display: flex;
@@ -1051,7 +1051,7 @@
     }
     
     .email-item:hover {
-        background: #f9fafb;
+        background: var(--surface-2);
     }
     
     .email-item:last-child {
@@ -1064,13 +1064,13 @@
     
     .email-item-address {
         font-weight: 500;
-        color: #111827;
+        color: var(--text);
         margin-bottom: 2px;
     }
     
     .email-item-server {
         font-size: 12px;
-        color: #6b7280;
+        color: var(--text-muted);
     }
     
     .email-item-select-btn {
@@ -1090,7 +1090,7 @@
     
     .subgroup {
         margin-left: 20px;
-        border-left: 3px solid #e5e7eb;
+        border-left: 3px solid var(--border);
     }
     
     .subgroup .email-group-header {
@@ -1110,14 +1110,14 @@
         border-radius: 6px;
         cursor: pointer;
         transition: all 0.2s ease;
-        color: #374151;
+        color: var(--text);
         font-weight: 500;
         border: 1px solid transparent;
     }
     
     .group-list-item:hover {
-        background: #f3f4f6;
-        border-color: #e5e7eb;
+        background: var(--surface-3);
+        border-color: var(--border);
     }
     
     .group-list-item.active {
@@ -1140,7 +1140,7 @@
         align-items: center;
         justify-content: center;
         font-size: 16px;
-        color: #6b7280;
+        color: var(--text-muted);
         cursor: pointer;
         margin-right: 5px;
         user-select: none;
@@ -1162,10 +1162,10 @@
         align-items: center;
         gap: 12px;
         padding: 10px 15px;
-        background: #f3f4f6;
-        border-bottom: 2px solid #e5e7eb;
+        background: var(--surface-3);
+        border-bottom: 2px solid var(--border);
         font-weight: 600;
-        color: #374151;
+        color: var(--text);
         font-size: 13px;
     }
     
@@ -1208,7 +1208,7 @@
         padding: 4px 9px;
         border-radius: 999px;
         background: #eef2ff;
-        color: #334155;
+        color: var(--text);
         font-size: 12px;
         line-height: 1.2;
     }
@@ -1216,7 +1216,7 @@
     .selected-email-tag button {
         border: 0;
         background: transparent;
-        color: #64748b;
+        color: var(--text-muted);
         cursor: pointer;
         padding: 0;
         line-height: 1;
@@ -1224,13 +1224,13 @@
 
     .email-selection-footer-info {
         margin-right: auto;
-        color: #64748b;
+        color: var(--text-muted);
         font-size: 14px;
     }
     
     .email-list-item {
         padding: 12px 15px;
-        border-bottom: 1px solid #f3f4f6;
+        border-bottom: 1px solid var(--border);
         transition: all 0.2s ease;
         display: flex;
         align-items: center;
@@ -1238,7 +1238,7 @@
     }
     
     .email-list-item:hover {
-        background: #f9fafb;
+        background: var(--surface-2);
     }
 
     .email-list-item.selected {
@@ -1253,7 +1253,7 @@
         flex: 1;
         min-width: 0;
         font-weight: 500;
-        color: #111827;
+        color: var(--text);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1264,7 +1264,7 @@
         flex: 1;
         min-width: 0;
         font-size: 13px;
-        color: #6b7280;
+        color: var(--text-muted);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1472,12 +1472,12 @@
                     <div class="form-group">
                         <label class="form-label">关键词邮件</label>
                         <input type="text" class="form-control" name="keyword_filter" placeholder="设置关键词后只收取标题包含关键词的邮件，多个关键词用逗号分隔">
-                        <small style="color: #6b7280;">留空则不限制关键词</small>
+                        <small style="color: var(--text-muted);">留空则不限制关键词</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">过期时间</label>
                         <input type="text" class="form-control" name="expired_at" placeholder="支持格式：1、7、30、100 或 1天、7天、30天 或具体日期时间">
-                        <small style="color: #6b7280;">支持格式：数字天数（如：1、100）、天数+天字（如：1天、7天）或具体日期时间，留空则永不过期，使用北京时间</small>
+                        <small style="color: var(--text-muted);">支持格式：数字天数（如：1、100）、天数+天字（如：1天、7天）或具体日期时间，留空则永不过期，使用北京时间</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">备注</label>
@@ -1504,7 +1504,7 @@
                     <div class="form-group">
                         <label class="form-label">生成数量</label>
                         <input type="number" class="form-control" name="count" value="10" min="1" max="100" required>
-                        <small style="color: #6b7280;">最多一次生成100个</small>
+                        <small style="color: var(--text-muted);">最多一次生成100个</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">使用次数限制</label>
@@ -1517,12 +1517,12 @@
                     <div class="form-group">
                         <label class="form-label">关键词邮件</label>
                         <input type="text" class="form-control" name="keyword_filter" placeholder="设置关键词后只收取标题包含关键词的邮件，多个关键词用逗号分隔">
-                        <small style="color: #6b7280;">留空则不限制关键词</small>
+                        <small style="color: var(--text-muted);">留空则不限制关键词</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">过期时间</label>
                         <input type="text" class="form-control" name="expired_at" placeholder="支持格式：1、7、30、100 或 1天、7天、30天 或具体日期时间">
-                        <small style="color: #6b7280;">支持格式：数字天数（如：1、100）、天数+天字（如：1天、7天）或具体日期时间，留空则永不过期，使用北京时间</small>
+                        <small style="color: var(--text-muted);">支持格式：数字天数（如：1、100）、天数+天字（如：1天、7天）或具体日期时间，留空则永不过期，使用北京时间</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">备注</label>
@@ -1602,7 +1602,7 @@
                     <div class="form-group">
                         <label class="form-label">关键词邮件</label>
                         <input type="text" class="form-control" name="keyword_filter" id="editKeywordFilter" placeholder="设置关键词后只收取标题包含关键词的邮件，多个关键词用逗号分隔">
-                        <small style="color: #6b7280;">留空则不限制关键词</small>
+                        <small style="color: var(--text-muted);">留空则不限制关键词</small>
                     </div>
                     
                     <div class="form-row">
@@ -1641,7 +1641,7 @@
                 <div style="display: flex; gap: 15px; flex: 1; min-height: 0;">
                     <!-- 左侧分组列表 -->
                     <div style="width: 200px; border-right: 1px solid #e5e7eb; padding-right: 10px; display: flex; flex-direction: column; min-height: 0;">
-                        <div style="margin-bottom: 10px; font-weight: 600; color: #374151; padding: 8px; flex-shrink: 0;">邮箱分组</div>
+                        <div style="margin-bottom: 10px; font-weight: 600; color: var(--text); padding: 8px; flex-shrink: 0;">邮箱分组</div>
                         <div id="emailGroupsList" style="flex: 1; overflow-y: auto; min-height: 0;">
                             <!-- 分组列表将通过JavaScript动态加载 -->
                         </div>
@@ -2034,7 +2034,7 @@
         if (cards.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">
+                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
                         暂无卡密数据
                     </td>
                 </tr>
@@ -2052,24 +2052,24 @@
                 <td title="创建时间：${formatDateTime(card.created_at)}">${index + 1 + (currentPage - 1) * perPage}</td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace;">
+                        <code style="background: var(--surface-3); padding: 2px 6px; border-radius: 4px; font-family: monospace;">
                             ${card.card_key}
                         </code>
                         <button class="btn btn-sm" onclick="copyToClipboard('${card.card_key}')"
-                                title="复制卡密" style="padding: 2px 6px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer;">
+                                title="复制卡密" style="padding: 2px 6px; background: var(--surface-3); border: none; border-radius: 4px; cursor: pointer;">
                             <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span>
                         </button>
                     </div>
                 </td>
                 <td>
                     <div style="font-weight:600;">${card.used_count}/${card.usage_limit}</div>
-                    <div style="font-size:12px;color:#6e6c64;">${card.last_used_at ? formatDateTime(card.last_used_at) : '未使用'}</div>
+                    <div style="font-size:12px;color: var(--text-muted);">${card.last_used_at ? formatDateTime(card.last_used_at) : '未使用'}</div>
                 </td>
                 <td>${formatExpirationDisplay(card.expired_at)}</td>
                 <td>${renderBoundEmailCell(card)}</td>
                 <td>
                     <div>${getCardRemarks(card.remarks) || '-'}</div>
-                    <div style="font-size:12px;color:#6e6c64;" title="收取范围 ${card.email_days_filter || 1} 天内${card.keyword_filter ? '，关键词：' + escapeHtml(card.keyword_filter) : '，关键词不限'}">
+                    <div style="font-size:12px;color: var(--text-muted);" title="收取范围 ${card.email_days_filter || 1} 天内${card.keyword_filter ? '，关键词：' + escapeHtml(card.keyword_filter) : '，关键词不限'}">
                         ${card.email_days_filter || 1}天内${card.keyword_filter ? ' · 含关键词' : ''}
                     </div>
                 </td>
@@ -2161,7 +2161,7 @@
         return `<div style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;">
             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(title)}">${escapeHtml(display)}</span>
             <button class="btn btn-sm" onclick="copyBoundEmail(${card.id})"
-                    title="复制邮箱" style="padding: 2px 6px; background: #e5e7eb; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; font-size: 11px;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span></button>
+                    title="复制邮箱" style="padding: 2px 6px; background: var(--surface-3); border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; font-size: 11px;"><span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span></button>
         </div>`;
     }
 
@@ -2662,7 +2662,7 @@
                     <span>${escapeHtml(email)}</span>
                     <button type="button" onclick="removeSelectedEmail(${id})" aria-label="移除 ${escapeHtml(email)}">×</button>
                 </span>`;
-            }).join('') : '<span style="color:#94a3b8; font-size:12px;">未绑定邮箱</span>';
+            }).join('') : '<span style="color: var(--text-muted); font-size:12px;">未绑定邮箱</span>';
         }
         renderSelectedEmailSummary();
     }
@@ -2924,7 +2924,7 @@
         container.innerHTML = '';
         
         if (currentRenderedMailboxes.length === 0) {
-            container.innerHTML = '<div style="padding: 20px; text-align: center; color: #6b7280;">该分组暂无邮箱</div>';
+            container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">该分组暂无邮箱</div>';
             return;
         }
         
@@ -3341,7 +3341,7 @@
         if (cards.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">
+                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
                         暂无${type === 'deleted' ? '已删除' : '已过期'}的卡密
                     </td>
                 </tr>
@@ -3357,7 +3357,7 @@
                 </td>
                 <td>${index + 1}</td>
                 <td>
-                    <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace;">
+                    <code style="background: var(--surface-3); padding: 2px 6px; border-radius: 4px; font-family: monospace;">
                         ${card.card_key}
                     </code>
                 </td>

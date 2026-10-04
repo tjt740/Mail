@@ -1,0 +1,46 @@
+/* One motion rhythm for mailbox controls, with stable text and hit targets. */
+.mailbox-page { --mailbox-ease: cubic-bezier(.22, 1, .36, 1); }
+.mailbox-page :is(.btn, .page-btn, .modal-close, .group-panel-header-toggle, .group-actions-button, .group-toggle, .column-option, .au-dropdown-item, .receive-tab, .group-context-menu button) {
+    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 180ms ease, transform 140ms var(--mailbox-ease) !important;
+}
+.mailbox-page :is(.btn, .page-btn, .column-option, .au-dropdown-item, .receive-tab, .group-context-menu button):hover { transform: none !important; }
+.mailbox-page :is(.btn, .page-btn, .modal-close, .group-panel-header-toggle, .group-actions-button, .group-toggle):active:not(:disabled) { transform: scale(.97) !important; }
+.mailbox-page :is(input, textarea, select, .mailbox-search-field) { transition: border-color 160ms ease, box-shadow 180ms ease, background-color 180ms ease !important; }
+.mailbox-page .mailbox-status-views button, .mailbox-page .group-item { transition: background-color 180ms ease, color 160ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.mailbox-page .group-children { min-height: 0; }
+.mailbox-page .group-chevron { transition: transform 240ms var(--mailbox-ease); }
+.mailbox-page #mailboxTable tbody tr, .mailbox-page .receive-table tbody tr { animation: none !important; transition: background-color 160ms ease; }
+.mailbox-page #mailboxTable tbody tr:hover { transform: none; }
+.mailbox-page :is(.au-dropdown-menu, .mailbox-more-menu, .column-config-menu, .group-context-menu) {
+    animation: none !important;
+    transition: none !important;
+    transform-origin: top right;
+}
+.mailbox-page .au-dropdown .au-dropdown-menu { opacity: 1; transform: none; }
+.mailbox-page .mailbox-more-menu { gap: 5px; }
+.mailbox-page :is(.au-dropdown-menu, .mailbox-more-menu, .column-config-menu, .group-context-menu)[inert] { pointer-events: none; }
+.mailbox-page .au-dropdown-toggle > span { display: inline-block; transition: transform 200ms var(--mailbox-ease); }
+.mailbox-page .au-dropdown.open .au-dropdown-toggle > span { transform: rotate(180deg); }
+.mailbox-page .modal, .mailbox-page .modal .modal-content { animation: none !important; transition: none !important; }
+.mailbox-page .modal.is-closing { display: flex; align-items: center; justify-content: center; }
+.mailbox-page .modal-content { transform-origin: 50% 40%; }
+.mailbox-page.mailbox-modal-open, .mailbox-page.mailbox-modal-open body { overflow: hidden !important; }
+.mailbox-page .modal :is(.modal-body, .receive-mail-list) { overscroll-behavior: contain; }
+.mailbox-page .mailbox-bulk-bar { box-sizing: border-box; }
+.mailbox-page .toast { transition: none; animation: none; }
+.mailbox-page .toast.show { opacity: 1; transform: none; }
+@media (max-width: 640px) {
+    /* Keep the four primary actions on their row while secondary actions float above the list. */
+    .mailbox-page .mailbox-workspace .mailbox-actions-more.open { flex-basis: 0; }
+    .mailbox-page .mailbox-workspace .mailbox-more-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        width: 190px;
+        margin-top: 0;
+        box-shadow: 0 10px 28px #10213024;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    html:root.mailbox-page *, html:root.mailbox-page *::before, html:root.mailbox-page *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

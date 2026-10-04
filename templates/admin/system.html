@@ -21,9 +21,9 @@
     
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: #f8fafc;
+        background: var(--surface-2);
         line-height: 1.6;
-        color: #334155;
+        color: var(--text);
         transition: var(--transition);
     }
 
@@ -108,10 +108,10 @@
         width: 36px;
         height: 36px;
         border-radius: 10px;
-        border: 1px solid #e5e7eb;
-        background: #fff;
+        border: 1px solid var(--border);
+        background: var(--surface);
         cursor: pointer;
-        color: #4b5563;
+        color: var(--text-muted);
         transition: var(--transition);
         box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
@@ -171,7 +171,7 @@
     }
     
     .header {
-        background: white;
+        background: var(--surface);
         height: var(--header-height);
         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         display: flex;
@@ -186,7 +186,7 @@
     .header-title {
         font-size: 24px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
     }
     
     .header-actions {
@@ -199,7 +199,7 @@
         display: flex;
         align-items: center;
         gap: 15px;
-        color: #64748b;
+        color: var(--text-muted);
     }
     
     .logout-btn {
@@ -225,7 +225,7 @@
     
     /* Cards */
     .card {
-        background: white;
+        background: var(--surface);
         border-radius: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
         overflow: hidden;
@@ -240,14 +240,14 @@
     
     .card-header {
         padding: 20px 25px;
-        border-bottom: 1px solid #f1f5f9;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
     }
     
     .card-title {
         font-size: 18px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
         margin: 0;
     }
     
@@ -258,12 +258,12 @@
     .feature-intro {
         text-align: center;
         padding: 40px 20px;
-        color: #6b7280;
+        color: var(--text-muted);
     }
     
     .feature-intro h3 {
         font-size: 20px;
-        color: #374151;
+        color: var(--text);
         margin-bottom: 15px;
     }
     
@@ -288,13 +288,13 @@
         display: block;
         margin-bottom: 8px;
         font-weight: 500;
-        color: #374151;
+        color: var(--text);
     }
 
     .form-control {
         width: 100%;
         padding: 10px 12px;
-        border: 1px solid #d1d5db;
+        border: 1px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
         transition: var(--transition);
@@ -307,8 +307,8 @@
     }
 
     .form-control:read-only {
-        background-color: #f9fafb;
-        color: #6b7280;
+        background-color: var(--surface-2);
+        color: var(--text-muted);
     }
 
     .secure-input {
@@ -339,7 +339,7 @@
 
     .master-key-note {
         margin: 8px 0 0;
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 13px;
         line-height: 1.55;
     }
@@ -353,9 +353,9 @@
         right: 10px;
         top: 50%;
         transform: translateY(-50%);
-        border: 1px solid #e5e7eb;
-        background: #fff;
-        color: #4b5563;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text-muted);
         border-radius: 6px;
         padding: 6px 10px;
         cursor: pointer;
@@ -376,7 +376,7 @@
 
     .table-container {
         overflow-x: auto;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--border);
         border-radius: 8px;
         margin-bottom: 20px;
     }
@@ -390,15 +390,15 @@
     .admin-table th,
     .admin-table td {
         padding: 12px 14px;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--border);
         text-align: left;
         font-size: 14px;
         vertical-align: middle;
     }
 
     .admin-table th {
-        background: #f8fafc;
-        color: #374151;
+        background: var(--surface-2);
+        color: var(--text);
         font-weight: 600;
     }
 
@@ -420,7 +420,7 @@
     .password-mask {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         letter-spacing: 2px;
-        color: #4b5563;
+        color: var(--text-muted);
     }
 
     .inline-form-panel {
@@ -582,7 +582,7 @@
             border: none;
             font-size: 24px;
             cursor: pointer;
-            color: #64748b;
+            color: var(--text-muted);
         }
         
         .mobile-menu-toggle:hover {
@@ -638,8 +638,8 @@
         gap: 4px;
         padding: 10px;
         border-radius: 14px;
-        background: var(--surface, #fff);
-        border: 1px solid var(--border, #e7e4db);
+        background: var(--surface);
+        border: 1px solid var(--border);
     }
     .system-nav-item {
         display: flex;
@@ -647,7 +647,7 @@
         gap: 10px;
         padding: 10px 12px;
         border-radius: 9px;
-        color: var(--text-muted, #6e6c64);
+        color: var(--text-muted);
         text-decoration: none;
         font-size: 14px;
         font-weight: 500;
@@ -1235,7 +1235,7 @@
                         <label class="form-label">系统名称/标题</label>
                         <input type="text" class="form-control" id="systemTitle" name="system_title" 
                                placeholder="邮件查看系统" value="邮件查看系统">
-                        <small style="color: #6b7280;">显示在后端管理页面标题中的系统名称，修改后即时生效</small>
+                        <small style="color: var(--text-muted);">显示在后端管理页面标题中的系统名称，修改后即时生效</small>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="updateSystemTitle()">更新系统标题</button>
                 </form>
@@ -1253,19 +1253,19 @@
                         <label class="form-label">API取件页面标题</label>
                         <input type="text" class="form-control" id="apiPageTitle" name="api_page_title" 
                                placeholder="API取件页面" value="API取件页面">
-                        <small style="color: #6b7280;">显示在API取件页面的标题</small>
+                        <small style="color: var(--text-muted);">显示在API取件页面的标题</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">前端取件页面标题</label>
                         <input type="text" class="form-control" id="frontendPageTitle" name="frontend_page_title" 
                                placeholder="邮件查看" value="邮件查看">
-                        <small style="color: #6b7280;">显示在前端取件页面的标题</small>
+                        <small style="color: var(--text-muted);">显示在前端取件页面的标题</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">管理员登录页面标题</label>
                         <input type="text" class="form-control" id="adminLoginTitle" name="admin_login_title" 
                                placeholder="管理员登录" value="管理员登录">
-                        <small style="color: #6b7280;">显示在管理员登录页面的标题</small>
+                        <small style="color: var(--text-muted);">显示在管理员登录页面的标题</small>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="updatePageTitles()">更新页面标题</button>
                 </form>

@@ -71,9 +71,9 @@
 
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: #f8fafc;
+        background: var(--surface-2);
         line-height: 1.6;
-        color: #334155;
+        color: var(--text);
         transition: var(--transition);
         height: 100vh;
         overflow: hidden;
@@ -162,10 +162,10 @@
         width: 36px;
         height: 36px;
         border-radius: 10px;
-        border: 1px solid #e5e7eb;
-        background: #fff;
+        border: 1px solid var(--border);
+        background: var(--surface);
         cursor: pointer;
-        color: #4b5563;
+        color: var(--text-muted);
         transition: var(--transition);
         box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
@@ -229,7 +229,7 @@
     }
     
     .header {
-        background: white;
+        background: var(--surface);
         height: var(--header-height);
         flex: 0 0 var(--header-height);
         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
@@ -245,7 +245,7 @@
     .header-title {
         font-size: 24px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
     }
     
     .header-actions {
@@ -258,7 +258,7 @@
         display: flex;
         align-items: center;
         gap: 15px;
-        color: #64748b;
+        color: var(--text-muted);
     }
     
     .logout-btn {
@@ -288,7 +288,7 @@
     
     /* Cards */
     .card {
-        background: white;
+        background: var(--surface);
         border-radius: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
         overflow: hidden;
@@ -303,8 +303,8 @@
     
     .card-header {
         padding: 20px 25px;
-        border-bottom: 1px solid #f1f5f9;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -313,7 +313,7 @@
     .card-title {
         font-size: 18px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
         margin: 0;
     }
     
@@ -382,7 +382,7 @@
     .form-group label {
         display: block;
         margin-bottom: 8px;
-        color: #374151;
+        color: var(--text);
         font-weight: 500;
     }
     
@@ -390,7 +390,7 @@
     .form-group select {
         width: 100%;
         padding: 12px 16px;
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
         transition: var(--transition);
@@ -418,7 +418,7 @@
 
     .checkbox-group label {
         margin: 0;
-        color: #374151;
+        color: var(--text);
         font-weight: 500;
         line-height: 1.2;
     }
@@ -467,7 +467,7 @@
         align-items: center;
         gap: 4px;
         margin-bottom: 7px;
-        color: #2f2e2a;
+        color: var(--text);
         font-size: 15px;
         font-weight: 500;
         line-height: 1.35;
@@ -484,10 +484,10 @@
     .batch-add-modal .batch-content-textarea {
         width: 100%;
         min-height: 44px;
-        border: 1px solid #d9d5c9;
+        border: 1px solid var(--border);
         border-radius: 9px;
-        background-color: #fff;
-        color: #2b2a27;
+        background-color: var(--surface);
+        color: var(--text);
         font-size: 14px !important;
         font-weight: 400 !important;
         line-height: 1.35 !important;
@@ -516,14 +516,14 @@
 
     .batch-add-modal .form-group select option {
         font-weight: 400;
-        color: #2b2a27;
-        background: #fff;
+        color: var(--text);
+        background: var(--surface);
     }
 
     .batch-add-modal .form-group select option:checked {
         font-weight: 400;
-        color: #2b2a27;
-        background: #f0eee6;
+        color: var(--text);
+        background: var(--surface-3);
     }
 
     .batch-content-textarea {
@@ -538,7 +538,7 @@
     }
 
     .batch-content-textarea::placeholder {
-        color: #77736a;
+        color: var(--text-muted);
         white-space: pre-line;
     }
 
@@ -581,9 +581,9 @@
     .batch-toggle-group .checkbox-group {
         min-height: 44px;
         padding: 0 12px;
-        border: 1px solid #e3dfd3;
+        border: 1px solid var(--border);
         border-radius: 9px;
-        background: #faf9f5;
+        background: var(--surface-2);
         justify-content: flex-start;
     }
 
@@ -597,7 +597,7 @@
 
     .batch-toggle-group .checkbox-group label {
         margin: 0;
-        color: #2f2e2a;
+        color: var(--text);
         font-size: 14px;
         line-height: 1.2;
     }
@@ -614,9 +614,9 @@
     #batchAddForm .batch-group-create .btn {
         min-height: 44px;
         padding: 0 14px;
-        border: 1px solid #d9d5c9;
-        background: #fff;
-        color: #2b2a27;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
         font-size: 14px;
         font-weight: 500;
         box-shadow: none;
@@ -670,17 +670,17 @@
     table td {
         padding: 12px 16px;
         text-align: left;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--border);
     }
     
     table th {
-        background: #f8fafc;
+        background: var(--surface-2);
         font-weight: 600;
-        color: #374151;
+        color: var(--text);
     }
     
     table tr:hover {
-        background: #f8fafc;
+        background: var(--surface-2);
     }
     
     /* Modal Styles */
@@ -703,7 +703,7 @@
     }
     
     .modal-content {
-        background: white;
+        background: var(--surface);
         border-radius: 15px;
         width: 90%;
         max-width: 600px;
@@ -714,7 +714,7 @@
     
     .modal-header {
         padding: 20px 25px;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--border);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -723,7 +723,7 @@
     .modal-title {
         font-size: 18px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
     }
     
     .modal-close {
@@ -731,11 +731,11 @@
         border: none;
         font-size: 24px;
         cursor: pointer;
-        color: #6b7280;
+        color: var(--text-muted);
     }
     
     .modal-close:hover {
-        color: #374151;
+        color: var(--text);
     }
     
     .modal-body {
@@ -744,7 +744,7 @@
     
     .modal-footer {
         padding: 20px 25px;
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid var(--border);
         display: flex;
         justify-content: flex-end;
         gap: 15px;
@@ -829,12 +829,8 @@
         gap: 0;
     }
 
-    .content-grid.group-panel-collapsed .group-panel {
-        display: none;
-    }
-
     .group-panel {
-        background: white;
+        background: var(--surface);
         border-radius: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
         padding: 16px;
@@ -850,7 +846,7 @@
 
     .group-header {
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
         margin-bottom: 12px;
         display: flex;
         align-items: center;
@@ -861,9 +857,9 @@
         width: 30px;
         height: 30px;
         border-radius: 8px;
-        border: 1px solid #e5e7eb;
-        background: #fff;
-        color: #64748b;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text-muted);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
@@ -874,7 +870,7 @@
     .group-panel-header-toggle:hover {
         color: var(--primary-color);
         border-color: var(--primary-color);
-        background: #f8fafc;
+        background: var(--surface-2);
         transform: translateY(-1px);
     }
 
@@ -907,9 +903,9 @@
         align-items: center;
         justify-content: center;
         font-size: 13px;
-        color: #4b5563;
+        color: var(--text-muted);
         cursor: pointer;
-        background: #f3f4f6;
+        background: var(--surface-3);
         border-radius: 6px;
     }
 
@@ -919,7 +915,7 @@
     }
 
     .group-item:hover {
-        background: #f8fafc;
+        background: var(--surface-2);
         transform: translateX(2px);
     }
 
@@ -937,7 +933,7 @@
     }
 
     .group-empty {
-        color: #9ca3af;
+        color: var(--text-muted);
         font-size: 13px;
         text-align: center;
         padding: 12px 8px;
@@ -1041,7 +1037,7 @@
     }
 
     .sort-indicator {
-        color: #94a3b8;
+        color: var(--text-muted);
         font-size: 11px;
     }
 
@@ -1060,7 +1056,7 @@
         background-color: transparent !important;
         background-position: right 6px center !important;
         background-size: 14px 14px !important;
-        color: #696761 !important;
+        color: var(--text-muted) !important;
         font-size: 14px !important;
         font-weight: 600 !important;
         line-height: 1.2 !important;
@@ -1071,7 +1067,7 @@
     .mailbox-header-filter:hover,
     .mailbox-header-filter:focus {
         border-color: rgba(201, 100, 66, 0.24) !important;
-        background-color: #f8f6f2 !important;
+        background-color: var(--surface-3) !important;
         color: var(--primary-color) !important;
         outline: none !important;
         box-shadow: none !important;
@@ -1122,8 +1118,8 @@
     }
 
     .mailbox-test-tag.pending {
-        color: #475569;
-        background: #f1f5f9;
+        color: var(--text-muted);
+        background: var(--surface-3);
     }
 
     .mailbox-status-icon {
@@ -1140,16 +1136,16 @@
         gap: 8px 12px;
         padding: 12px 16px;
         margin-bottom: 12px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border);
         border-radius: 10px;
-        background: #f8fafc;
+        background: var(--surface-2);
         font-size: 13px;
         overflow-wrap: anywhere;
     }
 
     .mailbox-test-result-detail {
         flex-basis: 100%;
-        color: #475569;
+        color: var(--text-muted);
         white-space: pre-wrap;
         max-height: 160px;
         overflow-y: auto;
@@ -1167,7 +1163,7 @@
         flex-basis: 100%;
         margin: 0;
         font-size: 12px;
-        color: var(--text-secondary, #64748b);
+        color: var(--text-secondary, var(--text-muted));
     }
 
     #mailboxBatchProgress {
@@ -1192,15 +1188,15 @@
         align-items: center;
         gap: 8px;
         padding: 10px 12px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--border);
         border-radius: 8px;
-        background: #f8fafc;
-        color: #475569;
+        background: var(--surface-2);
+        color: var(--text-muted);
         font-size: 13px;
     }
 
     .admin-summary strong {
-        color: #1f2937;
+        color: var(--text);
     }
 
     #mailboxTable td.mailbox-col-remarks {
@@ -1216,7 +1212,7 @@
     .mailbox-remarks-text {
         display: block;
         max-width: 100%;
-        color: #2f2a24;
+        color: var(--text);
         white-space: normal;
         overflow-wrap: anywhere;
         word-break: break-word;
@@ -1230,7 +1226,7 @@
 
     .mailbox-email-cell {
         cursor: copy;
-        color: #1f2937;
+        color: var(--text);
         overflow: visible;
         text-overflow: clip;
         transition: var(--transition);
@@ -1265,10 +1261,10 @@
         flex: 0 0 auto;
         width: 28px;
         height: 28px;
-        border: 1px solid var(--border, #e7e4db);
+        border: 1px solid var(--border);
         border-radius: 8px;
-        background: #fff;
-        color: #6b7280;
+        background: var(--surface);
+        color: var(--text-muted);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1280,18 +1276,15 @@
         font-size: 14px;
     }
 
-    .mailbox-email-cell:hover .mailbox-email-text,
+    .mailbox-email-text:hover,
     .mailbox-email-copy:hover {
         color: var(--primary-color);
-        background: rgba(201, 100, 66, 0.08) !important;
-        box-shadow: inset 0 -2px 0 rgba(201, 100, 66, 0.42);
+        background: var(--primary-soft) !important;
     }
 
     #mailboxTable tr.mailbox-row-copied .mailbox-email-text {
-        background: rgba(16, 185, 129, 0.14) !important;
-        color: #1f6f45;
-        font-weight: 600;
-        animation: copiedPulse var(--motion-slow) var(--motion-ease) both;
+        background: color-mix(in srgb, var(--accent-mint) 12%, var(--surface)) !important;
+        color: var(--accent-mint);
     }
 
     #mailboxTable tbody tr {
@@ -1321,16 +1314,6 @@
     #mailboxTable tbody tr:hover td,
     #mailboxTable tbody tr.mailbox-row-copied:hover td {
         background: transparent !important;
-    }
-
-    #mailboxTable tbody tr:hover td.mailbox-email-cell:hover .mailbox-email-text {
-        color: var(--primary-color);
-        background: rgba(201, 100, 66, 0.10) !important;
-        box-shadow: inset 0 -2px 0 rgba(201, 100, 66, 0.42);
-    }
-
-    #mailboxTable tbody tr.mailbox-row-copied:hover td.mailbox-email-cell .mailbox-email-text {
-        background: rgba(16, 185, 129, 0.16) !important;
     }
 
     .mailbox-actions {
@@ -1417,9 +1400,9 @@
         z-index: 60;
         min-width: 92px;
         padding: 6px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--border);
         border-radius: 8px;
-        background: #fff;
+        background: var(--surface);
         box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
         display: none;
         animation: menuEnter var(--motion-base) var(--motion-ease) both;
@@ -1463,7 +1446,7 @@
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        background: #fffdf9;
+        background: var(--surface);
     }
 
     .receive-modal .modal-header {
@@ -1480,12 +1463,12 @@
         overflow: hidden;
         background:
             radial-gradient(circle at 0 0, rgba(201, 100, 66, 0.10), transparent 28%),
-            #fbfaf7;
+            var(--surface-2);
     }
 
     .receive-sidebar {
-        background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
-        border: 1px solid #e9e2d6;
+        background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+        border: 1px solid var(--border);
         border-radius: 18px;
         padding: 18px;
         display: flex;
@@ -1498,13 +1481,13 @@
 
     .receive-mailbox-label {
         font-size: 12px;
-        color: #6b7280;
+        color: var(--text-muted);
         margin-bottom: 4px;
     }
 
     .receive-mailbox-value {
         font-weight: 700;
-        color: #1f2937;
+        color: var(--text);
         word-break: break-all;
         max-height: 72px;
         overflow: auto;
@@ -1528,10 +1511,10 @@
         flex: 0 0 auto;
         width: 34px;
         height: 34px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--border);
         border-radius: 9px;
-        background: #fff;
-        color: #6b7280;
+        background: var(--surface);
+        color: var(--text-muted);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1629,8 +1612,8 @@
         width: 100%;
         padding: 12px 14px;
         border-radius: 12px;
-        border: 1px solid #e8e1d7;
-        background: #fff;
+        border: 1px solid var(--border);
+        background: var(--surface);
         cursor: pointer;
         overflow: hidden;
         transition:
@@ -1666,14 +1649,14 @@
     }
 
     .receive-tab:hover {
-        border-color: #d6c7b8;
-        background: #fffaf4;
+        border-color: var(--border);
+        background: var(--surface-2);
         transform: translateY(-1px);
         box-shadow: 0 10px 22px rgba(92, 72, 52, 0.08);
     }
 
     .receive-tab.active {
-        background: #fff8f2;
+        background: var(--surface-2);
         border-color: var(--primary-color);
         color: var(--primary-color);
         box-shadow: 0 12px 24px rgba(201, 100, 66, 0.13);
@@ -1734,9 +1717,9 @@
     }
 
     .receive-main {
-        background: #fff;
+        background: var(--surface);
         border-radius: 18px;
-        border: 1px solid #e9e2d6;
+        border: 1px solid var(--border);
         padding: 0;
         display: flex;
         flex-direction: column;
@@ -1798,7 +1781,7 @@
     }
 
     .receive-status {
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 14px;
     }
 
@@ -1814,7 +1797,7 @@
     .receive-table td {
         padding: 14px 16px;
         text-align: left;
-        border-bottom: 1px solid #eee7dc;
+        border-bottom: 1px solid var(--border);
         vertical-align: middle;
     }
 
@@ -1822,8 +1805,8 @@
         position: sticky;
         top: 0;
         z-index: 2;
-        background: #f7f2ea;
-        color: #6b645b;
+        background: var(--surface-2);
+        color: var(--text-muted);
         font-weight: 700;
     }
 
@@ -1852,18 +1835,18 @@
     }
 
     .receive-missing {
-        color: #a8a29e;
+        color: var(--text-muted);
         font-weight: 500;
     }
 
     .receive-table tr:hover {
-        background: #fffaf4;
+        background: var(--surface-2);
         cursor: pointer;
     }
 
     .receive-empty {
         text-align: center;
-        color: #94a3b8;
+        color: var(--text-muted);
         padding: 24px 10px;
     }
 
@@ -1875,7 +1858,7 @@
     }
 
     #receiveDetailView {
-        background: #f8fafc;
+        background: var(--surface-2);
     }
 
     .receive-detail-shell {
@@ -1907,10 +1890,10 @@
         align-items: center;
         min-height: 30px;
         padding: 5px 10px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border);
         border-radius: 999px;
-        background: #fff;
-        color: #475569;
+        background: var(--surface);
+        color: var(--text-muted);
         font-size: 12px;
         font-weight: 700;
         white-space: nowrap;
@@ -1926,15 +1909,15 @@
 
     .receive-detail-header {
         padding: 16px 18px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border);
         border-radius: 10px;
-        background: #fff;
+        background: var(--surface);
         box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
     }
 
     .receive-detail h4 {
         margin: 0 0 12px;
-        color: #0f172a;
+        color: var(--text);
         font-size: 20px;
         font-weight: 800;
         line-height: 1.35;
@@ -1952,13 +1935,13 @@
         display: flex;
         align-items: baseline;
         gap: 8px;
-        color: #334155;
+        color: var(--text);
         line-height: 1.4;
     }
 
     .receive-meta-label {
         flex: 0 0 auto;
-        color: #64748b;
+        color: var(--text-muted);
         font-size: 12px;
         font-weight: 700;
     }
@@ -1968,7 +1951,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        color: #1e293b;
+        color: var(--text);
         font-size: 13px;
         font-weight: 600;
     }
@@ -1978,17 +1961,17 @@
         min-height: 360px;
         overflow: auto;
         padding: 16px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border);
         border-radius: 10px;
-        background: #fff;
-        color: #1f2937;
+        background: var(--surface);
+        color: var(--text);
         line-height: 1.65;
         overflow-wrap: anywhere;
         box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
     }
 
     .receive-empty-placeholder {
-        color: #94a3b8;
+        color: var(--text-muted);
     }
 
     .receive-detail-content--html {
@@ -1998,6 +1981,7 @@
     }
 
     .receive-content-frame {
+        color-scheme: light;
         display: block;
         width: 100%;
         min-width: 0;
@@ -2009,14 +1993,14 @@
     .receive-detail-images {
         margin-top: 0;
         padding: 12px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border);
         border-radius: 10px;
-        background: #fff;
+        background: var(--surface);
     }
 
     .receive-detail-images-title {
         margin-bottom: 8px;
-        color: #334155;
+        color: var(--text);
         font-size: 13px;
         font-weight: 800;
     }
@@ -2030,7 +2014,7 @@
     #receivePagination {
         position: sticky;
         bottom: 0;
-        background: #fff;
+        background: var(--surface);
         padding: 8px 0 4px;
         margin-top: 6px;
         display: flex;
@@ -2079,9 +2063,9 @@
         top: calc(100% + 8px);
         width: 180px;
         padding: 10px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--border);
         border-radius: 10px;
-        background: #fff;
+        background: var(--surface);
         box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
         display: none;
         z-index: 1500;
@@ -2097,7 +2081,7 @@
         align-items: center;
         gap: 8px;
         padding: 7px 6px;
-        color: #374151;
+        color: var(--text);
         font-size: 13px;
         cursor: pointer;
         border-radius: 7px;
@@ -2106,7 +2090,7 @@
     }
 
     .column-option:hover {
-        background: #f8fafc;
+        background: var(--surface-2);
         transform: translateX(2px);
     }
 
@@ -2115,7 +2099,7 @@
     }
 
     .column-option.required {
-        color: #9ca3af;
+        color: var(--text-muted);
         cursor: not-allowed;
     }
 
@@ -2129,8 +2113,8 @@
     .group-context-menu {
         position: absolute;
         z-index: 2100;
-        background: white;
-        border: 1px solid #e5e7eb;
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 8px;
         box-shadow: 0 8px 20px rgba(0,0,0,0.12);
         display: none;
@@ -2145,15 +2129,15 @@
         text-align: left;
         cursor: pointer;
         font-size: 13px;
-        color: #374151;
+        color: var(--text);
     }
 
     .group-context-menu button:hover {
-        background: #f3f4f6;
+        background: var(--surface-3);
     }
 
     .group-context-menu button:disabled {
-        color: #9ca3af;
+        color: var(--text-muted);
         cursor: not-allowed;
         background: transparent;
     }
@@ -2172,16 +2156,16 @@
         width: 100%;
         min-width: 0;
         padding: 10px 16px; /* Enhanced padding for better visual appeal */
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
         transition: all 0.3s ease;
-        background: #ffffff;
+        background: var(--surface);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     
     .search-box select {
-        color: #374151;
+        color: var(--text);
         cursor: pointer;
     }
 
@@ -2194,13 +2178,13 @@
     }
     
     .search-box input::placeholder {
-        color: #9ca3af;
+        color: var(--text-muted);
         font-style: italic;
     }
     
     .page-controls select {
         padding: 8px 12px;
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
     }
@@ -2208,7 +2192,7 @@
     .pagination-container {
         position: sticky;
         bottom: 0;
-        background: #fff;
+        background: var(--surface);
         padding: 10px 0 6px;
         margin-top: 8px;
         display: flex;
@@ -2221,7 +2205,7 @@
     }
     
     .pagination-info {
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 14px;
         margin-right: 4px;
     }
@@ -2230,22 +2214,22 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 14px;
     }
 
     .page-size-control select {
         padding: 8px 12px;
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
     }
     
     .page-btn {
         padding: 8px 12px;
-        border: 1px solid #e5e7eb;
-        background: white;
-        color: #374151;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
         text-decoration: none;
         border-radius: 6px;
         transition: var(--transition);
@@ -2253,8 +2237,8 @@
     }
     
     .page-btn:hover {
-        background: #f3f4f6;
-        border-color: #d1d5db;
+        background: var(--surface-3);
+        border-color: var(--border);
     }
     
     .page-btn.active {
@@ -2347,7 +2331,7 @@
 
     #mailboxForm .form-group label {
         margin-bottom: 7px;
-        color: #2f2e2a;
+        color: var(--text);
         font-size: 15px;
         font-weight: 500;
         line-height: 1.35;
@@ -2359,10 +2343,10 @@
         width: 100%;
         min-height: 44px;
         padding: 10px 13px;
-        border: 1px solid #d9d5c9;
+        border: 1px solid var(--border);
         border-radius: 9px;
-        background-color: #fff;
-        color: #2b2a27;
+        background-color: var(--surface);
+        color: var(--text);
         font-size: 14px;
         line-height: 1.4;
         box-shadow: none;
@@ -2389,9 +2373,9 @@
     #mailboxForm .checkbox-group {
         min-height: 44px;
         padding: 0 12px;
-        border: 1px solid #e3dfd3;
+        border: 1px solid var(--border);
         border-radius: 9px;
-        background: #faf9f5;
+        background: var(--surface-2);
         justify-content: flex-start;
     }
 
@@ -2405,7 +2389,7 @@
 
     #mailboxForm .checkbox-group label {
         margin: 0;
-        color: #2f2e2a;
+        color: var(--text);
         font-size: 14px;
         line-height: 1.2;
     }
@@ -2422,9 +2406,9 @@
     #mailboxForm .mailbox-group-create .btn {
         min-height: 44px;
         padding: 0 14px;
-        border: 1px solid #d9d5c9;
-        background: #fff;
-        color: #2b2a27;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
         font-size: 14px;
         font-weight: 500;
         box-shadow: none;
@@ -2444,7 +2428,7 @@
     }
 
     .single-import-label-note {
-        color: #77736a;
+        color: var(--text-muted);
         font-size: 12px;
         font-weight: 400;
     }
@@ -2452,7 +2436,7 @@
     .single-import-feedback {
         min-height: 18px;
         margin-top: 6px;
-        color: #77736a;
+        color: var(--text-muted);
         font-size: 12px;
         line-height: 1.45;
     }
@@ -2487,7 +2471,7 @@
         border: 0;
         border-radius: 7px;
         background: transparent;
-        color: #77736a;
+        color: var(--text-muted);
         cursor: pointer;
         transform: translateY(-50%);
         display: inline-flex;
@@ -2497,7 +2481,7 @@
 
     #mailboxForm .password-visibility-toggle:hover,
     #mailboxForm .password-visibility-toggle:focus-visible {
-        background: #f2efe7;
+        background: var(--surface-3);
         color: #b14e2e;
         outline: none;
     }
@@ -2538,7 +2522,7 @@
     .server-list {
         max-height: 200px;
         overflow-y: auto;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--border);
         border-radius: 8px;
         margin-top: 15px;
     }
@@ -2577,7 +2561,7 @@
     .mailbox-group-feedback,
     .batch-group-feedback {
         min-height: 18px;
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 12px;
         line-height: 1.5;
     }
@@ -2594,7 +2578,7 @@
     
     .server-item {
         padding: 10px 15px;
-        border-bottom: 1px solid #f3f4f6;
+        border-bottom: 1px solid var(--border);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -2603,7 +2587,7 @@
     }
     
     .server-item:hover {
-        background: #f8fafc;
+        background: var(--surface-2);
     }
     
     .server-item:last-child {
@@ -2616,18 +2600,18 @@
     
     .server-id {
         font-size: 11px;
-        color: #9ca3af;
+        color: var(--text-muted);
         font-weight: 500;
     }
     
     .server-name {
         font-weight: 500;
-        color: #1e293b;
+        color: var(--text);
     }
     
     .server-address {
         font-size: 12px;
-        color: #6b7280;
+        color: var(--text-muted);
     }
     
     .server-actions {
@@ -2648,7 +2632,7 @@
         border: none;
         font-size: 24px;
         cursor: pointer;
-        color: #64748b;
+        color: var(--text-muted);
         transition: var(--transition);
     }
     
@@ -2840,9 +2824,9 @@
             grid-template-columns: minmax(0, 1fr) 48px 48px;
             gap: 7px;
             padding: 6px;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
             border-radius: 14px;
-            background: #fff;
+            background: var(--surface);
             box-shadow: 0 4px 14px rgba(47, 42, 36, 0.05);
         }
 
@@ -2979,16 +2963,16 @@
 
         #mailboxTable tbody tr {
             padding: 13px 14px;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
             border-radius: 12px;
-            background: #fff;
+            background: var(--surface);
             box-shadow: 0 4px 14px rgba(47, 42, 36, 0.05);
             font-size: 16px;
         }
 
         #mailboxTable tbody tr:hover,
         #mailboxTable tbody tr:hover td {
-            background: #fff !important;
+            background: var(--surface) !important;
         }
 
         #mailboxTable td {
@@ -3005,7 +2989,7 @@
 
         #mailboxTable td::before {
             content: attr(data-label);
-            color: #6b7280;
+            color: var(--text-muted);
             font-size: 14px;
             font-weight: 600;
             line-height: 1.5;
@@ -3101,7 +3085,7 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
             border-radius: 10px;
             box-shadow: none;
-            background: #f8fafc;
+            background: var(--surface-2);
         }
 
         .mailbox-more-menu .btn-small {
@@ -3238,26 +3222,37 @@
     
     <div class="content">
         <div class="content-grid">
-            <div class="group-panel" id="groupPanel">
-                <div class="group-header">
-                    <span>邮箱分组</span>
-                    <button class="group-panel-header-toggle" type="button" onclick="openGroupModal('add')" title="新建分组" aria-label="新建分组">+</button>
+            <div class="group-sidebar" id="groupSidebar">
+                <div class="group-panel-clip">
+                    <div class="group-panel" id="groupPanel">
+                        <div class="group-header">
+                            <span>邮箱分组</span>
+                            <button class="group-panel-header-toggle" type="button" onclick="openGroupModal('add')" title="新建分组" aria-label="新建分组">+</button>
+                        </div>
+                        <input class="group-search" id="groupSearchInput" type="search" placeholder="查找分组" aria-label="查找分组" oninput="renderGroupTree()">
+                        <ul class="group-tree" id="groupTree"></ul>
+                        <div class="group-empty" id="groupEmptyHint" style="display: none;">暂无自定义分组</div>
+                    </div>
                 </div>
-                <input class="group-search" id="groupSearchInput" type="search" placeholder="查找分组" aria-label="查找分组" oninput="renderGroupTree()">
-                <ul class="group-tree" id="groupTree"></ul>
-                <div class="group-empty" id="groupEmptyHint" style="display: none;">暂无自定义分组</div>
+                <button class="group-sidebar-handle" id="groupPanelToggle" type="button" data-group-panel-toggle data-i18n-ignore onclick="toggleMailboxGroupPanel()" aria-controls="groupPanel" aria-expanded="true" aria-label="收起分组侧栏" title="收起分组侧栏">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
             </div>
+            <div class="group-panel-backdrop" aria-hidden="true" onclick="closeMailboxGroupPanel()"></div>
             
             <div class="mail-panel">
                 <div class="mailbox-workspace-heading">
                     <div class="mailbox-heading-copy">
                         <span class="mailbox-eyebrow">邮箱工作台</span>
                         <h2 id="adminCurrentGroup">所有分组</h2>
-                        <p>按分组找到邮箱，点击地址即可收件。</p>
+                        <p>按分组找到邮箱，点击地址即可复制。</p>
                     </div>
                     <div class="mailbox-heading-actions">
-                        <button class="btn btn-secondary" id="groupPanelToggle" type="button" onclick="toggleMailboxGroupPanel()" aria-expanded="true">分组管理</button>
-                        <div class="au-dropdown">
+                        <button class="btn btn-secondary group-sidebar-mobile-toggle" id="mobileGroupPanelToggle" type="button" data-group-panel-toggle data-i18n-ignore onclick="toggleMailboxGroupPanel()" aria-controls="groupPanel" aria-expanded="false" aria-label="展开分组侧栏" title="展开分组侧栏">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 4v16M5.5 8h1M5.5 12h1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            <span>邮箱分组</span>
+                        </button>
+                        <div class="au-dropdown au-dropdown-right">
                             <button class="btn btn-primary au-dropdown-toggle" type="button">添加邮箱 <span aria-hidden="true">▾</span></button>
                             <div class="au-dropdown-menu">
                                 <button class="au-dropdown-item" type="button" onclick="showAddModal()">单个添加</button>
@@ -3298,7 +3293,7 @@
                 <div class="card">
                     <div class="card-body scroll-card-body">
                         <div class="mailbox-list-toolbar">
-                            <div class="mailbox-list-count"><strong id="adminMailboxCount">0</strong><span>个邮箱</span><span class="mailbox-list-tip">点击邮箱地址收件</span></div>
+                            <div class="mailbox-list-count"><strong id="adminMailboxCount">0</strong><span>个邮箱</span><span class="mailbox-list-tip">点击邮箱地址复制</span></div>
                             <div class="mailbox-list-tools">
                                 <button class="btn btn-secondary" id="selectFilteredMailboxesBtn" type="button" onclick="selectFilteredMailboxes()" disabled>全选筛选结果 (0)</button>
                                 <button class="btn btn-secondary" id="batchTestFilteredBtn" type="button" onclick="batchTestMailboxes('filtered')" disabled>测试筛选结果 (0)</button>
@@ -3838,7 +3833,7 @@
             
             <!-- 已添加服务器列表 -->
             <div style="margin-top: 25px;">
-                <h4 style="margin-bottom: 15px; color: #374151;">已添加的服务器</h4>
+                <h4 style="margin-bottom: 15px; color: var(--text);">已添加的服务器</h4>
                 <div class="server-list" id="serverList">
                     <!-- 服务器列表将通过JavaScript加载 -->
                 </div>
@@ -3859,7 +3854,11 @@
 
 {% block scripts %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mailbox-workspace.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mailbox-theme.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mailbox-sidebar.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mailbox-interactions.css') }}">
 <script src="{{ url_for('static', filename='js/mail-content.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mailbox-interactions.js') }}"></script>
 <script>
     const SIDEBAR_COLLAPSE_KEY = 'adminSidebarCollapsed';
     const MAILBOX_GROUP_PANEL_KEY = 'mailboxGroupPanelCollapsedV3';
@@ -3885,42 +3884,93 @@
     }
 
     function updateMailboxGroupPanelControls(collapsed) {
-        const toggleBtn = document.getElementById('groupPanelToggle');
-        const headerToggle = document.querySelector('.group-panel-header-toggle');
-
-        if (toggleBtn) {
-            toggleBtn.textContent = '分组管理';
-            toggleBtn.setAttribute('aria-expanded', (!collapsed).toString());
-            toggleBtn.title = collapsed ? '展开左侧分组' : '收起左侧分组';
-        }
-
-        if (headerToggle) {
-            headerToggle.setAttribute('aria-expanded', (!collapsed).toString());
-            headerToggle.title = collapsed ? '展开分组' : '收起分组';
-            headerToggle.setAttribute('aria-label', collapsed ? '展开分组' : '收起分组');
-        }
+        const label = collapsed ? '展开分组侧栏' : '收起分组侧栏';
+        document.querySelectorAll('[data-group-panel-toggle]').forEach(button => {
+            button.setAttribute('aria-expanded', String(!collapsed));
+            button.setAttribute('aria-label', window.AppI18n?.t(label) || label);
+            button.title = window.AppI18n?.t(label) || label;
+        });
+        document.querySelector('#mobileGroupPanelToggle span').textContent = window.AppI18n?.t('邮箱分组') || '邮箱分组';
     }
+
+    const mailboxGroupDrawerMedia = window.matchMedia('(max-width: 999px)');
 
     function applyMailboxGroupPanelState(collapsed) {
         const grid = document.querySelector('.content-grid');
         if (!grid) return;
+        const drawerOpen = mailboxGroupDrawerMedia.matches && !collapsed;
+        const panel = document.getElementById('groupPanel');
+        const sidebar = document.getElementById('groupSidebar');
+        const returnFocus = collapsed && sidebar.contains(document.activeElement);
         grid.classList.toggle('group-panel-collapsed', collapsed);
+        panel.inert = collapsed;
+        panel.setAttribute('aria-hidden', String(collapsed));
+        sidebar.inert = mailboxGroupDrawerMedia.matches && collapsed;
+        if (drawerOpen) {
+            sidebar.setAttribute('role', 'dialog');
+            sidebar.setAttribute('aria-modal', 'true');
+            sidebar.setAttribute('aria-label', window.AppI18n?.t('邮箱分组') || '邮箱分组');
+        } else {
+            sidebar.removeAttribute('role');
+            sidebar.removeAttribute('aria-modal');
+        }
+        document.querySelector('.mail-panel').inert = drawerOpen;
+        if (returnFocus) document.getElementById(mailboxGroupDrawerMedia.matches ? 'mobileGroupPanelToggle' : 'groupPanelToggle').focus({ preventScroll: true });
+        document.documentElement.classList.toggle('mailbox-groups-open', drawerOpen);
         updateMailboxGroupPanelControls(collapsed);
         scheduleMailboxTableLayout();
-        window.setTimeout(scheduleMailboxTableLayout, 260);
     }
 
     function toggleMailboxGroupPanel() {
         const grid = document.querySelector('.content-grid');
         const shouldCollapse = grid ? !grid.classList.contains('group-panel-collapsed') : false;
         applyMailboxGroupPanelState(shouldCollapse);
-        setStoredPreference(MAILBOX_GROUP_PANEL_KEY, shouldCollapse ? '1' : '0');
+        if (mailboxGroupDrawerMedia.matches) {
+            if (!shouldCollapse) document.getElementById('groupSearchInput').focus({ preventScroll: true });
+        } else {
+            setStoredPreference(MAILBOX_GROUP_PANEL_KEY, shouldCollapse ? '1' : '0');
+        }
+    }
+
+    function closeMailboxGroupPanel() {
+        applyMailboxGroupPanelState(true);
+        document.getElementById('mobileGroupPanelToggle').focus({ preventScroll: true });
     }
 
     function initMailboxGroupPanel() {
-        const saved = getStoredPreference(MAILBOX_GROUP_PANEL_KEY);
-        const shouldCollapse = saved === null ? window.innerWidth < 1000 : saved === '1';
-        applyMailboxGroupPanelState(shouldCollapse);
+        const restore = () => applyMailboxGroupPanelState(mailboxGroupDrawerMedia.matches || getStoredPreference(MAILBOX_GROUP_PANEL_KEY) === '1');
+        restore();
+        mailboxGroupDrawerMedia.addEventListener('change', restore);
+        const grid = document.querySelector('.content-grid');
+        window.addEventListener('app-language-change', () => updateMailboxGroupPanelControls(grid.classList.contains('group-panel-collapsed')));
+        requestAnimationFrame(() => requestAnimationFrame(() => grid.classList.add('group-panel-ready')));
+        grid.addEventListener('transitionend', event => {
+            if (event.target === grid) scheduleMailboxTableLayout();
+        });
+        // Match column widths to the available space throughout the slide, not after a timeout.
+        let previousWidth = 0;
+        const tableContainer = document.querySelector('.mail-panel .table-container');
+        if (window.ResizeObserver && tableContainer) {
+            new ResizeObserver(([entry]) => {
+                const width = Math.round(entry.contentRect.width);
+                if (width === previousWidth) return;
+                previousWidth = width;
+                scheduleMailboxTableLayout();
+            }).observe(tableContainer);
+        }
+        document.addEventListener('keydown', event => {
+            if (!mailboxGroupDrawerMedia.matches || grid.classList.contains('group-panel-collapsed')) return;
+            if (document.getElementById('groupContextMenu').style.display === 'block' || document.querySelector('.modal.show')) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeMailboxGroupPanel();
+            } else if (event.key === 'Tab') {
+                const focusable = [...document.querySelectorAll('#groupSidebar button:not(:disabled), #groupSidebar input, #groupSidebar [tabindex="0"]')].filter(element => element.getClientRects().length);
+                const first = focusable[0], last = focusable[focusable.length - 1];
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+            }
+        });
     }
 
     function updateSidebarToggleButton() {
@@ -4014,7 +4064,7 @@
             const wrapper = e.target.closest('.column-config');
             if (menu && !wrapper) {
                 menu.classList.remove('show');
-                menu.setAttribute('aria-hidden', 'true');
+                MailboxInteractions.popup(menu, false);
             }
             if (!e.target.closest('.mailbox-actions-more')) {
                 closeMailboxMoreMenus();
@@ -4059,7 +4109,7 @@
         { key: 'created_by_admin', label: '操作人', defaultVisible: true, filter: 'owner', minWidth: 105, fixed: true },
         { key: 'updated_at', label: '最后修改时间', defaultVisible: false, sortable: true, minWidth: 178, fixed: true },
         { key: 'remarks', label: '备注', defaultVisible: true, minWidth: 120, weight: 1.7, priorityGrow: true },
-        { key: 'actions', label: '操作', required: true, defaultVisible: true, minWidth: 145, fixed: true }
+        { key: 'actions', label: '操作', required: true, defaultVisible: true, minWidth: 268, fixed: true }
     ];
     const MAILBOX_TEST_STATUS_FILTERS = [
         { value: '', label: '全部状态' },
@@ -4212,8 +4262,9 @@
                 const emailCell = target.closest('.mailbox-email-cell');
                 if (emailCell) {
                     const mailboxId = parseInt(emailCell.dataset.mailboxId, 10);
-                    if (target.closest('.mailbox-email-copy')) copyMailboxEmail(emailCell.dataset.email || '', mailboxId);
-                    else if (target.closest('.mailbox-email-open')) openReceiveModal(mailboxId);
+                    if (target.closest('.mailbox-email-copy, .mailbox-email-address')) {
+                        copyMailboxEmail(emailCell.dataset.email || '', mailboxId);
+                    }
                     return;
                 }
 
@@ -4347,7 +4398,12 @@
         const extraWidth = Math.max(0, targetWidth - minTotal);
         let roundedTotal = 0;
 
-        colgroup.innerHTML = columns.map((column, index) => {
+        const layoutKey = columns.map(column => column.key).join('|');
+        if (colgroup.dataset.layoutKey !== layoutKey) {
+            colgroup.innerHTML = columns.map(column => `<col class="mailbox-layout-col mailbox-layout-col-${column.key}">`).join('');
+            colgroup.dataset.layoutKey = layoutKey;
+        }
+        columns.forEach((column, index) => {
             const minWidth = column.minWidth || 120;
             const growWidth = !column.fixed ? extraWidth * (getColumnWeight(column) / flexibleWeight) : 0;
             let width = Math.floor(minWidth + growWidth);
@@ -4355,8 +4411,9 @@
                 width = Math.max(minWidth, targetWidth - roundedTotal);
             }
             roundedTotal += width;
-            return `<col class="mailbox-layout-col mailbox-layout-col-${column.key}" style="width: ${width}px;">`;
-        }).join('');
+            const col = colgroup.children[index];
+            if (col.style.width !== `${width}px`) col.style.width = `${width}px`;
+        });
 
         table.style.setProperty('--mailbox-table-min-width', `${minTotal}px`);
         table.style.setProperty('--mailbox-table-width', `${Math.max(roundedTotal, targetWidth)}px`);
@@ -4406,8 +4463,8 @@
         const menu = document.getElementById('columnConfigMenu');
         if (!menu) return;
         const nextVisible = !menu.classList.contains('show');
+        MailboxInteractions.popup(menu, nextVisible);
         menu.classList.toggle('show', nextVisible);
-        menu.setAttribute('aria-hidden', nextVisible ? 'false' : 'true');
     }
 
     function toggleMailboxColumn(key, checked) {
@@ -4637,12 +4694,13 @@
             case 'group':
                 return `<td class="mailbox-col-group" data-label="${label}">${escapeHtml(getMailboxGroupName(mailbox))}</td>`;
             case 'email':
-                return `<td class="mailbox-col-email mailbox-email-cell" data-label="${label}" data-email="${escapeAttribute(mailbox.email)}" data-mailbox-id="${mailbox.id}" title="点击邮箱地址收件">
+                return `<td class="mailbox-col-email mailbox-email-cell" data-label="${label}" data-email="${escapeAttribute(mailbox.email)}" data-mailbox-id="${mailbox.id}">
                     <span class="mailbox-email-content">
-                        <span class="mailbox-email-identity"><button type="button" class="mailbox-email-text mailbox-email-open" translate="no">${escapeHtml(mailbox.email)}</button><small class="mailbox-email-group">${escapeHtml(getMailboxGroupName(mailbox))}</small></span>
+                        <button type="button" class="mailbox-email-text mailbox-email-address" title="点击复制邮箱" translate="no">${escapeHtml(mailbox.email)}</button>
                         <button class="mailbox-email-copy" type="button" title="复制邮箱" aria-label="复制邮箱">
                             <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span>
                         </button>
+                        <small class="mailbox-email-group">${escapeHtml(getMailboxGroupName(mailbox))}</small>
                     </span>
                 </td>`;
             case 'created_by_admin': {
@@ -4670,14 +4728,14 @@
             case 'actions':
                 return `<td class="mailbox-col-actions" data-label="${label}">
                     <div class="mailbox-actions">
-                        <button class="btn btn-primary btn-small" data-action="receive" data-mailbox-id="${mailbox.id}">收件</button>
+                        <button class="btn btn-primary btn-small" type="button" data-action="receive" data-mailbox-id="${mailbox.id}">收件</button>
+                        <button class="btn btn-secondary btn-small" type="button" data-action="test" data-mailbox-id="${mailbox.id}">测试</button>
+                        <button class="btn btn-secondary btn-small" type="button" data-action="remarks" data-mailbox-id="${mailbox.id}">备注</button>
                         <span class="mailbox-actions-more">
                             <button class="btn btn-secondary btn-small" type="button" data-action="more" data-mailbox-id="${mailbox.id}" aria-haspopup="true" aria-expanded="false">更多</button>
                             <span class="mailbox-more-menu" role="menu">
                                 <button class="btn btn-secondary btn-small" type="button" data-action="edit" data-mailbox-id="${mailbox.id}">编辑邮箱</button>
-                                <button class="btn btn-success btn-small" type="button" data-action="remarks" data-mailbox-id="${mailbox.id}">备注</button>
                                 <button class="btn btn-primary btn-small" type="button" data-action="send" data-mailbox-id="${mailbox.id}">发件</button>
-                                <button class="btn btn-secondary btn-small" type="button" data-action="test" data-mailbox-id="${mailbox.id}">测试</button>
                                 <button class="btn btn-danger btn-small" type="button" data-action="delete" data-mailbox-id="${mailbox.id}">删除</button>
                             </span>
                         </span>
@@ -4691,6 +4749,7 @@
     function closeMailboxMoreMenus(exceptWrapper = null) {
         document.querySelectorAll('.mailbox-actions-more.open').forEach(wrapper => {
             if (exceptWrapper && wrapper === exceptWrapper) return;
+            MailboxInteractions.popup(wrapper.querySelector('.mailbox-more-menu'), false, 'grid');
             wrapper.classList.remove('open');
             wrapper.closest('tr')?.classList.remove('mailbox-row-actions-open');
             const button = wrapper.querySelector('button[data-action="more"]');
@@ -4703,6 +4762,7 @@
         if (!wrapper) return;
         const shouldOpen = !wrapper.classList.contains('open');
         closeMailboxMoreMenus(wrapper);
+        MailboxInteractions.popup(wrapper.querySelector('.mailbox-more-menu'), shouldOpen, 'grid');
         wrapper.classList.toggle('open', shouldOpen);
         wrapper.closest('tr')?.classList.toggle('mailbox-row-actions-open', shouldOpen);
         button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
@@ -4768,12 +4828,16 @@
     function renderMailboxTable(mailboxes) {
         const tbody = document.querySelector('#mailboxTable tbody');
         const visibleColumns = getVisibleMailboxColumns();
+        const viewKey = JSON.stringify([mailboxes.map(mailbox => mailbox.id), visibleColumns.map(column => column.key)]);
+        const changed = tbody.dataset.viewKey !== viewKey;
+        tbody.dataset.viewKey = viewKey;
         renderMailboxTableHeader();
         tbody.innerHTML = '';
         
         if (mailboxes.length === 0) {
             const colCount = visibleColumns.length || 1;
             tbody.innerHTML = `<tr class="mailbox-empty-row"><td colspan="${colCount}"><div class="mailbox-empty"><strong>没有符合条件的邮箱</strong><span>试试其他关键词、切换分组，或添加一个邮箱。</span><button type="button" class="btn btn-secondary" onclick="resetMailboxFilters()">重置筛选</button></div></td></tr>`;
+            if (changed) MailboxInteractions.reveal(tbody);
             return;
         }
         
@@ -4785,7 +4849,7 @@
             row.innerHTML = visibleColumns.map(column => getMailboxCellHtml(column, mailbox, rowNumber)).join('');
             tbody.appendChild(row);
         });
-        if (window.AdminUI) AdminUI.staggerRows(tbody);
+        if (changed) MailboxInteractions.reveal(tbody);
 
         updateSelectionButtons();
     }
@@ -4860,8 +4924,9 @@
                 retry: '网络或检测异常，尚不能判断邮箱无效。可以批量重试。',
                 pending: '这些邮箱尚未测试，可勾选测试或测试全部筛选结果。'
             };
-            context.textContent = hints[testStatusFilter] || '';
-            context.hidden = !context.textContent;
+            const hint = hints[testStatusFilter] || '';
+            if (hint) context.textContent = hint;
+            MailboxInteractions.expand(context, !!hint);
         }
     }
 
@@ -5563,6 +5628,7 @@
         const tree = document.getElementById('groupTree');
         const hint = document.getElementById('groupEmptyHint');
         if (!tree) return;
+        hideGroupContextMenu();
         tree.innerHTML = '';
 
         const topGroups = [];
@@ -5597,23 +5663,24 @@
         const children = groups.filter(g => g.parentId === group.id && groupMatchesSearch(g));
         const hasChildren = children.length > 0;
 
-        const toggle = document.createElement('span');
+        const chevron = '<svg class="group-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        const isExpanded = hasChildren && (!collapsedGroups[group.id] || !!document.getElementById('groupSearchInput').value.trim());
+        const toggle = document.createElement(hasChildren ? 'button' : 'span');
         const toggleClasses = ['group-toggle'];
         if (!hasChildren) toggleClasses.push('placeholder');
-        if (collapsedGroups[group.id]) toggleClasses.push('collapsed');
         toggle.className = toggleClasses.join(' ');
-        toggle.textContent = hasChildren ? (collapsedGroups[group.id] ? '▸' : '▾') : '';
         if (!hasChildren) {
             toggle.setAttribute('aria-hidden', 'true');
         } else {
-            toggle.removeAttribute('aria-hidden');
+            toggle.type = 'button';
+            toggle.innerHTML = chevron;
+            toggle.setAttribute('aria-expanded', String(isExpanded));
+            toggle.setAttribute('aria-label', isExpanded ? '收起子分组' : '展开子分组');
         }
         if (hasChildren) {
             toggle.addEventListener('click', (e) => {
                 e.stopPropagation();
-                collapsedGroups[group.id] = !collapsedGroups[group.id];
-                saveGroupCollapseState();  // Save state to localStorage
-                renderGroupTree();
+                toggleGroupChildren(group.id, li, toggle);
             });
         }
 
@@ -5631,7 +5698,7 @@
             const count = document.createElement('span');
             count.className = 'group-count';
             count.textContent = ` (${group.mailboxCount})`;
-            count.style.color = '#64748b';
+            count.style.color = 'var(--text-muted)';
             count.style.fontSize = '0.9em';
             count.style.marginLeft = '4px';
             name.appendChild(count);
@@ -5642,11 +5709,17 @@
         const actions = document.createElement('button');
         actions.type = 'button';
         actions.className = 'group-actions-button';
-        actions.textContent = '⋯';
+        actions.innerHTML = chevron;
         actions.title = '分组操作';
         actions.setAttribute('aria-label', '分组操作');
+        actions.setAttribute('aria-expanded', 'false');
+        actions.setAttribute('aria-controls', 'groupContextMenu');
         actions.addEventListener('click', event => {
             event.stopPropagation();
+            if (actions.getAttribute('aria-expanded') === 'true') {
+                hideGroupContextMenu();
+                return;
+            }
             const rect = actions.getBoundingClientRect();
             showGroupContextMenu({ pageX: Math.min(rect.left, window.innerWidth - 180) + window.scrollX, pageY: rect.bottom + window.scrollY }, group.id);
         });
@@ -5657,10 +5730,9 @@
         });
         if (hasChildren) {
             item.addEventListener('dblclick', (e) => {
+                if (e.target.closest('button')) return;
                 e.stopPropagation();
-                collapsedGroups[group.id] = !collapsedGroups[group.id];
-                saveGroupCollapseState();  // Save state to localStorage
-                renderGroupTree();
+                toggleGroupChildren(group.id, li, toggle);
             });
         }
         item.addEventListener('contextmenu', (e) => {
@@ -5673,9 +5745,8 @@
         if (hasChildren) {
             const ul = document.createElement('ul');
             ul.className = 'group-children';
-            if (collapsedGroups[group.id] && !document.getElementById('groupSearchInput').value.trim()) {
-                ul.style.display = 'none';
-            }
+            ul.hidden = !isExpanded;
+            ul.inert = !isExpanded;
             children.forEach(child => ul.appendChild(createGroupNode(child, depth + 1)));
             li.appendChild(ul);
         }
@@ -5683,11 +5754,27 @@
         return li;
     }
 
+    function toggleGroupChildren(groupId, node, toggle) {
+        const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+        collapsedGroups[groupId] = !expanded;
+        saveGroupCollapseState();
+        toggle.setAttribute('aria-expanded', String(expanded));
+        toggle.setAttribute('aria-label', expanded ? '收起子分组' : '展开子分组');
+        MailboxInteractions.expand(node.querySelector(':scope > .group-children'), expanded);
+    }
+
     function setSelectedGroup(groupId) {
         selectedGroupId = [ROOT_GROUP_ID, UNGROUPED_GROUP_ID].includes(groupId) ? groupId : (Number(groupId) || ROOT_GROUP_ID);
         setStoredPreference(`mailboxActiveGroup:${CURRENT_ADMIN_USERNAME}`, String(selectedGroupId));
-        renderGroupTree();
+        hideGroupContextMenu();
+        document.querySelectorAll('.group-item').forEach(item => {
+            const active = item.dataset.groupId === String(selectedGroupId);
+            item.classList.toggle('active', active);
+            item.setAttribute('aria-current', String(active));
+        });
+        renderWorkspaceGroupOptions();
         renderMailboxView(1);
+        if (mailboxGroupDrawerMedia.matches && !document.querySelector('.content-grid').classList.contains('group-panel-collapsed')) closeMailboxGroupPanel();
     }
 
     function bindGroupPanelEvents() {
@@ -5699,16 +5786,27 @@
             showGroupContextMenu(e, null);
         });
         document.addEventListener('click', hideGroupContextMenu);
+        document.addEventListener('keydown', event => {
+            if (event.key !== 'Escape') return;
+            const trigger = panel.querySelector('.group-actions-button[aria-expanded="true"]');
+            hideGroupContextMenu();
+            trigger?.focus();
+        });
         window.addEventListener('resize', hideGroupContextMenu);
     }
 
     function showGroupContextMenu(event, groupId = null) {
         const menu = document.getElementById('groupContextMenu');
         if (!menu) return;
+        hideGroupContextMenu();
         contextTargetGroupId = groupId;
-        menu.style.display = 'block';
+        document.querySelector(`.group-item[data-group-id="${groupId}"] .group-actions-button`)?.setAttribute('aria-expanded', 'true');
         menu.style.left = `${event.pageX}px`;
         menu.style.top = `${event.pageY}px`;
+        MailboxInteractions.popup(menu, true);
+        const bounds = menu.getBoundingClientRect();
+        menu.style.left = `${Math.max(8, Math.min(event.pageX, window.scrollX + innerWidth - bounds.width - 8))}px`;
+        menu.style.top = `${Math.max(window.scrollY + 8, Math.min(event.pageY, window.scrollY + innerHeight - bounds.height - 8))}px`;
 
         const isProtected = !groupId || groupId === ROOT_GROUP_ID || groupId === UNGROUPED_GROUP_ID;
         menu.querySelector('[data-action="add"]').disabled = false;
@@ -5718,10 +5816,9 @@
     }
 
     function hideGroupContextMenu() {
+        document.querySelectorAll('.group-actions-button[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
         const menu = document.getElementById('groupContextMenu');
-        if (menu) {
-            menu.style.display = 'none';
-        }
+        MailboxInteractions.popup(menu, false);
     }
 
     const groupContextElement = document.getElementById('groupContextMenu');
@@ -5756,13 +5853,12 @@
         document.getElementById('groupModalTitle').textContent = mode === 'edit' ? '编辑分组' : '添加分组';
         document.getElementById('groupParentName').value = groupModalParentId ? (getGroupById(groupModalParentId)?.name || '') : TOP_LEVEL_LABEL;
         document.getElementById('groupNameInput').value = mode === 'edit' && groupId ? (getGroupById(groupId)?.name || '') : '';
-        modal.classList.add('show');
+        MailboxInteractions.openModal(modal);
     }
 
     function closeGroupModal() {
         const modal = document.getElementById('groupModal');
-        document.getElementById('groupNameInput').value = '';
-        modal.classList.remove('show');
+        MailboxInteractions.closeModal(modal, () => { document.getElementById('groupNameInput').value = ''; });
     }
 
     async function submitGroupForm() {
@@ -6083,7 +6179,7 @@
             label.dataset.email = mailbox ? mailbox.email : '';
         }
         setReceiveError('');
-        document.getElementById('receiveModal').classList.add('show');
+        MailboxInteractions.openModal('receiveModal');
         updateReceiveTabActive();
         // Removed status text display - only use Toast notifications per requirements
         renderReceiveView();
@@ -6110,10 +6206,11 @@
 
     function closeReceiveModal() {
         receiveState.fetchToken += 1;
-        document.getElementById('receiveModal').classList.remove('show');
-        receiveState.activeMail = null;
-        setReceiveFetchingState(false);
-        setReceiveError('');
+        MailboxInteractions.closeModal('receiveModal', () => {
+            receiveState.activeMail = null;
+            setReceiveFetchingState(false);
+            setReceiveError('');
+        });
     }
 
     function switchReceiveFolder(folder) {
@@ -6446,8 +6543,10 @@
         const listView = document.getElementById('receiveListView');
         const detailView = document.getElementById('receiveDetailView');
         if (listView && detailView) {
+            const changed = (detailView.style.display !== 'none') !== showDetail;
             listView.style.display = showDetail ? 'none' : 'block';
             detailView.style.display = showDetail ? 'block' : 'none';
+            if (changed) MailboxInteractions.reveal(showDetail ? detailView : listView);
             const pagination = document.getElementById('receivePagination');
             if (pagination) {
                 pagination.classList.toggle('is-hidden', showDetail);
@@ -6471,6 +6570,9 @@
 
         const tbody = document.getElementById('receiveTableBody');
         if (tbody) {
+            const viewKey = JSON.stringify([receiveState.folder, receiveState.page, pageData.map(mail => mail.id)]);
+            const changed = tbody.dataset.viewKey !== viewKey;
+            tbody.dataset.viewKey = viewKey;
             tbody.innerHTML = '';
             if (pageData.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${RECEIVE_TABLE_COLUMNS}" class="receive-empty">暂无邮件</td></tr>`;
@@ -6488,6 +6590,7 @@
                     tbody.appendChild(row);
                 });
             }
+            if (changed) MailboxInteractions.reveal(tbody);
         }
 
         renderReceivePagination(totalPages, filtered.length);
@@ -6604,7 +6707,7 @@
                 imageContainer.innerHTML = '';
                 validImages.forEach((image) => {
                     const imageItem = document.createElement('div');
-                    imageItem.style.cssText = 'text-align:center; border:1px solid #e5e7eb; border-radius:8px; padding:6px; background:#fff;';
+                    imageItem.className = 'receive-detail-image-item';
                     const img = document.createElement('img');
                     const dataUri = 'data:' + image.mime_type + ';base64,' + image.content;
                     img.src = dataUri;
@@ -6624,7 +6727,7 @@
                         }
                     };
                     const imageInfo = document.createElement('div');
-                    imageInfo.style.cssText = 'font-size:11px; color:#6b7280; margin-top:5px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+                    imageInfo.className = 'receive-detail-image-info';
                     imageInfo.textContent = image.filename || 'image';
                     imageItem.appendChild(img);
                     imageItem.appendChild(imageInfo);
@@ -6773,7 +6876,7 @@
         refreshGroupSelects(defaultGroup, document.getElementById('batchGroupSelect')?.value || UNGROUPED_GROUP_ID);
         updatePortByProtocol();
         updateSendPortByProtocol();
-        document.getElementById('mailboxModal').classList.add('show');
+        MailboxInteractions.openModal('mailboxModal');
     }
     
     function inferBatchProviderPreset(content) {
@@ -6870,7 +6973,7 @@
         refreshGroupSelects(document.getElementById('groupSelect')?.value || UNGROUPED_GROUP_ID, selectedGroupId && selectedGroupId !== ROOT_GROUP_ID ? selectedGroupId : UNGROUPED_GROUP_ID);
         updateBatchPortByProtocol();
         updateBatchSendPortByProtocol();
-        document.getElementById('batchAddModal').classList.add('show');
+        MailboxInteractions.openModal('batchAddModal');
     }
 
     function resetBatchGroupCreateControls() {
@@ -6897,7 +7000,7 @@
         document.getElementById('serverRemarks').value = '';
         document.getElementById('sendServerAddress').value = '';
         loadServerList();
-        document.getElementById('serverModal').classList.add('show');
+        MailboxInteractions.openModal('serverModal');
     }
     
     // 编辑邮箱
@@ -6934,7 +7037,7 @@
                 refreshGroupSelects(currentGroupId, document.getElementById('batchGroupSelect')?.value || UNGROUPED_GROUP_ID);
                 document.getElementById('groupSelect').value = currentGroupId;
                 loadServerOptions();
-                document.getElementById('mailboxModal').classList.add('show');
+                MailboxInteractions.openModal('mailboxModal');
             } else {
                 showToast(data.message || '获取邮箱信息失败', 'error');
             }
@@ -7323,7 +7426,10 @@
         const label = state.running
             ? (state.stopped ? '正在停止（等待进行中的测试完成）' : '批量测试中')
             : (state.stopped ? '批量测试已停止' : '批量测试完成');
-        text.textContent = `${label}：${state.completed} / ${state.total}；正常 ${state.normal}，无效 ${state.invalid}，待重试 ${state.retry}`;
+        text.innerHTML = `<span class="mailbox-batch-summary"><span>${escapeHtml(label)}</span>：<strong translate="no">${state.completed} / ${state.total}</strong></span>
+            <span class="mailbox-test-tag normal"><span>正常</span> <b translate="no">${state.normal}</b></span>
+            <span class="mailbox-test-tag banned"><span>无效</span> <b translate="no">${state.invalid}</b></span>
+            <span class="mailbox-test-tag test_error"><span>待重试</span> <b translate="no">${state.retry}</b></span>`;
         stop.hidden = !state.running;
         stop.disabled = state.stopped;
     }
@@ -7492,7 +7598,10 @@
         const bar = document.getElementById('mailboxBulkBar');
         const countEl = document.getElementById('bulkSelectedCount');
         if (countEl) countEl.textContent = String(selectedMailboxes.size);
-        if (bar) bar.classList.toggle('visible', selectedMailboxes.size > 0);
+        if (bar) {
+            MailboxInteractions.expand(bar, selectedMailboxes.size > 0, 'flex');
+            bar.classList.toggle('visible', selectedMailboxes.size > 0);
+        }
         const selectAll = document.getElementById('selectAll');
         const checkboxes = Array.from(document.querySelectorAll('.mailbox-checkbox'));
         if (selectAll) {
@@ -7528,11 +7637,11 @@
         );
         const countInput = document.getElementById('batchGroupSelectedCount');
         if (countInput) countInput.value = `${selectedMailboxes.size} 个邮箱`;
-        document.getElementById('batchGroupModal')?.classList.add('show');
+        MailboxInteractions.openModal('batchGroupModal');
     }
 
     function closeBatchGroupModal() {
-        document.getElementById('batchGroupModal')?.classList.remove('show');
+        MailboxInteractions.closeModal('batchGroupModal');
     }
 
     function normalizeGroupValue(value) {
@@ -7827,7 +7936,7 @@
         container.innerHTML = '';
         
         if (serverList.length === 0) {
-            container.innerHTML = '<div style="text-align: center; color: #6b7280; padding: 20px;">暂无服务器配置</div>';
+            container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">暂无服务器配置</div>';
             return;
         }
         
@@ -8034,32 +8143,31 @@
     
     // 关闭添加/编辑邮箱模态框
     function closeModal() {
-        document.getElementById('mailboxModal').classList.remove('show');
-        resetSingleMailboxImportControls();
+        MailboxInteractions.closeModal('mailboxModal', resetSingleMailboxImportControls);
     }
     
     // 关闭批量添加模态框
     function closeBatchAddModal() {
-        resetBatchGroupCreateControls();
-        document.getElementById('batchAddModal').classList.remove('show');
+        MailboxInteractions.closeModal('batchAddModal', resetBatchGroupCreateControls);
     }
     
     // 关闭服务器管理模态框
     function closeServerModal() {
-        document.getElementById('serverModal').classList.remove('show');
-        selectedServers.clear();
-        updateBatchDeleteServersButton();
+        MailboxInteractions.closeModal('serverModal', () => {
+            selectedServers.clear();
+            updateBatchDeleteServersButton();
+        });
     }
     
     // 发件模态框
     function openSendModal(id) {
         document.getElementById('sendMailForm').reset();
         document.getElementById('sendMailboxId').value = id;
-        document.getElementById('sendMailModal').classList.add('show');
+        MailboxInteractions.openModal('sendMailModal');
     }
     
     function closeSendModal() {
-        document.getElementById('sendMailModal').classList.remove('show');
+        MailboxInteractions.closeModal('sendMailModal');
     }
     
     // 备注模态框
@@ -8072,7 +8180,7 @@
                 const mailbox = data.data;
                 document.getElementById('remarksMailboxId').value = mailbox.id;
                 document.getElementById('remarksText').value = mailbox.remarks || '';
-                document.getElementById('remarksModal').classList.add('show');
+                MailboxInteractions.openModal('remarksModal');
             } else {
                 showToast(data.message || '获取邮箱信息失败', 'error');
             }
@@ -8083,7 +8191,7 @@
     }
     
     function closeRemarksModal() {
-        document.getElementById('remarksModal').classList.remove('show');
+        MailboxInteractions.closeModal('remarksModal');
     }
     
     async function saveMailboxRemarks() {
@@ -8162,15 +8270,6 @@
     
     // 键盘事件
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeModal();
-            closeBatchAddModal();
-            closeServerModal();
-            closeSendModal();
-            closeReceiveModal();
-            closeRemarksModal();
-        }
-        
         if (e.key === 'Enter' && document.getElementById('searchInput') === document.activeElement) {
             searchMailboxes();
         }
@@ -8192,9 +8291,9 @@
         
         container.appendChild(toast);
         
-        setTimeout(() => {
-            toast.classList.add('show');
-        }, 10);
+        toast.classList.add('show');
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        MailboxInteractions.reveal(toast);
         
         // If duration is 0, toast persists indefinitely (must be removed manually)
         if (duration > 0) {
@@ -8210,13 +8309,7 @@
         const toast = document.getElementById(toastId);
         if (!toast) return;
         
-        toast.classList.remove('show');
-        setTimeout(() => {
-            const container = document.getElementById('toast-container');
-            if (container && container.contains(toast)) {
-                container.removeChild(toast);
-            }
-        }, 300);
+        MailboxInteractions.dismiss(toast);
     }
     
     function updateEmailCountDisplay(value) {

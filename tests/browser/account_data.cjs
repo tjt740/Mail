@@ -222,3 +222,24 @@ test('status defaults to normal, supports all/individual statuses, and reset res
         assert.equal(await page.getByRole('button', { name: /复制所选/ }).isDisabled(), true);
     } finally { await page.close(); }
 });
+
+const { contrastFailures } = require('./theme_contrast.cjs');
+test('account records and detail dialogs remain readable across all palettes', async () => {
+    const page = await newPage();
+    const failures = [];
+    try {
+        for (const [key, label] of [['sunny','晴天'],['night','夜间'],['rain','雨夜'],['clay','暖陶橙'],['ocean','海洋蓝'],['emerald','翡翠绿'],['violet','紫罗兰'],['rose','玫瑰红']]) {
+            await page.locator('.react-color-theme-button').click();
+            await page.getByRole('menuitem', { name: new RegExp(label) }).click();
+            await page.locator('.react-color-theme-dropdown').waitFor({ state: 'hidden' });
+            await page.waitForFunction(key => document.documentElement.dataset.colorTheme === key, key);
+            failures.push(...(await contrastFailures(page, '.account-data-page')).map(item => ({ theme: key, ...item })));
+            await record(page, 1).getByRole('button', { name: /详\s*情/ }).click();
+            await page.getByRole('dialog').getByText('fixture-client-1', { exact: true }).waitFor();
+            failures.push(...(await contrastFailures(page, '.ant-modal-content')).map(item => ({ theme: key, ...item })));
+            await page.keyboard.press('Escape');
+            await page.getByRole('dialog').waitFor({ state: 'hidden' });
+        }
+        assert.equal(failures.length, 0, JSON.stringify(failures.slice(0, 12)));
+    } finally { await page.close(); }
+});

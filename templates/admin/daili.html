@@ -21,9 +21,9 @@
     
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: #f8fafc;
+        background: var(--surface-2);
         line-height: 1.6;
-        color: #334155;
+        color: var(--text);
         transition: var(--transition);
     }
     
@@ -105,10 +105,10 @@
         width: 36px;
         height: 36px;
         border-radius: 10px;
-        border: 1px solid #e5e7eb;
-        background: #fff;
+        border: 1px solid var(--border);
+        background: var(--surface);
         cursor: pointer;
-        color: #4b5563;
+        color: var(--text-muted);
         transition: var(--transition);
         box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
@@ -168,7 +168,7 @@
     }
     
     .header {
-        background: white;
+        background: var(--surface);
         height: var(--header-height);
         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         display: flex;
@@ -183,7 +183,7 @@
     .header-title {
         font-size: 24px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
     }
     
     .header-actions {
@@ -196,7 +196,7 @@
         display: flex;
         align-items: center;
         gap: 15px;
-        color: #64748b;
+        color: var(--text-muted);
     }
     
     .logout-btn {
@@ -226,7 +226,7 @@
     
     /* Cards */
     .card {
-        background: white;
+        background: var(--surface);
         border-radius: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
         overflow: hidden;
@@ -241,8 +241,8 @@
     
     .card-header {
         padding: 20px 25px;
-        border-bottom: 1px solid #f1f5f9;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -251,7 +251,7 @@
     .card-title {
         font-size: 18px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
         margin: 0;
     }
     
@@ -319,7 +319,7 @@
     .form-group label {
         display: block;
         margin-bottom: 8px;
-        color: #374151;
+        color: var(--text);
         font-weight: 500;
     }
     
@@ -327,7 +327,7 @@
     .form-group select {
         width: 100%;
         padding: 12px 16px;
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
         transition: var(--transition);
@@ -379,17 +379,17 @@
     table td {
         padding: 12px 16px;
         text-align: left;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--border);
     }
     
     table th {
-        background: #f8fafc;
+        background: var(--surface-2);
         font-weight: 600;
-        color: #374151;
+        color: var(--text);
     }
     
     table tr:hover {
-        background: #f8fafc;
+        background: var(--surface-2);
     }
     
     /* Modal Styles */
@@ -412,7 +412,7 @@
     }
     
     .modal-content {
-        background: white;
+        background: var(--surface);
         border-radius: 15px;
         width: 90%;
         max-width: 600px;
@@ -423,7 +423,7 @@
     
     .modal-header {
         padding: 20px 25px;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--border);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -432,7 +432,7 @@
     .modal-title {
         font-size: 18px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text);
     }
     
     .modal-close {
@@ -440,11 +440,11 @@
         border: none;
         font-size: 24px;
         cursor: pointer;
-        color: #6b7280;
+        color: var(--text-muted);
     }
     
     .modal-close:hover {
-        color: #374151;
+        color: var(--text);
     }
     
     .modal-body {
@@ -453,7 +453,7 @@
     
     .modal-footer {
         padding: 20px 25px;
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid var(--border);
         display: flex;
         justify-content: flex-end;
         gap: 15px;
@@ -504,7 +504,7 @@
     /* 代理管理专用样式 */
     .proxy-tabs {
         display: flex;
-        border-bottom: 2px solid #e5e7eb;
+        border-bottom: 2px solid var(--border);
         margin-bottom: 25px;
     }
     
@@ -514,7 +514,7 @@
         border: none;
         font-size: 16px;
         font-weight: 500;
-        color: #6b7280;
+        color: var(--text-muted);
         cursor: pointer;
         position: relative;
         transition: var(--transition);
@@ -570,11 +570,11 @@
         flex: 1;
         min-width: 200px; /* Increased from 150px for better input experience */
         padding: 10px 16px; /* Enhanced padding to match mailbox.html */
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px; /* Increased radius to match mailbox.html */
         font-size: 14px; /* Increased font size to match mailbox.html */
         transition: all 0.3s ease;
-        background: #ffffff;
+        background: var(--surface);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Enhanced shadow to match mailbox.html */
     }
     
@@ -586,16 +586,16 @@
     }
     
     .search-box input::placeholder {
-        color: #9ca3af;
+        color: var(--text-muted);
         font-style: italic; /* Added italic style to match mailbox.html */
     }
     
     .page-controls select {
         padding: 10px 12px; /* Increased padding to match search input better */
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
-        background: #ffffff;
+        background: var(--surface);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Added shadow to match search input */
         transition: all 0.3s ease; /* Added transition for consistency */
         min-width: 120px; /* Ensure minimum width to prevent shrinking too much */
@@ -611,7 +611,7 @@
     .pagination-container {
         position: sticky;
         bottom: 0;
-        background: #fff;
+        background: var(--surface);
         padding: 10px 0 6px;
         margin-top: 8px;
         display: flex;
@@ -624,7 +624,7 @@
     }
     
     .pagination-info {
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 14px;
         margin-right: 20px;
     }
@@ -633,22 +633,22 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 14px;
     }
 
     .page-size-control select {
         padding: 8px 12px;
-        border: 2px solid #e5e7eb;
+        border: 2px solid var(--border);
         border-radius: 8px;
         font-size: 14px;
     }
     
     .page-btn {
         padding: 8px 12px;
-        border: 1px solid #e5e7eb;
-        background: white;
-        color: #374151;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
         text-decoration: none;
         border-radius: 6px;
         transition: var(--transition);
@@ -656,8 +656,8 @@
     }
     
     .page-btn:hover {
-        background: #f3f4f6;
-        border-color: #d1d5db;
+        background: var(--surface-3);
+        border-color: var(--border);
     }
     
     .page-btn.active {
@@ -717,7 +717,7 @@
         border: none;
         font-size: 24px;
         cursor: pointer;
-        color: #64748b;
+        color: var(--text-muted);
         transition: var(--transition);
     }
     
@@ -811,6 +811,33 @@
         display: block;
     }
     
+    /* Status surfaces follow the same palette as the surrounding proxy controls. */
+    #proxyStatusPanel {
+        --proxy-status-accent: var(--text-muted);
+        margin-top: 15px;
+        padding: 15px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface-2);
+        color: var(--text);
+    }
+    #proxyStatusPanel[data-state="enabled"] { --proxy-status-accent: var(--accent-mint); }
+    #proxyStatusPanel[data-state="warning"] { --proxy-status-accent: var(--accent-gold); }
+    #proxyStatusPanel:is([data-state="enabled"], [data-state="warning"]) {
+        background: color-mix(in srgb, var(--proxy-status-accent) 8%, var(--surface));
+        border-color: color-mix(in srgb, var(--proxy-status-accent) 35%, var(--border));
+    }
+    #proxyStatusPanel strong { color: var(--text); }
+    #proxyStatusIcon { color: var(--proxy-status-accent); }
+    #proxyStatusText {
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--proxy-status-accent) 12%, var(--surface));
+        color: var(--proxy-status-accent);
+        font-weight: 600;
+    }
+    #proxyStatusDetails { margin-top: 8px; color: var(--text-muted); font-size: 14px; }
+
     /* Mobile responsive styles */
     @media (max-width: 768px) {
         .button-group {
@@ -919,13 +946,13 @@
                 </div>
                 
                 <!-- 代理状态显示 -->
-                <div id="proxyStatusPanel" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;">
+                <div id="proxyStatusPanel" data-state="disabled" style="display: none;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span id="proxyStatusIcon"><span class="anticon"><svg aria-hidden="true"><use href="#ai-global"></use></svg></span></span>
                         <strong>代理状态：</strong>
                         <span id="proxyStatusText">未启用</span>
                     </div>
-                    <div id="proxyStatusDetails" style="margin-top: 8px; color: #6b7280; font-size: 14px;"></div>
+                    <div id="proxyStatusDetails"></div>
                 </div>
             </div>
         </div>
@@ -1187,42 +1214,32 @@
         const disableBtn = document.getElementById('disableProxyBtn');
         
         const proxyEnabled = config.proxy_enabled === '1';
+        statusPanel.dataset.state = proxyEnabled ? (activeProxy ? 'enabled' : 'warning') : 'disabled';
+        statusPanel.style.display = 'block';
         
         if (proxyEnabled && activeProxy) {
             // 代理已启用
-            statusPanel.style.display = 'block';
-            statusPanel.style.background = '#d4edda';
-            statusIcon.innerHTML = '<span class="anticon" style="color:#4F8A5B"><svg aria-hidden="true"><use href="#ai-check-circle"></use></svg></span>';
+            statusIcon.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-check-circle"></use></svg></span>';
             statusText.textContent = '已启用';
-            statusText.style.color = '#155724';
             statusDetails.innerHTML = `
                 当前代理: <strong>${activeProxy.proxy_type.toUpperCase()}--${activeProxy.name || ''}--地址: ${activeProxy.host}:${activeProxy.port}</strong>
             `;
-            statusDetails.style.color = '#155724';
             
             enableBtn.style.display = 'none';
             disableBtn.style.display = 'inline-block';
         } else if (proxyEnabled) {
             // 代理已启用但无有效代理
-            statusPanel.style.display = 'block';
-            statusPanel.style.background = '#fff3cd';
             statusIcon.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-warning"></use></svg></span>';
             statusText.textContent = '配置异常';
-            statusText.style.color = '#856404';
             statusDetails.textContent = '代理已启用但未找到有效的代理配置';
-            statusDetails.style.color = '#856404';
             
             enableBtn.style.display = 'inline-block';
             disableBtn.style.display = 'inline-block';
         } else {
             // 代理未启用
-            statusPanel.style.display = 'block';
-            statusPanel.style.background = '#f8f9fa';
-            statusIcon.innerHTML = '<span class="anticon" style="color:#9b9890"><svg aria-hidden="true"><use href="#ai-stop"></use></svg></span>';
+            statusIcon.innerHTML = '<span class="anticon"><svg aria-hidden="true"><use href="#ai-stop"></use></svg></span>';
             statusText.textContent = '未启用';
-            statusText.style.color = '#6b7280';
             statusDetails.textContent = '点击"开启代理"按钮智能选择延迟最低的代理，或手动切换到指定代理';
-            statusDetails.style.color = '#6b7280';
             
             enableBtn.style.display = 'inline-block';
             disableBtn.style.display = 'none';
@@ -1379,7 +1396,7 @@
         const paginatedProxies = allProxies.slice(startIndex, endIndex);
         
         if (paginatedProxies.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: #6b7280;">暂无代理配置</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted);">暂无代理配置</td></tr>';
             return;
         }
         
@@ -1518,7 +1535,7 @@
         tbody.innerHTML = '';
         
         if (proxies.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: #6b7280;">暂无代理配置</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted);">暂无代理配置</td></tr>';
             return;
         }
         
