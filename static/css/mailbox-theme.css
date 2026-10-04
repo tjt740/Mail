@@ -34,12 +34,34 @@
 .mailbox-workspace .group-tree > li:nth-child(5n+3) { --group-accent: var(--accent-mint); }
 .mailbox-workspace .group-tree > li:nth-child(5n+4) { --group-accent: var(--accent-coral); }
 .mailbox-workspace .group-tree > li:nth-child(5n+5) { --group-accent: var(--accent-gold); }
-.mailbox-workspace .group-item { border-left: 3px solid color-mix(in srgb, var(--group-accent) 50%, transparent); }
+.mailbox-workspace .group-item {
+    position: relative;
+    min-height: 44px;
+    margin-bottom: 8px;
+    padding-block: 9px;
+    border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface) 72%, transparent);
+}
+/* A short, rounded marker keeps adjacent rows visually separate. */
+.mailbox-workspace .group-item::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 50%;
+    width: 3px;
+    height: 18px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--group-accent) 55%, transparent);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
 .mailbox-workspace .group-item.active {
     background: linear-gradient(105deg, color-mix(in srgb, var(--group-accent) 20%, var(--surface)), color-mix(in srgb, var(--group-accent) 7%, var(--surface))) !important;
-    border-left-color: var(--group-accent);
+    border-color: color-mix(in srgb, var(--group-accent) 30%, var(--border));
     color: var(--group-accent) !important;
 }
+.mailbox-workspace .group-item.active::before { height: 24px; background: var(--group-accent); }
 .mailbox-workspace .group-item.active :is(.group-name, .group-chevron) { color: var(--group-accent) !important; }
 .mailbox-workspace .group-count { color: var(--text-muted) !important; }
 .mailbox-workspace .group-panel-header-toggle { color: var(--accent-violet); background: color-mix(in srgb, var(--accent-violet) 10%, var(--surface)); border-color: color-mix(in srgb, var(--accent-violet) 25%, var(--border)); }
