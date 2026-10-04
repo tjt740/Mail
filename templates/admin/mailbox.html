@@ -3305,17 +3305,17 @@
                         </div>
                         <div class="mailbox-bulk-bar" id="mailboxBulkBar">
                             <span class="au-bulk-count">已选 <b id="bulkSelectedCount">0</b> 个邮箱</span>
-                            <button class="btn btn-success" type="button" onclick="copySelectedMailboxes()">
+                            <button class="btn btn-success" data-bulk-action="copy" type="button" onclick="copySelectedMailboxes()">
                                 <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span> 批量复制
                             </button>
-                            <button class="btn btn-secondary" type="button" onclick="showBatchGroupModal()">
+                            <button class="btn btn-secondary" data-bulk-action="group" type="button" onclick="showBatchGroupModal()">
                                 <span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量分组
                             </button>
-                            <button class="btn btn-secondary" id="batchTestSelectedBtn" type="button" onclick="batchTestMailboxes('selected')">测试选中邮箱</button>
-                            <button class="btn btn-danger" id="batchDeleteMailboxesBtn" type="button" onclick="batchDeleteMailboxes()">
+                            <button class="btn btn-secondary" data-bulk-action="test" id="batchTestSelectedBtn" type="button" onclick="batchTestMailboxes('selected')">测试选中邮箱</button>
+                            <button class="btn btn-danger" data-bulk-action="delete" id="batchDeleteMailboxesBtn" type="button" onclick="batchDeleteMailboxes()">
                                 <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除
                             </button>
-                            <button class="btn" type="button" onclick="clearMailboxSelection()">取消选择</button>
+                            <button class="btn btn-secondary" data-bulk-action="clear" type="button" onclick="clearMailboxSelection()">取消选择</button>
                         </div>
                         <div id="mailboxLatestTestResult" class="mailbox-test-result-panel" role="status" aria-live="polite" hidden></div>
                         <div class="table-container">
@@ -3391,7 +3391,7 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn" onclick="closeBatchGroupModal()">取消</button>
+            <button type="button" class="btn btn-secondary" onclick="closeBatchGroupModal()">取消</button>
             <button type="button" class="btn btn-primary" onclick="applySelectedMailboxGroup()">应用分组</button>
         </div>
     </div>

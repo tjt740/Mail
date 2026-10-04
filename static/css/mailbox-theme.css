@@ -97,6 +97,24 @@
 .mailbox-workspace .mailbox-list-count strong { color: var(--accent-mint); font-size: 18px; }
 .mailbox-workspace #selectFilteredMailboxesBtn { color: var(--accent-cyan) !important; background: color-mix(in srgb, var(--accent-cyan) 9%, var(--surface)) !important; border-color: color-mix(in srgb, var(--accent-cyan) 25%, var(--border)) !important; }
 .mailbox-workspace #batchTestFilteredBtn { color: var(--accent-violet) !important; background: color-mix(in srgb, var(--accent-violet) 9%, var(--surface)) !important; border-color: color-mix(in srgb, var(--accent-violet) 25%, var(--border)) !important; }
+/* Selection appears on demand, and must keep the current palette too. */
+.mailbox-workspace #mailboxBulkBar {
+    --bulk-accent: var(--text-muted);
+    background-image: linear-gradient(110deg, color-mix(in srgb, var(--accent-cyan) 5%, var(--surface-2)), color-mix(in srgb, var(--accent-violet) 3%, var(--surface-2)));
+}
+.mailbox-workspace #mailboxBulkBar .au-bulk-count { color: var(--text-muted); }
+.mailbox-workspace #bulkSelectedCount { color: var(--accent-cyan); font-variant-numeric: tabular-nums; }
+.mailbox-workspace #mailboxBulkBar [data-bulk-action="copy"] { --bulk-accent: var(--accent-mint); }
+.mailbox-workspace #mailboxBulkBar [data-bulk-action="group"] { --bulk-accent: var(--accent-violet); }
+.mailbox-workspace #mailboxBulkBar [data-bulk-action="test"] { --bulk-accent: var(--accent-gold); }
+.mailbox-workspace #mailboxBulkBar [data-bulk-action="delete"] { --bulk-accent: var(--accent-coral); }
+.mailbox-workspace #mailboxBulkBar .btn {
+    color: var(--bulk-accent) !important;
+    background: color-mix(in srgb, var(--bulk-accent) 10%, var(--surface)) !important;
+    border: 1px solid color-mix(in srgb, var(--bulk-accent) 35%, var(--border)) !important;
+}
+.mailbox-workspace #mailboxBulkBar .btn:hover:not(:disabled) { background: color-mix(in srgb, var(--bulk-accent) 18%, var(--surface)) !important; }
+.mailbox-workspace #mailboxBulkBar .btn:focus-visible { outline: 2px solid var(--bulk-accent); outline-offset: 2px; }
 .mailbox-workspace #mailboxTable th { background: color-mix(in srgb, var(--primary-color) 6%, var(--surface)) !important; }
 .mailbox-workspace #mailboxTable tbody tr:nth-child(even) { background: color-mix(in srgb, var(--accent-cyan) 3%, var(--surface)); }
 .mailbox-workspace :is(.mailbox-email-address, .mailbox-remarks-text) { color: var(--text); }

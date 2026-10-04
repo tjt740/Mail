@@ -653,6 +653,36 @@ for (const width of [1440, 390]) test(`all eight palettes keep lists, menus, rec
             await page.evaluate(theme => { MailThemes.apply(theme); document.dispatchEvent(new CustomEvent('color-theme-change')); }, theme);
             const check = async label => failures.push(...(await contrastFailures(page)).map(item => ({ theme, state: label, ...item })));
             await check('mailbox');
+            await page.locator('#filterInvalidAccountsBtn').click();
+            await page.locator('#selectFilteredMailboxesBtn').click();
+            await page.locator('#mailboxBulkBar.visible').waitFor();
+            const bulkSurface = await page.locator('#mailboxBulkBar').evaluate(bar => {
+                const probe = document.createElement('span');
+                probe.style.backgroundColor = 'var(--surface-2)';
+                bar.appendChild(probe);
+                const expected = getComputedStyle(probe).backgroundColor;
+                probe.remove();
+                return { actual: getComputedStyle(bar).backgroundColor, expected };
+            });
+            assert.equal(bulkSurface.actual, bulkSurface.expected, `${theme}: the selected-mailbox toolbar must use the current theme surface`);
+            const bulkColors = await page.locator('#mailboxBulkBar .btn').evaluateAll(buttons => buttons.map(button => getComputedStyle(button).color));
+            assert.equal(new Set(bulkColors).size, 5, `${theme}: copy, grouping, testing, deletion and cancel must remain visually distinct`);
+            await check('invalid-selected');
+            for (const button of await page.locator('#mailboxBulkBar .btn').all()) {
+                await button.hover();
+                failures.push(...(await contrastFailures(page, '#mailboxBulkBar')).map(item => ({ theme, state: 'bulk-hover', ...item })));
+            }
+            const bulkBounds = await page.locator('#mailboxBulkBar').boundingBox();
+            assert.ok(bulkBounds.x >= 0 && bulkBounds.x + bulkBounds.width <= width, 'bulk actions must fit the viewport');
+            if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `bulk-${theme}-${width}.png`) });
+            await page.locator('#mailboxBulkBar').getByRole('button', { name: '批量分组', exact: true }).click();
+            await page.locator('#batchGroupModal.show').waitFor();
+            await check('batch-group-form');
+            await page.locator('#batchGroupModal .modal-close').click();
+            await page.locator('#mailboxBulkBar').getByRole('button', { name: '取消选择', exact: true }).click();
+            await page.locator('[data-status-view="retry"]').click();
+            await check('retry-filter');
+            await page.locator('#resetMailboxFiltersBtn').click();
             if (width > 640) {
                 await page.locator('#columnConfigBtn').click();
                 await check('columns-menu');

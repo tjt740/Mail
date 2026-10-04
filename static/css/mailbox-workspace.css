@@ -52,7 +52,7 @@
 .mailbox-workspace .status-dot.normal { background: #62a880; }
 .mailbox-workspace .status-dot.invalid { background: #d88671; }
 .mailbox-workspace .status-dot.retry { background: #c7a263; }
-.mailbox-workspace .mailbox-filter-context:not([hidden]) { border-top: 1px solid var(--workspace-line); color: #8d7760; font-size: 12px; line-height: 1.6; padding: 10px 0; }
+.mailbox-workspace .mailbox-filter-context:not([hidden]) { border-top: 1px solid var(--workspace-line); color: var(--workspace-muted); font-size: 12px; line-height: 1.6; padding: 10px 0; }
 .mailbox-workspace .mail-panel > .card:last-child { flex: 1 1 0; min-height: 160px; }
 .mailbox-workspace .scroll-card-body { padding: 0; max-height: none; min-height: 0; overflow: hidden; }
 .mailbox-workspace .mailbox-list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--workspace-line); flex-shrink: 0; }
@@ -61,12 +61,12 @@
 .mailbox-workspace .mailbox-list-tip { margin-left: 8px; }
 .mailbox-workspace .mailbox-list-tools { display: flex; gap: 6px; align-items: center; }
 .mailbox-workspace .mailbox-list-tools .btn { font-size: 12px; padding: 6px 9px; min-height: 30px; }
-.mailbox-workspace #mailboxBulkBar { display: none; position: static; width: auto; max-width: none; transform: none; flex-shrink: 0; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-start; background: #faf5ef; color: #6f5540; padding: 10px 16px; box-shadow: none; border: 0; border-bottom: 1px solid #eee1d2; border-radius: 0; }
+.mailbox-workspace #mailboxBulkBar { display: none; position: static; width: auto; max-width: none; transform: none; flex-shrink: 0; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-start; background: var(--surface-2); color: var(--text); padding: 10px 16px; box-shadow: none; border: 0; border-bottom: 1px solid var(--workspace-line); border-radius: 0; }
 .mailbox-workspace #mailboxBulkBar.visible { display: flex; }
 .mailbox-workspace #mailboxBulkBar .au-bulk-count { margin-right: auto; font-size: 12px; }
 .mailbox-workspace #mailboxBulkBar .btn { font-size: 12px; padding: 5px 10px; min-height: 30px; }
-.mailbox-workspace #mailboxBulkBar .btn-success { background: white; border: 1px solid #ddd9d0; color: #56534c; }
-.mailbox-workspace #batchDeleteMailboxesBtn { background: transparent; color: #b55a44; border: 1px solid #e7c7be; }
+.mailbox-workspace #mailboxBulkBar .btn-success { background: var(--surface); border: 1px solid var(--workspace-line); color: var(--accent-mint); }
+.mailbox-workspace #batchDeleteMailboxesBtn { background: transparent; color: var(--accent-coral); border: 1px solid var(--workspace-line); }
 .mailbox-workspace #mailboxTable { border: 0; }
 .mailbox-workspace #mailboxTable th { font-size: 11px; color: #949086; font-weight: 500; background: #faf9f6; height: 38px; padding-top: 8px; padding-bottom: 8px; }
 .mailbox-workspace #mailboxTable td { padding-top: 13px; padding-bottom: 13px; border-color: #f0ede8; font-size: 13px; }
@@ -128,7 +128,7 @@
     .mailbox-workspace .mail-panel > .card:last-child { background: transparent; border: 0; }
     .mailbox-workspace .scroll-card-body { overflow: visible; }
     .mailbox-workspace .mailbox-list-toolbar { background: white; border: 1px solid var(--workspace-line); border-radius: 10px; margin-bottom: 10px; }
-    .mailbox-workspace #mailboxBulkBar { position: sticky; top: 0; z-index: 25; border: 1px solid #eee1d2; border-radius: 8px; margin-bottom: 10px; padding: 10px; }
+    .mailbox-workspace #mailboxBulkBar { position: sticky; top: 0; z-index: 25; border: 1px solid var(--workspace-line); border-radius: 8px; margin-bottom: 10px; padding: 10px; }
     .mailbox-workspace #mailboxBulkBar .au-bulk-count { flex-basis: 100%; text-align: left; }
     .mailbox-workspace #mailboxTable tbody tr { padding: 10px 14px; position: relative; }
     .mailbox-workspace #mailboxTable td.mailbox-col-select { display: block !important; width: 26px !important; position: absolute; top: 8px; right: 12px; }
