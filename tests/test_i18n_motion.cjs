@@ -55,6 +55,8 @@ function environment({ saved, blocked = false, languages = ['en-US'], parent } =
 test('locale fallback recognizes regional browser languages and honors saved preferences', () => {
     for (const [options, expected] of [
         [{ languages: ['vi-VN'] }, 'vi'], [{ languages: ['zh-TW'] }, 'zh'],
+        [{ languages: ['fil-PH'] }, 'fil'], [{ languages: ['tl-PH'] }, 'fil'],
+        [{ languages: ['tl'] }, 'fil'], [{ saved: 'fil', languages: ['en-US'] }, 'fil'],
         [{ languages: ['fr-FR'] }, 'en'], [{ saved: 'vi', languages: ['zh-CN'] }, 'vi'],
         [{ saved: 'invalid', languages: ['en-GB'] }, 'en']
     ]) {
@@ -67,8 +69,9 @@ test('language changes sync both directions with an iframe even when storage is 
     const parent = environment({ blocked: true }); parent.load('i18n.js');
     const child = environment({ blocked: true, parent: parent.window }); child.load('i18n.js');
     parent.frames.push({ contentWindow: child.window });
-    parent.window.AppI18n.setLanguage('vi');
-    assert.equal(child.window.AppI18n.language, 'vi');
+    parent.window.AppI18n.setLanguage('fil');
+    assert.equal(child.window.AppI18n.language, 'fil');
+    assert.equal(child.document.documentElement.lang, 'fil-PH');
     child.window.AppI18n.setLanguage('zh');
     assert.equal(parent.window.AppI18n.language, 'zh');
     assert.equal(parent.document.documentElement.lang, 'zh-CN');
@@ -81,10 +84,43 @@ test('late detection cannot override a manual language selection without localSt
     env.context.fetch = () => new Promise(resolve => { complete = resolve; });
     env.load('i18n.js');
     env.document.dispatchEvent({ type: 'DOMContentLoaded' });
-    env.window.AppI18n.setLanguage('vi');
+    env.window.AppI18n.setLanguage('fil');
     complete({ ok: true, json: async () => ({ success: true, language: 'en' }) });
     await new Promise(resolve => setImmediate(resolve));
-    assert.equal(env.window.AppI18n.language, 'vi');
+    assert.equal(env.window.AppI18n.language, 'fil');
+});
+
+test('Filipino covers all existing messages and preserves dynamic data', () => {
+    const env = environment({ saved: 'fil' }); env.load('i18n.js');
+    const source = fs.readFileSync(path.join(root, 'static/js/i18n.js'), 'utf8');
+    const dictionaries = vm.runInNewContext(source.slice(source.indexOf('    const dictionary'), source.indexOf('    const originalText')) + '; dictionary');
+    assert.deepEqual(Object.keys(dictionaries.fil).sort(), Object.keys(dictionaries.en).sort());
+    assert.ok(Object.values(dictionaries.fil).every(value => typeof value === 'string' && value.trim()));
+    const { t } = env.window.AppI18n;
+    assert.equal(env.window.AppI18n.locale, 'fil-PH');
+    assert.equal(env.window.AppI18n.languages.find(item => item.key === 'fil').name, 'Filipino');
+    assert.equal(t('语言'), 'Wika');
+    assert.equal(t('管理员登录'), 'Pag-login ng admin');
+    assert.equal(t('⚠️ 凭据失效'), '⚠️ Hindi wastong kredensyal');
+    assert.equal(t('API detail\n当前为保存前的测试结果。'), 'API detail\nIsinagawa ang pagsusuring ito bago i-save.');
+    assert.equal(t('2 封'), '2 mensahe');
+    assert.equal(t('共 25 条记录，第 2 页，共 3 页'), 'Kabuuang 25 rekord, pahina 2 sa 3');
+    assert.equal(t('批量测试完成：10 / 10；正常 7，无效 2，待重试 1'), 'Tapos na ang maramihang pagsusuri: 10 / 10; maayos 7, hindi wasto 2, subukan muli 1');
+    assert.equal(t('欢迎， admin@example.com'), 'Maligayang pagdating, admin@example.com');
+    assert.equal(t('确定要删除选中的 12 个邮箱账号吗？'), 'Tanggalin ang 12 napiling account ng mailbox?');
+    assert.equal(t('分组“客户组”已存在，不能重复添加。'), 'Umiiral na ang grupong "客户组".');
+    assert.equal(t('自定义名称'), '自定义名称');
+});
+
+test('Philippines detection selects Filipino without persisting an inferred preference', async () => {
+    const env = environment();
+    env.context.fetch = async () => ({ ok: true, json: async () => ({ success: true, language: 'fil', country: 'PH' }) });
+    env.load('i18n.js');
+    env.document.dispatchEvent({ type: 'DOMContentLoaded' });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(env.window.AppI18n.language, 'fil');
+    assert.equal(env.document.documentElement.lang, 'fil-PH');
+    assert.equal(env.stored(), undefined);
 });
 
 test('translations cover shell, status symbols, multiline feedback and fallback text', () => {
@@ -104,7 +140,7 @@ test('translations cover shell, status symbols, multiline feedback and fallback 
 test('dates preserve Beijing database timestamps and explicit offsets in every locale', () => {
     const env = environment(); env.load('i18n.js');
     const api = env.window.AppI18n;
-    for (const language of ['zh', 'en', 'vi']) {
+    for (const { key: language } of api.languages) {
         api.setLanguage(language);
         assert.equal(api.formatDate('2026-09-14 16:30:00'), api.formatDate('2026-09-14T08:30:00Z'));
         assert.equal(api.formatDate('bad date'), 'bad date');
@@ -237,7 +273,7 @@ test('browser: language and reduced-motion changes preserve state and dropdown p
         const frame = page.frames().find(item => item.url().includes('/legacy/'));
         const origin = await frame.evaluate(() => performance.timeOrigin);
         await frame.locator('#draft').fill('draft@example.com');
-        for (const language of ['vi', 'zh', 'en']) {
+        for (const language of ['vi', 'fil', 'zh', 'en']) {
             await page.evaluate(lang => window.AppI18n.setLanguage(lang), language);
             assert.equal(await frame.locator('#draft').inputValue(), 'draft@example.com');
             assert.equal(await frame.locator('#group').inputValue(), '未分组');
@@ -254,11 +290,16 @@ test('browser: language and reduced-motion changes preserve state and dropdown p
         await page.emulateMedia({ reducedMotion: 'reduce' });
         assert.equal(await page.locator('input[name=username]').inputValue(), 'preserved-admin');
         await page.locator('.react-language-button').click();
-        await page.getByRole('menuitem', { name: /Tiếng Việt/ }).click();
-        await page.getByRole('heading', { name: 'Đăng nhập quản trị' }).waitFor();
+        await page.getByRole('menuitem', { name: /Filipino/ }).click();
+        await page.getByRole('heading', { name: 'Pag-login ng admin' }).waitFor();
+        assert.equal(await page.evaluate(() => document.documentElement.lang), 'fil-PH');
+        assert.equal(await page.evaluate(() => localStorage.getItem('mailSystemLanguage')), 'fil');
         await page.setViewportSize({ width: 390, height: 844 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
         assert.equal(await page.locator('input[name=username]').inputValue(), 'preserved-admin');
+        await page.reload();
+        await page.getByRole('heading', { name: 'Pag-login ng admin' }).waitFor();
+        assert.equal(await page.evaluate(() => window.AppI18n.language), 'fil');
         assert.deepEqual(errors, []);
     } finally {
         await browser.close();

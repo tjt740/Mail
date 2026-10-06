@@ -3,18 +3,20 @@
 
     const STORAGE_KEY = 'mailSystemLanguage';
     const DEFAULT_LANG = 'zh';
-    const SUPPORTED_LANGS = ['zh', 'en', 'vi'];
+    const SUPPORTED_LANGS = ['zh', 'en', 'vi', 'fil'];
     const LANG_LABELS = {
         zh: '中文',
         en: 'English',
-        vi: 'Tiếng Việt'
+        vi: 'Tiếng Việt',
+        fil: 'Filipino'
     };
     const LANG_MARKS = {
         zh: '中',
         en: 'EN',
-        vi: 'VI'
+        vi: 'VI',
+        fil: 'FIL'
     };
-    const LOCALES = { zh: 'zh-CN', en: 'en-US', vi: 'vi-VN' };
+    const LOCALES = { zh: 'zh-CN', en: 'en-US', vi: 'vi-VN', fil: 'fil-PH' };
     const reactManaged = document.documentElement.dataset.i18nManaged === 'react';
     const SKIP_SELECTOR = '[translate="no"], [data-i18n-ignore], [data-i18n-managed="react"], script, style, svg, code, pre';
 
@@ -858,7 +860,7 @@
         }
     };
 
-    // Shared by the React shell and legacy screens; add both translations together.
+    // Shared by the React shell and legacy screens; keep locale dictionaries in sync.
     const sharedMessages = {
         '前台密钥': ['Public access key', 'Khóa truy cập trang nhận thư'],
         '前台取件需要密钥': ['Require a key to retrieve mail publicly', 'Yêu cầu khóa để nhận thư công khai'],
@@ -1331,6 +1333,870 @@
         dictionary.vi[key] = values[1];
     });
 
+    // Filipino translations are shared by the React shell and legacy pages.
+    dictionary.fil = {
+        "你的云端邮局": "ANG IYONG MAIL SA CLOUD",
+        "每一封来信，": "Bawat mensahe, ",
+        "都值得期待。": "may dalang pag-asa.",
+        "让光影流转，让消息抵达。": "Hayaan ang liwanag na gumalaw at ang mga mensahe na dumating.",
+        "场景切换": "Pumili ng tanawin",
+        "白天": "Araw",
+        "黑夜": "Gabi",
+        "雨夜": "Maulang gabi",
+        "语言": "Wika",
+        "颜色主题": "Tema ng kulay",
+        "暖陶橙": "Mainit na luwad",
+        "海洋蓝": "Asul na karagatan",
+        "翡翠绿": "Berdeng esmeralda",
+        "紫罗兰": "Lila",
+        "玫瑰红": "Pulang rosas",
+        "邮件查看系统": "Sistema ng pagtingin ng mail",
+        "邮件管理系统": "Sistema ng pamamahala ng mail",
+        "邮件查看系统后台管理": "Admin console ng mail",
+        "管理员登录": "Pag-login ng admin",
+        "用户名": "Username",
+        "密码": "Password",
+        "登录": "Mag-login",
+        "退出登录": "Mag-logout",
+        "欢迎": "Maligayang pagdating",
+        "首页": "Home",
+        "邮箱管理": "Mga mailbox",
+        "代理池": "Mga proxy",
+        "卡密管理": "Mga access key",
+        "卡密日志": "Mga log ng key",
+        "收件日志": "Mga log ng mail",
+        "系统设置": "Mga setting ng system",
+        "展开侧边栏": "Palawakin ang sidebar",
+        "收起菜单": "Paliitin ang menu",
+        "展开菜单": "Palawakin ang menu",
+        "展开": "Palawakin",
+        "收起": "Paliitin",
+        "切换主题": "Palitan ang tema",
+        "切换到明亮模式": "Lumipat sa maliwanag na mode",
+        "切换到暗黑模式": "Lumipat sa madilim na mode",
+        "显示密码": "Ipakita ang password",
+        "隐藏密码": "Itago ang password",
+        "显示/隐藏密码": "Ipakita/itago ang password",
+        "添加邮箱": "Magdagdag ng mailbox",
+        "批量添加邮箱": "Magdagdag ng mga mailbox nang maramihan",
+        "添加服务器地址": "Magdagdag ng address ng server",
+        "隐藏分组": "Itago ang mga grupo",
+        "显示分组": "Ipakita ang mga grupo",
+        "分组管理": "Pamamahala ng mga grupo",
+        "所有分组": "Lahat ng grupo",
+        "未分组": "Walang grupo",
+        "暂无自定义分组": "Walang custom na grupo",
+        "显示列": "Mga column",
+        "复制已选": "Kopyahin ang napili",
+        "搜索": "Maghanap",
+        "清除": "I-clear",
+        "搜索邮箱地址或服务器...": "Hanapin ang mailbox o server...",
+        "序号ID": "ID",
+        "序号": "Blg.",
+        "分组": "Grupo",
+        "邮箱地址": "Email address",
+        "服务器（收/发）": "Server (IMAP/SMTP)",
+        "添加时间": "Petsa ng pagdagdag",
+        "备注": "Mga tala",
+        "操作": "Mga aksyon",
+        "编辑": "I-edit",
+        "收件": "Tumanggap",
+        "发件": "Magpadala",
+        "测试": "Subukan",
+        "删除": "Tanggalin",
+        "保存": "I-save",
+        "取消": "Kanselahin",
+        "确定": "OK",
+        "确认": "Kumpirmahin",
+        "关闭": "Isara",
+        "新增": "Magdagdag",
+        "批量删除": "Tanggalin nang maramihan",
+        "全选": "Piliin lahat",
+        "导入": "Mag-import",
+        "导出": "Mag-export",
+        "刷新": "I-refresh",
+        "加载中...": "Naglo-load...",
+        "正在加载...": "Naglo-load...",
+        "暂无数据": "Walang data",
+        "暂无记录": "Walang rekord",
+        "暂无邮箱": "Walang mailbox",
+        "暂无卡密日志": "Walang log ng key",
+        "网络错误，请稍后重试": "Error sa network. Subukan muli mamaya",
+        "复制成功": "Nakopya na",
+        "复制失败，请手动复制": "Hindi makopya. Kopyahin nang manu-mano",
+        "邮箱地址已复制": "Nakopya na ang email address",
+        "已复制邮箱地址": "Nakopya na ang email address",
+        "复制邮箱": "Kopyahin ang mailbox",
+        "请选择要复制的邮箱": "Piliin ang mga mailbox na kokopyahin",
+        "系统概览": "Pangkalahatang-ideya ng system",
+        "快速操作": "Mga mabilisang aksyon",
+        "系统信息": "Impormasyon ng system",
+        "页面标题设置": "Mga setting ng pamagat ng pahina",
+        "系统标题设置": "Mga setting ng pamagat ng system",
+        "管理员账号": "Account ng admin",
+        "管理员列表": "Listahan ng mga admin",
+        "新增管理员": "Magdagdag ng admin",
+        "重置密码": "I-reset ang password",
+        "当前管理员": "Kasalukuyang admin",
+        "邮箱范围权限": "Access sa mailbox",
+        "管理员邮箱可见范围": "Access ng admin sa mailbox",
+        "受限管理员": "Admin na may limitasyon",
+        "目标管理员": "Target na admin",
+        "搜索邮箱": "Hanapin ang mga mailbox",
+        "搜索邮箱地址、操作人或备注...": "Hanapin ang email, operator, o mga tala...",
+        "正在加载邮箱范围...": "Nilo-load ang access sa mailbox...",
+        "保存可见范围": "I-save ang access",
+        "没有匹配的邮箱": "Walang tumugmang mailbox",
+        "本人添加 · 始终可见": "Idinagdag ng admin na ito · Laging nakikita",
+        "历史数据": "Lumang data",
+        "受限管理员默认只能看到自己添加的邮箱。这里勾选的邮箱会作为额外授权；未勾选的其他管理员邮箱及其分组不会出现在邮箱管理、搜索、卡密绑定和收件日志中。": "Makikita lang ng mga admin na may limitasyon ang sarili nilang mga mailbox. Ang mga naka-check ay dagdag na access; ang mga hindi napiling mailbox at grupo ng ibang admin ay hindi makikita sa pamamahala, paghahanap, pag-uugnay ng key, at mga log ng mail.",
+        "可为任意管理员单独启用邮箱范围限制。启用后，该管理员只能看到自己添加的邮箱，以及这里授权的邮箱分组和单个邮箱；分组中新加入的邮箱会自动继承权限。": "Maaaring limitahan ang access ng bawat admin sa mga mailbox. Kapag naka-enable, makikita lang nila ang sarili nilang mailbox at ang mga pinahintulutang grupo at mailbox. Awtomatikong magkakaroon ng access sa mga bagong mailbox sa pinahintulutang grupo.",
+        "限制该管理员的邮箱范围": "Limitahan ang access ng admin na ito sa mailbox",
+        "关闭时可查看全部邮箱；开启后按下方授权范围显示。": "Kapag naka-off, makikita ang lahat ng mailbox. Kapag naka-on, susundin ang mga pahintulot sa ibaba.",
+        "已启用限制": "Naka-enable ang limitasyon",
+        "未启用限制": "Walang limitasyon",
+        "按邮箱分组授权": "Magbigay ng access ayon sa grupo",
+        "授权整个分组，后续加入的邮箱自动可见": "Pahintulutan ang buong grupo; awtomatikong makikita ang mga bagong mailbox",
+        "按单个邮箱授权": "Pahintulutan ang mga indibidwal na mailbox",
+        "可与分组权限叠加": "Maaaring isama sa access ng grupo",
+        "正在加载邮箱分组...": "Nilo-load ang mga grupo ng mailbox...",
+        "暂无可授权分组": "Walang grupong maaaring pahintulutan",
+        "当前未限制，可查看全部邮箱": "Walang limitasyon; nakikita ang lahat ng mailbox",
+        "请选择受限管理员": "Pumili ng admin na may limitasyon",
+        "获取邮箱范围失败": "Hindi ma-load ang access sa mailbox",
+        "保存邮箱范围失败": "Hindi ma-save ang access sa mailbox",
+        "邮箱可见范围已保存": "Na-save na ang access sa mailbox",
+        "管理员万能秘钥": "Master key ng admin",
+        "万能秘钥": "Master key",
+        "保存设置": "I-save ang mga setting",
+        "代理池管理": "Mga proxy",
+        "HTTP代理": "HTTP proxy",
+        "SOCKS5代理": "SOCKS5 proxy",
+        "添加代理": "Magdagdag ng proxy",
+        "批量添加代理": "Magdagdag ng mga proxy nang maramihan",
+        "代理地址": "Address ng proxy",
+        "端口": "Port",
+        "状态": "Katayuan",
+        "启用": "I-enable",
+        "禁用": "I-disable",
+        "卡密": "Access key",
+        "生成卡密": "Gumawa ng key",
+        "批量生成": "Gumawa nang maramihan",
+        "使用次数": "Bilang ng paggamit",
+        "剩余次数": "Natitirang paggamit",
+        "过期时间": "Petsa ng pag-expire",
+        "绑定邮箱": "Naka-link na email",
+        "回收站": "Recycle bin",
+        "清空日志": "Burahin ang mga log",
+        "保存定期清理": "I-save ang paglilinis",
+        "保留天数(0关闭)": "Mga araw ng pagpapanatili (0 para i-off)",
+        "卡密使用日志": "Mga log ng paggamit ng key",
+        "邮件标题": "Paksa ng mail",
+        "使用者IP": "IP ng gumagamit",
+        "使用时间（北京时间）": "Oras ng paggamit (oras sa Beijing)",
+        "卡密绑定邮箱": "Naka-link na email",
+        "邮件查看": "Pagtingin ng mail",
+        "输入后台邮箱地址，即刻查看最新邮件": "Ilagay ang naka-configure na mailbox upang makita ang pinakabagong mga mensahe",
+        "卡密 / 管理员万能秘钥": "Access key / Master key ng admin",
+        "请输入卡密或管理员万能秘钥": "Ilagay ang access key o master key ng admin",
+        "设置后的万能秘钥可免卡密取件": "Maaaring kumuha ng mail gamit ang master key nang walang access key",
+        "邮箱查询": "Paghahanap ng mailbox",
+        "查询邮箱": "Mga mailbox na hinanap",
+        "请输入邮箱地址 (例: user@example.com)": "Ilagay ang email address (hal. user@example.com)",
+        "请输入邮局后台已添加的邮箱地址，支持多个自动识别：user@example.com\ntest@example.com, demo@example.com": "Ilagay ang mga email address na idinagdag ng admin. Awtomatikong makikilala ang maraming address:\nuser@example.com\ntest@example.com, demo@example.com",
+        "请输入邮箱地址，支持多个邮箱自动识别：user@example.com\ntest@example.com, demo@example.com": "Ilagay ang mga email address. Awtomatikong makikilala ang maraming address:\nuser@example.com\ntest@example.com, demo@example.com",
+        "每个邮箱收取": "Bawat mailbox",
+        "支持换行、逗号、空格、竖线等格式，会自动识别邮箱地址；默认每个邮箱查询 10 封。": "Tumatanggap ng bagong linya, kuwit, espasyo, at patayong guhit. Awtomatikong kinikilala ang mga email address. Karaniwang 10 mail bawat mailbox.",
+        "收取封数": "Bilang ng mail",
+        "获取邮件": "Kunin ang mail",
+        "获取中...": "Kinukuha...",
+        "邮箱文件夹": "Mga folder ng mail",
+        "展开邮箱文件夹": "Palawakin ang mga folder ng mail",
+        "折叠邮箱文件夹": "Paliitin ang mga folder ng mail",
+        "收件箱": "Inbox",
+        "垃圾箱": "Basurahan",
+        "正在获取邮件，请稍候...": "Kinukuha ang mail. Mangyaring maghintay...",
+        "邮箱": "Mailbox",
+        "标题": "Paksa",
+        "验证码": "Verification code",
+        "发件人": "Mula kay",
+        "收件人": "Para kay",
+        "时间": "Oras",
+        "暂无邮件": "Walang mail",
+        "返回邮件列表": "Bumalik sa listahan ng mail",
+        "发件人:": "Mula kay:",
+        "收件人:": "Para kay:",
+        "时间:": "Oras:",
+        "图片内容": "Mga larawan",
+        "附件": "Mga attachment",
+        "下载": "I-download",
+        "请输入邮箱地址": "Ilagay ang email address",
+        "单次最多支持 50 个邮箱，请分批查询": "Hanggang 50 mailbox bawat paghahanap. Hatiin sa mga batch.",
+        "已检测到管理员登录状态，免卡密访问": "Naka-login ang admin. Hindi kailangan ng access key.",
+        "您尚未登录管理员账户，请使用卡密或万能秘钥访问": "Hindi ka naka-login bilang admin. Gumamit ng access key o master key upang ma-access ang mail.",
+        "未获取到邮件": "Walang nakuhang mail",
+        "请求失败": "Nabigo ang request",
+        "请输入有效的邮箱地址": "Ilagay ang wastong email address",
+        "邮箱中暂无邮件": "Walang mail sa mailbox na ito",
+        "获取邮件失败": "Hindi makuha ang mail",
+        "网络请求失败，请检查网络连接": "Nabigo ang network request. Suriin ang iyong koneksyon",
+        "邮件获取成功": "Matagumpay na nakuha ang mail",
+        "附件下载已开始": "Nagsimula na ang pag-download ng attachment",
+        "附件下载失败": "Hindi ma-download ang attachment",
+        "未知": "Hindi alam",
+        "无主题": "Walang paksa",
+        "（无主题）": "(Walang paksa)",
+        "(无主题)": "(Walang paksa)",
+        "(邮件内容为空)": "(Walang laman ang mail)",
+        "（无正文）": "(Walang nilalaman)",
+        "批量复制": "Kopyahin nang maramihan",
+        "批量分组": "Igrupo nang maramihan",
+        "管理员：": "Admin:",
+        "当前分组：": "Kasalukuyang grupo:",
+        "邮箱：": "Mga mailbox:",
+        "已选：": "Napili:",
+        "已选": "Napili",
+        "个邮箱": "mailbox",
+        "取消选择": "Alisin ang pagpili",
+        "选择": "Pumili",
+        "上级分组": "Magulang na grupo",
+        "分组名称": "Pangalan ng grupo",
+        "输入分组名称": "Ilagay ang pangalan ng grupo",
+        "添加分组": "Magdagdag ng grupo",
+        "添加下级分组": "Magdagdag ng subgrupo",
+        "编辑分组": "I-edit ang grupo",
+        "已选择邮箱": "Mga napiling mailbox",
+        "目标分组": "Target na grupo",
+        "应用分组": "Ilapat ang grupo",
+        "发送邮件": "Magpadala ng mail",
+        "昵称": "Palayaw",
+        "收件人看到的发件人昵称（可选）": "Palayaw ng nagpadala na makikita ng tatanggap (opsyonal)",
+        "主题": "Paksa",
+        "正文": "Nilalaman",
+        "邮件主题": "Paksa ng mail",
+        "邮件正文": "Nilalaman ng mail",
+        "当前邮箱": "Kasalukuyang mailbox",
+        "收取": "Kunin",
+        "封": "mensahe",
+        "收取邮件": "Kunin ang mail",
+        "收件失败": "Hindi makuha ang mail",
+        "返回列表": "Bumalik sa listahan",
+        "图片": "Mga larawan",
+        "邮箱账号": "Account ng mailbox",
+        "邮箱密码": "Password ng mailbox",
+        "邮箱密码或授权码": "Password ng mailbox o app password",
+        "选择服务器": "Pumili ng server",
+        "选择已有服务器或手动输入": "Pumili ng server o ilagay nang manu-mano",
+        "收件服务器地址": "Server ng papasok na mail",
+        "发件服务器地址": "Server ng papalabas na mail",
+        "收件协议": "Protocol ng papasok na mail",
+        "发件协议": "Protocol ng papalabas na mail",
+        "收件端口": "Port ng papasok na mail",
+        "发件端口": "Port ng papalabas na mail",
+        "收件启用SSL": "SSL ng papasok na mail",
+        "发件启用SSL": "SSL ng papalabas na mail",
+        "输入备注信息": "Maglagay ng mga tala",
+        "输入操作人": "Ilagay ang operator",
+        "自动识别邮箱内容": "Awtomatikong kilalanin ang nilalaman ng mailbox",
+        "输入新分组名，回车添加": "Ilagay ang bagong pangalan ng grupo, pindutin ang Enter upang idagdag",
+        "可直接新增分组，添加后会自动选中。": "Maaaring magdagdag ng grupo dito; awtomatiko itong mapipili pagkatapos.",
+        "批量添加": "Magdagdag nang maramihan",
+        "编辑备注": "I-edit ang mga tala",
+        "备注内容": "Nilalaman ng tala",
+        "服务器地址管理": "Pamamahala ng mga address ng server",
+        "服务器名称": "Pangalan ng server",
+        "添加服务器": "Magdagdag ng server",
+        "更新服务器": "I-update ang server",
+        "已添加的服务器": "Mga naka-save na server",
+        "批量删除选中": "Tanggalin ang napili",
+        "暂无服务器配置": "Walang configuration ng server",
+        "收/发信息": "Papasok/Papalabas",
+        "检测状态": "Katayuan ng pagsusuri",
+        "添加人": "Idinagdag ni",
+        "操作人": "Operator",
+        "最后修改时间": "Huling binago",
+        "未检测": "Hindi pa nasusuri",
+        "邮箱正常": "Maayos ang mailbox",
+        "邮箱异常": "May error ang mailbox",
+        "未指定": "Walang nakatalaga",
+        "全部添加人": "Lahat ng nagdagdag",
+        "全部操作人": "Lahat ng operator",
+        "按检测状态筛选": "Salain ayon sa katayuan ng pagsusuri",
+        "按添加人筛选": "Salain ayon sa nagdagdag",
+        "按操作人筛选": "Salain ayon sa operator",
+        "尚未检测": "Hindi pa nasusuri",
+        "收：": "Papasok:",
+        "发：": "Papalabas:",
+        "更多": "Higit pa",
+        "点击复制邮箱": "I-click upang kopyahin ang mailbox",
+        "暂无邮箱账号": "Walang account ng mailbox",
+        "每页": "Bawat pahina",
+        "上一页": "Nakaraan",
+        "下一页": "Susunod",
+        "加载邮箱列表失败": "Hindi ma-load ang listahan ng mailbox",
+        "请填写分组名称": "Ilagay ang pangalan ng grupo",
+        "分组添加成功": "Naidagdag na ang grupo",
+        "分组添加失败": "Hindi maidagdag ang grupo",
+        "分组更新成功": "Na-update na ang grupo",
+        "分组更新失败": "Hindi ma-update ang grupo",
+        "分组删除成功": "Natanggal na ang grupo",
+        "分组删除失败": "Hindi matanggal ang grupo",
+        "分组分配失败": "Hindi maitalaga ang grupo",
+        "确定要删除该分组及其子分组吗？": "Tanggalin ang grupong ito at ang mga subgrupo nito?",
+        "登录状态已失效，请刷新页面后重新登录": "Nag-expire ang login. I-refresh at mag-login muli.",
+        "测试中...": "Sinusubukan...",
+        "测试失败：Microsoft OAuth 拒绝该账号，账号处于 service abuse mode": "Nabigo ang pagsusuri: tinanggihan ng Microsoft OAuth ang account dahil nasa service abuse mode ito",
+        "测试失败：OAuth 令牌获取失败": "Nabigo ang pagsusuri: hindi makuha ang OAuth token",
+        "测试失败：邮箱认证失败，请检查密码、授权码或 OAuth 数据": "Nabigo ang pagsusuri: hindi ma-authenticate ang mailbox. Suriin ang password, app password, o OAuth data",
+        "Microsoft OAuth 拒绝该账号登录，账号处于 service abuse mode": "Tinanggihan ng Microsoft OAuth ang account dahil nasa service abuse mode ito",
+        "OAuth 令牌获取失败": "Hindi makuha ang OAuth token",
+        "邮箱认证失败": "Hindi ma-authenticate ang mailbox",
+        "SSL 连接失败": "Nabigo ang koneksyon sa SSL",
+        "未找到邮箱信息": "Hindi makita ang mailbox",
+        "所有邮件已存在，未发现新邮件": "Naka-save na ang lahat ng mail. Walang bagong mail.",
+        "邮箱中暂无新邮件": "Walang bagong mail sa mailbox na ito",
+        "收件失败，详情已显示在弹窗内": "Hindi makuha ang mail. Nasa dialog ang mga detalye.",
+        "网络错误，详情已显示在弹窗内": "Error sa network. Nasa dialog ang mga detalye.",
+        "请填写完整的邮箱信息后再测试": "Kumpletuhin ang impormasyon ng mailbox bago subukan",
+        "邮箱连接测试成功": "Matagumpay ang pagsusuri sa koneksyon ng mailbox",
+        "测试请求失败，请检查服务是否正常运行": "Nabigo ang test request. Suriin kung tumatakbo ang serbisyo.",
+        "请填写收件人地址": "Ilagay ang address ng tatanggap",
+        "发送成功": "Matagumpay na naipadala",
+        "发送失败": "Hindi maipadala",
+        "确定要删除这个邮箱账号吗？": "Tanggalin ang account ng mailbox na ito?",
+        "邮箱删除成功": "Natanggal na ang mailbox",
+        "删除失败": "Hindi matanggal",
+        "请填写完整的收/发件服务器信息": "Kumpletuhin ang impormasyon ng server ng papasok at papalabas na mail",
+        "保存成功": "Na-save na",
+        "保存失败": "Hindi ma-save",
+        "请填写所有必需字段": "Punan ang lahat ng kailangang field",
+        "批量添加成功": "Matagumpay ang maramihang pagdagdag",
+        "批量添加失败": "Nabigo ang maramihang pagdagdag",
+        "邮箱地址为空": "Walang laman ang address ng mailbox",
+        "选中的邮箱不存在": "Hindi umiiral ang mga napiling mailbox",
+        "请选择要分组的邮箱": "Piliin ang mga mailbox na igrugrupo",
+        "请选择要删除的邮箱": "Piliin ang mga mailbox na tatanggalin",
+        "批量删除成功": "Matagumpay ang maramihang pagtanggal",
+        "批量删除失败": "Nabigo ang maramihang pagtanggal",
+        "请填写完整的服务器信息": "Kumpletuhin ang impormasyon ng server",
+        "服务器保存成功": "Na-save na ang server",
+        "服务器保存失败": "Hindi ma-save ang server",
+        "确定要删除这个服务器配置吗？": "Tanggalin ang configuration ng server na ito?",
+        "服务器删除成功": "Natanggal na ang server",
+        "请选择要删除的服务器": "Piliin ang mga server na tatanggalin",
+        "获取邮箱信息失败": "Hindi makuha ang impormasyon ng mailbox",
+        "邮箱ID缺失": "Walang ID ng mailbox",
+        "备注保存成功": "Na-save na ang mga tala",
+        "邮件收件日志": "Mga log ng pagtanggap ng mail",
+        "日志总数": "Kabuuang mga log",
+        "成功收取": "Matagumpay na pagkuha",
+        "失败记录": "Mga nabigong rekord",
+        "轮询间隔": "Agwat ng polling",
+        "关键词：邮箱、主题、发件人、正文": "Mga keyword: mailbox, paksa, nagpadala, nilalaman",
+        "全部状态": "Lahat ng katayuan",
+        "已处理": "Naproseso na",
+        "全部管理员": "Lahat ng admin",
+        "查询": "Maghanap",
+        "清空": "I-clear",
+        "立即查询": "Hanapin ngayon",
+        "批量筛选": "Salain nang maramihan",
+        "批量邮箱筛选：每行或逗号分隔多个邮箱": "Salain ang mga mailbox: isa bawat linya o pinaghiwalay ng kuwit",
+        "批量主题筛选：每行或逗号分隔多个关键词": "Salain ang mga paksa: mga keyword bawat linya o pinaghiwalay ng kuwit",
+        "批量发件人筛选：每行或逗号分隔多个发件人": "Salain ang mga nagpadala: isa bawat linya o pinaghiwalay ng kuwit",
+        "最近开始": "Huling pagsisimula",
+        "最近结束": "Huling pagtatapos",
+        "结果": "Resulta",
+        "收件日志详情": "Mga detalye ng log ng mail",
+        "自动轮询": "Awtomatikong polling",
+        "手动轮询": "Manu-manong polling",
+        "后台取件": "Pagkuha ng admin",
+        "卡密接口": "API ng access key",
+        "卡密预览": "Preview ng key",
+        "手动": "Manu-mano",
+        "管理员": "Admin",
+        "主题 / 摘要": "Paksa / Buod",
+        "收件时间": "Oras ng pagtanggap",
+        "详情": "Mga detalye",
+        "最后查询": "Huling paghahanap",
+        "暂无收件日志": "Walang log ng mail",
+        "日志ID": "ID ng log",
+        "收件邮箱": "Mailbox",
+        "来源": "Pinagmulan",
+        "记录": "Naitala",
+        "处理建议": "Mungkahi",
+        "错误详情": "Mga detalye ng error",
+        "检查邮箱密码/授权码是否正确，确认邮箱已开启 IMAP，并确认账号没有触发安全拦截。": "Suriin ang password/app password ng mailbox, tiyaking naka-enable ang IMAP, at walang pagharang ng seguridad sa account.",
+        "检查收件服务器端口和 SSL 开关是否匹配；常见 IMAP SSL 使用 993，STARTTLS 或非 SSL 配置不要使用隐式 SSL。": "Tiyaking tugma ang port ng papasok na server at ang SSL setting. Karaniwang 993 ang IMAP SSL; huwag gumamit ng implicit SSL para sa STARTTLS o non-SSL.",
+        "检查服务器地址、端口、网络连通性和代理配置。": "Suriin ang address ng server, port, koneksyon sa network, at mga setting ng proxy.",
+        "检查服务器域名是否填写正确，或当前网络是否能解析该域名。": "Suriin kung tama ang domain ng server at kung kaya itong i-resolve ng kasalukuyang network.",
+        "根据完整错误检查邮箱账号、授权码、服务器地址、端口、SSL 和代理配置。": "Batay sa buong error, suriin ang account, app password, address ng server, port, SSL, at mga setting ng proxy.",
+        "这条是收取失败记录，没有实际邮件正文。请查看下方错误详情。": "Rekord ito ng nabigong pagkuha at walang nilalaman ng mail. Tingnan ang mga detalye ng error sa ibaba.",
+        "这条记录没有保存正文。重新收取或轮询成功后，这里会显示实际邮件内容。": "Walang naka-save na nilalaman sa rekord na ito. Makikita rito ang mail pagkatapos ng matagumpay na pagkuha o polling.",
+        "登录状态已失效，请重新登录": "Nag-expire ang login. Mag-login muli.",
+        "获取收件日志失败": "Hindi ma-load ang mga log ng mail",
+        "启动中...": "Nagsisimula...",
+        "已开始轮询": "Nagsimula na ang polling",
+        "轮询启动失败": "Hindi masimulan ang polling",
+        "API取件页面": "Pahina ng pagkuha ng mail sa API",
+        "此卡密不存在": "Hindi umiiral ang access key na ito",
+        "请检查卡密是否正确，或联系管理员获取有效卡密": "Suriin ang access key o makipag-ugnayan sa admin",
+        "复制": "Kopyahin",
+        "前台密钥": "Pampublikong access key",
+        "前台取件需要密钥": "Kailangan ng key para kumuha ng mail sa pampublikong pahina",
+        "开启后，前台显示密钥输入框，验证通过后才能取件；关闭后恢复邮箱直接取件。": "Kapag naka-enable, kailangan ng wastong key sa pampublikong pahina para kumuha ng mail. Kapag naka-disable, sapat na ang email address.",
+        "此开关仅 tjt740 本人可见、可修改。": "Si tjt740 lamang ang maaaring makakita at magbago ng setting na ito.",
+        "正在读取取件设置…": "Nilo-load ang mga setting ng access sa mail…",
+        "已开启：前台取件必须验证密钥": "Naka-enable: kailangan ng wastong key para kumuha ng mail",
+        "已关闭：前台可直接用邮箱取件": "Naka-disable: kumuha ng mail gamit ang email address",
+        "前台密钥设置已保存": "Na-save na ang mga setting ng pampublikong access key",
+        "暂时无法确认取件设置，请刷新页面重试": "Hindi matiyak ang mga setting ng access sa mail. I-refresh ang pahina at subukan muli.",
+        "请先设置万能秘钥，再开启前台密钥取件": "Magtakda muna ng master key bago humingi ng key para kumuha ng mail",
+        "请选择开启或关闭": "Piliin kung naka-enable o naka-disable",
+        "无权修改前台密钥设置": "Wala kang pahintulot na baguhin ang mga setting ng pampublikong access key",
+        "取件密钥": "Key para sa access sa mail",
+        "请输入取件密钥": "Ilagay ang iyong key para sa access sa mail",
+        "验证密钥后获取邮件，密钥仅用于本次页面取件。": "Maglagay ng wastong key upang kumuha ng mail. Sa pahinang ito lamang itatago ang key.",
+        "请输入有效密钥后再获取邮件": "Maglagay ng wastong key bago kumuha ng mail",
+        "暂时无法确认取件方式，请稍后重试": "Hindi magamit ang mga setting ng access sa mail. Subukan muli mamaya.",
+        "密钥无效或已撤销授权": "Hindi wasto ang key o binawi na ang access nito",
+        "管理员级别": "Antas ng admin",
+        "管理员层级树": "Hierarchy ng mga admin",
+        "个可见账号": "nakikitang account",
+        "适应画布": "Ipagkasya sa view",
+        "放大": "Palakihin",
+        "缩小": "Paliitin",
+        "展开下级": "Palawakin ang mga anak",
+        "收起下级": "Paliitin ang mga anak",
+        "拖动画布 · 双指或 Ctrl + 滚轮缩放 · 点击节点查看详情": "I-drag upang gumalaw · Mag-pinch o Ctrl + scroll upang mag-zoom · Pumili ng node para sa detalye",
+        "仅展示上级关系": "Ugnayan sa magulang lamang",
+        "子级管理员": "Subordinate na admin",
+        "暂无管理员": "Walang admin",
+        "已更新层级树": "Na-update na ang hierarchy",
+        "查看层级与授权规则": "Tingnan ang hierarchy at mga patakaran ng pahintulot",
+        "一级管理员": "Admin sa antas 1",
+        "二级管理员": "Admin sa antas 2",
+        "三级管理员": "Admin sa antas 3",
+        "内置管理员": "Built-in na admin",
+        "一级管理员可创建二级或三级；二级管理员可创建直属三级；三级管理员不能再创建下级。新账号默认不授予功能权限。": "Maaaring gumawa ang antas 1 ng mga account sa antas 2 o 3. Maaaring gumawa ang antas 2 ng direktang antas 3. Hindi maaaring gumawa ang antas 3 ng mga anak na account. Walang pahintulot sa mga feature ang mga bagong account bilang default.",
+        "tjt740 为一级；lhm、pink 为内置二级，保留原有功能权限和邮箱范围，不参与普通子账号的功能授权。": "Antas 1 si tjt740. Built-in na antas 2 sina lhm at pink at mananatili ang kanilang mga pahintulot at saklaw ng mailbox; hindi sila kasama sa mga setting ng pahintulot ng karaniwang anak na account.",
+        "三级管理员不能创建或管理下级": "Hindi maaaring gumawa o mamahala ng mga anak na account ang mga admin sa antas 3.",
+        "管理员级别必须为二级或三级": "Pumili ng admin sa antas 2 o 3.",
+        "只有一级管理员可以创建二级管理员": "Mga admin sa antas 1 lamang ang maaaring gumawa ng mga admin sa antas 2.",
+        "归属上级的级别必须高于新管理员": "Dapat mas mataas ang antas ng magulang na admin kaysa sa bagong account.",
+        "内置管理员用户名已保留": "Nakalaan na ang mga username ng built-in na admin.",
+        "归属上级（可选）": "Magulang na admin (opsyonal)",
+        "普通管理员仅能管理直属下级；最高管理员可查看全部账号。新账号默认不授予功能权限。": "Mga direktang subordinate lamang ang maaaring pamahalaan ng admin; makikita ng super admin ang lahat ng account. Walang pahintulot sa mga feature ang bagong account bilang default.",
+        "不指定（默认归属当前管理员）": "Gamitin ang kasalukuyang admin bilang default",
+        "不选择时，新账号归属当前管理员。": "Kapag walang napili, mapapabilang ang bagong account sa kasalukuyang admin.",
+        "归属上级格式错误，请重新选择": "Hindi wasto ang magulang na admin. Pumili muli.",
+        "只能将新管理员归属到自己名下": "Sa ilalim lamang ng iyong account maaaring gumawa ng mga admin.",
+        "归属上级不存在，请刷新后重新选择": "Hindi na umiiral ang magulang na admin. I-refresh at pumili muli.",
+        "请先为目标管理员的上级授予所需权限": "Ibigay muna ang kailangang pahintulot sa magulang na admin.",
+        "归属上级": "Magulang na admin",
+        "最高管理员": "Super admin",
+        "功能授权": "Mga pahintulot sa feature",
+        "保存功能授权": "I-save ang mga pahintulot",
+        "不可管理": "Hindi maaaring pamahalaan",
+        "首页统计": "Mga estadistika ng dashboard",
+        "查看全部邮箱（跨账号）": "Tingnan ang lahat ng mailbox (lahat ng account)",
+        "代理池管理（全站）": "Pamamahala ng proxy (buong site)",
+        "卡密管理（全站）": "Pamamahala ng key (buong site)",
+        "卡密日志（全站）": "Mga log ng key (buong site)",
+        "系统设置（标题、服务器、轮询）": "Mga setting ng system (pamagat, server, polling)",
+        "管理直属下级及功能授权": "Pamahalaan ang mga direktang subordinate at pahintulot nila",
+        "授权直属下级邮箱范围": "Bigyan ng access sa mailbox ang mga direktang subordinate",
+        "设置和使用本人万能密钥": "Itakda at gamitin ang sariling master key",
+        "展示系统整体状态：邮箱账号、卡密、代理数量与自动轮询运行情况。点击功能导航卡片进入各模块。": "Ipinapakita ang kabuuang mailbox, key, at proxy at ang katayuan ng awtomatikong polling. Pumili ng navigation card upang magbukas ng module.",
+        "邮箱账号总数：已配置的收件邮箱数量。": "Kabuuang mailbox: bilang ng mga naka-configure na account na tumatanggap ng mail.",
+        "卡密总数：已生成的卡密数量。": "Kabuuang access key: bilang ng mga nagawang key.",
+        "可用代理数量：代理池中可用的代理数。": "Mga magagamit na proxy: bilang ng mga proxy na maaaring gamitin sa pool.",
+        "自动轮询：后台定时收件的当前状态（运行中 / 空闲 / 已暂停 / 已禁用）。": "Awtomatikong polling: katayuan ng naka-iskedyul na pagkuha ng mail (tumatakbo / walang ginagawa / naka-pause / naka-disable).",
+        "配置用于收件的邮箱账号，支持单个 / 批量添加、分组、测试连通性、手动收件与发件。": "Mag-configure ng mga account nang paisa-isa o maramihan, ayusin ang mga grupo, subukan ang koneksyon, at manu-manong tumanggap o magpadala ng mail.",
+        "「添加邮箱」下拉：单个添加、批量添加、添加服务器地址。": "Maaaring magdagdag ng isang account, mag-import nang maramihan, at magdagdag ng address ng server sa menu ng pagdagdag ng mailbox.",
+        "需填写邮箱、密码/授权码、IMAP/SMTP 服务器与端口；可选 SSL。": "Ilagay ang email, password o app password, at IMAP/SMTP server at port. Opsyonal ang SSL.",
+        "OAuth 邮箱（如 Outlook）在备注标记「OAuth登录」，通过刷新令牌收件。": "May markang “OAuth登录” sa mga tala ang mga OAuth account (tulad ng Outlook) at gumagamit ng refresh token para kumuha ng mail.",
+        "勾选多行后，底部会滑出批量操作条：批量复制、批量分组、批量删除。": "Kapag pumili ng maraming row, bubukas ang action bar sa ibaba para kopyahin, igrupo, o tanggalin ang mga napiling account.",
+        "「视图」按钮可切换分组显示与自定义显示列。": "Gamitin ang mga kontrol ng view upang ipakita o itago ang mga grupo at pumili ng mga column.",
+        "编辑 / 收件 / 测试 / 删除 / 更多（备注、发件等）。": "I-edit / Tumanggap / Subukan / Tanggalin / Higit pa (mga tala, pagpapadala ng mail, atbp.).",
+        "测试：验证邮箱能否正常登录收件；状态列显示「邮箱正常 / 异常 / 未检测」。": "Sinusuri ng test ang login at pagkuha ng mail. Makikita sa column ng katayuan kung maayos ang account, may error, o hindi pa nasusuri.",
+        "管理 HTTP / SOCKS5 代理，用于通过代理连接邮箱服务器，降低直连被限制的风险。": "Pamahalaan ang mga HTTP/SOCKS5 proxy para kumonekta sa mga mail server at mabawasan ang mga limitasyon sa direktang koneksyon.",
+        "支持添加 HTTP 与 SOCKS5 两类代理。": "Sinusuportahan ang mga HTTP at SOCKS5 proxy.",
+        "「开启代理」会自动选择延迟最低的代理；也可手动切换到指定代理。": "Awtomatikong pinipili ang server na may pinakamababang latency kapag naka-enable ang proxy. Maaari ring pumili nang manu-mano.",
+        "密码列默认打码，点击眼睛图标显示、点击复制图标复制。": "Nakatago ang mga password bilang default. Gamitin ang icon ng mata upang ipakita o ang icon ng kopya upang kopyahin.",
+        "当前所有邮箱共用同一个启用中的代理，是潜在的单点瓶颈（见帮助中心的轮询说明）。": "Iisa ang aktibong proxy na ginagamit ng lahat ng mailbox, kaya maaari itong maging bottleneck. Tingnan ang gabay sa polling sa sentro ng tulong.",
+        "生成并管理访问卡密。卡密是前台用户查看邮件的凭证，可限制使用次数、有效期与绑定邮箱。": "Gumawa at mamahala ng mga access key para makita ang mail, na may limitasyon ng paggamit, petsa ng pag-expire, at naka-link na mga mailbox.",
+        "单个生成或批量生成；可设置使用次数上限、有效期、收取范围（天数）与关键词过滤。": "Gumawa ng isang key o maramihan. Itakda ang limitasyon ng paggamit, pag-expire, edad ng mail sa mga araw, at mga filter ng keyword.",
+        "可将卡密绑定到一个或多个邮箱，绑定后该卡密只能查询这些邮箱。": "I-link ang key sa isa o higit pang mailbox upang limitahan ang access nito sa mga account na iyon.",
+        "使用情况：已用次数 / 上限，下方为最近使用时间。": "Paggamit: nagamit / limitasyon, at nasa ibaba ang huling paggamit.",
+        "有效期：到期时间，留空为永久有效。": "Bisa: petsa ng pag-expire; walang laman para hindi mag-expire.",
+        "备注 / 过滤：备注文字与收取范围、关键词过滤。": "Mga tala / Filter: mga tala, limitasyon ng edad ng mail, at mga keyword.",
+        "删除或过期的卡密进入回收站，可恢复或彻底清理。": "Napupunta sa recycle bin ang mga natanggal o nag-expire na key, kung saan maaaring ibalik o permanenteng tanggalin.",
+        "记录每次卡密的使用与查询：谁在什么时间用哪个卡密查询了哪个邮箱。": "Itinatala ang paggamit at paghahanap ng key: sino ang nag-access ng mailbox, gamit ang anong key, at kailan.",
+        "卡密 / 绑定邮箱 / 邮件标题 / 使用者IP / 使用时间（北京时间）。": "Key / Naka-link na mailbox / Paksa ng mail / IP ng gumagamit / Oras ng paggamit (oras sa Beijing).",
+        "action=use 表示成功取件；action=check 表示查询了卡密信息（不消耗次数）。": "Ang action=use ay matagumpay na pagkuha ng mail; ang action=check ay paghahanap ng impormasyon ng key at hindi bumabawas sa bilang ng paggamit.",
+        "「保留天数」设为 0 表示不清理；设为 N 表示自动删除 N 天前的卡密日志。": "Itakda sa 0 upang panatilihin ang lahat ng log, o N upang awtomatikong burahin ang mga log ng key na mas matanda sa N araw.",
+        "查看后台自动收件的结果，并控制自动轮询的开关、间隔、日志保留与失败退避。": "Tingnan ang resulta ng awtomatikong pagkuha ng mail at kontrolin ang polling, agwat, pagpapanatili ng log, at backoff kapag nabigo.",
+        "自动轮询：后台按间隔定时收取所有启用邮箱的最新邮件。": "Kinukuha ng awtomatikong polling ang pinakabagong mail mula sa lahat ng naka-enable na mailbox ayon sa itinakdang agwat.",
+        "立即查询：手动触发一次轮询（会忽略失败退避，相当于立即重试）。": "Manu-manong nagsisimula ng isang polling round ang paghahanap ngayon, na lumalaktaw sa backoff upang subukang muli ang mga nabigong account.",
+        "状态值：received 成功 / failed 失败 / processed 已处理。": "Mga katayuan: received (natanggap) / failed (nabigo) / processed (naproseso).",
+        "自动轮询开关：关闭后暂停定时收件，约 30 秒内生效，无需重启。": "Kapag naka-off ang awtomatikong polling, titigil ang naka-iskedyul na pagkuha sa loob ng humigit-kumulang 30 segundo nang walang pag-restart.",
+        "间隔(秒)：两次轮询之间的等待时间，最低 30 秒。": "Agwat (segundo): oras ng paghihintay sa pagitan ng mga polling round, hindi bababa sa 30 segundo.",
+        "日志保留(天)：0 为不清理；设为 N 自动删除 N 天前的收件日志，防止数据库膨胀。": "Pagpapanatili (araw): pinapanatili ng 0 ang lahat ng log; awtomatikong binubura ng N ang mga log na mas matanda sa N araw upang limitahan ang paglaki ng database.",
+        "退避中 N 个：连续失败的邮箱会被暂时跳过，可展开查看并重置。": "Mga account sa backoff: pansamantalang nilalaktawan ang mga mailbox na paulit-ulit na nabibigo. Palawakin ang listahan upang suriin o i-reset.",
+        "每个邮箱每轮抓取最新 5 封、仅看最近 7 天、仅 INBOX。": "Bawat round, kinukuha ang pinakahuling 5 mensahe sa bawat mailbox mula sa nakaraang 7 araw, sa INBOX lamang.",
+        "按「邮箱 + Message-ID」去重，避免重复记录。": "Tinatanggal ang mga dobleng mensahe batay sa mailbox at Message-ID upang maiwasan ang dobleng log.",
+        "连续失败达阈值（默认 3 次）后进入指数退避（跳过 2→4→8→16 轮），成功后自动恢复。": "Pagkatapos maabot ang limitasyon ng sunod-sunod na pagkabigo (3 bilang default), nilalaktawan ng exponential backoff ang 2→4→8→16 round. Nire-reset ito ng matagumpay na pagkuha.",
+        "管理管理员账号、万能秘钥、系统与页面标题等。左侧锚点可快速跳转到各设置区块。": "Pamahalaan ang mga account ng admin, master key, at mga pamagat ng system/pahina. Gamitin ang kaliwang navigation upang pumunta sa isang seksyon ng setting.",
+        "管理员账号：修改当前管理员用户名与密码。": "Account ng admin: baguhin ang iyong username at password.",
+        "后台管理员管理：新增/重置/删除其它管理员账号。": "Pamamahala ng admin: magdagdag, mag-reset, o magtanggal ng ibang account ng admin.",
+        "万能秘钥：一个无需卡密即可查询任意邮箱的超级凭证，请妥善保管。": "Master key: maaaring hanapin ang anumang mailbox nang walang access key. Panatilihin itong ligtas.",
+        "系统标题 / 页面标题：自定义站点显示名称。": "Mga pamagat ng system / pahina: baguhin ang mga pangalang ipinapakita sa site.",
+        "为什么收不到邮件？": "Bakit hindi ako nakakatanggap ng mail?",
+        "① 邮箱配置或授权码错误——用「测试」按钮验证；② 该邮箱触发了失败退避，被暂时跳过——在收件日志页展开退避列表并重置；③ 使用了 OAuth 的邮箱刷新令牌失效；④ 代理不可用导致连接失败。": "Mga posibleng dahilan: maling setting ng mailbox o app password (gamitin ang test); nasa backoff ang mailbox (palawakin at i-reset sa mga log ng mail); nag-expire ang OAuth refresh token; o hindi magamit ang proxy.",
+        "自动轮询多久收一次？": "Gaano kadalas tumatakbo ang awtomatikong polling?",
+        "由「轮询间隔」决定，默认 300 秒（5 分钟），最低 30 秒。可在收件日志页的轮询控制面板调整，改动在当前周期结束后生效。": "Karaniwang 300 segundo (5 minuto) ang agwat, hindi bababa sa 30 segundo. Baguhin sa mga log ng mail; magkakabisa pagkatapos ng kasalukuyang round.",
+        "卡密的使用次数怎么算？": "Paano binibilang ang paggamit ng key?",
+        "每成功取件一次消耗一次；查询卡密信息（check）不消耗次数。次数用完后卡密变为「次数用完」状态，无法再查询。": "Bawat matagumpay na pagkuha ay bumabawas ng isang paggamit. Hindi bumabawas ang paghahanap ng impormasyon ng key (check). Kapag naabot ang limitasyon, hindi na makakahanap ng mail ang key.",
+        "代理怎么用？": "Paano gumamit ng proxy?",
+        "在代理池添加 HTTP/SOCKS5 代理后点击「开启代理」，系统会自动选延迟最低的代理连接邮箱；也可手动切换。": "Magdagdag ng HTTP/SOCKS5 proxy sa mga proxy at i-enable ito. Awtomatikong pipiliin ang pinakamababang latency; maaari ring lumipat nang manu-mano.",
+        "失败退避是什么？": "Ano ang backoff kapag nabigo?",
+        "连续失败达到阈值（默认 3 次）的邮箱会被暂时跳过 2→4→8→16 轮，避免反复空耗子进程与触发服务商限流；该邮箱一旦成功收件就自动恢复正常频率。": "Kapag naabot ang limitasyon ng paulit-ulit na pagkabigo (3 bilang default), lalaktawan ng mailbox ang 2→4→8→16 round upang maiwasan ang sayang na proseso at limitasyon ng provider. Ibabalik ng matagumpay na pagkuha ang karaniwang dalas.",
+        "收件日志越来越多怎么办？": "Paano limitahan ang lumalaking mga log ng mail?",
+        "在收件日志页把「日志保留天数」设为一个正数（如 30），系统会自动清理更早的日志。默认 0 为不清理，长期运行建议开启。": "Itakda ang pagpapanatili ng log sa mga log ng mail sa positibong bilang, tulad ng 30, upang awtomatikong burahin ang mas matatandang log. Pinapanatili ng default na 0 ang lahat; i-enable ang paglilinis para sa matagal na paggamit.",
+        "页面操作": "Mga aksyon sa pahina",
+        "邮箱账号总数": "Kabuuang mailbox",
+        "卡密总数": "Kabuuang access key",
+        "可用代理数量": "Mga magagamit na proxy",
+        "空闲": "Walang ginagawa",
+        "功能导航": "Navigation",
+        "使用说明": "Gabay sa paggamit",
+        "欢迎使用邮件查看系统管理控制台，点击下方卡片进入对应模块。": "Maligayang pagdating sa admin console ng mail. Pumili ng card sa ibaba upang magbukas ng module.",
+        "添加、编辑和删除邮箱账号配置": "Magdagdag, mag-edit, at magtanggal ng mga account ng mailbox",
+        "管理代理服务器配置": "Pamahalaan ang mga proxy server",
+        "生成和管理访问卡密": "Gumawa at mamahala ng mga access key",
+        "查看卡密使用记录": "Tingnan ang kasaysayan ng paggamit ng key",
+        "查看邮件接收记录与轮询控制": "Tingnan ang mga log ng mail at mga kontrol ng polling",
+        "配置系统参数和安全选项": "I-configure ang system at mga setting ng seguridad",
+        "首页 · 概览": "Home · Pangkalahatang-ideya",
+        "常见问题": "Mga madalas itanong",
+        "统计卡片": "Mga card ng estadistika",
+        "前往帮助中心查看全部说明 →": "Tingnan ang lahat ng gabay sa sentro ng tulong →",
+        "单个添加": "Magdagdag ng isa",
+        "发送": "Magpadala",
+        "（可选，粘贴后自动填充）": "(Opsyonal; i-paste para awtomatikong mapunan)",
+        "支持 ---- / 冒号 / 竖线 / 逗号 / 分号 / Tab / 空格 / key=value / JSON / CSV 表头": "Tumatanggap ng ----, tutuldok, patayong guhit, kuwit, tuldok-kuwit, tab, espasyo, key=value, JSON, at CSV header",
+        "测试邮箱": "Subukan ang mailbox",
+        "批量操作": "Mga maramihang aksyon",
+        "行内操作": "Mga aksyon sa row",
+        "展开分组": "Palawakin ang mga grupo",
+        "展开左侧分组": "Palawakin ang sidebar ng mga grupo",
+        "清除搜索": "I-clear ang paghahanap",
+        "按账号状态筛选": "Salain ayon sa katayuan ng account",
+        "倒序": "Pababa",
+        "新分组名，回车添加": "Bagong pangalan ng grupo; pindutin ang Enter upang idagdag",
+        "添加HTTP代理": "Magdagdag ng HTTP proxy",
+        "添加SOCKS5代理": "Magdagdag ng SOCKS5 proxy",
+        "开启代理": "I-enable ang proxy",
+        "关闭代理": "I-disable ang proxy",
+        "代理状态：": "Katayuan ng proxy:",
+        "未启用": "Hindi naka-enable",
+        "点击\"开启代理\"按钮智能选择延迟最低的代理，或手动切换到指定代理": "I-enable ang proxy upang awtomatikong piliin ang server na may pinakamababang latency, o pumili nang manu-mano",
+        "类型": "Uri",
+        "代理名称": "Pangalan ng proxy",
+        "地址:端口": "Address:port",
+        "延迟": "Latency",
+        "最后检测": "Huling nasuri",
+        "暂无代理配置": "Walang naka-configure na proxy",
+        "代理地址 *": "Address ng proxy *",
+        "端口 *": "Port *",
+        "测试代理": "Subukan ang proxy",
+        "代理管理": "Pamamahala ng proxy",
+        "注意": "Tala",
+        "搜索代理名称、地址或备注...": "Hanapin ang pangalan, address, o mga tala ng proxy...",
+        "留空将默认为空字符串": "Iwanang walang laman para sa walang halagang field",
+        "可选：代理用户名": "Opsyonal: username ng proxy",
+        "可选：代理密码": "Opsyonal: password ng proxy",
+        "可选：代理备注": "Opsyonal: mga tala ng proxy",
+        "总卡密数": "Kabuuang key",
+        "可用卡密": "Mga magagamit na key",
+        "已使用": "Nagamit na",
+        "已过期": "Nag-expire na",
+        "批量生成卡密": "Gumawa ng mga key nang maramihan",
+        "使用情况": "Paggamit",
+        "有效期": "Bisa",
+        "备注 / 过滤": "Mga tala / Filter",
+        "暂无卡密数据": "Walang access key",
+        "使用次数限制": "Limitasyon ng paggamit",
+        "收取X天内的邮件": "Kunin ang mail sa nakaraang X araw",
+        "关键词邮件": "Mga keyword ng paksa",
+        "留空则不限制关键词": "Iwanang walang laman upang payagan ang lahat ng paksa",
+        "支持格式：数字天数（如：1、100）、天数+天字（如：1天、7天）或具体日期时间，留空则永不过期，使用北京时间": "Maglagay ng bilang ng araw (hal. 1 o 100), bilang na may 天 (hal. 1天), o petsa at oras sa Beijing. Iwanang walang laman upang hindi mag-expire.",
+        "生成数量": "Bilang ng mga key",
+        "最多一次生成100个": "Hanggang 100 key bawat paggawa",
+        "选择邮箱": "Pumili ng mga mailbox",
+        "请选择邮箱账号": "Pumili ng account ng mailbox",
+        "绑定": "I-link",
+        "编辑卡密": "I-edit ang key",
+        "生成API": "Gumawa ng API link",
+        "邮箱分组": "Mga grupo ng mailbox",
+        "确定选择": "Kumpirmahin ang pagpili",
+        "卡密回收站": "Recycle bin ng key",
+        "已删除的卡密": "Mga natanggal na key",
+        "已过期的卡密": "Mga nag-expire na key",
+        "已删除的卡密 (": "Mga natanggal na key (",
+        "已过期的卡密 (": "Mga nag-expire na key (",
+        "批量恢复": "Ibalik ang napili",
+        "批量永久删除": "Permanenteng tanggalin ang napili",
+        "晴天": "Maaraw",
+        "夜间": "Gabi",
+        "天蓝 · 杏黄 · 薄荷绿": "Asul na langit · Aprikot · Mint",
+        "深蓝 · 星紫 · 月光金": "Malalim na asul · Lila · Ginto ng buwan",
+        "蓝灰 · 青绿 · 霓虹玫红": "Abuhing asul · Teal · Neon na rosas",
+        "邮局运行总览": "Pangkalahatang-ideya ng mail",
+        "邮箱健康、收件动态与服务状态，一眼掌握。": "Kalusugan ng mailbox, aktibidad ng mail, at katayuan ng serbisyo sa isang tingin.",
+        "正在同步监测数据…": "Sini-sync ang data ng monitoring…",
+        "刷新数据": "I-refresh ang data",
+        "每 30 秒自动刷新 · 北京时间": "Awtomatikong nire-refresh bawat 30 segundo · Oras sa Beijing",
+        "最近更新": "Huling na-update",
+        "可见邮箱": "Mga naa-access na mailbox",
+        "当前管理员可访问的邮箱": "Mga mailbox na naa-access ng admin na ito",
+        "正常邮箱占比": "Mga maayos na mailbox",
+        "按最近一次检测结果": "Batay sa pinakabagong resulta ng pagsusuri",
+        "今日收件记录": "Mail na natanggap ngayon",
+        "按日志记录时间统计": "Binibilang ayon sa oras ng log",
+        "今日失败记录": "Mga pagkabigo ngayon",
+        "失败记录不等于失效邮箱": "Hindi nangangahulugang hindi wasto ang mailbox kapag nabigo ang isang pagtatangka",
+        "收件趋势": "Aktibidad ng mail",
+        "最近 7 天 · 按日志记录数统计": "Nakaraang 7 araw · Bilang ng mga log",
+        "最近七天收件与失败记录趋势": "Mail na natanggap at mga pagkabigo sa nakaraang pitong araw",
+        "选择日期查看记录数": "Pumili ng petsa upang tingnan ang mga bilang",
+        "选择下方日期查看记录数": "Pumili ng petsa sa ibaba upang tingnan ang mga bilang",
+        "邮箱健康分布": "Kalusugan ng mailbox",
+        "最近一次检测结果": "Pinakabagong resulta ng pagsusuri",
+        "管理邮箱 →": "Pamahalaan ang mga mailbox →",
+        "未检测与网络异常均不计为正常。": "Hindi kasama sa bilang ng maayos ang mga hindi pa nasusuri at may error sa network.",
+        "后台收件任务": "Pagkuha ng mail sa background",
+        "资源余量": "Mga magagamit na resource",
+        "代理与访问卡密": "Mga proxy at access key",
+        "启用代理": "Mga naka-enable na proxy",
+        "代理启用状态不代表实时连通性。": "Hindi ipinapakita ng katayuang naka-enable ang kasalukuyang koneksyon.",
+        "需要关注": "Kailangang suriin",
+        "邮箱检测与近期失败": "Mga pagsusuri ng mailbox at kamakailang pagkabigo",
+        "查看收件日志 →": "Tingnan ang mga log ng mail →",
+        "无权限": "Walang access",
+        "最近检测平均延迟": "Karaniwang latency ng pinakabagong mga pagsusuri",
+        "需要代理池权限": "Kailangan ng access sa mga proxy",
+        "已检测": "Nasuri na",
+        "正常邮箱": "Mga maayos na mailbox",
+        "等待下次轮询": "Naghihintay sa susunod na polling",
+        "请求超时": "Nag-timeout ang request",
+        "可用卡密未过期且仍有次数": "Hindi pa nag-expire ang mga magagamit na key at may natitirang paggamit",
+        "需要卡密管理权限": "Kailangan ng access sa pamamahala ng key",
+        "上次检查邮箱": "Mga mailbox na nasuri sa huling run",
+        "上次新增 / 失败": "Huling run: bago / nabigo",
+        "上次完成": "Huling natapos",
+        "下次计划": "Susunod na nakaiskedyul na run",
+        "需要系统设置权限": "Kailangan ng access sa mga setting ng system",
+        "近 7 天暂无失败记录": "Walang pagkabigo sa nakaraang 7 araw",
+        "需要收件日志权限": "Kailangan ng access sa mga log ng mail",
+        "会话已过期，请重新登录": "Nag-expire ang session. Mag-login muli.",
+        "监测数据暂时不可用，请稍后重试": "Pansamantalang hindi magamit ang data ng monitoring. Subukan muli mamaya.",
+        "更新失败": "Hindi ma-update",
+        "保留上次数据": "Ipinapakita ang huling matagumpay na update",
+        "邮箱工作台": "Workspace ng mailbox",
+        "新建分组": "Bagong grupo",
+        "查找分组": "Hanapin ang grupo",
+        "分组操作": "Mga aksyon sa grupo",
+        "按分组找到邮箱，点击地址即可复制。": "Hanapin ang mailbox ayon sa grupo. I-click ang address upang kopyahin.",
+        "在当前分组搜索邮箱、备注或服务器": "Hanapin ang mga address, tala, o server sa grupong ito",
+        "选择邮箱分组": "Pumili ng grupo ng mailbox",
+        "展开分组侧栏": "Ipakita ang sidebar ng mga grupo",
+        "收起分组侧栏": "Itago ang sidebar ng mga grupo",
+        "展开子分组": "Palawakin ang mga subgrupo",
+        "收起子分组": "Paliitin ang mga subgrupo",
+        "重置筛选": "I-reset ang mga filter",
+        "无效邮箱": "Hindi wasto",
+        "无效": "Hindi wasto",
+        "待重试": "Kailangang subukan muli",
+        "点击邮箱地址复制": "I-click ang address upang kopyahin",
+        "封禁或凭据失效的邮箱。可编辑凭据后重试，或勾选后批量删除。": "Mga naka-block na account o hindi wastong kredensyal. I-update ang mga kredensyal at subukan muli, o pumili ng mga mailbox na tatanggalin.",
+        "网络或检测异常，尚不能判断邮箱无效。可以批量重试。": "Hindi nangangahulugang hindi wasto ang mailbox kapag may error sa network o pagsusuri. Subukan muli ang mga mailbox na ito nang maramihan.",
+        "这些邮箱尚未测试，可勾选测试或测试全部筛选结果。": "Hindi pa nasusuri ang mga mailbox na ito. Subukan ang napili o ang lahat ng resulta ng filter.",
+        "没有符合条件的邮箱": "Walang tumugmang mailbox",
+        "试试其他关键词、切换分组，或添加一个邮箱。": "Subukan ang ibang keyword, lumipat ng grupo, o magdagdag ng mailbox.",
+        "上一邮箱": "Nakaraang mailbox",
+        "下一邮箱": "Susunod na mailbox",
+        "邮箱批量管理": "Maramihang pamamahala ng mailbox",
+        "测试筛选结果": "Subukan ang mga nasalang mailbox",
+        "筛选无效": "Salain ang mga hindi wastong mailbox",
+        "全选筛选结果": "Piliin ang lahat ng nasalang mailbox",
+        "测试选中邮箱": "Subukan ang mga napiling mailbox",
+        "无效邮箱（封禁 / 凭据失效）": "Hindi wasto (naka-block / nag-expire na kredensyal)",
+        "无效邮箱包括封禁、凭据失效；网络异常和检测异常请重试。批量操作覆盖当前搜索、分组、操作人及状态筛选下的所有页。": "Kasama sa hindi wasto ang mga naka-block na account at hindi wastong kredensyal. Subukan muli ang mga error sa network at pagsusuri. Saklaw ng maramihang aksyon ang lahat ng pahina na tumutugma sa kasalukuyang paghahanap, grupo, operator, at filter ng katayuan.",
+        "停止测试": "Itigil ang pagsusuri",
+        "批量测试中": "Sinusuri ang mga mailbox",
+        "批量测试完成": "Tapos na ang maramihang pagsusuri",
+        "批量测试已停止": "Itinigil ang maramihang pagsusuri",
+        "正在停止（等待进行中的测试完成）": "Humihinto (hinihintay ang mga aktibong pagsusuri)",
+        "请选择要测试的邮箱": "Piliin ang mga mailbox na susuriin",
+        "已有批量测试正在运行，新导入邮箱可稍后筛选未检测并测试": "May tumatakbong maramihang pagsusuri. Salain ang mga hindi pa nasusuring mailbox mamaya upang subukan ang mga bagong import.",
+        "请先停止批量测试，等待进行中的测试完成后再删除": "Itigil ang maramihang pagsusuri at hintaying matapos ang mga aktibong pagsusuri bago magtanggal.",
+        "删除时间": "Oras ng pagtanggal",
+        "删除原因": "Dahilan ng pagtanggal",
+        "过期原因": "Dahilan ng pag-expire",
+        "清空回收站": "Alisan ng laman ang recycle bin",
+        "列表字段": "Mga field ng listahan",
+        "搜索卡密...": "Hanapin ang mga key...",
+        "设置关键词后只收取标题包含关键词的邮件，多个关键词用逗号分隔": "Kunin lang ang mga mensahe na may mga keyword na ito sa paksa. Paghiwalayin ang mga keyword gamit ang kuwit.",
+        "支持格式：1、7、30、100 或 1天、7天、30天 或具体日期时间": "Maglagay ng mga araw: 1, 7, 30, 100; 1天, 7天, 30天; o petsa at oras",
+        "卡密用途说明": "Ilarawan ang layunin ng key na ito",
+        "批量卡密用途说明": "Ilarawan ang layunin ng mga key na ito",
+        "点击选择按钮选择一个或多个邮箱": "Gamitin ang pagpili upang pumili ng isa o higit pang mailbox",
+        "搜索邮箱地址...": "Hanapin ang mga email address...",
+        "卡密被使用后，记录会显示在这里": "Makikita rito ang mga rekord ng paggamit kapag nagamit ang key",
+        "字段说明": "Mga paglalarawan ng field",
+        "定期清理": "Naka-iskedyul na paglilinis",
+        "日志保留天数": "Mga araw ng pagpapanatili ng log",
+        "成功": "Tagumpay",
+        "失败": "Nabigo",
+        "间隔(秒)": "Agwat (segundo)",
+        "日志保留(天)": "Pagpapanatili (araw)",
+        "退避中": "Nasa backoff",
+        "个 ▾": "account ▾",
+        "未启动": "Hindi pa nagsisimula",
+        "下次轮询": "Susunod na polling",
+        "邮件自动轮询尚未启动": "Hindi pa nagsisimula ang awtomatikong polling ng mail",
+        "收件日志 · 轮询控制": "Mga log ng mail · Mga kontrol ng polling",
+        "日志来源": "Mga pinagmulan ng log",
+        "轮询控制面板": "Mga kontrol ng polling",
+        "轮询机制": "Paano gumagana ang polling",
+        "按收件状态筛选：成功/失败/已处理": "Salain ayon sa katayuan: natanggap / nabigo / naproseso",
+        "关闭后自动轮询暂停，约30秒内生效，无需重启": "Kapag naka-off, hihinto ang polling sa loob ng humigit-kumulang 30 segundo nang walang pag-restart",
+        "账号设置": "Mga setting ng account",
+        "管理员管理": "Pamahalaan ang mga admin",
+        "系统标题": "Pamagat ng system",
+        "页面标题": "Mga pamagat ng pahina",
+        "管理员账号设置": "Mga setting ng account ng admin",
+        "管理员用户名": "Username ng admin",
+        "管理员密码": "Password ng admin",
+        "确认密码": "Kumpirmahin ang password",
+        "更新管理员账号": "I-update ang account ng admin",
+        "后台管理员管理": "Pamahalaan ang mga account ng admin",
+        "创建时间": "Petsa ng paggawa",
+        "当前登录": "Naka-login",
+        "当前账号": "Kasalukuyang account",
+        "重置账号": "I-reset ang account",
+        "新密码": "Bagong password",
+        "确认新密码": "Kumpirmahin ang bagong password",
+        "保存新密码": "I-save ang bagong password",
+        "新管理员用户名": "Username ng bagong admin",
+        "新管理员密码": "Password ng bagong admin",
+        "确认新管理员密码": "Kumpirmahin ang password ng bagong admin",
+        "保存后只存储安全哈希，不会回显明文；请以右侧状态为准。": "Ligtas na hash lamang ang isi-save. Hindi ipapakita ang plain text; tingnan ang katayuan sa kanan.",
+        "当前状态": "Kasalukuyang katayuan",
+        "设置万能秘钥": "Itakda ang master key",
+        "系统名称/标题": "Pangalan / pamagat ng system",
+        "显示在后端管理页面标题中的系统名称，修改后即时生效": "Pangalan ng system sa mga pamagat ng pahina ng admin; agad magkakabisa ang mga pagbabago",
+        "更新系统标题": "I-update ang pamagat ng system",
+        "API取件页面标题": "Pamagat ng pahina ng mail sa API",
+        "显示在API取件页面的标题": "Pamagat na ipinapakita sa pahina ng mail sa API",
+        "前端取件页面标题": "Pamagat ng pampublikong pahina ng mail",
+        "显示在前端取件页面的标题": "Pamagat na ipinapakita sa pampublikong pahina ng mail",
+        "管理员登录页面标题": "Pamagat ng pahina ng pag-login ng admin",
+        "显示在管理员登录页面的标题": "Pamagat na ipinapakita sa pahina ng pag-login ng admin",
+        "更新页面标题": "I-update ang mga pamagat ng pahina",
+        "系统名称": "Pangalan ng system",
+        "系统版本": "Bersyon ng system",
+        "数据库类型": "Uri ng database",
+        "设置项": "Mga setting",
+        "系统设置栏目": "Mga seksyon ng setting ng system",
+        "输入新的管理员用户名": "Ilagay ang bagong username ng admin",
+        "输入新的管理员密码": "Ilagay ang bagong password ng admin",
+        "再次输入密码确认": "Ilagay muli ang password",
+        "至少4位": "Hindi bababa sa 4 na character",
+        "输入新管理员用户名": "Ilagay ang username ng bagong admin",
+        "至少6位，设置后可免卡密取件": "Hindi bababa sa 6 na character; kumuha ng mail nang walang access key pagkatapos itakda",
+        "显示或隐藏万能秘钥": "Ipakita o itago ang master key",
+        "📖 帮助中心": "📖 Sentro ng tulong",
+        "这里汇总了各功能模块的使用说明、字段释义与常见问题。每个后台页面右上角也有「使用说明」按钮可随时查看。": "Makikita rito ang mga gabay ng module, paglalarawan ng field, at mga madalas itanong. Nagbubukas din ng tulong ang gabay sa paggamit sa bawat pahina ng admin.",
+        "定时触发": "Naka-iskedyul na trigger",
+        "遍历启用邮箱": "Puntahan ang mga naka-enable na mailbox",
+        "跳过退避中的邮箱": "Laktawan ang mga mailbox sa backoff",
+        "IMAP 收取最新邮件": "Kunin ang pinakabagong mail sa IMAP",
+        "去重写入日志": "Alisin ang mga doble at i-save ang mga log",
+        "失败则退避/成功则恢复": "Mag-backoff kapag nabigo; magpatuloy kapag matagumpay",
+        "帮助中心": "Sentro ng tulong",
+        "后台管理": "Admin console",
+        "后台页面": "Pahina ng admin",
+        "退出": "Mag-logout",
+        "用户名或密码错误": "Maling username o password",
+        "页面加载中": "Nilo-load ang pahina",
+        "页面加载时间较长，请重试": "Matagal mag-load ang pahinang ito. Subukan muli.",
+        "重试": "Subukan muli",
+        "关闭菜单": "Isara ang menu",
+        "邮件文件夹": "Mga folder ng mail",
+        "邮箱切换": "Lumipat ng mailbox",
+        "正在获取邮件，请稍候": "Kinukuha ang mail. Mangyaring maghintay",
+        "账号状态": "Katayuan ng account",
+        "邮箱详情": "Mga detalye ng mailbox",
+        "账号资料": "Data ng account",
+        "账号搜索": "Paghahanap ng account",
+        "搜索邮箱或登录用户名": "Hanapin ang email o username sa pag-login",
+        "创建人": "Ginawa ni",
+        "全部创建人": "Lahat ng gumawa",
+        "分类（邮箱分组）": "Kategorya (grupo ng mailbox)",
+        "全部分类": "Lahat ng kategorya",
+        "分类": "Kategorya",
+        "认证方式": "Authentication",
+        "全部认证方式": "Lahat ng uri ng authentication",
+        "密码登录": "Pag-login gamit ang password",
+        "开始日期": "Petsa ng simula",
+        "结束日期": "Petsa ng pagtatapos",
+        "开始日期不能晚于结束日期": "Hindi maaaring mas huli ang petsa ng simula kaysa sa petsa ng pagtatapos",
+        "筛选参数无效，请检查日期范围和分类": "Hindi wasto ang mga filter. Suriin ang saklaw ng petsa at kategorya.",
+        "请选择 1 至 5000 个账号": "Pumili ng 1 hanggang 5,000 account",
+        "全选本页": "Piliin ang pahinang ito",
+        "筛选结果": "Mga resulta",
+        "复制所选": "Kopyahin ang napili",
+        "清空选择": "Alisin ang pagpili",
+        "显示凭据": "Ipakita ang mga kredensyal",
+        "复制格式": "Format ng kopya",
+        "跨页保留勾选；应用筛选后清空。复制始终使用完整原值，每个账号一行。": "Mananatili ang pagpili sa ibang pahina at malilinis kapag inilapat ang mga filter. Buong orihinal na halaga ang kinokopya, isang account bawat linya.",
+        "没有符合条件的账号": "Walang tumugmang account",
+        "筛选": "Salain",
+        "未获上级授权使用此功能": "Wala kang pahintulot na gamitin ang feature na ito",
+        "邮箱不存在或无权访问": "Hindi makita ang mailbox o tinanggihan ang access",
+        "正在加载邮箱详情…": "Nilo-load ang mga detalye ng mailbox…",
+        "以下为当前保存的邮箱配置；密码和令牌可点击显示或复制。": "Ito ang mga kasalukuyang naka-save na setting ng mailbox. Gamitin ang mga button upang ipakita o kopyahin ang mga password at token.",
+        "基本信息": "Pangunahing impormasyon",
+        "登录用户名": "Username sa pag-login",
+        "邮箱 ID": "ID ng mailbox",
+        "认证与 OAuth": "Authentication at OAuth",
+        "认证方式 (auth_type)": "Uri ng authentication (auth_type)",
+        "密码 / 授权码": "Password / App password",
+        "收件配置": "Mga setting ng papasok na mail",
+        "发件配置": "Mga setting ng papalabas na mail",
+        "服务器地址": "Address ng server",
+        "协议": "Protocol",
+        "状态与时间": "Katayuan at mga oras",
+        "启用状态": "Katayuan ng pag-enable",
+        "最后检测时间": "Huling nasuri",
+        "检测结果": "Resulta ng pagsusuri",
+        "未设置": "Hindi nakatakda",
+        "已开启": "Naka-enable",
+        "已关闭": "Naka-disable",
+        "显示": "Ipakita",
+        "隐藏": "Itago",
+        "正常": "Maayos",
+        "封禁": "Naka-block",
+        "凭据失效": "Hindi wastong kredensyal",
+        "网络异常": "Error sa network",
+        "检测异常": "Error sa pagsusuri",
+        "当前为保存前的测试结果。": "Isinagawa ang pagsusuring ito bago i-save.",
+        "测试请求未返回账号状态": "Walang ibinalik na katayuan ng account ang pagsusuri",
+        "未获得有效检测结果，已保存的账号状态未更改。": "Walang wastong resulta ng pagsusuri. Hindi nagbago ang naka-save na katayuan ng account."
+    };
+
     const originalText = new WeakMap();
     const originalAttrs = new WeakMap();
     let currentLang = getInitialLanguage();
@@ -1359,7 +2225,8 @@
         if (parent) return parent.language;
         const browserLanguages = navigator.languages || [navigator.language || ''];
         for (const locale of browserLanguages) {
-            const language = locale.toLowerCase().split('-')[0];
+            const base = locale.toLowerCase().split('-')[0];
+            const language = base === 'tl' ? 'fil' : base;
             if (SUPPORTED_LANGS.includes(language)) return language;
         }
         return 'en';
@@ -1405,31 +2272,31 @@
         match = text.match(/^(测试筛选结果|筛选无效|全选筛选结果|批量恢复|批量永久删除)\s*\((\d+)\)$/);
         if (match) return `${translateExact(match[1], lang)} (${match[2]})`;
         match = text.match(/^(批量测试中|批量测试完成|批量测试已停止|正在停止（等待进行中的测试完成）)：(\d+) \/ (\d+)；正常 (\d+)，无效 (\d+)，待重试 (\d+)$/);
-        if (match) return lang === 'vi'
+        if (match) return lang === 'fil' ? `${translateExact(match[1], lang)}: ${match[2]} / ${match[3]}; maayos ${match[4]}, hindi wasto ${match[5]}, subukan muli ${match[6]}` : lang === 'vi'
             ? `${translateExact(match[1], lang)}: ${match[2]} / ${match[3]}; bình thường ${match[4]}, không hợp lệ ${match[5]}, cần thử lại ${match[6]}`
             : `${translateExact(match[1], lang)}: ${match[2]} / ${match[3]}; healthy ${match[4]}, invalid ${match[5]}, retry ${match[6]}`;
         match = text.match(/^确定要永久删除选中的 (\d+) 个邮箱账号吗？包含跨页选中的邮箱，此操作不可撤销。$/);
-        if (match) return lang === 'vi'
+        if (match) return lang === 'fil' ? `Permanenteng tanggalin ang ${match[1]} napiling mailbox sa lahat ng pahina? Hindi ito maibabalik.` : lang === 'vi'
             ? `Xóa vĩnh viễn ${match[1]} hộp thư đã chọn trên mọi trang? Không thể hoàn tác.`
             : `Permanently delete ${match[1]} selected mailboxes across all pages? This cannot be undone.`;
         match = text.match(/^已选择\s*(\d+)\s*个邮箱(.*)$/);
-        if (match) return lang === 'vi' ? `Đã chọn ${match[1]} hộp thư${match[2]}` : `Selected ${match[1]} mailboxes${match[2]}`;
+        if (match) return lang === 'fil' ? `Napili ang ${match[1]} mailbox${match[2]}` : lang === 'vi' ? `Đã chọn ${match[1]} hộp thư${match[2]}` : `Selected ${match[1]} mailboxes${match[2]}`;
         match = text.match(/^(.+) · 使用说明$/);
         if (match) return `${translateExact(match[1], lang)} · ${translateExact('使用说明', lang)}`;
         match = text.match(/^例:\s*(.+)$/);
-        if (match) return `${lang === 'vi' ? 'Ví dụ' : 'e.g.'}: ${match[1].replace('QQ邮箱', 'QQ Mail')}`;
+        if (match) return `${lang === 'fil' ? 'Hal.' : lang === 'vi' ? 'Ví dụ' : 'e.g.'}: ${match[1].replace('QQ邮箱', 'QQ Mail')}`;
         if (text.startsWith('例如：user@outlook.com----password----client_id----refresh_token')) {
-            return lang === 'vi' ? 'Ví dụ: user@outlook.com----password----client_id----refresh_token; cũng hỗ trợ key=value, JSON hoặc các trường trên nhiều dòng'
+            return lang === 'fil' ? 'Hal. user@outlook.com----password----client_id----refresh_token; tumatanggap din ng key=value, JSON, at mga field sa maraming linya' : lang === 'vi' ? 'Ví dụ: user@outlook.com----password----client_id----refresh_token; cũng hỗ trợ key=value, JSON hoặc các trường trên nhiều dòng'
                 : 'e.g. user@outlook.com----password----client_id----refresh_token; key=value, JSON and multiline fields are also supported';
         }
         if (text.startsWith('每行一个邮箱，也支持 JSON 数组、CSV/TSV 表头和分行字段：')) {
             const examples = text.split('\n').slice(1, -1).join('\n');
-            return lang === 'vi'
+            return lang === 'fil' ? `Isang mailbox bawat linya; tumatanggap din ng JSON array, CSV/TSV header, at mga field sa maraming linya:\n${examples}\nTumatanggap ng kuwit, tuldok-kuwit, patayong guhit, tutuldok, tab, espasyo, JSON, at key=value` : lang === 'vi'
                 ? `Mỗi dòng một hộp thư; cũng hỗ trợ mảng JSON, tiêu đề CSV/TSV và các trường trên nhiều dòng:\n${examples}\nHỗ trợ dấu phẩy, chấm phẩy, gạch dọc, dấu hai chấm, tab, khoảng trắng, JSON và key=value`
                 : `One mailbox per line; JSON arrays, CSV/TSV headers and multiline fields are also supported:\n${examples}\nSupports commas, semicolons, pipes, colons, tabs, spaces, JSON and key=value`;
         }
         match = text.match(/^(\d+)\s*封$/);
-        if (match) return lang === 'vi' ? `${match[1]} thư` : `${match[1]} ${match[1] === '1' ? 'message' : 'messages'}`;
+        if (match) return lang === 'fil' ? `${match[1]} mensahe` : lang === 'vi' ? `${match[1]} thư` : `${match[1]} ${match[1] === '1' ? 'message' : 'messages'}`;
         match = text.match(/^邮件正文：(.+)$/);
         if (match) return `${translateExact('邮件正文', lang)}: ${match[1]}`;
         match = text.match(/^颜色主题\s*[:：]\s*(.+)$/);
@@ -1438,23 +2305,23 @@
         }
         match = text.match(/^欢迎，\s*(.+)$/);
         if (match) {
-            return lang === 'vi' ? `Xin chào, ${match[1]}` : `Welcome, ${match[1]}`;
+            return lang === 'fil' ? `Maligayang pagdating, ${match[1]}` : lang === 'vi' ? `Xin chào, ${match[1]}` : `Welcome, ${match[1]}`;
         }
 
         match = text.match(/^操作人：\s*(.+)$/);
         if (match) {
             const operator = match[1] === '历史数据'
-                ? (lang === 'vi' ? 'Dữ liệu cũ' : 'Legacy data')
+                ? (lang === 'fil' ? 'Lumang data' : lang === 'vi' ? 'Dữ liệu cũ' : 'Legacy data')
                 : match[1];
-            return lang === 'vi' ? `Người thao tác: ${operator}` : `Operator: ${operator}`;
+            return lang === 'fil' ? `Operator: ${operator}` : lang === 'vi' ? `Người thao tác: ${operator}` : `Operator: ${operator}`;
         }
 
         match = text.match(/^(\d+)\s*个邮箱\s*·\s*操作人：\s*(.+)$/);
         if (match) {
             const operator = match[2] === '历史数据'
-                ? (lang === 'vi' ? 'Dữ liệu cũ' : 'Legacy data')
+                ? (lang === 'fil' ? 'Lumang data' : lang === 'vi' ? 'Dữ liệu cũ' : 'Legacy data')
                 : match[2];
-            return lang === 'vi'
+            return lang === 'fil' ? `${match[1]} mailbox · Operator: ${operator}` : lang === 'vi'
                 ? `${match[1]} hộp thư · Người thao tác: ${operator}`
                 : `${match[1]} mailboxes · Operator: ${operator}`;
         }
@@ -1462,130 +2329,130 @@
         match = text.match(/^(.+)\s*·\s*(已限制|未限制)$/);
         if (match) {
             const state = match[2] === '已限制'
-                ? (lang === 'vi' ? 'Đã giới hạn' : 'Restricted')
-                : (lang === 'vi' ? 'Chưa giới hạn' : 'Unrestricted');
+                ? (lang === 'fil' ? 'May limitasyon' : lang === 'vi' ? 'Đã giới hạn' : 'Restricted')
+                : (lang === 'fil' ? 'Walang limitasyon' : lang === 'vi' ? 'Chưa giới hạn' : 'Unrestricted');
             return `${match[1]} · ${state}`;
         }
 
         match = text.match(/^本人邮箱\s*(\d+)\s*个，授权分组\s*(\d+)\s*个，单邮箱授权\s*(\d+)\s*个$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Sariling mailbox ${match[1]}, pinahintulutang grupo ${match[2]}, indibidwal na pahintulot ${match[3]}` : lang === 'vi'
                 ? `Hộp thư riêng ${match[1]}, nhóm được cấp ${match[2]}, hộp thư được cấp riêng ${match[3]}`
                 : `Own mailboxes ${match[1]}, granted groups ${match[2]}, individual grants ${match[3]}`;
         }
 
         match = text.match(/^本人邮箱\s*(\d+)\s*个，额外授权\s*(\d+)\s*个$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Sariling mailbox ${match[1]}, dagdag na pahintulot ${match[2]}` : lang === 'vi'
                 ? `Hộp thư riêng ${match[1]}, cấp thêm ${match[2]}`
                 : `Own mailboxes ${match[1]}, additional grants ${match[2]}`;
         }
 
         if (text.startsWith('每行一个邮箱，自动识别多种格式：')) {
-            return lang === 'vi'
+            return lang === 'fil' ? 'Isang mailbox bawat linya. Awtomatikong kinikilala ang maraming format:\nuser@example.com----password\nuser@hotmail.com----password----client_id----refresh_token----Graph API\nemail=user@example.com password=password client_id=... refresh_token=... auth_type=graph\nTumatanggap ng ---- / tutuldok / patayong guhit / kuwit / JSON / key=value / Graph API' : lang === 'vi'
                 ? 'Mỗi dòng một hộp thư, tự nhận diện nhiều định dạng:\nuser@example.com----password\nuser@hotmail.com----password----client_id----refresh_token----Graph API\nemail=user@example.com password=password client_id=... refresh_token=... auth_type=graph\nHỗ trợ ---- / dấu hai chấm / gạch dọc / dấu phẩy / JSON / key=value / Graph API'
                 : 'One mailbox per line. Multiple formats are auto-detected:\nuser@example.com----password\nuser@hotmail.com----password----client_id----refresh_token----Graph API\nemail=user@example.com password=password client_id=... refresh_token=... auth_type=graph\nSupports ---- / colon / pipe / comma / JSON / key=value / Graph API';
         }
 
         match = text.match(/^共\s*(\d+)\s*条记录，第\s*(\d+)\s*页，共\s*(\d+)\s*页$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Kabuuang ${match[1]} rekord, pahina ${match[2]} sa ${match[3]}` : lang === 'vi'
                 ? `Tổng ${match[1]} bản ghi, trang ${match[2]}, tổng ${match[3]} trang`
                 : `Total ${match[1]} records, page ${match[2]} of ${match[3]}`;
         }
 
         match = text.match(/^共\s*(\d+)\s*封邮件，第\s*(\d+)\s*\/\s*(\d+)\s*页$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Kabuuang ${match[1]} mail, pahina ${match[2]} / ${match[3]}` : lang === 'vi'
                 ? `Tổng ${match[1]} thư, trang ${match[2]} / ${match[3]}`
                 : `Total ${match[1]} mails, page ${match[2]} / ${match[3]}`;
         }
 
         match = text.match(/^共\s*(\d+)\s*个邮箱，第\s*(\d+)\s*\/\s*(\d+)\s*页$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Kabuuang ${match[1]} mailbox, pahina ${match[2]} / ${match[3]}` : lang === 'vi'
                 ? `Tổng ${match[1]} hộp thư, trang ${match[2]} / ${match[3]}`
                 : `Total ${match[1]} mailboxes, page ${match[2]} / ${match[3]}`;
         }
 
         match = text.match(/^共\s*(\d+)\s*条$/);
         if (match) {
-            return lang === 'vi' ? `Tổng ${match[1]}` : `Total ${match[1]}`;
+            return lang === 'fil' ? `Kabuuang ${match[1]}` : lang === 'vi' ? `Tổng ${match[1]}` : `Total ${match[1]}`;
         }
 
         match = text.match(/^成功\s*(\d+)$/);
         if (match) {
-            return lang === 'vi' ? `Thành công ${match[1]}` : `Success ${match[1]}`;
+            return lang === 'fil' ? `Tagumpay ${match[1]}` : lang === 'vi' ? `Thành công ${match[1]}` : `Success ${match[1]}`;
         }
 
         match = text.match(/^失败\s*(\d+)$/);
         if (match) {
-            return lang === 'vi' ? `Thất bại ${match[1]}` : `Failed ${match[1]}`;
+            return lang === 'fil' ? `Nabigo ${match[1]}` : lang === 'vi' ? `Thất bại ${match[1]}` : `Failed ${match[1]}`;
         }
 
         match = text.match(/^(\d+)\s*条$/);
         if (match) {
-            return lang === 'vi' ? `${match[1]} mục` : `${match[1]} items`;
+            return lang === 'fil' ? `${match[1]} item` : lang === 'vi' ? `${match[1]} mục` : `${match[1]} items`;
         }
 
         match = text.match(/^(\d+)\s*个邮箱$/);
         if (match) {
-            return lang === 'vi' ? `${match[1]} hộp thư` : `${match[1]} mailboxes`;
+            return lang === 'fil' ? `${match[1]} mailbox` : lang === 'vi' ? `${match[1]} hộp thư` : `${match[1]} mailboxes`;
         }
 
         match = text.match(/^批量复制\s*\((\d+)\)$/);
         if (match) {
-            return lang === 'vi' ? `Sao chép hàng loạt (${match[1]})` : `Batch Copy (${match[1]})`;
+            return lang === 'fil' ? `Kopyahin nang maramihan (${match[1]})` : lang === 'vi' ? `Sao chép hàng loạt (${match[1]})` : `Batch Copy (${match[1]})`;
         }
 
         match = text.match(/^批量删除\s*\((\d+)\)$/);
         if (match) {
-            return lang === 'vi' ? `Xóa hàng loạt (${match[1]})` : `Batch Delete (${match[1]})`;
+            return lang === 'fil' ? `Tanggalin nang maramihan (${match[1]})` : lang === 'vi' ? `Xóa hàng loạt (${match[1]})` : `Batch Delete (${match[1]})`;
         }
 
         match = text.match(/^批量分组\s*\((\d+)\)$/);
         if (match) {
-            return lang === 'vi' ? `Phân nhóm hàng loạt (${match[1]})` : `Batch Group (${match[1]})`;
+            return lang === 'fil' ? `Igrupo nang maramihan (${match[1]})` : lang === 'vi' ? `Phân nhóm hàng loạt (${match[1]})` : `Batch Group (${match[1]})`;
         }
 
         match = text.match(/^成功获取\s*(\d+)\s*封邮件$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Matagumpay na nakuha ang ${match[1]} mail` : lang === 'vi'
                 ? `Đã lấy thành công ${match[1]} thư`
                 : `Successfully fetched ${match[1]} mails`;
         }
 
         match = text.match(/^成功获取\s*(\d+)\s*封邮件，(\d+)\s*个邮箱失败$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Matagumpay na nakuha ang ${match[1]} mail, nabigo ang ${match[2]} mailbox` : lang === 'vi'
                 ? `Đã lấy thành công ${match[1]} thư, ${match[2]} hộp thư thất bại`
                 : `Successfully fetched ${match[1]} mails, ${match[2]} mailboxes failed`;
         }
 
         match = text.match(/^邮件获取成功！剩余使用次数:\s*(.+)$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Matagumpay na nakuha ang mail! Natitirang paggamit: ${match[1]}` : lang === 'vi'
                 ? `Lấy thư thành công! Số lần còn lại: ${match[1]}`
                 : `Mail fetched successfully! Remaining uses: ${match[1]}`;
         }
 
         match = text.match(/^成功收取\s*(\d+)\s*封新邮件$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Matagumpay na nakuha ang ${match[1]} bagong mail` : lang === 'vi'
                 ? `Đã lấy thành công ${match[1]} thư mới`
                 : `Successfully fetched ${match[1]} new mails`;
         }
 
         match = text.match(/^开始检测批量导入的\s*(\d+)\s*个邮箱\.\.\.$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Sinusuri ang ${match[1]} na-import na mailbox...` : lang === 'vi'
                 ? `Bắt đầu kiểm tra ${match[1]} hộp thư vừa nhập...`
                 : `Checking ${match[1]} imported mailboxes...`;
         }
 
         match = text.match(/^批量导入检测完成：成功\s*(\d+)\s*个，失败\s*(\d+)\s*个$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Tapos na ang pagsusuri ng import: ${match[1]} matagumpay, ${match[2]} nabigo` : lang === 'vi'
                 ? `Kiểm tra sau nhập hoàn tất: thành công ${match[1]}, thất bại ${match[2]}`
                 : `Import check completed: ${match[1]} succeeded, ${match[2]} failed`;
         }
@@ -1593,77 +2460,77 @@
         match = text.match(/^批量分组完成：成功\s*(\d+)\s*个(?:，失败\s*(\d+)\s*个)?$/);
         if (match) {
             const failed = match[2] || '0';
-            return lang === 'vi'
+            return lang === 'fil' ? `Tapos na ang maramihang paggrupo: ${match[1]} matagumpay${match[2] ? `, ${failed} nabigo` : ''}` : lang === 'vi'
                 ? `Phân nhóm hàng loạt hoàn tất: thành công ${match[1]}${match[2] ? `, thất bại ${failed}` : ''}`
                 : `Batch group completed: ${match[1]} succeeded${match[2] ? `, ${failed} failed` : ''}`;
         }
 
         match = text.match(/^已复制：(.+)$/);
         if (match) {
-            return lang === 'vi' ? `Đã sao chép: ${match[1]}` : `Copied: ${match[1]}`;
+            return lang === 'fil' ? `Nakopya na: ${match[1]}` : lang === 'vi' ? `Đã sao chép: ${match[1]}` : `Copied: ${match[1]}`;
         }
 
         match = text.match(/^已复制\s*(\d+)\s*个邮箱$/);
         if (match) {
-            return lang === 'vi' ? `Đã sao chép ${match[1]} hộp thư` : `Copied ${match[1]} mailboxes`;
+            return lang === 'fil' ? `Nakopya na ang ${match[1]} mailbox` : lang === 'vi' ? `Đã sao chép ${match[1]} hộp thư` : `Copied ${match[1]} mailboxes`;
         }
 
         match = text.match(/^分组“(.+)”已存在，不能重复添加。?$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Umiiral na ang grupong "${match[1]}".` : lang === 'vi'
                 ? `Nhóm "${match[1]}" đã tồn tại, không thể thêm trùng.`
                 : `Group "${match[1]}" already exists.`;
         }
 
         match = text.match(/^分组名称可用，点击添加后会自动选中。$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? 'Maaaring gamitin ang pangalan ng grupo at awtomatiko itong mapipili pagkatapos idagdag.' : lang === 'vi'
                 ? 'Tên nhóm khả dụng; sau khi thêm sẽ tự chọn.'
                 : 'Group name is available and will be selected after adding.';
         }
 
         match = text.match(/^已添加并选中分组“(.+)”。$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Naidagdag at napili na ang grupong "${match[1]}".` : lang === 'vi'
                 ? `Đã thêm và chọn nhóm "${match[1]}".`
                 : `Added and selected group "${match[1]}".`;
         }
 
         match = text.match(/^确定要删除选中的\s*(\d+)\s*个邮箱账号吗？$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Tanggalin ang ${match[1]} napiling account ng mailbox?` : lang === 'vi'
                 ? `Xóa ${match[1]} tài khoản hộp thư đã chọn?`
                 : `Delete ${match[1]} selected mailbox accounts?`;
         }
 
         match = text.match(/^确定要删除选中的\s*(\d+)\s*个服务器配置吗？$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Tanggalin ang ${match[1]} napiling configuration ng server?` : lang === 'vi'
                 ? `Xóa ${match[1]} cấu hình máy chủ đã chọn?`
                 : `Delete ${match[1]} selected server configurations?`;
         }
 
         match = text.match(/^接口返回异常（HTTP\s*(\d+)）$/);
         if (match) {
-            return lang === 'vi' ? `Phản hồi API bất thường (HTTP ${match[1]})` : `Unexpected API response (HTTP ${match[1]})`;
+            return lang === 'fil' ? `Hindi inaasahang tugon ng API (HTTP ${match[1]})` : lang === 'vi' ? `Phản hồi API bất thường (HTTP ${match[1]})` : `Unexpected API response (HTTP ${match[1]})`;
         }
 
         match = text.match(/^管理员\s*(.+)\s*已删除$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Natanggal na ang admin na ${match[1]}` : lang === 'vi'
                 ? `Quản trị viên ${match[1]} đã bị xóa`
                 : `Admin ${match[1]} has been deleted`;
         }
 
         match = text.match(/^管理员\s*(.+)\s*的密码已重置$/);
         if (match) {
-            return lang === 'vi'
+            return lang === 'fil' ? `Na-reset na ang password ng admin na ${match[1]}` : lang === 'vi'
                 ? `Mật khẩu của quản trị viên ${match[1]} đã được đặt lại`
                 : `Password for admin ${match[1]} has been reset`;
         }
 
         if (text.includes('（北京时间）')) {
-            return text.replace('（北京时间）', lang === 'vi' ? '(Bắc Kinh)' : '(Beijing Time)');
+            return text.replace('（北京时间）', lang === 'fil' ? '(Oras sa Beijing)' : lang === 'vi' ? '(Bắc Kinh)' : '(Beijing Time)');
         }
 
         if (text.includes('\n')) return text.split('\n').map((line) => translateWithRules(line, lang)).join('\n');

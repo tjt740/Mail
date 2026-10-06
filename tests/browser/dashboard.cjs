@@ -82,7 +82,7 @@ test('health and attention actions open the matching mailbox filter',async()=>{
 });
 test('mobile charts and translated labels fit in all supported languages',async()=>{
  const page=await pageFor({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});try{
-  for(const language of ['en','vi','zh']){
+  for(const language of ['en','vi','zh','fil']){
    await page.evaluate(language=>AppI18n.setLanguage(language),language);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,language);
    assert.equal(await page.locator('#monitorRecentFailures span').first().textContent(),'<img src=x onerror=alert(1)>@example.com');

@@ -34,6 +34,7 @@ import {
 import zhCN from 'antd/locale/zh_CN';
 import enUS from 'antd/locale/en_US';
 import viVN from 'antd/locale/vi_VN';
+import filPH from './locales/fil_PH.js';
 import '../../static/js/i18n.js';
 import '../../static/js/motion.js';
 import '../../static/js/theme-palettes.js';
@@ -49,7 +50,7 @@ const { Title, Text } = Typography;
 const appProps = window.__MAIL_APP_PROPS__ || {};
 const COLOR_THEME_STORAGE_KEY = 'mailSystemColorTheme';
 const LANGUAGE_OPTIONS = window.AppI18n.languages;
-const ANT_LOCALES = { zh: zhCN, en: enUS, vi: viVN };
+const ANT_LOCALES = { zh: zhCN, en: enUS, vi: viVN, fil: filPH };
 const COLOR_THEME_OPTIONS = window.MailThemes.themes.map(item => ({ ...item, labelKey: item.name }));
 
 const adminMenuDefinitions = [

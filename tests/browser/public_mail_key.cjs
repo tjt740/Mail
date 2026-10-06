@@ -142,7 +142,7 @@ for(const width of [390,768,1440]) test(`key field remains readable in all langu
     const page=await browser.newPage({viewport:{width,height:1000},reducedMotion:'reduce'});
     try {
         await page.goto(origin);
-        for (const language of ['zh','en','vi']) for (const scene of ['day','night','rain']) {
+        for (const language of ['zh','en','vi','fil']) for (const scene of ['day','night','rain']) {
             await page.evaluate(language=>AppI18n.setLanguage(language),language);
             await page.locator(`[data-scene="${scene}"]`).click();
             const rect=await page.locator('#publicMailKeyInput').boundingBox();

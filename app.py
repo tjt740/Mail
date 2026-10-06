@@ -2657,7 +2657,7 @@ def legacy_index():
     )
 
 
-SUPPORTED_PUBLIC_LANGUAGES = ('zh', 'en', 'vi')
+SUPPORTED_PUBLIC_LANGUAGES = ('zh', 'en', 'vi', 'fil')
 CHINESE_LANGUAGE_COUNTRIES = {'CN', 'HK', 'MO', 'TW'}
 COUNTRY_HEADER_NAMES = (
     'CF-IPCountry',
@@ -2741,6 +2741,8 @@ def _lookup_country_for_ip(client_ip):
 def _language_for_country(country):
     if country == 'VN':
         return 'vi'
+    if country == 'PH':
+        return 'fil'
     if country in CHINESE_LANGUAGE_COUNTRIES:
         return 'zh'
     return 'en'
@@ -2748,7 +2750,7 @@ def _language_for_country(country):
 
 def _language_from_accept_header():
     best = request.accept_languages.best_match(
-        ['zh-CN', 'zh-TW', 'zh', 'vi-VN', 'vi', 'en'],
+        ['zh-CN', 'zh-TW', 'zh', 'vi-VN', 'vi', 'fil-PH', 'fil', 'tl-PH', 'tl', 'en'],
         default='en',
     )
     normalized = str(best or 'en').lower()
@@ -2756,6 +2758,8 @@ def _language_from_accept_header():
         return 'zh'
     if normalized.startswith('vi'):
         return 'vi'
+    if normalized.startswith(('fil', 'tl')):
+        return 'fil'
     return 'en'
 
 

@@ -84,6 +84,35 @@ async function newPage(width = 1440, initialPath = '/admin/account-data') {
 }
 const record = (page, id) => page.locator(`[data-account-id="${id}"]`);
 
+for (const width of [390, 1440]) {
+    test(`Filipino translates account controls and calendar without losing state at ${width}px`, async () => {
+        const page = await newPage(width);
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        try {
+            await page.getByRole('textbox', { name: '账号搜索', exact: true }).fill('draft@example.com');
+            await record(page, 1).getByRole('checkbox').check();
+            await page.evaluate(() => window.AppI18n.setLanguage('fil'));
+            assert.equal(await page.getByRole('textbox', { name: 'Paghahanap ng account', exact: true }).inputValue(), 'draft@example.com');
+            assert.equal(await record(page, 1).getByRole('checkbox').isChecked(), true);
+            await page.getByRole('button', { name: /Kopyahin ang napili/ }).waitFor();
+            assert.equal(await page.locator('.account-pagination .ant-pagination-next').getAttribute('title'), 'Susunod na pahina');
+            const startDate = page.getByPlaceholder('Petsa ng simula', { exact: true });
+            await startDate.fill('2026-10-01');
+            await startDate.press('Enter');
+            await startDate.click();
+            await page.locator('.account-date-range-popup').waitFor({ state: 'visible' });
+            assert.equal(await page.locator('.ant-picker-month-btn').first().innerText(), 'Okt');
+            assert.match(await page.locator('.ant-picker-content thead').first().innerText(), /Lu/);
+            assert.equal(await page.locator('.ant-picker-header-next-btn').first().getAttribute('aria-label'), 'Susunod na buwan (PageDown)');
+            await startDate.press('Escape');
+            assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+            assert.equal(await page.locator('.account-data-page').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
+            assert.deepEqual(errors, []);
+        } finally { await page.close(); }
+    });
+}
+
 for (const width of [1440, 768, 390, 320]) {
     test(`independent menu, full account lines and individual details work at ${width}px`, async () => {
         const page = await newPage(width, '/admin/mailbox');

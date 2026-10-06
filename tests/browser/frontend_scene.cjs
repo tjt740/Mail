@@ -61,6 +61,12 @@ test('scene changes preserve queries, retrieved mail, selection and readable tex
             assert.equal(await page.locator('#emailInput').inputValue(), 'reader@example.com');
             assert.equal(await page.locator('#mailSubject').innerText(), 'Scene test letter');
             assert.equal(await page.locator('#mailDisplay').isVisible(), true);
+            // Let the browser apply the new scene's colors before comparing them.
+            await page.waitForFunction(() => {
+                const body = getComputedStyle(document.querySelector('.mail-body--text'));
+                const input = getComputedStyle(document.querySelector('.highlight-input'));
+                return body.color === input.color && body.backgroundColor === input.backgroundColor;
+            });
             const readable = await page.evaluate(() => {
                 const body = getComputedStyle(document.querySelector('.mail-body--text'));
                 const input = getComputedStyle(document.querySelector('.highlight-input'));
@@ -113,7 +119,7 @@ test('scene persists and stale pause preferences cannot stop animation; lifecycl
 for (const width of [320, 390, 768, 1440]) test(`scenes, translations and controls fit at ${width}px`, async () => {
     const page = await newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce', deviceScaleFactor: 3 });
     try {
-        for (const lang of ['zh', 'en', 'vi']) {
+        for (const lang of ['zh', 'en', 'vi', 'fil']) {
             await page.evaluate(lang => AppI18n.setLanguage(lang), lang);
             for (const mode of ['day', 'night', 'rain']) {
                 await page.locator(`[data-scene="${mode}"]`).click();

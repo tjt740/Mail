@@ -159,8 +159,8 @@ python app.py
 
 ### 国际化与交互动效
 
-- 支持中文、English、Tiếng Việt；优先使用手动选择，否则先使用浏览器语言，再采用服务器的地区推荐。React 与内嵌页面共用 `static/js/i18n.js`，语言切换不刷新页面，并同步组件内置文案、动态提示与带标记的日期。日期按语言格式显示，数据库时间仍按北京时间解释。
-- 新文案在 `i18n.js` 的 `sharedMessages` 中同时补充英文和越南语。使用 `AppI18n.t()`、`formatNumber()`、`formatDate()`；需随语言立即更新的节点可使用 `data-i18n-date` / `data-i18n-number`。邮件正文、用户自定义文本使用 `translate="no"`，避免被界面翻译修改。
+- 支持中文、English、Tiếng Việt、Filipino（`fil-PH`，兼容浏览器 `tl` / `tl-PH`）；菲律宾地区推荐 Filipino。优先使用手动选择，否则先使用浏览器语言，再采用服务器的地区推荐。React 与内嵌页面共用 `static/js/i18n.js`，语言切换不刷新页面，并同步组件内置文案、动态提示与带标记的日期。日期按语言格式显示，数据库时间仍按北京时间解释。
+- 新文案在 `i18n.js` 的 `sharedMessages` 中补充英文和越南语，并在 `dictionary.fil` 中补充菲律宾语；Ant Design 菲律宾语控件文案位于 `frontend/src/locales/fil_PH.js`。使用 `AppI18n.t()`、`formatNumber()`、`formatDate()`；需随语言立即更新的节点可使用 `data-i18n-date` / `data-i18n-number`。邮件正文、用户自定义文本使用 `translate="no"`，避免被界面翻译修改。
 - `static/js/motion.js` 与 `static/css/motion.css` 提供主题光晕、粒子连线、漂浮信封、指针反馈及页面/弹窗过渡。Canvas 在后台或不可见时暂停，限制像素数和粒子数；系统启用“减少动态效果”后显示静态背景。
 - 后台首页提供邮箱健康分布、近 7 天收件/失败趋势、轮询状态、代理/卡密余量与近期失败记录，每 30 秒刷新。邮箱与日志按当前管理员访问范围统计，其他面板遵循对应功能权限；点击健康状态或待处理数量可直达邮箱筛选。更新失败保留上次数据与时间。
 - 后台 `admin-motion.js` 提供 Canvas 3D 邮件轨道与卡片倾斜反馈，`admin-dashboard.js` 提供图表和数字过渡；移动端限制帧率和像素数，页面隐藏或减少动态效果时暂停。Canvas 不可用时仍可通过日期按钮查看趋势数据。
@@ -168,7 +168,7 @@ python app.py
 - 前台的 `frontend-scene.js` / `frontend-scene.css` 提供白天、黑夜、雨夜场景：双层 Canvas 绘制云雾、光点、星空、流星、雨丝、涟漪与透视光轨，CSS 3D 信封响应鼠标移动。场景选择保存在本机，前台不提供手动暂停入口，未选择时跟随系统明暗偏好；移动端降低粒子数与帧率，后台和减少动态效果模式暂停动画。场景切换保留查询及邮件阅读状态。
 - 修改共享脚本或 React 代码后运行 `npm --prefix frontend run build` 更新部署资源。回归检查：`node --test tests/*.cjs` 和 `python -m unittest discover -s tests`（使用已安装依赖的 Python 环境）。
 - 安装 Playwright 和对应浏览器后，可用 `RUN_BROWSER_TESTS=1 node --test tests/test_i18n_motion.cjs` 运行隔离的浏览器回归。也可通过 `PLAYWRIGHT_MODULE` 指定模块路径、`BROWSER_CHANNEL=chrome` 使用本机 Chrome；测试自行启动临时页面服务，不连接业务数据库。
-- 前台场景回归：`node --test tests/browser/frontend_scene.cjs`，覆盖场景切换、取件阅读、偏好保存、减少动态效果、页面隐藏/恢复、Canvas 降级和三种语言的窄屏布局。
+- 前台场景回归：`node --test tests/browser/frontend_scene.cjs`，覆盖场景切换、取件阅读、偏好保存、减少动态效果、页面隐藏/恢复、Canvas 降级和四种语言的窄屏布局。
 - 首页监测回归：`python -m unittest discover -s tests -p test_dashboard.py` 和 `node --test tests/browser/dashboard.cjs`，覆盖数据权限、统计边界、刷新失败恢复、状态跳转、动效生命周期及手机布局，均使用独立测试数据。
 - 主题回归：`node --test tests/browser/themes.cjs`，覆盖三种场景、外框/内页同步、刷新持久化、表单保留、存储受限与窄屏显示。
 

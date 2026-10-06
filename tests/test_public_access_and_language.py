@@ -34,6 +34,7 @@ class PublicAccessAndLanguageTestCase(unittest.TestCase):
             ('CN', 'zh'),
             ('TW', 'zh'),
             ('VN', 'vi'),
+            ('PH', 'fil'),
             ('US', 'en'),
         )
         with app_module.app.test_client() as client:
@@ -58,6 +59,26 @@ class PublicAccessAndLanguageTestCase(unittest.TestCase):
         self.assertEqual(payload['language'], 'vi')
         self.assertIsNone(payload['country'])
         self.assertEqual(payload['source'], 'accept_language')
+
+    def test_filipino_and_tagalog_browser_locales(self):
+        with app_module.app.test_client() as client:
+            for language in ('fil', 'fil-PH', 'tl', 'tl-PH'):
+                with self.subTest(language=language):
+                    response = client.get(
+                        '/api/language',
+                        headers={'Accept-Language': f'{language},en;q=0.8'},
+                        environ_base={'REMOTE_ADDR': '127.0.0.1'},
+                    )
+                    payload = response.get_json()
+                    self.assertEqual(payload['language'], 'fil')
+                    self.assertEqual(payload['source'], 'accept_language')
+
+            response = client.get(
+                '/api/language',
+                headers={'Accept-Language': 'fil-PH;q=0.5,en;q=0.9'},
+                environ_base={'REMOTE_ADDR': '127.0.0.1'},
+            )
+            self.assertEqual(response.get_json()['language'], 'en')
 
     def test_public_mail_lookup_does_not_require_credentials(self):
         failed_fetch = SimpleNamespace(returncode=1, stdout='', stderr='mailbox probe failed')
