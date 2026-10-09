@@ -580,9 +580,15 @@ test('addresses and icons copy without receiving; the receive action keeps mailb
                 const address = element.querySelector('.mailbox-email-address').getBoundingClientRect();
                 const icon = element.querySelector('.mailbox-email-copy').getBoundingClientRect();
                 const group = element.querySelector('.mailbox-email-group').getBoundingClientRect();
-                return { centers: Math.abs(address.y + address.height / 2 - icon.y - icon.height / 2), left: Math.abs(address.x - group.x), groupBelow: group.y >= address.bottom };
+                const content = element.querySelector('.mailbox-email-content').getBoundingClientRect();
+                const centerY = rect => rect.y + rect.height / 2;
+                const row = element.closest('tr');
+                const peers = innerWidth > 640
+                    ? ['.mailbox-test-tag', '.mailbox-owner-tag'].map(selector => row.querySelector(selector).getBoundingClientRect())
+                    : [];
+                return { centers: [content, ...peers].map(rect => Math.abs(centerY(rect) - centerY(icon))), left: Math.abs(address.x - group.x), groupBelow: group.y >= address.bottom, groupClear: group.right <= icon.left };
             });
-            assert.ok(alignment.centers < 1 && alignment.left < 1 && alignment.groupBelow, 'copy icon aligns with the address, group label sits below');
+            assert.ok(alignment.centers.every(offset => offset < 1) && alignment.left < 1 && alignment.groupBelow && alignment.groupClear, 'copy icon centers on the full email cell and desktop badges; group stays below the address without overlapping the icon');
             if (process.env.SCREENSHOT_DIR) {
                 fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
                 await cell.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-copy-${width}.png`) });
