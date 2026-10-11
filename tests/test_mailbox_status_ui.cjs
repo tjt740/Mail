@@ -18,6 +18,7 @@ function setup() {
     const elements = {
         mailboxId: { value: '1' }, email: { value: 'new@example.com' },
         mailboxFormTestResult: { hidden: true },
+        mailboxLatestTestResult: { hidden: true, dataset: {}, contains: () => false, getAnimations: () => [], insertAdjacentHTML(where, html) { this.innerHTML += html; } },
         mailboxForm: {}
     };
     const context = vm.createContext({
@@ -31,7 +32,8 @@ function setup() {
             })
         },
         mailboxData: [{ id: '1', email: 'test@example.com', account_status: 'pending' }],
-        currentPage: 1, renderCount: 0,
+        currentPage: 1, renderCount: 0, mailboxTestFeedbackVersion: 0, mailboxTestFeedbackClosing: Promise.resolve(),
+        MailboxInteractions: { expand: (element, open) => { element.hidden = !open; } },
         renderMailboxView: () => context.renderCount++,
         getStoredPreference: () => '["email","actions"]',
         MAILBOX_COLUMN_STORAGE_KEY: 'columns',
@@ -47,7 +49,7 @@ function setup() {
     const constants = ['MAILBOX_STATUS_META', 'MAILBOX_COLUMNS'].map(name => declaration(name, 'const'));
     const functions = [
         'getMailboxTestStatus', 'renderMailboxStatusBadge', 'renderMailboxTestPanel',
-        'showMailboxTestOutcome', 'updateMailboxTestResult', 'testMailbox',
+        'dismissMailboxTestResult', 'showMailboxTestOutcome', 'updateMailboxTestResult', 'testMailbox',
         'getDefaultVisibleMailboxColumns', 'getVisibleMailboxColumnKeys', 'escapeHtml', 'escapeAttribute'
     ].map(name => declaration(name));
     vm.runInContext([...constants, ...functions].join('\n'), context);

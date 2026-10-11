@@ -13,7 +13,7 @@ const seed = () => Array.from({ length: 66 }, (_, i) => ({
     id: i + 1, email: `account${i + 1}@example.com`, server: 'imap.example.com', port: 993,
     protocol: 'imap', ssl: 1, created_by_admin: i < 60 ? 'alice' : 'bob', account_status: statuses[i % 6]
 }));
-let accounts, tested, deleted, active, maxActive, delay, failure, received, testMessage;
+let accounts, tested, deleted, active, maxActive, delay, failure, received, testMessage, responseDelays;
 before(async () => {
     const html = execFileSync(process.env.PYTHON_BIN || path.join(root, '.venv/bin/python'), ['-c', `
 from flask import Flask, render_template
@@ -48,7 +48,7 @@ with app.test_request_context('/legacy/admin/mailbox'):
                     const data = JSON.parse(body);
                     if (data.action === 'test') {
                         tested.push(data.id); active++; maxActive = Math.max(active, maxActive);
-                        await new Promise(resolve => setTimeout(resolve, delay)); active--;
+                        await new Promise(resolve => setTimeout(resolve, responseDelays[data.id] ?? delay)); active--;
                         if (failure) payload = { success: false, message: '登录状态已失效' };
                         else {
                             const row = accounts.find(a => a.id === data.id);
@@ -77,7 +77,7 @@ with app.test_request_context('/legacy/admin/mailbox'):
 after(async () => { await browser?.close(); if (server) await new Promise(resolve => server.close(resolve)); });
 async function newPage(viewport = { width: 1440, height: 1000 }) {
     accounts = seed(); tested = []; deleted = []; received = []; active = 0; maxActive = 0; delay = 20; failure = false;
-    testMessage = 'Fixture result';
+    testMessage = 'Fixture result'; responseDelays = {};
     const page = await browser.newPage({ viewport, reducedMotion: 'reduce' });
     if (process.env.DEBUG_UI) {
         page.on('pageerror', error => console.error(error));
@@ -90,36 +90,127 @@ async function newPage(viewport = { width: 1440, height: 1000 }) {
 }
 
 for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
-    test(`test feedback expires without taking list space and the heading stays compact at ${viewport.width}px`, async () => {
+    test(`full test feedback can be closed and is replaced when testing another account at ${viewport.width}px`, async () => {
         const page = await newPage(viewport);
         try {
-            testMessage = 'OAuth登录失败: AADSTS70000: ' + 'The requested scope has expired. '.repeat(60) + '\n<img src=x onerror="alert(1)">';
+            testMessage = 'OAuth登录失败: AADSTS70000: ' + 'The requested scope has expired. '.repeat(30) + '\n<img src=x onerror="alert(1)">';
+            const panel = page.locator('#mailboxLatestTestResult');
             assert.equal(await page.locator('.mailbox-eyebrow').count(), 0);
             assert.equal(await page.locator('.mailbox-heading-copy p').count(), 0);
             const heading = await page.locator('.mailbox-workspace-heading').boundingBox();
-            assert.ok(heading.height <= (viewport.width > 640 ? 54 : 94), `heading is ${heading.height}px tall`);
+            assert.ok(heading.height <= (viewport.width > 640 ? 54 : 94));
             await page.locator('.mailbox-checkbox').first().check();
-            const before = await page.locator('.mail-panel .table-container').evaluate(node => { const bounds = node.getBoundingClientRect(); return { y: bounds.y + window.scrollY, height: bounds.height }; });
-            await page.locator('#mailboxTable tbody tr').first().locator('[data-action="test"]').click();
-            await page.waitForFunction(() => mailboxData.find(item => item.id === 66).last_test);
-            const toast = page.locator('#toast-container .toast');
-            await toast.waitFor({ state: 'visible' });
-            assert.equal(await page.locator('#mailboxLatestTestResult').count(), 0);
-            assert.equal(await toast.locator('img').count(), 0);
-            assert.equal(await page.locator('#bulkSelectedCount').innerText(), '1');
-            const after = await page.locator('.mail-panel .table-container').evaluate(node => { const bounds = node.getBoundingClientRect(); return { y: bounds.y + window.scrollY, height: bounds.height }; });
-            assert.ok(after.y <= before.y + 1 && after.height >= before.height - 1, `test feedback must not push or shrink the mailbox list: ${JSON.stringify({ before, after })}`);
-            assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-            assert.match(await page.locator('tr[data-mailbox-id="66"] .mailbox-test-tag').getAttribute('title'), /AADSTS70000/);
-            await toast.waitFor({ state: 'hidden' });
-            assert.equal(await page.locator('#toast-container .toast').count(), 0, 'test feedback must disappear automatically');
+            const before = await page.locator('.mail-panel .table-container').evaluate(node => node.getBoundingClientRect().height);
+            await page.locator('tr[data-mailbox-id="66"] [data-action="test"]').click();
+            await panel.waitFor({ state: 'visible' });
+            assert.equal(await panel.locator('.mailbox-test-result-detail').innerText(), '2026-10-02 12:00:00\n' + testMessage);
+            assert.equal(await panel.locator('.mailbox-test-result-detail').isVisible(), true, 'full original details should show immediately');
+            assert.equal(await panel.locator('img').count(), 0);
+            assert.equal(await page.locator('#toast-container .toast').count(), 0, 'show one result surface');
+            if (viewport.width === 1366) {
+                await page.waitForTimeout(3200);
+                assert.equal(await panel.isVisible(), true, 'the detailed result stays until closed or another test starts');
+            }
             if (process.env.SCREENSHOT_DIR) {
                 fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
-                await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-feedback-cleared-${viewport.width}.png`) });
+                await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-restored-result-${viewport.width}.png`) });
             }
+            await panel.locator('.mailbox-test-dismiss').click();
+            await panel.waitFor({ state: 'hidden' });
+            assert.equal(await page.locator('#bulkSelectedCount').innerText(), '1');
+            const after = await page.locator('.mail-panel .table-container').evaluate(node => node.getBoundingClientRect().height);
+            assert.ok(after >= before - 1, 'closing the result gives the list its space back');
+            await page.evaluate(() => testMailbox(66));
+            await panel.waitFor({ state: 'visible' });
+            delay = 500;
+            await page.evaluate(() => { window.nextMailboxTest = testMailbox(65); });
+            await panel.waitFor({ state: 'hidden' });
+            await page.evaluate(() => window.nextMailboxTest);
+            await page.waitForFunction(() => document.querySelector('#mailboxLatestTestResult').dataset.mailboxId === '65');
+            assert.match(await panel.innerText(), /account65@example.com/);
+            assert.doesNotMatch(await panel.innerText(), /account66@example.com/);
+            await page.evaluate(() => AppI18n.setLanguage('en'));
+            await panel.getByRole('button', { name: 'Close', exact: true }).click();
+            await panel.waitFor({ state: 'hidden' });
+            assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         } finally { await page.close(); }
     });
 }
+
+test('result transitions animate height and opacity, handle interruptions and respect reduced motion', async () => {
+    const page = await newPage();
+    try {
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        const opening = await page.evaluate(async () => {
+            await testMailbox(66);
+            const panel = document.getElementById('mailboxLatestTestResult');
+            const animation = panel.getAnimations()[0];
+            const frames = animation.effect.getKeyframes();
+            animation.pause(); animation.currentTime = 100;
+            return { frames, duration: animation.effect.getTiming().duration, height: panel.getBoundingClientRect().height };
+        });
+        assert.equal(opening.duration, 240);
+        assert.equal(opening.frames[0].height, '0px');
+        assert.equal(opening.frames[0].opacity, '0');
+        assert.ok(opening.height > 0 && opening.height < parseFloat(opening.frames.at(-1).height));
+        const closing = await page.evaluate(() => {
+            dismissMailboxTestResult();
+            const panel = document.getElementById('mailboxLatestTestResult');
+            const animation = panel.getAnimations()[0];
+            return { frames: animation.effect.getKeyframes(), hidden: panel.hidden, inert: panel.inert };
+        });
+        assert.ok(parseFloat(closing.frames[0].height) > 0, 'an interrupted opening collapses from its current height');
+        assert.equal(closing.frames.at(-1).height, '0px');
+        assert.equal(closing.hidden, false, 'content remains mounted until the close animation completes');
+        assert.equal(closing.inert, true);
+        await page.locator('#mailboxLatestTestResult').waitFor({ state: 'hidden' });
+        await page.evaluate(() => testMailbox(65));
+        await page.locator('#mailboxLatestTestResult').waitFor({ state: 'visible' });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        assert.equal(await page.evaluate(() => {
+            dismissMailboxTestResult();
+            const panel = document.getElementById('mailboxLatestTestResult');
+            return panel.hidden && panel.getAnimations().length === 0;
+        }), true);
+    } finally { await page.close(); }
+});
+
+test('late responses never replace a newer result or reopen a dismissed result; batch starts clear old output', async () => {
+    const page = await newPage();
+    try {
+        responseDelays = { 66: 600, 65: 20 };
+        await page.evaluate(() => {
+            window.olderTest = testMailbox(66);
+            window.latestTest = testMailbox(65);
+        });
+        await page.evaluate(() => window.latestTest);
+        const panel = page.locator('#mailboxLatestTestResult');
+        await panel.waitFor({ state: 'visible' });
+        assert.match(await panel.innerText(), /account65@example.com/);
+        await page.evaluate(() => window.olderTest);
+        assert.match(await panel.innerText(), /account65@example.com/);
+        assert.equal(await page.evaluate(() => mailboxData.find(item => item.id === 66).account_status), 'network_error');
+        await panel.locator('.mailbox-test-dismiss').click();
+        await panel.waitFor({ state: 'hidden' });
+        await page.evaluate(() => {
+            window.olderTest = testMailbox(66);
+            window.latestTest = testMailbox(65);
+        });
+        await page.evaluate(() => window.latestTest);
+        await panel.waitFor({ state: 'visible' });
+        await panel.locator('.mailbox-test-dismiss').click();
+        await page.evaluate(() => window.olderTest);
+        assert.equal(await panel.isVisible(), false, 'a late response must not reopen a result the user closed');
+        await page.evaluate(() => testMailbox(65));
+        await panel.waitFor({ state: 'visible' });
+        await page.locator('.mailbox-checkbox[value="65"]').check();
+        await page.locator('#batchTestSelectedBtn').click();
+        await panel.waitFor({ state: 'hidden' });
+        await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
+        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), false);
+        assert.equal(await panel.isVisible(), false);
+    } finally { await page.close(); }
+});
 
 for (const width of [1440, 768, 390]) test(`add menu stays visible and priority actions work at ${width}px`, async () => {
     const page = await newPage({ width, height: 1000 });
@@ -552,8 +643,17 @@ test('group browsing is visible, searchable, remembers the last group and keeps 
         assert.equal(await page.locator('#groupPanel').isVisible(), true);
         const group = page.locator('.group-item[data-group-id="1"]');
         const toggle = group.locator('.group-toggle');
+        const positions = await group.evaluate(node => ({
+            arrow: node.querySelector('.group-toggle').getBoundingClientRect().x,
+            menu: node.querySelector('.group-actions-button').getBoundingClientRect().x,
+            label: node.querySelector('.group-name').getBoundingClientRect().x
+        }));
+        assert.ok(positions.arrow > positions.menu && positions.menu > positions.label, 'the rightmost arrow expands children; the separate dots open group actions');
+        assert.equal(await group.locator('.group-actions-button .group-chevron').count(), 0);
+        assert.equal(await page.locator('.group-item[data-group-id="2"] .group-toggle').count(), 0, 'a leaf group must not show a misleading expansion arrow');
         await toggle.click();
         assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+        assert.equal(await page.locator('#groupContextMenu').isVisible(), false, 'expanding must not open the actions menu');
         assert.equal(await page.locator('.group-item[data-group-id="2"]').isVisible(), true);
         await toggle.press('Enter');
         assert.equal(await toggle.getAttribute('aria-expanded'), 'false');

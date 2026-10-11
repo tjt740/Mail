@@ -3315,6 +3315,7 @@
                             </button>
                             <button class="btn btn-secondary" data-bulk-action="clear" type="button" onclick="clearMailboxSelection()">取消选择</button>
                         </div>
+                        <div id="mailboxLatestTestResult" class="mailbox-test-result-panel" role="status" aria-live="polite" aria-hidden="true" hidden inert></div>
                         <div class="table-container">
                             <table id="mailboxTable">
                                 <colgroup id="mailboxTableColumns"></colgroup>
@@ -4078,6 +4079,8 @@
     let testStatusFilter = new URLSearchParams(window.location.search).get('status') || '';
     if (!['', 'normal', 'pending', 'invalid', 'retry', 'banned', 'invalid_credentials', 'network_error', 'test_error'].includes(testStatusFilter)) testStatusFilter = '';
     let mailboxBatchTest = null;
+    let mailboxTestFeedbackVersion = 0;
+    let mailboxTestFeedbackClosing = Promise.resolve();
     let mailboxLoadRequestId = 0;
     let receiveMailboxIds = [];
     let lastMailboxFilterKey = null;
@@ -4602,12 +4605,30 @@
     function renderMailboxTestPanel(panelId, mailbox, note = '') {
         const panel = document.getElementById(panelId);
         if (!panel) return;
-        panel.hidden = false;
         const detail = [mailbox.last_test, mailbox.test_result, note].filter(Boolean).join('\n');
         panel.innerHTML = `<span>账号状态</span>${renderMailboxStatusBadge(mailbox)}<span>${escapeHtml(mailbox.email || '')}</span><div class="mailbox-test-result-detail">${escapeHtml(detail || '尚未检测')}</div>`;
+        if (panelId === 'mailboxLatestTestResult') {
+            panel.insertAdjacentHTML('beforeend', '<button type="button" class="mailbox-test-dismiss" onclick="dismissMailboxTestResult()" aria-label="关闭" title="关闭">×</button>');
+            MailboxInteractions.expand(panel, true, 'flex');
+        } else {
+            panel.hidden = false;
+        }
     }
 
-    function showMailboxTestOutcome(mailboxId, data) {
+    function dismissMailboxTestResult() {
+        ++mailboxTestFeedbackVersion;
+        const panel = document.getElementById('mailboxLatestTestResult');
+        if (!panel) return;
+        if (panel.contains(document.activeElement)) {
+            (getTestButton(panel.dataset.mailboxId) || document.getElementById('batchTestFilteredBtn'))?.focus({ preventScroll: true });
+        }
+        MailboxInteractions.expand(panel, false, 'flex');
+        // Let the old content finish collapsing before inserting a fast response.
+        mailboxTestFeedbackClosing = Promise.all(panel.getAnimations().map(animation => animation.finished.catch(() => {})));
+    }
+
+    function showMailboxTestOutcome(mailboxId, data, feedbackVersion = mailboxTestFeedbackVersion) {
+        if (feedbackVersion !== mailboxTestFeedbackVersion) return;
         const mailbox = mailboxData.find(item => String(item.id) === String(mailboxId));
         const hasStatus = Object.hasOwn(MAILBOX_STATUS_META, data.account_status);
         const result = {
@@ -4621,6 +4642,11 @@
         if (String(document.getElementById('mailboxId')?.value || '') === String(mailboxId || '')) {
             renderMailboxTestPanel('mailboxFormTestResult', result, note);
         }
+        return mailboxTestFeedbackClosing.then(() => {
+            if (feedbackVersion !== mailboxTestFeedbackVersion) return;
+            document.getElementById('mailboxLatestTestResult').dataset.mailboxId = mailboxId || '';
+            renderMailboxTestPanel('mailboxLatestTestResult', result, note);
+        });
     }
 
     function getMailboxOwnerName(mailbox) {
@@ -5690,6 +5716,7 @@
             toggle.type = 'button';
             toggle.innerHTML = chevron;
             toggle.setAttribute('aria-expanded', String(isExpanded));
+            toggle.setAttribute('aria-controls', `mailbox-group-children-${group.id}`);
             toggle.setAttribute('aria-label', isExpanded ? '收起子分组' : '展开子分组');
         }
         if (hasChildren) {
@@ -5719,12 +5746,11 @@
             name.appendChild(count);
         }
 
-        item.appendChild(toggle);
         item.appendChild(name);
         const actions = document.createElement('button');
         actions.type = 'button';
         actions.className = 'group-actions-button';
-        actions.innerHTML = chevron;
+        actions.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg>';
         actions.title = '分组操作';
         actions.setAttribute('aria-label', '分组操作');
         actions.setAttribute('aria-expanded', 'false');
@@ -5739,6 +5765,7 @@
             showGroupContextMenu({ pageX: Math.min(rect.left, window.innerWidth - 180) + window.scrollX, pageY: rect.bottom + window.scrollY }, group.id);
         });
         item.appendChild(actions);
+        if (hasChildren) item.appendChild(toggle);
         item.addEventListener('click', (e) => {
             e.stopPropagation();
             setSelectedGroup(group.id);
@@ -5760,6 +5787,7 @@
         if (hasChildren) {
             const ul = document.createElement('ul');
             ul.className = 'group-children';
+            ul.id = `mailbox-group-children-${group.id}`;
             ul.hidden = !isExpanded;
             ul.inert = !isExpanded;
             children.forEach(child => ul.appendChild(createGroupNode(child, depth + 1)));
@@ -7066,7 +7094,7 @@
     
     // 测试邮箱连接
     function updateMailboxTestResult(mailboxId, data, options = {}) {
-        if (!options.batch) showMailboxTestOutcome(mailboxId, data);
+        if (!options.batch) showMailboxTestOutcome(mailboxId, data, options.feedbackVersion);
         const mailbox = mailboxData.find(item => String(item.id) === String(mailboxId));
         // Request/login failures are not evidence that the mailbox is unhealthy.
         if (!mailbox || !Object.hasOwn(MAILBOX_STATUS_META, data.account_status)) return;
@@ -7079,7 +7107,8 @@
     async function testMailbox(id = null, options = {}) {
         const targetId = id || document.getElementById('mailboxId').value;
         const testButton = getTestButton(targetId);
-        const silent = Boolean(options.silent);
+        if (!options.batch) dismissMailboxTestResult();
+        const feedbackVersion = mailboxTestFeedbackVersion;
         
         if (!targetId) {
             // 如果没有ID，使用当前表单数据进行测试
@@ -7119,18 +7148,11 @@
                 });
                 
                 const data = await readJsonResponse(response);
-                showMailboxTestOutcome('', data);
-
-                if (data.success) {
-                    if (!silent) showToast('邮箱连接测试成功', 'success');
-                } else {
-                    if (!silent) showToast(summarizeMailboxTestMessage(data.message), 'error');
-                }
+                showMailboxTestOutcome('', data, feedbackVersion);
                 return data;
             } catch (error) {
                 console.error('测试邮箱失败:', error);
-                showMailboxTestOutcome('', { message: error.message || '测试请求失败' });
-                if (!silent) showToast(error.message || '测试请求失败，请检查服务是否正常运行', 'error');
+                showMailboxTestOutcome('', { message: error.message || '测试请求失败' }, feedbackVersion);
                 return { success: false, message: error.message || '测试请求失败，请检查服务是否正常运行' };
             } finally {
                 setTestingState(testButton, false);
@@ -7152,18 +7174,11 @@
             });
             
             const data = await readJsonResponse(response);
-            updateMailboxTestResult(targetId, data, options);
-            
-            if (data.success) {
-                if (!silent) showToast('邮箱连接测试成功', 'success');
-            } else {
-                if (!silent) showToast(summarizeMailboxTestMessage(data.message), 'error');
-            }
+            updateMailboxTestResult(targetId, data, { ...options, feedbackVersion });
             return data;
         } catch (error) {
             console.error('测试邮箱失败:', error);
-            if (!options.batch) showMailboxTestOutcome(targetId, { message: error.message || '测试请求失败' });
-            if (!silent) showToast(error.message || '测试请求失败，请检查服务是否正常运行', 'error');
+            if (!options.batch) showMailboxTestOutcome(targetId, { message: error.message || '测试请求失败' }, feedbackVersion);
             return { success: false, message: error.message || '测试请求失败，请检查服务是否正常运行' };
         } finally {
             setTestingState(testButton, false);
@@ -7467,6 +7482,7 @@
             showToast('请选择要测试的邮箱', 'info');
             return;
         }
+        dismissMailboxTestResult();
         const state = { running: true, stopped: false, total: ids.length, completed: 0, normal: 0, invalid: 0, retry: 0 };
         mailboxBatchTest = state;
         updateMailboxHealthTools();

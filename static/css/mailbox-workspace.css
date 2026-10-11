@@ -19,7 +19,7 @@
 .mailbox-workspace .group-toggle { flex: 0 0 28px; width: 28px; height: 32px; padding: 0; border: 0; background: transparent; color: var(--text-muted, #79766e); }
 .mailbox-workspace .group-chevron { display: block; width: 22px; height: 22px; flex-shrink: 0; transition: transform var(--motion-fast) var(--motion-ease); }
 .mailbox-workspace .group-toggle[aria-expanded="false"] .group-chevron { transform: rotate(-90deg); }
-.mailbox-workspace .group-actions-button[aria-expanded="true"] .group-chevron { transform: rotate(180deg); }
+.mailbox-workspace .group-actions-button svg { width: 20px; height: 20px; }
 .mailbox-workspace :is(.group-toggle, .group-actions-button):focus-visible { outline: 2px solid var(--primary-color); outline-offset: -2px; }
 .mailbox-workspace .group-children { padding-left: 0; }
 .mailbox-workspace .mail-panel { gap: 0; height: 100%; min-width: 0; }
@@ -90,6 +90,12 @@
 .mailbox-workspace .pagination-info { font-size: 12px; color: #979083; }
 .mailbox-workspace .mailbox-empty { padding: 45px 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; color: #938b7d; }
 .mailbox-workspace .mailbox-empty strong { font-size: 15px; font-weight: 500; color: #6b6253; }
+/* Full test details retain their original layout and collapse with the list. */
+.mailbox-workspace #mailboxLatestTestResult { position: relative; flex: 0 0 auto; }
+.mailbox-workspace #mailboxLatestTestResult:not([hidden]) { margin: 10px 16px; padding-right: 48px; color: var(--text); background: var(--surface-2); border-color: var(--border); }
+.mailbox-workspace .mailbox-test-dismiss { position: absolute; top: 6px; right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); font: inherit; font-size: 22px; line-height: 1; cursor: pointer; }
+.mailbox-workspace .mailbox-test-dismiss:hover { background: var(--surface-3); color: var(--text); }
+.mailbox-workspace .mailbox-test-dismiss:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
 .mailbox-workspace #mailboxBatchProgress:not([hidden]) { align-items: center; background: var(--surface-2, #f8fafc); border-color: var(--border, #e2e8f0); color: var(--text, #334155); }
 .mailbox-workspace #mailboxBatchProgressText { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; flex: 1; min-width: 0; }
 .mailbox-workspace .mailbox-batch-summary { line-height: 1.5; }
