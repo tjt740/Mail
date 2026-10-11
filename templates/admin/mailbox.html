@@ -1479,24 +1479,12 @@
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
     }
 
-    .receive-mailbox-label {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-bottom: 4px;
-    }
-
     .receive-account {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
         min-width: 0;
         padding-bottom: 20px;
         border-bottom: 1px solid var(--border);
     }
 
-    .receive-account-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; color: var(--primary-color); background: var(--primary-soft); }
-    .receive-account-icon svg { width: 22px; height: 22px; fill: currentColor; }
     .receive-count-field { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
     .receive-count-field label { margin: 0; color: var(--text-muted); font-size: 13px; white-space: nowrap; }
     #emailCountInput { width: 88px; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font-size: 14px; }
@@ -1505,18 +1493,38 @@
     .receive-folder-count { flex: 0 0 auto; min-width: 26px; padding: 2px 6px; border-radius: 6px; background: var(--surface-2); color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 
     .receive-mailbox-value {
+        padding: 0;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        font-family: inherit;
         font-weight: 700;
         color: var(--text);
+        text-align: left;
+        white-space: normal !important;
         word-break: break-all;
+        min-height: 34px;
         max-height: 72px;
         overflow: auto;
         line-height: 1.5;
         font-size: 15px;
+        cursor: copy;
+        transition: color 180ms ease;
+    }
+
+    .receive-mailbox-value:hover {
+        color: var(--primary-color);
+    }
+
+    .receive-mailbox-value:focus-visible,
+    .receive-copy-btn:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 4px;
     }
 
     .receive-mailbox-copy-row {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         gap: 12px;
         min-width: 0;
     }
@@ -1527,9 +1535,6 @@
     }
 
     .receive-copy-btn {
-        position: absolute;
-        top: 0;
-        right: 0;
         flex: 0 0 auto;
         width: 34px;
         height: 34px;
@@ -3556,9 +3561,8 @@
         <div class="modal-body receive-body">
             <div class="receive-sidebar">
                 <div class="receive-account">
-                    <span class="receive-account-icon" aria-hidden="true"><svg><use href="#ai-mail"></use></svg></span>
                     <div class="receive-mailbox-copy-row">
-                        <div class="receive-mailbox-value" id="receiveMailboxLabel">-</div>
+                        <button class="receive-mailbox-value" id="receiveMailboxLabel" type="button" onclick="copyCurrentReceiveMailbox()" title="复制邮箱" translate="no">-</button>
                         <button class="receive-copy-btn" type="button" onclick="copyCurrentReceiveMailbox()" title="复制邮箱" aria-label="复制邮箱">
                             <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span>
                         </button>
