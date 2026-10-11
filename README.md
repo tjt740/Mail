@@ -170,6 +170,7 @@ python app.py
 - 安装 Playwright 和对应浏览器后，可用 `RUN_BROWSER_TESTS=1 node --test tests/test_i18n_motion.cjs` 运行隔离的浏览器回归。也可通过 `PLAYWRIGHT_MODULE` 指定模块路径、`BROWSER_CHANNEL=chrome` 使用本机 Chrome；测试自行启动临时页面服务，不连接业务数据库。
 - 前台场景回归：`node --test tests/browser/frontend_scene.cjs`，覆盖场景切换、取件阅读、偏好保存、减少动态效果、页面隐藏/恢复、Canvas 降级和四种语言的窄屏布局。
 - 移动端布局回归：`node --test tests/browser/branding_mobile.cjs tests/browser/account_data.cjs`，覆盖 320px 手机、横屏、平板导航、窗口高度变化、搜索框、分页与弹窗。后台在 1024px 及以下使用抽屉导航，内容区跟随可用视口高度，并预留设备安全区域。
+- 移动端邮局流程回归：`node --test tests/browser/mobile_workflows.cjs`，使用模拟邮箱验证完整外框内的账号编辑、单个/批量导入、收件、阅读返回、刷新和失败提示，以及前台品牌居中与紧凑的主题/语言按钮；覆盖手机竖屏、横屏和平板，不连接业务数据库。
 - 首页监测回归：`python -m unittest discover -s tests -p test_dashboard.py` 和 `node --test tests/browser/dashboard.cjs`，覆盖数据权限、统计边界、刷新失败恢复、状态跳转、动效生命周期及手机布局，均使用独立测试数据。
 - 主题回归：`node --test tests/browser/themes.cjs`，覆盖三种场景、外框/内页同步、刷新持久化、表单保留、存储受限与窄屏显示。
 

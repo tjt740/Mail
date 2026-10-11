@@ -174,11 +174,10 @@ test('scene persists and stale pause preferences cannot stop animation; lifecycl
         assert.equal(await page.locator('#scenePause').count(), 0);
         assert.equal(await page.locator('.query-hint').count(), 0);
         assert.equal(await page.evaluate(() => MailScene.state.animating), true);
-        await page.waitForTimeout(150);
         let frame = await page.evaluate(() => MailScene.state.frameCount);
-        await page.waitForTimeout(150);
-        assert.ok(await page.evaluate(() => MailScene.state.frameCount) > frame);
+        await page.waitForFunction(previous => MailScene.state.frameCount > previous, frame);
         await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.waitForFunction(() => !MailScene.state.animating, null, { polling: 50 });
         await page.waitForTimeout(100);
         frame = await page.evaluate(() => MailScene.state.frameCount);
         await page.waitForTimeout(150);
@@ -188,6 +187,10 @@ test('scene persists and stale pause preferences cannot stop animation; lifecycl
         assert.equal(await page.evaluate(() => MailScene.state.animating), false);
         await page.emulateMedia({ reducedMotion: 'no-preference' });
         await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+        // A queued media-query change may draw one static frame after pagehide.
+        // Let it settle, then verify that the animation remains stopped.
+        await page.waitForTimeout(150);
+        assert.equal(await page.evaluate(() => MailScene.state.animating), false);
         frame = await page.evaluate(() => MailScene.state.frameCount);
         await page.waitForTimeout(100);
         assert.equal(await page.evaluate(() => MailScene.state.frameCount), frame);

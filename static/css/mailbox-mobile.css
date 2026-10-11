@@ -1,0 +1,119 @@
+/* Mobile mailbox workflows: one scroll area per view, with persistent actions. */
+.mailbox-import-help { margin-top: 10px; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+.mailbox-import-help summary { cursor: pointer; color: var(--primary-color); padding-block: 6px; }
+.mailbox-import-help p { margin: 8px 0; }
+.mailbox-import-help code { display: block; white-space: normal; overflow-wrap: anywhere; }
+.receive-account-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.receive-account-heading .receive-mailbox-navigation { margin: 0; }
+.receive-table tr:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -2px; }
+
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
+    .mailbox-page body .modal { padding: 0 !important; }
+    .mailbox-page body .modal .modal-content {
+        display: flex; flex-direction: column; width: 100% !important; max-width: 100% !important;
+        height: 100%; max-height: 100% !important; margin: 0 !important; border: 0; border-radius: 0;
+        overflow: hidden !important;
+    }
+    .mailbox-page body .modal .modal-header {
+        flex: 0 0 auto; min-height: 56px; padding: 8px 12px !important; gap: 8px;
+        background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .mailbox-page body .modal .modal-title { font-size: 18px; line-height: 1.4; }
+    .mailbox-page body .modal .modal-close { flex: 0 0 44px; width: 44px; height: 44px; margin-left: auto; }
+    .mailbox-page body .modal .modal-body {
+        flex: 1 1 auto; min-height: 0; min-width: 0; padding: 16px !important;
+        overflow: auto; overscroll-behavior: contain;
+    }
+    .mailbox-page body .modal .modal-footer {
+        flex: 0 0 auto; display: flex; flex-wrap: wrap !important; gap: 8px; padding: 10px 12px !important;
+        background: var(--surface); border-top: 1px solid var(--border); overflow: visible;
+    }
+    .mailbox-page body .modal .modal-footer .btn { flex: 1 1 0; min-width: 0; min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+    .mailbox-page body :is(#mailboxForm, #batchAddForm) .form-row { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .mailbox-page body :is(#mailboxForm, #batchAddForm) :is(.mailbox-protocol-grid, .batch-protocol-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mailbox-page body :is(.mailbox-protocol-grid, .batch-protocol-grid) > .form-group:last-child { grid-column: 1 / -1; }
+    .mailbox-page body :is(#mailboxForm, #batchAddForm) :is(.form-group, .mailbox-group-picker, .batch-group-picker) { min-width: 0; }
+    .mailbox-page body :is(#mailboxForm, #batchAddForm) :is(input:not([type=checkbox]), select, textarea) { font-size: 16px !important; }
+    .mailbox-page body :is(#mailboxForm, #batchAddForm) :is(.mailbox-group-create, .batch-group-create) { grid-template-columns: minmax(0, 1fr) auto; }
+    .mailbox-page body :is(.mailbox-group-create, .batch-group-create) .btn { max-width: 120px; padding-inline: 10px !important; white-space: normal; }
+    .mailbox-page body #batchContent { height: 160px; min-height: 120px; max-height: 35dvh; resize: vertical; }
+    .mailbox-page body #singleImportContent { min-height: 80px; }
+    .mailbox-page body .single-import-feedback { overflow-wrap: anywhere; }
+    .mailbox-page body .checkbox-group { min-height: 44px; }
+
+    /* Retrieval controls occupy a short header; mail itself gets the remaining space. */
+    .mailbox-page body #receiveModal .receive-body { display: flex; flex-direction: column; gap: 0; height: auto; padding: 0 !important; overflow: hidden; }
+    .mailbox-page body #receiveModal .receive-sidebar {
+        flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 8px; padding: 10px 12px; margin: 0; min-width: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+    }
+    .mailbox-page body .receive-account { grid-column: 1 / -1; min-width: 0; }
+    .mailbox-page body .receive-account-heading .receive-mailbox-label { margin: 0; }
+    .mailbox-page body .receive-mailbox-navigation { width: auto; gap: 8px; }
+    .mailbox-page body .receive-mailbox-navigation button { width: 36px; height: 32px; }
+    .mailbox-page body .receive-mailbox-copy-row { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; margin-top: 4px; min-width: 0; }
+    .mailbox-page body #receiveMailboxLabel { min-width: 0; font-size: 14px; line-height: 1.4; white-space: normal !important; overflow-wrap: anywhere; }
+    .mailbox-page body .receive-copy-btn { flex: 0 0 36px; width: 36px; height: 36px; }
+    .mailbox-page body .receive-count-field { min-width: 0; display: flex; align-items: center; gap: 8px; }
+    .mailbox-page body .receive-count-field .receive-mailbox-label { flex: 0 0 auto; margin: 0; font-size: 12px; }
+    .mailbox-page body #emailCountInput { flex: 1; min-width: 0; height: 44px; font-size: 16px !important; }
+    .mailbox-page body #receiveFetchBtn { min-width: 0; min-height: 44px; padding: 8px !important; margin: 0; white-space: normal; }
+    .mailbox-page body .receive-tab { min-width: 0; min-height: 40px; padding: 8px; margin: 0; justify-content: center; font-size: 14px; white-space: normal; }
+    .mailbox-page body .receive-main { flex: 1 1 0; min-height: 0; min-width: 0; width: 100%; border: 0; border-radius: 0; }
+    .mailbox-page body #receiveModal.is-reading .receive-sidebar,
+    .mailbox-page body #receiveModal.is-reading .modal-title { display: none !important; }
+    .mailbox-page body #receiveDetailToolbar { min-width: 0; gap: 8px; }
+    .mailbox-page body .receive-back { min-height: 44px; }
+    .mailbox-page body .receive-detail-folder { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mailbox-page body #receiveListView { padding: 0 12px; }
+    .mailbox-page body .receive-table { display: block; min-width: 0; width: 100%; }
+    .mailbox-page body .receive-table thead { display: none; }
+    .mailbox-page body .receive-table tbody { display: block; }
+    .mailbox-page body .receive-table tr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px; padding: 14px 2px; border-bottom: 1px solid var(--border); }
+    .mailbox-page body .receive-table td { display: block; min-width: 0; padding: 0 !important; border: 0 !important; white-space: normal !important; }
+    .mailbox-page body .receive-table td:first-child:not(.receive-empty) { display: none; }
+    .mailbox-page body .receive-table td:nth-child(2) .receive-cell { white-space: normal; overflow-wrap: anywhere; font-size: 15px; line-height: 1.5; font-weight: 600; }
+    .mailbox-page body .receive-table td:nth-child(n+3) { color: var(--text-muted); font-size: 12px; }
+    .mailbox-page body .receive-empty { padding: 32px 0; }
+    .mailbox-page body #receivePagination { flex: 0 0 auto; position: static; padding: 8px 12px; margin: 0; gap: 6px 12px; border-top: 1px solid var(--border); font-size: 12px; }
+    .mailbox-page body #receivePagination .pagination-info { flex: 1; margin: 0; font-size: 12px; }
+    .mailbox-page body #receivePagination .page-size-control { font-size: 12px; }
+    .mailbox-page body #receivePagination select { min-height: 36px; padding: 6px !important; }
+    .mailbox-page body .receive-detail-shell { padding: 12px; }
+    .mailbox-page body .receive-meta { grid-template-columns: minmax(0, 1fr); }
+    .mailbox-page body .receive-meta-item { min-width: 0; }
+    .mailbox-page body .receive-meta-value { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+    .mailbox-page body .receive-detail-content { padding: 14px; }
+    .mailbox-page body .receive-error-panel { flex: 0 0 auto; max-height: 40%; overflow-y: auto; margin: 8px; }
+    .mailbox-page body #receiveStatus { flex: 0 0 auto; padding: 6px 12px; font-size: 12px; color: var(--text-muted); background: var(--surface-2); overflow-wrap: anywhere; }
+    .mailbox-page body #receiveStatus:empty, .mailbox-page body #receiveModal.is-reading #receiveStatus { display: none; }
+    .mailbox-page body .toast-container { top: auto; bottom: 84px; left: 12px; right: 12px; max-width: none; pointer-events: none; }
+    .mailbox-page body .toast { max-width: 100%; padding: 12px; font-size: 13px; pointer-events: auto; }
+}
+
+@media (max-width: 640px) {
+    .mailbox-page .mailbox-workspace .mailbox-heading-copy h2 { font-size: 18px; }
+    .mailbox-page .mailbox-workspace #resetMailboxFiltersBtn:disabled { display: none; }
+    .mailbox-page .mailbox-workspace .mailbox-list-toolbar { padding: 10px; }
+    .mailbox-page .mailbox-workspace .mailbox-list-tools > button { min-height: 44px; white-space: normal; }
+    .mailbox-page .mailbox-workspace #mailboxTable .mailbox-email-address,
+    .mailbox-page .mailbox-workspace #mailboxTable .mailbox-email-text { white-space: normal !important; overflow-wrap: anywhere; text-align: left; }
+    .mailbox-page .mailbox-workspace #mailboxTable td > span { justify-self: start; }
+    .mailbox-page .mailbox-workspace .mailbox-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .mailbox-page .mailbox-workspace .mailbox-actions-more { display: contents; }
+    .mailbox-page .mailbox-workspace .mailbox-actions .btn-small { min-height: 44px; white-space: normal; }
+    .mailbox-page .mailbox-workspace .mailbox-more-menu { position: static; grid-column: 1 / -1; width: 100%; margin: 0; box-shadow: none; background: var(--surface-2); }
+    .mailbox-page .mailbox-workspace .mailbox-actions-more.open .mailbox-more-menu { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+}
+
+@media (max-width: 1024px) and (max-height: 500px) {
+    .mailbox-page body .mailbox-workspace { height: auto !important; overflow: visible !important; }
+    .mailbox-page .mailbox-workspace :is(.content, .content-grid, .mail-panel, .mail-panel > .card, .scroll-card-body) { height: auto !important; max-height: none !important; overflow: visible !important; }
+    .mailbox-page .mailbox-workspace .content-grid { display: block; }
+    .mailbox-page .mailbox-workspace .mail-panel > .card:last-child { flex: none; }
+    .mailbox-page .mailbox-workspace .mail-panel .table-container { flex: none; height: auto; max-height: none !important; min-height: 160px; }
+    .mailbox-page .mailbox-workspace #paginationContainer { position: static !important; }
+    .mailbox-page body #receiveModal .receive-body { flex-direction: row; }
+    .mailbox-page body #receiveModal .receive-sidebar { width: 240px; grid-template-columns: minmax(0, 1fr); align-content: start; overflow-y: auto; border-right: 1px solid var(--border); }
+    .mailbox-page body .receive-account { grid-column: auto; }
+}

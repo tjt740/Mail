@@ -3445,12 +3445,14 @@
         </div>
         <div class="modal-body receive-body">
             <div class="receive-sidebar">
-                <div>
-                    <div class="receive-mailbox-label">当前邮箱</div>
-                    <div class="receive-mailbox-navigation">
-                        <button type="button" id="receivePreviousMailbox" onclick="navigateReceiveMailbox(-1)" aria-label="上一邮箱">←</button>
-                        <span id="receiveMailboxPosition"></span>
-                        <button type="button" id="receiveNextMailbox" onclick="navigateReceiveMailbox(1)" aria-label="下一邮箱">→</button>
+                <div class="receive-account">
+                    <div class="receive-account-heading">
+                        <div class="receive-mailbox-label">当前邮箱</div>
+                        <div class="receive-mailbox-navigation">
+                            <button type="button" id="receivePreviousMailbox" onclick="navigateReceiveMailbox(-1)" aria-label="上一邮箱">←</button>
+                            <span id="receiveMailboxPosition"></span>
+                            <button type="button" id="receiveNextMailbox" onclick="navigateReceiveMailbox(1)" aria-label="下一邮箱">→</button>
+                        </div>
                     </div>
                     <div class="receive-mailbox-copy-row">
                         <div class="receive-mailbox-value" id="receiveMailboxLabel">-</div>
@@ -3459,7 +3461,7 @@
                         </button>
                     </div>
                 </div>
-                <div>
+                <div class="receive-count-field">
                     <div class="receive-mailbox-label">收取<span id="emailCountDisplay">10</span>封</div>
                     <input type="number" id="emailCountInput" min="1" max="100" value="10" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px;" oninput="updateEmailCountDisplay(this.value)">
                 </div>
@@ -3468,6 +3470,7 @@
                 <button class="receive-tab" data-folder="trash" onclick="switchReceiveFolder('trash')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 垃圾箱</button>
             </div>
             <div class="receive-main">
+                <div id="receiveStatus" role="status" aria-live="polite"></div>
                 <div id="receiveErrorPanel" class="receive-error-panel is-hidden">
                     <div class="receive-error-title" id="receiveErrorTitle">收件失败</div>
                     <div class="receive-error-detail" id="receiveErrorDetail"></div>
@@ -3525,7 +3528,7 @@
                     </label>
                     <textarea id="singleImportContent" name="import_content" rows="3"
                               oninput="scheduleSingleMailboxImportParse()"
-                              placeholder="例如：user@outlook.com----password----client_id----refresh_token，也可粘贴 key=value、JSON 或分行字段"></textarea>
+                              placeholder="user@example.com----password"></textarea>
                     <div class="single-import-feedback" id="singleImportFeedback">支持 ---- / 冒号 / 竖线 / 逗号 / 分号 / Tab / 空格 / key=value / JSON / CSV 表头</div>
                 </div>
                 
@@ -3667,9 +3670,15 @@
                 <!-- 批量邮箱内容一行 -->
                 <div class="form-group">
                     <label for="batchContent">自动识别邮箱内容 <span class="required-mark">*</span></label>
-                    <textarea id="batchContent" class="batch-content-textarea" name="batch_content" rows="10"
-                              placeholder="每行一个邮箱，也支持 JSON 数组、CSV/TSV 表头和分行字段：&#10;user@example.com----password----client_id----refresh_token&#10;user@hotmail.com|password|refresh_token|client_id|recovery@example.com&#10;email=user@example.com password=password client_id=... refresh_token=...&#10;email,password,client_id,refresh_token&#10;支持中英文逗号、分号、竖线、冒号、Tab、空格、JSON、key=value"
+                    <textarea id="batchContent" class="batch-content-textarea" name="batch_content" rows="6"
+                              placeholder="user@example.com----password&#10;user2@example.com----password"
                               oninput="autoFillBatchRequiredFields()"></textarea>
+                    <details class="mailbox-import-help">
+                        <summary>导入格式说明</summary>
+                        <p>每行一个邮箱，也支持 JSON 数组、CSV/TSV 表头和分行字段。</p>
+                        <code translate="no">email----password----client_id----refresh_token</code>
+                        <p>支持中英文逗号、分号、竖线、冒号、Tab、空格、JSON、key=value</p>
+                    </details>
                 </div>
                 
                 <!-- 选择服务器和收件服务器一行 -->
@@ -3857,6 +3866,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mailbox-theme.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mailbox-sidebar.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mailbox-interactions.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mailbox-mobile.css') }}">
 <script src="{{ url_for('static', filename='js/mail-content.js') }}"></script>
 <script src="{{ url_for('static', filename='js/mailbox-interactions.js') }}"></script>
 <script>
@@ -6272,8 +6282,8 @@
         }
         setReceiveError('');
         MailboxInteractions.openModal('receiveModal');
+        updateReceiveStatus('');
         updateReceiveTabActive();
-        // Removed status text display - only use Toast notifications per requirements
         renderReceiveView();
         setReceiveFetchingState(false);
         window.setTimeout(() => {
@@ -6461,8 +6471,11 @@
         setReceiveError('');
         setReceiveFetchingState(true);
         
-        // Show loading toast that persists - will be manually removed on completion
-        const loadingToastId = showToast(options.silentAuto ? '正在自动收取邮件，请稍候...' : '正在收取邮件，请稍候...', 'info', 0); // 0 duration = persistent
+        // Keep feedback inside the mobile dialog so it cannot cover its controls.
+        const mobileReceive = window.matchMedia('(max-width: 768px), (max-width: 1024px) and (max-height: 500px)').matches;
+        const loadingMessage = options.silentAuto ? '正在自动收取邮件，请稍候...' : '正在收取邮件，请稍候...';
+        const loadingToastId = mobileReceive ? null : showToast(loadingMessage, 'info', 0);
+        if (mobileReceive) updateReceiveStatus(loadingMessage);
         
         const store = loadReceiveStore();
         let allMails = store[targetMailboxId] || [];
@@ -6539,14 +6552,14 @@
                 const isCurrentReceiveView = receiveState.mailboxId === targetMailboxId && receiveState.fetchToken === fetchToken;
                 if (isCurrentReceiveView) {
                     receiveState.mails = allMails;
-                    receiveState.page = 1;
-                    receiveState.activeMail = null;
+                    if (!receiveState.activeMail) receiveState.page = 1;
                     setReceiveError('');
                 }
                 
                 if (isCurrentReceiveView) {
-                    if (newMailsCount > 0) {
-                        // Only use Toast notification - removed on-page status per requirements
+                    if (mobileReceive) {
+                        updateReceiveStatus(newMailsCount > 0 ? `成功收取 ${newMailsCount} 封新邮件` : fetchedMails.length ? '所有邮件已存在，未发现新邮件' : '邮箱中暂无新邮件');
+                    } else if (newMailsCount > 0) {
                         showToast(
                             appendConnectionInfo(`成功收取 ${newMailsCount} 封新邮件`, proxyInfo, connectionType),
                             'success'
@@ -6565,8 +6578,8 @@
                         );
                     }
 
-                    // Auto-refresh the list view immediately after fetching per requirements
-                    renderReceiveView();
+                    // Update the list without rebuilding an open message or its HTML frame.
+                    if (!receiveState.activeMail) renderReceiveList();
                 }
             } else {
                 // Remove loading toast
@@ -6575,18 +6588,19 @@
                 const errorMessage = appendConnectionInfo(data.message || '获取邮件失败', data.proxy, data.connection);
                 if (receiveState.mailboxId === targetMailboxId && receiveState.fetchToken === fetchToken) {
                     setReceiveError(errorMessage, summarizeReceiveError(errorMessage));
-                    showToast('收件失败，详情已显示在弹窗内', 'error', 4500);
+                    updateReceiveStatus('');
+                    if (!mobileReceive) showToast('收件失败，详情已显示在弹窗内', 'error', 4500);
                 }
             }
         } catch (error) {
             console.error('收取邮件出错:', error);
             // Remove loading toast
             removeToast(loadingToastId);
-            // Only use Toast notification - removed on-page status per requirements
             const errorMessage = `无法连接 /api/get_mail：${error.message || '请求失败'}`;
             if (receiveState.mailboxId === targetMailboxId && receiveState.fetchToken === fetchToken) {
                 setReceiveError(errorMessage, '接口请求失败');
-                showToast('网络错误，详情已显示在弹窗内', 'error', 4500);
+                updateReceiveStatus('');
+                if (!mobileReceive) showToast('网络错误，详情已显示在弹窗内', 'error', 4500);
             }
         } finally {
             if (receiveState.mailboxId === targetMailboxId && receiveState.fetchToken === fetchToken) {
@@ -6631,6 +6645,7 @@
     }
 
     function setReceiveView(showDetail) {
+        document.getElementById('receiveModal').classList.toggle('is-reading', showDetail);
         document.getElementById('receiveDetailToolbar').classList.toggle('is-hidden', !showDetail);
         const listView = document.getElementById('receiveListView');
         const detailView = document.getElementById('receiveDetailView');
@@ -6672,6 +6687,9 @@
                 pageData.forEach((mail, index) => {
                     const serialNumber = start + index + 1;
                     const row = document.createElement('tr');
+                    row.tabIndex = 0;
+                    row.setAttribute('role', 'button');
+                    row.setAttribute('aria-label', mail.subject || '（无主题）');
                     row.innerHTML = `
                         <td>${serialNumber}</td>
                         <td>${renderReceiveCell(mail.subject || '（无主题）')}</td>
@@ -6679,6 +6697,9 @@
                         <td>${renderReceiveCell(formatDateTime(mail.receivedAt))}</td>
                     `;
                     row.addEventListener('click', () => openReceiveDetail(mail.id));
+                    row.addEventListener('keydown', event => {
+                        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openReceiveDetail(mail.id); }
+                    });
                     tbody.appendChild(row);
                 });
             }
@@ -6743,8 +6764,11 @@
     function openReceiveDetail(mailId) {
         const mail = receiveState.mails.find(item => item.id === mailId);
         if (!mail) return;
+        receiveState.listScrollTop = document.getElementById('receiveListView').scrollTop;
         receiveState.activeMail = mail;
         renderReceiveDetail(mail);
+        document.getElementById('receiveDetailView').scrollTop = 0;
+        document.querySelector('.receive-back').focus({ preventScroll: true });
     }
 
     function renderReceiveDetail(mail) {
@@ -6833,8 +6857,12 @@
     }
 
     function backToReceiveList() {
+        const activeId = receiveState.activeMail?.id;
         receiveState.activeMail = null;
         renderReceiveList();
+        document.getElementById('receiveListView').scrollTop = receiveState.listScrollTop || 0;
+        const index = receiveState.mails.filter(mail => mail.folder === receiveState.folder).findIndex(mail => mail.id === activeId) - (receiveState.page - 1) * receiveState.perPage;
+        document.querySelectorAll('#receiveTableBody tr')[index]?.focus({ preventScroll: true });
     }
     
     function setSingleImportFeedback(message, state = '') {

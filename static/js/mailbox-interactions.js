@@ -110,7 +110,9 @@
         animate(element, [{ opacity }, { opacity: 1 }], 180);
         animate(content, [{ transform }, { transform: 'none' }], 260);
         content.tabIndex = -1;
-        const focusable = [...element.querySelectorAll('input:not([type="hidden"]):not(:disabled):not([readonly]), textarea:not(:disabled), select:not(:disabled)')].find(item => item.getClientRects().length)
+        const touchLayout = window.matchMedia('(pointer: coarse), (max-width: 768px)').matches;
+        if (touchLayout) document.querySelectorAll('#toast-container .toast.success').forEach(toast => toast.remove());
+        const focusable = (!touchLayout && [...element.querySelectorAll('input:not([type="hidden"]):not(:disabled):not([readonly]), textarea:not(:disabled), select:not(:disabled)')].find(item => item.getClientRects().length))
             || element.querySelector('.modal-close');
         (focusable || content).focus({ preventScroll: true });
     }

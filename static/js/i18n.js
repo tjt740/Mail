@@ -862,6 +862,9 @@
 
     // Shared by the React shell and legacy screens; keep locale dictionaries in sync.
     const sharedMessages = {
+        '导入格式说明': ['Import formats', 'Định dạng nhập'],
+        '每行一个邮箱，也支持 JSON 数组、CSV/TSV 表头和分行字段。': ['One mailbox per line. JSON arrays, CSV/TSV headers and multiline fields are also supported.', 'Mỗi dòng một hộp thư. Hỗ trợ mảng JSON, tiêu đề CSV/TSV và trường nhiều dòng.'],
+        '支持中英文逗号、分号、竖线、冒号、Tab、空格、JSON、key=value': ['Supports commas, semicolons, pipes, colons, tabs, spaces, JSON and key=value.', 'Hỗ trợ dấu phẩy, chấm phẩy, dấu gạch đứng, hai chấm, Tab, khoảng trắng, JSON và key=value.'],
         '前台密钥': ['Public access key', 'Khóa truy cập trang nhận thư'],
         '前台取件需要密钥': ['Require a key to retrieve mail publicly', 'Yêu cầu khóa để nhận thư công khai'],
         '开启后，前台显示密钥输入框，验证通过后才能取件；关闭后恢复邮箱直接取件。': ['When enabled, the public page requires a valid key to retrieve mail. When disabled, an email address is sufficient.', 'Khi bật, trang nhận thư yêu cầu khóa hợp lệ. Khi tắt, chỉ cần địa chỉ email để nhận thư.'],
@@ -1338,6 +1341,9 @@
 
     // Filipino translations are shared by the React shell and legacy pages.
     dictionary.fil = {
+        '导入格式说明': 'Mga format ng pag-import',
+        '每行一个邮箱，也支持 JSON 数组、CSV/TSV 表头和分行字段。': 'Isang mailbox bawat linya. Sinusuportahan din ang JSON array, CSV/TSV header at mga field sa magkakahiwalay na linya.',
+        '支持中英文逗号、分号、竖线、冒号、Tab、空格、JSON、key=value': 'Sinusuportahan ang kuwit, semicolon, pipe, colon, tab, espasyo, JSON at key=value.',
         "你的云端邮局": "ANG IYONG MAIL SA CLOUD",
         "每一封来信，": "Bawat mensahe, ",
         "都值得期待。": "may dalang pag-asa.",
