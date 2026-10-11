@@ -3,8 +3,6 @@
 .mailbox-import-help summary { cursor: pointer; color: var(--primary-color); padding-block: 6px; }
 .mailbox-import-help p { margin: 8px 0; }
 .mailbox-import-help code { display: block; white-space: normal; overflow-wrap: anywhere; }
-.receive-account-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.receive-account-heading .receive-mailbox-navigation { margin: 0; }
 .receive-table tr:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -2px; }
 
 @media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
@@ -48,10 +46,9 @@
         gap: 8px; padding: 10px 12px; margin: 0; min-width: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
     }
     .mailbox-page body .receive-account { grid-column: 1 / -1; min-width: 0; }
-    .mailbox-page body .receive-account-heading .receive-mailbox-label { margin: 0; }
-    .mailbox-page body .receive-mailbox-navigation { width: auto; gap: 8px; }
+    .mailbox-page body .receive-mailbox-navigation { width: auto; gap: 12px; }
     .mailbox-page body .receive-mailbox-navigation button { width: 36px; height: 32px; }
-    .mailbox-page body .receive-mailbox-copy-row { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; margin-top: 4px; min-width: 0; }
+    .mailbox-page body .receive-mailbox-copy-row { display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; margin: 0; min-width: 0; }
     .mailbox-page body #receiveMailboxLabel { min-width: 0; font-size: 14px; line-height: 1.4; white-space: normal !important; overflow-wrap: anywhere; }
     .mailbox-page body .receive-copy-btn { flex: 0 0 36px; width: 36px; height: 36px; }
     .mailbox-page body .receive-count-field { min-width: 0; display: flex; align-items: center; gap: 8px; }
@@ -75,7 +72,7 @@
     .mailbox-page body .receive-table td:nth-child(2) .receive-cell { white-space: normal; overflow-wrap: anywhere; font-size: 15px; line-height: 1.5; font-weight: 600; }
     .mailbox-page body .receive-table td:nth-child(n+3) { color: var(--text-muted); font-size: 12px; }
     .mailbox-page body .receive-empty { padding: 32px 0; }
-    .mailbox-page body #receivePagination { flex: 0 0 auto; position: static; padding: 8px 12px; margin: 0; gap: 6px 12px; border-top: 1px solid var(--border); font-size: 12px; }
+    .mailbox-page body #receivePagination { flex: 0 0 auto; position: static; padding: 12px 16px; margin: 0; gap: 12px 16px; border-top: 1px solid var(--border); font-size: 12px; }
     .mailbox-page body #receivePagination .pagination-info { flex: 1; margin: 0; font-size: 12px; }
     .mailbox-page body #receivePagination .page-size-control { font-size: 12px; }
     .mailbox-page body #receivePagination select { min-height: 36px; padding: 6px !important; }

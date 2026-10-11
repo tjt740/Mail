@@ -1485,6 +1485,13 @@
         margin-bottom: 4px;
     }
 
+    .receive-account {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+    }
+
     .receive-mailbox-value {
         font-weight: 700;
         color: var(--text);
@@ -1498,7 +1505,7 @@
     .receive-mailbox-copy-row {
         display: flex;
         align-items: flex-start;
-        gap: 8px;
+        gap: 12px;
         min-width: 0;
     }
 
@@ -2012,14 +2019,27 @@
     }
 
     #receivePagination {
-        position: sticky;
-        bottom: 0;
+        flex: 0 0 auto;
+        position: static;
         background: var(--surface);
-        padding: 8px 0 4px;
-        margin-top: 6px;
+        padding: 16px 20px;
+        margin: 0;
+        border-top: 1px solid var(--border);
         display: flex;
-        justify-content: flex-start;
+        justify-content: flex-end;
+        gap: 12px 20px;
         z-index: 2;
+    }
+
+    #receivePagination .page-size-control {
+        gap: 12px;
+    }
+
+    #receivePagination .pagination-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
     }
 
     .toolbar-row {
@@ -3446,19 +3466,16 @@
         <div class="modal-body receive-body">
             <div class="receive-sidebar">
                 <div class="receive-account">
-                    <div class="receive-account-heading">
-                        <div class="receive-mailbox-label">当前邮箱</div>
-                        <div class="receive-mailbox-navigation">
-                            <button type="button" id="receivePreviousMailbox" onclick="navigateReceiveMailbox(-1)" aria-label="上一邮箱">←</button>
-                            <span id="receiveMailboxPosition"></span>
-                            <button type="button" id="receiveNextMailbox" onclick="navigateReceiveMailbox(1)" aria-label="下一邮箱">→</button>
-                        </div>
-                    </div>
                     <div class="receive-mailbox-copy-row">
                         <div class="receive-mailbox-value" id="receiveMailboxLabel">-</div>
                         <button class="receive-copy-btn" type="button" onclick="copyCurrentReceiveMailbox()" title="复制邮箱" aria-label="复制邮箱">
                             <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span>
                         </button>
+                    </div>
+                    <div class="receive-mailbox-navigation">
+                        <button type="button" id="receivePreviousMailbox" onclick="navigateReceiveMailbox(-1)" aria-label="上一邮箱">←</button>
+                        <span id="receiveMailboxPosition"></span>
+                        <button type="button" id="receiveNextMailbox" onclick="navigateReceiveMailbox(1)" aria-label="下一邮箱">→</button>
                     </div>
                 </div>
                 <div class="receive-count-field">
