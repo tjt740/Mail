@@ -18,6 +18,15 @@ const STATUS_OPTIONS = [
   { value: 'network_error', label: '网络异常' },
   { value: 'test_error', label: '检测异常' }
 ];
+const STATUS_COLORS = { normal: 'success', banned: 'error', invalid_credentials: 'error', network_error: 'warning', test_error: 'warning' };
+
+function AccountStatusTags({ account, t }) {
+  const status = STATUS_OPTIONS.find(option => option.value && option.value === account.account_status) || STATUS_OPTIONS[2];
+  return <>
+    <Tag color={STATUS_COLORS[status.value]} className="account-status-tag">{t(status.label)}</Tag>
+    {account.deleted_at && <Tag color="error" className="account-deleted-tag"><del>{t('已删除')}</del></Tag>}
+  </>;
+}
 
 async function requestJSON(url, options = {}) {
   const response = await fetch(url, { cache: 'no-store', ...options });
@@ -131,7 +140,7 @@ export default function AccountDataPage({ t }) {
     setRevealed(new Set());
     if (detailId === null) return;
     const controller = new AbortController();
-    requestJSON(`/admin/api/mailbox?id=${detailId}`, { signal: controller.signal })
+    requestJSON(`/admin/api/mailbox/account-data/${detailId}`, { signal: controller.signal })
       .then(data => { if (!controller.signal.aborted) setDetail(data.data); })
       .catch(err => { if (!controller.signal.aborted) setDetailError(err.message); });
     return () => controller.abort();
@@ -181,6 +190,7 @@ export default function AccountDataPage({ t }) {
 
   function detailValue(key, { secret = false, date = false, boolean = false } = {}) {
     const value = detail?.[key];
+    if (key === 'account_status') return <Space wrap size={0}><AccountStatusTags account={detail} t={t} /></Space>;
     if (key === 'created_by_admin' && !value) return <AdminOwnerTag owner={value} t={t} />;
     if (value === null || value === undefined || value === '') return <Typography.Text type="secondary">{t('未设置')}</Typography.Text>;
     const text = secret && !revealed.has(key) ? '••••••••' : date ? dateText(value)
@@ -252,7 +262,7 @@ export default function AccountDataPage({ t }) {
           {!loading && !rows.length && <Empty description={t('没有符合条件的账号')} />}
           {rows.map(row => <article className={`account-record ${selected.has(row.id) ? 'is-selected' : ''}`} key={row.id} data-account-id={row.id}>
             <div className="account-record-heading">
-              <div className="account-record-identity"><Checkbox aria-label={`${t('选择')} ${row.email}`} checked={selected.has(row.id)} onChange={event => toggleSelection([row.id], event.target.checked)} /><strong translate="no">{row.email}</strong><Tag>{row.auth_type || '—'}</Tag></div>
+              <div className="account-record-identity"><Checkbox aria-label={`${t('选择')} ${row.email}`} checked={selected.has(row.id)} onChange={event => toggleSelection([row.id], event.target.checked)} /><strong translate="no">{row.email}</strong><span className="account-record-tags"><Tag>{row.auth_type === 'oauth' ? 'OAuth' : row.auth_type || '—'}</Tag><AccountStatusTags account={row} t={t} /></span></div>
               <Space><Button size="small" icon={<CopyOutlined />} disabled={copying} onClick={() => copyAccounts([row.id])}>{t('复制')}</Button><Button size="small" onClick={() => { setDetail(null); setDetailId(row.id); }}>{t('详情')}</Button></Space>
             </div>
             <pre className="account-credential-line" translate="no">{accountLine(row, showCredentials)}</pre>

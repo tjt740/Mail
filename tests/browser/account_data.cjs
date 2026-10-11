@@ -57,6 +57,7 @@ before(async () => {
                 const page = Number(q.get('page') || 1), per_page = Number(q.get('per_page') || 20);
                 data = { ...data, data: filtered.slice((page - 1) * per_page, page * per_page), pagination: { page, per_page, total: filtered.length } };
             } else if (url.pathname === '/admin/api/mailbox') data.data = accounts.find(row => row.id === Number(url.searchParams.get('id')));
+            else if (/\/account-data\/\d+$/.test(url.pathname)) data.data = accounts.find(row => row.id === Number(url.pathname.split('/').pop()));
             return res.end(JSON.stringify(data));
         }
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -83,6 +84,47 @@ async function newPage(width = 1440, initialPath = '/admin/account-data') {
     return page;
 }
 const record = (page, id) => page.locator(`[data-account-id="${id}"]`);
+
+for (const width of [1440, 390, 320]) {
+    test(`deleted account shows authentication, health and red struck-through deletion tag at ${width}px`, async () => {
+        const page = await newPage(width);
+        try {
+            const rows = [
+                { ...accounts[0], deleted_at: '2026-10-12 10:30:00', oauth_refresh_token: 'fixture-refresh-token' },
+                { ...accounts[2], account_status: 'banned', deleted_at: '2026-10-12 10:30:00', oauth_refresh_token: 'fixture-refresh-token' },
+                { ...accounts[4], oauth_refresh_token: 'fixture-refresh-token' }
+            ];
+            await page.route('**/admin/api/mailbox/account-data?*', route => route.fulfill({ json: { success: true, data: rows, pagination: { page: 1, per_page: 20, total: 3 } } }));
+            await page.route('**/admin/api/mailbox/account-data/1', route => route.fulfill({ json: { success: true, data: rows[0] } }));
+            await page.getByRole('combobox', { name: '账号状态', exact: true }).click();
+            await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText('全部状态', { exact: true }).click();
+            await page.getByRole('button', { name: /筛选/ }).click();
+            await record(page, 1).locator('.account-deleted-tag').waitFor();
+            assert.deepEqual(await record(page, 1).locator('.account-record-tags .ant-tag').allTextContents(), ['OAuth', '正常', '已删除']);
+            assert.deepEqual(await record(page, 3).locator('.account-record-tags .ant-tag').allTextContents(), ['OAuth', '封禁', '已删除']);
+            assert.equal(await record(page, 5).locator('.account-deleted-tag').count(), 0);
+            assert.match(await record(page, 1).locator('del').evaluate(el => getComputedStyle(el).textDecorationLine), /line-through/);
+            const color = await record(page, 1).locator('del').evaluate(el => getComputedStyle(el).color);
+            const channels = color.match(/\d+/g).map(Number);
+            assert.ok(channels[0] > channels[1] && channels[0] > channels[2], color);
+            assert.equal(await page.locator('.account-record').evaluateAll(elements => elements.some(el => el.scrollWidth > el.clientWidth + 1)), false);
+            await page.getByRole('switch', { name: '显示凭据' }).click();
+            if (process.env.ACCOUNT_DATA_SCREENSHOT_DIR) {
+                fs.mkdirSync(process.env.ACCOUNT_DATA_SCREENSHOT_DIR, { recursive: true });
+                await record(page, 1).scrollIntoViewIfNeeded();
+                await page.screenshot({ path: path.join(process.env.ACCOUNT_DATA_SCREENSHOT_DIR, `deleted-account-${width}.png`) });
+            }
+            await record(page, 1).getByRole('button', { name: /详\s*情/ }).click();
+            await page.getByRole('dialog').locator('.account-deleted-tag').waitFor();
+            await page.keyboard.press('Escape');
+            await page.getByRole('dialog').waitFor({ state: 'hidden' });
+            await page.evaluate(() => window.AppI18n.setLanguage('en'));
+            assert.equal(await record(page, 1).locator('del').textContent(), 'Deleted');
+            await page.evaluate(() => window.AppI18n.setLanguage('fil'));
+            assert.equal(await record(page, 1).locator('del').textContent(), 'Natanggal');
+        } finally { await page.close(); }
+    });
+}
 
 for (const width of [390, 1440]) {
     test(`Filipino translates account controls and calendar without losing state at ${width}px`, async () => {
@@ -257,6 +299,13 @@ test('account records and detail dialogs remain readable across all palettes', a
     const page = await newPage();
     const failures = [];
     try {
+        const rows = ['normal', 'pending', 'banned', 'invalid_credentials', 'network_error', 'test_error'].map((status, index) => ({
+            ...accounts[index], account_status: status, deleted_at: '2026-10-12 10:30:00'
+        }));
+        await page.route('**/admin/api/mailbox/account-data?*', route => route.fulfill({ json: { success: true, data: rows, pagination: { page: 1, per_page: 20, total: rows.length } } }));
+        await page.route('**/admin/api/mailbox/account-data/1', route => route.fulfill({ json: { success: true, data: rows[0] } }));
+        await page.getByRole('button', { name: /刷新/ }).click();
+        await record(page, 1).locator('.account-deleted-tag').waitFor();
         for (const [key, label] of [['sunny','晴天'],['night','夜间'],['rain','雨夜'],['clay','暖陶橙'],['ocean','海洋蓝'],['emerald','翡翠绿'],['violet','紫罗兰'],['rose','玫瑰红']]) {
             await page.locator('.react-color-theme-button').click();
             await page.getByRole('menuitem', { name: new RegExp(label) }).click();

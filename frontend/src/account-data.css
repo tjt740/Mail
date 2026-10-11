@@ -12,6 +12,13 @@
 .account-record.is-selected { border-color: var(--app-primary, #C96442); background: var(--app-primary-soft, #F3E6DF); }
 .account-record-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
 .account-record-identity strong { overflow-wrap: anywhere; }
+.account-record-tags { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.account-record-tags .ant-tag { margin-inline-end: 0; }
+:root .ant-tag.ant-tag-filled:is(.account-status-tag, .account-deleted-tag) { color: var(--account-tag-color, var(--text-muted)); background: color-mix(in srgb, var(--account-tag-color, var(--text-muted)) 8%, var(--surface)); border-color: color-mix(in srgb, var(--account-tag-color, var(--text-muted)) 25%, var(--surface)); }
+.ant-tag.account-status-tag.ant-tag-success { --account-tag-color: var(--accent-mint); }
+.ant-tag.account-status-tag.ant-tag-warning { --account-tag-color: var(--accent-gold); }
+.ant-tag.account-status-tag.ant-tag-error, .ant-tag.account-deleted-tag { --account-tag-color: var(--accent-coral); }
+.account-deleted-tag del { text-decoration-thickness: 1px; }
 .account-credential-line { margin: 14px 0; padding: 12px; border-radius: 6px; background: #f7f7f5; white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 120px; font: 13px/1.7 ui-monospace, SFMono-Regular, Consolas, monospace; }
 .account-record-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; color: #726c61; font-size: 12px; }
 .account-record-meta > span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }

@@ -617,6 +617,7 @@ def init_db():
             
             # 数据库迁移：为mail_accounts表添加发件相关字段
             migrate_mail_accounts_table(db, db_type)
+            create_account_data_archive_tables(db, db_type)
 
             # 创建卡密多邮箱绑定表，并迁移旧的单邮箱绑定字段
             create_card_email_bindings_table(db, db_type)
@@ -687,6 +688,58 @@ def init_db():
                 except:
                     pass
             raise
+
+ACCOUNT_DATA_COLUMNS = ('id', 'email', 'username', 'password', 'auth_type', 'oauth_client_id',
+                        'oauth_refresh_token', 'created_by_admin', 'created_at', 'remarks', 'account_status')
+ACCOUNT_DATA_SOURCE = f'''(SELECT {', '.join(ACCOUNT_DATA_COLUMNS)}, NULL AS deleted_at FROM mail_accounts
+    UNION ALL SELECT {', '.join(ACCOUNT_DATA_COLUMNS)}, deleted_at FROM account_data_archive)'''
+ACCOUNT_DATA_GROUPS = '''(SELECT mailbox_id, group_id FROM mailbox_group_mappings
+    UNION SELECT mailbox_id, group_id FROM account_data_archive_groups)'''
+
+
+def create_account_data_archive_tables(db, db_type):
+    """Keep deleted account profiles separate from operational mailboxes."""
+    date_type = 'TIMESTAMP' if db_type == 'postgresql' else 'DATETIME'
+    large_text = 'LONGTEXT' if db_type == 'mysql' else 'TEXT'
+    security.query(db, f'''CREATE TABLE IF NOT EXISTS account_data_archive (
+        id INTEGER PRIMARY KEY, email TEXT, username TEXT, password TEXT,
+        auth_type VARCHAR(50), oauth_client_id TEXT, oauth_refresh_token {large_text},
+        created_by_admin VARCHAR(255), created_at {date_type}, remarks TEXT,
+        account_status VARCHAR(50), deleted_at {date_type} NOT NULL, snapshot {large_text} NOT NULL
+    )''', write=True, db_type=db_type)
+    security.query(db, '''CREATE TABLE IF NOT EXISTS account_data_archive_groups (
+        mailbox_id INTEGER NOT NULL, group_id INTEGER NOT NULL, name TEXT,
+        PRIMARY KEY (mailbox_id, group_id)
+    )''', write=True, db_type=db_type)
+
+
+def _delete_mailbox_records(db, account_ids):
+    """Archive and remove mailboxes atomically; the caller owns the transaction."""
+    affected_groups = set()
+    now = get_beijing_time()
+    account_ids = list(dict.fromkeys(int(value) for value in account_ids))
+    for offset in range(0, len(account_ids), 200):
+        batch = account_ids[offset:offset + 200]
+        placeholders = ','.join('?' for _ in batch)
+        accounts = security.query(db, f'SELECT * FROM mail_accounts WHERE id IN ({placeholders})', batch)
+        mappings = security.query(db, f'''SELECT gm.mailbox_id, gm.group_id, g.name
+            FROM mailbox_group_mappings gm JOIN mailbox_groups g ON g.id = gm.group_id
+            WHERE gm.mailbox_id IN ({placeholders})''', batch)
+        for account in accounts:
+            security.query(db, f'''INSERT INTO account_data_archive
+                ({', '.join(ACCOUNT_DATA_COLUMNS)}, deleted_at, snapshot)
+                VALUES ({','.join('?' for _ in range(len(ACCOUNT_DATA_COLUMNS) + 2))})''',
+                [account.get(key) for key in ACCOUNT_DATA_COLUMNS] +
+                [now, json.dumps(account, ensure_ascii=False, default=str)], write=True)
+        for mapping in mappings:
+            affected_groups.add(mapping['group_id'])
+            security.query(db, '''INSERT INTO account_data_archive_groups (mailbox_id, group_id, name)
+                VALUES (?, ?, ?)''', [mapping['mailbox_id'], mapping['group_id'], mapping['name']], write=True)
+        security.query(db, f'DELETE FROM mailbox_group_mappings WHERE mailbox_id IN ({placeholders})', batch, write=True)
+        security.query(db, f'DELETE FROM mail_accounts WHERE id IN ({placeholders})', batch, write=True)
+    for group_id in affected_groups:
+        update_mailbox_group_count(db, app.config['DATABASE_TYPE'], group_id, delta=None)
+
 
 def create_recycle_bin_table(db, db_type):
     """创建卡密回收站表"""
@@ -4848,13 +4901,8 @@ def api_admin_mailbox():
             return _mailbox_not_found_response()
         
         try:
-            if app.config['DATABASE_TYPE'] == 'sqlite':
-                db.execute('DELETE FROM mail_accounts WHERE id = ?', (account_id,))
-                db.commit()
-            else:
-                cursor = db.cursor()
-                cursor.execute('DELETE FROM mail_accounts WHERE id = %s', (account_id,))
-                db.commit()
+            _delete_mailbox_records(db, [account_id])
+            db.commit()
             
             return jsonify({
                 'success': True,
@@ -4862,10 +4910,18 @@ def api_admin_mailbox():
             })
             
         except Exception as e:
+            db.rollback()
             return jsonify({
                 'success': False,
                 'message': f'删除失败: {str(e)}'
             })
+
+def _account_data_scope_condition(db, alias='ma'):
+    condition, params = _mailbox_scope_condition(db, alias)
+    # Preserve deleted memberships while continuing to check current grants and ancestors.
+    return condition.replace('mailbox_group_mappings scope_mapping',
+                             f'{ACCOUNT_DATA_GROUPS} scope_mapping'), params
+
 
 def _account_data_response(payload):
     response = jsonify(payload)
@@ -4875,9 +4931,9 @@ def _account_data_response(payload):
 
 def _account_data_groups(db):
     """Group names/paths belonging to visible accounts, including parent categories."""
-    condition, params = _mailbox_scope_condition(db, 'ma')
-    visible = security.query(db, f'''SELECT DISTINCT m.group_id FROM mailbox_group_mappings m
-        JOIN mail_accounts ma ON ma.id = m.mailbox_id
+    condition, params = _account_data_scope_condition(db)
+    visible = security.query(db, f'''SELECT DISTINCT m.group_id FROM {ACCOUNT_DATA_GROUPS} m
+        JOIN {ACCOUNT_DATA_SOURCE} ma ON ma.id = m.mailbox_id
         WHERE {condition or '1 = 1'}''', params)
     groups = security.query(db, 'SELECT id, name, parent_id FROM mailbox_groups ORDER BY sort_order, id')
     by_id = {group['id']: group for group in groups}
@@ -4895,9 +4951,9 @@ def _account_data_groups(db):
 @admin_required
 def api_account_data_filters():
     db = get_db()
-    condition, params = _mailbox_scope_condition(db, 'ma')
+    condition, params = _account_data_scope_condition(db)
     owners = security.query(db, f'''SELECT DISTINCT COALESCE(ma.created_by_admin, '') AS owner
-        FROM mail_accounts ma WHERE {condition or '1 = 1'} ORDER BY owner''', params)
+        FROM {ACCOUNT_DATA_SOURCE} ma WHERE {condition or '1 = 1'} ORDER BY owner''', params)
     return _account_data_response({'success': True, 'owners': [row['owner'] for row in owners],
                                    'groups': _account_data_groups(db)})
 
@@ -4924,7 +4980,7 @@ def api_account_data():
 
     conditions = []
     params = []
-    scope, scope_params = _mailbox_scope_condition(db, 'ma')
+    scope, scope_params = _account_data_scope_condition(db)
     if scope:
         conditions.append(scope)
         params.extend(scope_params)
@@ -4952,7 +5008,7 @@ def api_account_data():
         conditions.append('ma.account_status = ?')
         params.append(account_status)
     if group == 'ungrouped':
-        conditions.append('NOT EXISTS (SELECT 1 FROM mailbox_group_mappings gm WHERE gm.mailbox_id = ma.id)')
+        conditions.append(f'NOT EXISTS (SELECT 1 FROM {ACCOUNT_DATA_GROUPS} gm WHERE gm.mailbox_id = ma.id)')
     elif group:
         # Selecting a parent category includes descendants; account scope still applies.
         groups = security.query(db, 'SELECT id, parent_id FROM mailbox_groups')
@@ -4966,28 +5022,51 @@ def api_account_data():
                 if child not in descendants:
                     descendants.add(child)
                     pending.append(child)
-        conditions.append(f'''EXISTS (SELECT 1 FROM mailbox_group_mappings gm
+        conditions.append(f'''EXISTS (SELECT 1 FROM {ACCOUNT_DATA_GROUPS} gm
             WHERE gm.mailbox_id = ma.id AND gm.group_id IN ({','.join('?' for _ in descendants)}))''')
         params.extend(sorted(descendants))
     where = 'WHERE ' + ' AND '.join(conditions) if conditions else ''
-    total = security.query(db, f'SELECT COUNT(*) AS count FROM mail_accounts ma {where}', params)[0]['count']
+    total = security.query(db, f'SELECT COUNT(*) AS count FROM {ACCOUNT_DATA_SOURCE} ma {where}', params)[0]['count']
     page = min(page, max(1, (total + per_page - 1) // per_page))
     rows = security.query(db, f'''SELECT ma.id, ma.email, ma.username, ma.password, ma.auth_type,
-        ma.oauth_client_id, ma.oauth_refresh_token, ma.created_by_admin, ma.created_at, ma.remarks
-        FROM mail_accounts ma {where} ORDER BY ma.created_at DESC, ma.id DESC LIMIT ? OFFSET ?''',
+        ma.oauth_client_id, ma.oauth_refresh_token, ma.created_by_admin, ma.created_at, ma.remarks,
+        ma.account_status, ma.deleted_at
+        FROM {ACCOUNT_DATA_SOURCE} ma {where} ORDER BY ma.created_at DESC, ma.id DESC LIMIT ? OFFSET ?''',
         params + [per_page, (page - 1) * per_page])
     groups_by_mailbox = {}
     if rows:
+        placeholders = ','.join('?' for _ in rows)
         mappings = security.query(db, f'''SELECT gm.mailbox_id, g.id, g.name FROM mailbox_group_mappings gm
-            JOIN mailbox_groups g ON g.id = gm.group_id
-            WHERE gm.mailbox_id IN ({','.join('?' for _ in rows)}) ORDER BY g.sort_order, g.id''',
-            [row['id'] for row in rows])
+            JOIN mailbox_groups g ON g.id = gm.group_id WHERE gm.mailbox_id IN ({placeholders})
+            UNION ALL SELECT mailbox_id, group_id AS id, name FROM account_data_archive_groups
+            WHERE mailbox_id IN ({placeholders}) ORDER BY id''', [row['id'] for row in rows] * 2)
         for mapping in mappings:
             groups_by_mailbox.setdefault(mapping['mailbox_id'], []).append({'id': mapping['id'], 'name': mapping['name']})
     for row in rows:
         row['groups'] = groups_by_mailbox.get(row['id'], [])
     return _account_data_response({'success': True, 'data': rows,
                                    'pagination': {'page': page, 'per_page': per_page, 'total': total}})
+
+
+@app.route('/admin/api/mailbox/account-data/<int:mailbox_id>', methods=['GET'])
+@admin_required
+def api_account_data_detail(mailbox_id):
+    db = get_db()
+    scope, params = _account_data_scope_condition(db)
+    rows = security.query(db, f'''SELECT ma.id, ma.deleted_at FROM {ACCOUNT_DATA_SOURCE} ma
+        WHERE ma.id = ? AND {scope or '1 = 1'}''', [mailbox_id] + params)
+    if not rows:
+        return _mailbox_not_found_response()
+    if rows[0]['deleted_at']:
+        archived = security.query(db, 'SELECT snapshot FROM account_data_archive WHERE id = ?', [mailbox_id])[0]
+        account = json.loads(archived['snapshot'])
+        account['deleted_at'] = rows[0]['deleted_at']
+    else:
+        accounts = security.query(db, 'SELECT * FROM mail_accounts WHERE id = ?', [mailbox_id])
+        if not accounts:
+            return _mailbox_not_found_response()
+        account = accounts[0]
+    return _account_data_response({'success': True, 'data': account})
 
 
 @app.route('/admin/api/mailbox/account-data/copy', methods=['POST'])
@@ -4998,13 +5077,13 @@ def api_copy_account_data():
         return jsonify({'success': False, 'message': '请选择 1 至 5000 个账号'}), 400
     ids = list(dict.fromkeys(ids))
     db = get_db()
-    scope, params = _mailbox_scope_condition(db, 'ma')
+    scope, params = _account_data_scope_condition(db)
     accounts = {}
     # Bounded queries also support SQLite builds with a low SQL parameter limit.
     for offset in range(0, len(ids), 200):
         batch = ids[offset:offset + 200]
         rows = security.query(db, f'''SELECT ma.id, ma.email, ma.password, ma.oauth_client_id, ma.oauth_refresh_token
-            FROM mail_accounts ma WHERE ma.id IN ({','.join('?' for _ in batch)})
+            FROM {ACCOUNT_DATA_SOURCE} ma WHERE ma.id IN ({','.join('?' for _ in batch)})
             AND {scope or '1 = 1'}''', batch + params)
         accounts.update({row['id']: row for row in rows})
     if len(accounts) != len(ids):
@@ -6454,32 +6533,7 @@ def _batch_delete_mailbox(db, data):
         })
     
     try:
-        db_type = app.config['DATABASE_TYPE']
-        
-        # 在删除前，获取这些邮箱所属的分组，以便更新计数
-        affected_groups = set()
-        if db_type == 'sqlite':
-            placeholders = ','.join(['?' for _ in account_ids])
-            mappings = db.execute(f'SELECT DISTINCT group_id FROM mailbox_group_mappings WHERE mailbox_id IN ({placeholders})', account_ids).fetchall()
-            affected_groups = set(m['group_id'] for m in mappings)
-            
-            # 删除邮箱（CASCADE会自动删除关联的mappings）
-            db.execute(f'DELETE FROM mail_accounts WHERE id IN ({placeholders})', account_ids)
-            db.commit()
-        else:
-            cursor = db.cursor()
-            placeholders = ','.join(['%s' for _ in account_ids])
-            cursor.execute(f'SELECT DISTINCT group_id FROM mailbox_group_mappings WHERE mailbox_id IN ({placeholders})', account_ids)
-            affected_groups = set(row[0] for row in cursor.fetchall())
-            
-            # 删除邮箱（CASCADE会自动删除关联的mappings）
-            cursor.execute(f'DELETE FROM mail_accounts WHERE id IN ({placeholders})', account_ids)
-            db.commit()
-        
-        # 更新受影响分组的计数（重新计算，因为可能有多个邮箱从同一分组删除）
-        for group_id in affected_groups:
-            update_mailbox_group_count(db, db_type, group_id, delta=None)
-        
+        _delete_mailbox_records(db, account_ids)
         db.commit()
         
         return jsonify({
@@ -6488,6 +6542,7 @@ def _batch_delete_mailbox(db, data):
         })
         
     except Exception as e:
+        db.rollback()
         return jsonify({
             'success': False,
             'message': f'批量删除失败: {str(e)}'

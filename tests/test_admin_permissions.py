@@ -191,6 +191,84 @@ class AdminPermissionsTestCase(unittest.TestCase):
             self.assertEqual(self.root.post('/admin/api/mailbox/account-data/copy', json={'ids': ids}).status_code, 400)
         self.assertEqual(self.root.post('/admin/api/mailbox/account-data/copy', json={'ids': [999999]}).status_code, 404)
 
+    def test_deleted_account_data_retains_status_groups_details_and_copy_with_scope(self):
+        self.account_data_fixture()
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE mail_accounts SET account_status = 'normal' WHERE id = 4")
+        response = self.child.delete('/admin/api/mailbox', json={'id': 4})
+        self.assertTrue(response.get_json()['success'], response.get_json())
+        self.assertEqual(self.child.get('/admin/api/mailbox?id=4').status_code, 404)
+        self.assertEqual(self.child.get('/admin/api/mailbox?fast=1').get_json()['data'], [])
+        rows = self.child.get('/admin/api/mailbox/account-data?account_status=normal&group_id=1').get_json()['data']
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['account_status'], 'normal')
+        self.assertTrue(rows[0]['deleted_at'])
+        self.assertEqual(rows[0]['groups'], [{'id': 2, 'name': 'Child category'}])
+        detail = self.child.get('/admin/api/mailbox/account-data/4')
+        self.assertEqual(detail.headers['Cache-Control'], 'no-store')
+        self.assertEqual(detail.get_json()['data']['server'], 'imap.example.com')
+        self.assertTrue(detail.get_json()['data']['deleted_at'])
+        copied = self.child.post('/admin/api/mailbox/account-data/copy', json={'ids': [4]})
+        self.assertEqual(copied.get_json()['text'], 'child@example.com----test----client-4----token-4')
+        filters = self.child.get('/admin/api/mailbox/account-data/filters').get_json()
+        self.assertEqual(filters['owners'], ['child'])
+        self.assertEqual({row['id'] for row in filters['groups']}, {1, 2})
+        self.assertEqual(self.parent.get('/admin/api/mailbox/account-data/4').status_code, 404)
+        self.assertEqual(self.parent.post('/admin/api/mailbox/account-data/copy', json={'ids': [4]}).status_code, 404)
+        self.assertEqual(self.root.get('/admin/api/mailbox/account-data/4').status_code, 200)
+        self.grant(self.parent, self.child_id, [])
+        self.assertEqual(self.child.get('/admin/api/mailbox/account-data/4').status_code, 403)
+
+    def test_batch_delete_archives_once_and_reimport_gets_a_new_active_identity(self):
+        self.account_data_fixture()
+        response = self.root.post('/admin/api/mailbox', json={'action': 'batch_delete', 'ids': [2, 3, 2]})
+        self.assertTrue(response.get_json()['success'], response.get_json())
+        rows = self.root.get('/admin/api/mailbox/account-data?per_page=2&page=2').get_json()
+        self.assertEqual(rows['pagination']['total'], 4)
+        self.assertEqual([row['id'] for row in rows['data']], [2, 1])
+        self.assertTrue(rows['data'][0]['deleted_at'])
+        self.assertIsNone(rows['data'][1]['deleted_at'])
+        with sqlite3.connect(self.path) as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM account_data_archive').fetchone()[0], 2)
+            self.assertEqual(db.execute('SELECT mailbox_count FROM mailbox_groups WHERE id = 2').fetchone()[0], 1)
+            db.execute('''INSERT INTO mail_accounts (email, username, password, server, port, created_by_admin)
+                VALUES ('parent@example.com', 'parent', 'new-password', 'imap.example.com', 993, 'parent')''')
+        rows = self.root.get('/admin/api/mailbox/account-data?search=parent@example.com').get_json()['data']
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(len({row['id'] for row in rows}), 2)
+        self.assertEqual(sum(bool(row['deleted_at']) for row in rows), 1)
+
+    def test_delete_rolls_back_if_archiving_fails(self):
+        self.account_data_fixture()
+        original_query = app_module.security.query
+
+        def fail_archive(db, sql, *args, **kwargs):
+            if 'INSERT INTO account_data_archive_groups' in sql:
+                raise RuntimeError('archive unavailable')
+            return original_query(db, sql, *args, **kwargs)
+
+        for batch in (False, True):
+            with self.subTest(batch=batch), patch.object(app_module.security, 'query', side_effect=fail_archive):
+                response = (self.child.post('/admin/api/mailbox', json={'action': 'batch_delete', 'ids': [4]})
+                            if batch else self.child.delete('/admin/api/mailbox', json={'id': 4}))
+                self.assertFalse(response.get_json()['success'])
+            with sqlite3.connect(self.path) as db:
+                self.assertEqual(db.execute('SELECT COUNT(*) FROM account_data_archive').fetchone()[0], 0)
+                self.assertIsNotNone(db.execute('SELECT id FROM mail_accounts WHERE id=4').fetchone())
+                self.assertIsNotNone(db.execute('SELECT group_id FROM mailbox_group_mappings WHERE mailbox_id=4').fetchone())
+
+    def test_archived_group_scope_still_requires_current_grant_and_parent_access(self):
+        self.account_data_fixture()
+        with sqlite3.connect(self.path) as db:
+            db.execute('INSERT INTO admin_mailbox_group_permissions (admin_id, group_id, granted_by_admin_id) VALUES (?, 2, ?)',
+                       (self.child_id, self.parent_id))
+        self.assertTrue(self.parent.delete('/admin/api/mailbox', json={'id': 2}).get_json()['success'])
+        self.assertEqual(self.child.get('/admin/api/mailbox/account-data/2').status_code, 200)
+        self.assertEqual(self.child.get('/admin/api/mailbox/account-data/3').status_code, 404)
+        with sqlite3.connect(self.path) as db:
+            db.execute('DELETE FROM admin_mailbox_group_permissions WHERE admin_id = ?', (self.child_id,))
+        self.assertEqual(self.child.get('/admin/api/mailbox/account-data/2').status_code, 404)
+
     def test_hierarchy_ancestors_only_expose_minimal_current_branch_context(self):
         root_data = self.root.get('/admin/api/system-config').get_json()['data']
         self.assertEqual(root_data['admin_ancestors'], [])
