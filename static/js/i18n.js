@@ -1015,6 +1015,11 @@
         "展开分组": ["Expand groups", "Mở rộng nhóm"],
         "展开左侧分组": ["Expand the groups sidebar", "Mở thanh nhóm bên trái"],
         "清除搜索": ["Clear search", "Xóa tìm kiếm"],
+        "搜索邮件": ["Search emails", "Tìm kiếm thư"],
+        "搜索已收取邮件的标题、发件人或正文": ["Search received emails by subject, sender or body", "Tìm thư đã nhận theo tiêu đề, người gửi hoặc nội dung"],
+        "搜索联想": ["Search suggestions", "Gợi ý tìm kiếm"],
+        "没有匹配的邮件": ["No matching emails", "Không có thư phù hợp"],
+        "邮件分页": ["Email pages", "Phân trang thư"],
         "按账号状态筛选": ["Filter by account status", "Lọc theo trạng thái tài khoản"],
         "倒序": ["Descending", "Giảm dần"],
         "新分组名，回车添加": ["New group name; press Enter to add", "Tên nhóm mới; nhấn Enter để thêm"],
@@ -1901,6 +1906,11 @@
         "展开分组": "Palawakin ang mga grupo",
         "展开左侧分组": "Palawakin ang sidebar ng mga grupo",
         "清除搜索": "I-clear ang paghahanap",
+        "搜索邮件": "Maghanap ng mga email",
+        "搜索已收取邮件的标题、发件人或正文": "Hanapin ang natanggap na email ayon sa paksa, nagpadala o nilalaman",
+        "搜索联想": "Mga mungkahi sa paghahanap",
+        "没有匹配的邮件": "Walang tumugmang email",
+        "邮件分页": "Mga pahina ng email",
         "按账号状态筛选": "Salain ayon sa katayuan ng account",
         "倒序": "Pababa",
         "新分组名，回车添加": "Bagong pangalan ng grupo; pindutin ang Enter upang idagdag",
@@ -2470,6 +2480,12 @@
             return lang === 'fil' ? `Kabuuang ${match[1]} rekord, pahina ${match[2]} sa ${match[3]}` : lang === 'vi'
                 ? `Tổng ${match[1]} bản ghi, trang ${match[2]}, tổng ${match[3]} trang`
                 : `Total ${match[1]} records, page ${match[2]} of ${match[3]}`;
+        }
+
+        match = text.match(/^共\s*(\d+)\s*封邮件$/);
+        if (match) {
+            return lang === 'fil' ? `Kabuuang ${match[1]} mail` : lang === 'vi'
+                ? `Tổng ${match[1]} thư` : `Total ${match[1]} emails`;
         }
 
         match = text.match(/^共\s*(\d+)\s*封邮件，第\s*(\d+)\s*\/\s*(\d+)\s*页$/);

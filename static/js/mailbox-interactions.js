@@ -148,6 +148,7 @@
         const modal = modalStack[modalStack.length - 1];
         if (!modal) return;
         if (event.key === 'Escape') {
+            if (event.target.closest('[role="combobox"][aria-expanded="true"]')) return;
             event.preventDefault();
             event.stopImmediatePropagation();
             modal.querySelector('.modal-close')?.click();

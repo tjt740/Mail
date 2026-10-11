@@ -181,4 +181,4 @@
 .single-import-feedback.is-error, .mailbox-group-feedback.error, .batch-group-feedback.error { color: var(--accent-coral); }
 #mailboxForm .password-visibility-toggle:is(:hover, :focus-visible) { background: var(--surface-3); color: var(--primary-color); }
 .mailbox-workspace .mailbox-heading-actions .btn-primary { color: var(--on-primary) !important; }
-.mailbox-workspace .mailbox-clear-search, #receiveMailboxPosition { color: var(--text-muted); }
+.mailbox-workspace .mailbox-clear-search { color: var(--text-muted); }

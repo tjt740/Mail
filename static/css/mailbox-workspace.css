@@ -111,9 +111,6 @@
 .mailbox-workspace .mailbox-batch-summary strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mailbox-workspace #mailboxBatchProgress .mailbox-test-tag { font-size: 12px; padding: 5px 9px; line-height: 1.4; }
 .mailbox-workspace #stopBatchTestBtn { flex: 0 0 auto; }
-.receive-mailbox-navigation { display: flex; align-self: flex-end; align-items: center; justify-content: flex-end; gap: 12px; margin: 0; font-size: 12px; color: #8b8171; white-space: nowrap; }
-.receive-mailbox-navigation button { width: 32px; height: 28px; border: 1px solid #e1dace; border-radius: 5px; background: white; cursor: pointer; color: #79634d; }
-.receive-mailbox-navigation button:disabled { opacity: .35; cursor: not-allowed; }
 @media (max-width: 1100px) { .mailbox-workspace .mailbox-list-tip { display: none; } .mailbox-workspace .content-grid { gap: 16px; grid-template-columns: 185px minmax(0, 1fr); } }
 @media (max-width: 999px) {
     .mailbox-workspace .content-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 12px; }

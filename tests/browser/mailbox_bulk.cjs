@@ -762,7 +762,7 @@ test('group browsing is visible, searchable, remembers the last group and keeps 
     } finally { await page.close(); }
 });
 
-test('addresses and icons copy without receiving; the receive action keeps mailbox navigation in group', async () => {
+test('addresses and icons copy without receiving; email pagination stays inside the opened mailbox', async () => {
     const page = await newPage();
     try {
         await page.locator('#groupSearchInput').fill('客户');
@@ -804,16 +804,134 @@ test('addresses and icons copy without receiving; the receive action keeps mailb
         await page.setViewportSize({ width: 1440, height: 1000 });
         await page.locator('tr[data-mailbox-id="30"] [data-action="receive"]').click();
         await page.waitForFunction(() => document.querySelector('#receiveTableBody').textContent.includes('Mail for account30@example.com'));
-        assert.equal(await page.locator('#receivePreviousMailbox').isDisabled(), true);
-        await page.locator('#receiveNextMailbox').click();
-        await page.waitForFunction(() => document.querySelector('#receiveTableBody').textContent.includes('Mail for account29@example.com'));
-        assert.equal(await page.locator('#receiveMailboxPosition').innerText(), '2 / 30');
-        await page.locator('#receivePreviousMailbox').click();
+        assert.equal(await page.locator('#receivePreviousPage').isDisabled(), true);
+        assert.equal(await page.locator('#receiveNextPage').isDisabled(), true);
+        assert.equal(await page.locator('#receivePagePosition').innerText(), '1 / 1');
         assert.equal(await page.locator('#receiveMailboxLabel').innerText(), 'account30@example.com');
         await page.locator('#receiveModal .modal-close').click();
         assert.equal(await page.locator('#adminCurrentGroup').innerText(), '客户服务');
-        assert.ok(received.includes('account29@example.com'));
-        assert.ok(received.every(email => ['account30@example.com', 'account29@example.com'].includes(email)));
+        assert.deepEqual(received, ['account30@example.com']);
+    } finally { await page.close(); }
+});
+
+for (const width of [1440, 390, 320]) test(`received email search, suggestions and pagination stay scoped at ${width}px`, async () => {
+    const page = await newPage({ width, height: 1000 });
+    try {
+        await page.locator('[data-action="receive"]').first().click();
+        await page.waitForFunction(() => !receiveState.isFetching && receiveState.mails.length > 0);
+        const account = await page.locator('#receiveMailboxLabel').innerText();
+        const requests = received.length;
+        await page.evaluate(() => {
+            receiveState.mails = Array.from({ length: 25 }, (_, index) => ({
+                id: `search-${index}`, folder: 'inbox',
+                subject: index % 12 === 0 ? `Invoice ${index}` : `Delivery ${index}`,
+                from: 'Support <help@example.com>', receivedAt: '2026-10-12 12:00:00',
+                body: index === 15 ? '<style>.hidden-marker{}</style><p>兑换码：<b>AB&amp;123</b></p><script>window.searchCodeRan=true</script>' : 'Parcel is ready.',
+                bodyType: index === 15 ? 'html' : 'text'
+            }));
+            receiveState.mails.push({ id: 'search-trash', folder: 'trash', subject: 'Invoice trash', from: 'trash@example.com', body: 'Trash only' });
+            receiveState.mails[24].subject = 'Invoice <img src=x onerror="window.searchCodeRan=true">';
+            renderReceiveList();
+        });
+        const rows = page.locator('#receiveTableBody tr');
+        const search = page.locator('#receiveSearchInput');
+        const position = page.locator('#receivePagePosition');
+        assert.equal(await position.innerText(), '1 / 3');
+        assert.equal(await rows.count(), 10);
+        assert.equal(await page.locator('#receivePreviousPage').isDisabled(), true);
+        await page.locator('#receiveNextPage').click();
+        assert.equal(await rows.first().locator('td').first().innerText(), '11');
+        assert.equal(await position.innerText(), '2 / 3');
+        await page.locator('#receiveNextPage').click();
+        assert.equal(await rows.count(), 5);
+        assert.equal(await page.locator('#receiveNextPage').isDisabled(), true);
+        assert.equal(await page.locator('#receiveMailboxLabel').innerText(), account);
+        assert.equal(received.length, requests, 'paging must not fetch another mailbox');
+
+        await search.fill('invoice');
+        await page.waitForFunction(() => getFilteredReceiveMails().length === 4);
+        assert.equal(await rows.count(), 4, 'search must include every page and received folder');
+        assert.match(await rows.last().innerText(), /垃圾箱/);
+        assert.equal(await position.innerText(), '1 / 1');
+        assert.equal(await page.locator('#receiveSearchSuggestions').isVisible(), true);
+        assert.equal(await page.locator('#receiveSearchSuggestions img, #receiveTableBody img').count(), 0);
+        assert.equal(await page.evaluate(() => window.searchCodeRan), undefined);
+        await search.press('Escape');
+        assert.equal(await page.locator('#receiveModal').isVisible(), true);
+        assert.equal(await page.locator('#receiveSearchSuggestions').isVisible(), false);
+        await search.press('ArrowDown');
+        await search.press('Enter');
+        assert.equal(await search.inputValue(), 'Invoice 0');
+        assert.equal(await rows.count(), 1);
+        await rows.first().click();
+        assert.equal(await page.locator('#receiveSearchToolbar').isVisible(), false);
+        await page.locator('.receive-back').click();
+        assert.equal(await search.inputValue(), 'Invoice 0');
+        assert.equal(await rows.count(), 1);
+
+        await search.fill('兑换码 ab&123');
+        await page.waitForFunction(() => getFilteredReceiveMails().length === 1 && receiveState.searchQuery.includes('兑换码'));
+        assert.match(await rows.innerText(), /Delivery 15/);
+        assert.match(await page.locator('#receiveSearchSuggestions').innerText(), /AB&123/);
+        await page.locator('#receiveSearchSuggestions [role="option"]').first().click();
+        assert.equal(await rows.count(), 1);
+        assert.equal(await page.evaluate(() => window.searchCodeRan), undefined);
+
+        await search.fill('HELP@EXAMPLE.COM');
+        await page.waitForFunction(() => getFilteredReceiveMails().length === 25);
+        await search.press('Escape');
+        await page.locator('#receiveNextPage').click();
+        await rows.nth(2).click();
+        await page.locator('.receive-back').click();
+        assert.equal(await position.innerText(), '2 / 3');
+        assert.equal(await search.inputValue(), 'HELP@EXAMPLE.COM');
+        assert.equal(await rows.nth(2).evaluate(el => el === document.activeElement), true);
+        await page.locator('#receivePerPageSelect').selectOption('20');
+        assert.equal(await position.innerText(), '1 / 2');
+        assert.equal(await rows.count(), 20);
+
+        await search.fill('hidden-marker');
+        await page.waitForFunction(() => receiveState.searchQuery === 'hidden-marker');
+        assert.equal(await page.locator('.receive-empty').innerText(), '没有匹配的邮件');
+        assert.equal(await position.innerText(), '1 / 1');
+        assert.equal(await page.locator('#receivePreviousPage').isDisabled(), true);
+        assert.equal(await page.locator('#receiveNextPage').isDisabled(), true);
+        await page.locator('#receiveSearchClear').click();
+        assert.equal(await rows.count(), 20);
+        await search.fill('invoice');
+        await page.waitForFunction(() => receiveState.searchQuery === 'invoice');
+        await page.locator('.receive-tab[data-folder="trash"]').click();
+        assert.equal(await rows.count(), 1);
+        assert.match(await rows.innerText(), /Invoice trash/);
+        assert.equal(await position.innerText(), '1 / 1');
+        assert.equal(await search.inputValue(), '', 'choosing a folder exits mailbox-wide search');
+        await page.locator('.receive-tab[data-folder="inbox"]').click();
+        assert.equal(await rows.count(), 20);
+
+        const dimensions = await page.locator('#receiveModal').evaluate(el => {
+            const main = el.querySelector('.receive-main'), footer = el.querySelector('#receivePagination');
+            const select = el.querySelector('.page-size-control').getBoundingClientRect();
+            const nav = el.querySelector('.receive-page-navigation').getBoundingClientRect();
+            const bounds = footer.getBoundingClientRect();
+            return { overflow: main.scrollWidth > main.clientWidth + 1, gap: nav.left - select.right,
+                rightPadding: bounds.right - nav.right, bottomPadding: bounds.bottom - nav.bottom };
+        });
+        assert.equal(dimensions.overflow, false, JSON.stringify(dimensions));
+        assert.ok(dimensions.gap >= 12, JSON.stringify(dimensions));
+        assert.ok(dimensions.rightPadding >= 16 && dimensions.bottomPadding >= 12, JSON.stringify(dimensions));
+        if (process.env.SCREENSHOT_DIR) {
+            fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mail-search-list-${width}.png`) });
+            await search.fill('invoice');
+            await page.locator('#receiveSearchSuggestions').waitFor({ state: 'visible' });
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mail-search-suggestions-${width}.png`) });
+        }
+        await page.locator('#receiveModal .modal-close').click();
+        await page.locator('[data-action="receive"]').nth(1).click();
+        await page.waitForFunction(() => !receiveState.isFetching && receiveState.mails.length > 0);
+        assert.equal(await search.inputValue(), '');
+        assert.equal(await position.innerText(), '1 / 1');
+        assert.notEqual(await page.locator('#receiveMailboxLabel').innerText(), account);
     } finally { await page.close(); }
 });
 

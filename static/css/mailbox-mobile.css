@@ -46,8 +46,6 @@
         gap: 8px; padding: 10px 12px; margin: 0; min-width: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
     }
     .mailbox-page body .receive-account { grid-column: 1 / -1; min-width: 0; }
-    .mailbox-page body .receive-mailbox-navigation { width: auto; gap: 12px; }
-    .mailbox-page body .receive-mailbox-navigation button { width: 36px; height: 32px; }
     .mailbox-page body .receive-mailbox-copy-row { display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; margin: 0; min-width: 0; }
     .mailbox-page body #receiveMailboxLabel { min-width: 0; font-size: 14px; line-height: 1.4; white-space: normal !important; overflow-wrap: anywhere; }
     .mailbox-page body .receive-copy-btn { flex: 0 0 36px; width: 36px; height: 36px; }
@@ -73,9 +71,15 @@
     .mailbox-page body .receive-table td:nth-child(n+3) { color: var(--text-muted); font-size: 12px; }
     .mailbox-page body .receive-empty { padding: 32px 0; }
     .mailbox-page body #receivePagination { flex: 0 0 auto; position: static; padding: 12px 16px; margin: 0; gap: 12px 16px; border-top: 1px solid var(--border); font-size: 12px; }
-    .mailbox-page body #receivePagination .pagination-info { flex: 1; margin: 0; font-size: 12px; }
+    .mailbox-page body #receivePagination { justify-content: flex-end !important; }
+    .mailbox-page body #receivePagination .pagination-info { flex: 1 1 100%; margin: 0; font-size: 12px; }
     .mailbox-page body #receivePagination .page-size-control { font-size: 12px; }
     .mailbox-page body #receivePagination select { min-height: 36px; padding: 6px !important; }
+    .mailbox-page body .receive-search-toolbar { padding: 12px 16px; }
+    .mailbox-page body .receive-search-suggestions { left: 16px; right: 16px; }
+    .mailbox-page body #receiveSearchInput { min-height: 44px; }
+    .mailbox-page body #receiveSearchClear { flex-basis: 36px; width: 36px; height: 44px; }
+    .mailbox-page body #receivePagination .receive-page-navigation button { min-width: 44px; min-height: 44px; }
     .mailbox-page body .receive-detail-shell { padding: 12px; }
     .mailbox-page body .receive-meta { grid-template-columns: minmax(0, 1fr); }
     .mailbox-page body .receive-meta-item { min-width: 0; }

@@ -81,7 +81,7 @@ button.monitor-health-item:hover, .monitor-attention-counts button:hover { backg
 
 /* Legacy forms, lists, popovers and mail-management panels. */
 .mailbox-workspace { --workspace-line: var(--border); --workspace-muted: var(--text-muted); }
-:is(.group-panel, .mailbox-search-field, .group-context-menu, .mailbox-more-menu, .au-dropdown-menu, .field-menu, .receive-mailbox-navigation button) { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
+:is(.group-panel, .mailbox-search-field, .group-context-menu, .mailbox-more-menu, .au-dropdown-menu, .field-menu) { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
 .mailbox-workspace :is(.mailbox-heading-copy h2, .mailbox-list-count strong, .mailbox-email-address, .mailbox-empty strong) { color: var(--text); }
 .mailbox-workspace :is(.mailbox-status-views button, .mailbox-list-count, .mailbox-email-group, .mailbox-email-copy, .pagination-info, .group-actions-button, .mailbox-filter-context, .mailbox-empty, .mailbox-more-menu .btn-small) { color: var(--text-muted); }
 .mailbox-workspace .mailbox-status-views b, .mailbox-workspace #mailboxBulkBar { color: var(--text-muted); background: var(--surface-2); border-color: var(--border); }
