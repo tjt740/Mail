@@ -68,3 +68,12 @@ body.frontend-mail-page .scene-controls button { flex-shrink: 0; }
     body #mailboxTable td > span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
     body #mailboxTable .mailbox-empty-row td { white-space: normal !important; }
 }
+@media (max-width: 560px) {
+    body.frontend-mail-page #frontendApp .mail-table:has(.mail-list-empty) :is(thead, colgroup) { display: none; }
+}
+@media (min-width: 901px) {
+    body.frontend-mail-page #frontendApp .query-control-block { grid-template-areas: "label . ." "email count button"; }
+    body.frontend-mail-page #frontendApp .query-control-block:has(.query-key-field:not([hidden])) { grid-template-areas: "key key key" "label . ." "email count button"; }
+    body.frontend-mail-page #frontendApp .query-count-field { display: flex; grid-area: count; align-self: end; }
+    body.frontend-mail-page #frontendApp .query-count-field label { align-self: start; }
+}
