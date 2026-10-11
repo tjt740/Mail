@@ -368,7 +368,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
       return false;
     }
   });
-  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isMobile = useMediaQuery('(max-width: 1024px)');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const currentPath = getCurrentPath();
   const adminMenuItems = useMemo(
@@ -386,7 +386,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
 
   useEffect(() => {
     setMobileMenuOpen(false);
-  }, [selectedKey]);
+  }, [selectedKey, isMobile]);
 
   function updateCollapsed(nextValue) {
     setCollapsed(nextValue);
@@ -435,7 +435,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
       ) : null}
       <Drawer
         placement="left"
-        width={280}
+        width="min(320px, calc(100vw - 40px))"
         open={isMobile && mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         closable={false}
@@ -445,6 +445,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
         <div className="brand admin-mobile-brand">
           <MailboxBrand label={systemTitle} />
           <span>{systemTitle}</span>
+          <Button type="text" icon={<MenuFoldOutlined />} aria-label={t('收起菜单')} onClick={() => setMobileMenuOpen(false)} />
         </div>
         {adminMenu}
       </Drawer>
@@ -454,6 +455,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
             type="text"
             icon={isMobile || collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             aria-label={isMobile || collapsed ? t('展开菜单') : t('收起菜单')}
+            aria-expanded={isMobile ? mobileMenuOpen : !collapsed}
             title={isMobile || collapsed ? t('展开菜单') : t('收起菜单')}
             onClick={() => {
               if (isMobile) {

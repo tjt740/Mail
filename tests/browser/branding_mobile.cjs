@@ -18,6 +18,8 @@ for name in ['home','mailbox','system','daili','kami','kamirizhi','shoujian','he
   pages[name]=render_template('admin/'+name+'.html',embedded=True,admin_username='tjt740',admin_permissions=['home','mailbox','settings','mail_logs','master_key'],can_manage_site_brand=True,can_manage_public_mail_key=True,system_title='Mail')
 with app.test_request_context('/legacy/'):
  pages['public']=render_template('frontend/index.html',embedded=True,page_title='移动端邮局标题展示验证',frontend_icon='rocket')
+with app.test_request_context('/'):
+ pages['shell']=render_template('react_app.html',app_props={'adminUsername':'fixture','adminPermissions':['home','mailbox','proxies','cards','card_logs','mail_logs','settings'],'systemTitle':'Mail','pageTitle':'Mail'})
 print(json.dumps(pages))
 `, root], { encoding: 'utf8', maxBuffer: 6 * 1024 * 1024 }));
     settings = { admin_username: 'tjt740', system_title: 'Mail', frontend_page_title: '我的邮局', api_page_title: 'API', admin_login_title: '管理员登录', frontend_icon: 'mail', frontend_icon_image: '', database_type: 'sqlite', admin_users: [], permissions: ['settings'], public_mail_key_required: false };
@@ -37,10 +39,13 @@ print(json.dumps(pages))
                 return res.end(JSON.stringify({ success: true, data: settings }));
             }
             if (name === '/api/public-mail-config') return res.end('{"success":true,"key_required":false}');
+            if (name === '/admin/api/cards/stats') return res.end('{"success":true,"stats":{"total":0,"active":0,"used":0,"expired":0}}');
+            if (name === '/admin/api/cards') return res.end('{"success":true,"data":[],"pagination":{"page":1,"per_page":20,"total":0,"total_pages":1}}');
             if (name === '/api/get_mail') return res.end(JSON.stringify({ success: true, mails: [{ id: 'one', subject: 'A very long message subject '.repeat(8), from: 'longsender@example.com', to: 'reader@example.com', date: '2026-10-12 12:00:00', body: 'Body', body_type: 'text' }] }));
             return res.end('{"success":true,"language":"zh","data":[],"groups":[],"mappings":[]}');
         }
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        if (name === '/app' || name.startsWith('/admin/')) return res.end(pages.shell);
         res.end(pages[name.split('/').pop()] || pages.public);
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); origin = `http://127.0.0.1:${server.address().port}`;
@@ -52,6 +57,72 @@ async function shot(page, name) {
     fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
     await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, name + '.png'), fullPage: true });
 }
+for (const [width, height] of [[320, 640], [390, 844], [768, 1024], [844, 390], [1024, 768]]) {
+    test(`admin shell fits the viewport and navigation remains usable at ${width}x${height}`, async () => {
+        const page = await browser.newPage({ viewport: { width, height }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+        page.setDefaultTimeout(6000);
+        try {
+            await page.goto(origin + '/admin/mailbox');
+            await page.locator('.legacy-frame-wrap.is-loaded').waitFor();
+            const geometry = await page.evaluate(() => {
+                const rect = document.querySelector('.admin-content').getBoundingClientRect();
+                return { bottom: rect.bottom, documentHeight: document.documentElement.scrollHeight, height: innerHeight };
+            });
+            assert.ok(geometry.bottom <= height + 1 && geometry.documentHeight <= height + 1, JSON.stringify(geometry));
+            assert.equal(await page.locator('.admin-sider').count(), 0, 'Touch tablet and landscape phone use the drawer');
+            await page.getByRole('button', { name: '展开菜单' }).tap();
+            await page.locator('.admin-mobile-drawer').getByRole('menuitem', { name: /系统设置/ }).tap();
+            await page.locator('.legacy-frame-wrap.is-loaded').waitFor();
+            assert.ok(page.url().endsWith('/admin/system'));
+            await page.getByRole('button', { name: '展开菜单' }).tap();
+            await page.getByRole('button', { name: '收起菜单' }).tap();
+            await page.locator('.admin-mobile-drawer').waitFor({ state: 'hidden' });
+            await page.setViewportSize({ width: 1280, height: 800 });
+            await page.locator('.admin-sider').waitFor();
+            await page.setViewportSize({ width, height });
+            await page.locator('.admin-sider').waitFor({ state: 'detached' });
+            assert.equal(await page.locator('.admin-mobile-drawer').isVisible(), false, 'The drawer stays closed after rotation');
+            await shot(page, `shell-${width}-${height}`);
+        } finally { await page.close(); }
+    });
+}
+test('public shell keeps query controls reachable when the available viewport shrinks or rotates', async () => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+    try {
+        await page.goto(origin + '/app');
+        const frame = page.frameLocator('.legacy-frame');
+        await frame.locator('#emailInput').fill('reader@example.com');
+        for (const [width, height] of [[390, 844], [390, 400], [844, 390], [320, 568]]) {
+            await page.setViewportSize({ width, height });
+            const action = frame.locator('.get-mail-btn');
+            await action.scrollIntoViewIfNeeded();
+            const bounds = await action.boundingBox();
+            assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y >= 0 && bounds.y + bounds.height <= height + 1, JSON.stringify({ width, height, bounds }));
+            assert.equal(await frame.locator('#emailInput').inputValue(), 'reader@example.com');
+            assert.equal(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight + 1), false);
+        }
+    } finally { await page.close(); }
+});
+for (const [width, height] of [[320, 568], [844, 390]]) test(`card form can scroll to its cancel action at ${width}x${height}`, async () => {
+    const page = await browser.newPage({ viewport: { width, height }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+    page.setDefaultTimeout(6000);
+    try {
+        await page.goto(origin + '/admin/kami');
+        const frame = page.frameLocator('.legacy-frame');
+        await frame.getByRole('button', { name: '生成卡密', exact: true }).tap();
+        const modal = frame.locator('#generateModal');
+        await modal.waitFor({ state: 'visible' });
+        const content = modal.locator('.modal-content');
+        assert.equal(await content.evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
+        const cancel = modal.getByRole('button', { name: '取消', exact: true });
+        await cancel.scrollIntoViewIfNeeded();
+        const bounds = await cancel.boundingBox();
+        assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= height + 1, JSON.stringify(bounds));
+        await shot(page, `card-dialog-${width}-${height}`);
+        await cancel.tap();
+        await modal.waitFor({ state: 'hidden' });
+    } finally { await page.close(); }
+});
 for (const width of [320, 390, 768, 1440]) test(`public input, single-line results and actions fit at ${width}px`, async () => {
     const page = await browser.newPage({ viewport: { width, height: 900 }, isMobile: width < 769, hasTouch: width < 769, reducedMotion: 'reduce' });
     try {
@@ -89,8 +160,9 @@ for (const width of [320, 390, 768]) test(`admin panels stay within ${width}px a
             await page.waitForFunction(() => window.AppI18n);
             const overflow = await page.evaluate(() => [...document.querySelectorAll('.content, .main-content, .card, .table-container')].filter(el => el.getClientRects().length).map(el => ({ class: el.className, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })).filter(r => r.left < -1 || r.right > innerWidth + 1));
             assert.deepEqual(overflow, [], JSON.stringify({ width, name, overflow }));
-            const searchBounds = await page.locator('.search-box input').evaluateAll(inputs => inputs.filter(el => el.getClientRects().length).map(el => ({ left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })));
+            const searchBounds = await page.locator('.search-box input').evaluateAll(inputs => inputs.filter(el => el.getClientRects().length).map(el => ({ left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right, width: el.getBoundingClientRect().width })));
             assert.ok(searchBounds.every(r => r.left >= 0 && r.right <= width), JSON.stringify({ name, searchBounds }));
+            assert.ok(searchBounds.every(r => r.width >= 140), `Search fields need room for text: ${JSON.stringify({ name, searchBounds })}`);
             if (name === 'mailbox') assert.equal(await page.locator('.mailbox-status-views').evaluate(el => getComputedStyle(el).flexWrap), 'nowrap');
             await shot(page, 'admin-' + name + '-' + width);
         }

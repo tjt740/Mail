@@ -275,7 +275,7 @@ body {
   border-radius: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .login-language-button {
     top: 12px;
     right: 12px;
@@ -544,11 +544,31 @@ body,
 /* Keep the shell within mobile browser chrome and constrain nested layouts. */
 html, body { overscroll-behavior-y: none; }
 .admin-app, .admin-app > .ant-layout, .admin-content { min-width: 0; max-width: 100%; }
+.admin-app { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+.admin-app > .ant-layout, .admin-content { min-height: 0; }
+.admin-content { height: auto; flex: 1; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.admin-header { flex-shrink: 0; }
+.admin-mobile-brand > span:not(.mailbox-brand) { flex: 1; }
+.admin-mobile-brand > .ant-btn { flex: 0 0 44px; width: 44px; height: 44px; }
+.admin-mobile-drawer .ant-drawer-body { padding-top: env(safe-area-inset-top) !important; padding-bottom: env(safe-area-inset-bottom) !important; }
 .public-app, .public-app .legacy-frame-wrap { height: 100dvh; min-height: 100dvh; }
+.public-app { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.public-app .legacy-frame-wrap { height: 100%; min-height: 0; }
 .brand > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .admin-title .ant-typography { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ant-dropdown-menu { max-height: min(500px, 75dvh); overflow-y: auto; overscroll-behavior: contain; }
 @media (max-width: 768px) {
   .login-form input { font-size: 16px; }
   .ant-modal { max-width: calc(100vw - 16px); }
+}
+@media (max-width: 1024px) {
+  .admin-header {
+    height: calc(56px + env(safe-area-inset-top));
+    padding-top: calc(8px + env(safe-area-inset-top));
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+  .admin-content { padding-left: max(6px, env(safe-area-inset-left)); padding-right: max(6px, env(safe-area-inset-right)); padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  .login-page { min-height: 100dvh; padding: 76px max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  .login-preferences { top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); }
 }

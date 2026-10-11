@@ -28,6 +28,8 @@
   .account-data-page { padding: 12px; gap: 12px; }
   .account-data-page .ant-card-body { padding: 16px; }
   .account-filter-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .account-filter-grid :is(.ant-input, .ant-input-affix-wrapper, .ant-select, .ant-picker) { min-height: 44px; }
+  .account-filter-grid input, .account-filter-grid .ant-select-content { font-size: 16px; }
   .account-filter-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
   .account-filter-actions .ant-btn, .account-results-toolbar .ant-btn { min-height: 40px; }
   .account-date-range-popup .ant-picker-panels { flex-direction: column; }

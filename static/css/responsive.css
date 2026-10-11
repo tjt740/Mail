@@ -77,3 +77,28 @@ body.frontend-mail-page .scene-controls button { flex-shrink: 0; }
     body.frontend-mail-page #frontendApp .query-count-field { display: flex; grid-area: count; align-self: end; }
     body.frontend-mail-page #frontendApp .query-count-field label { align-self: start; }
 }
+
+/* Keep mobile search and paging controls visible without squeezing their inputs. */
+@media (max-width: 768px) {
+    body .search-controls { flex-wrap: wrap !important; }
+    body .search-controls > .search-box { flex-basis: 100%; max-width: none; }
+    body .kami-toolbar .btn-group { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+    body .kami-toolbar .btn-group .btn { max-width: 100%; white-space: normal; }
+}
+@media (max-width: 560px) {
+    body .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+    body .stats-grid .stat-card { min-width: 0; padding: 16px 10px; }
+    body .search-box { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 8px; }
+    body .search-box input { grid-column: 1 / -1; width: 100%; min-height: 44px; }
+    body .search-box .btn { min-width: 0; width: 100%; padding-inline: 8px; }
+    body .pagination-container { flex-wrap: wrap !important; gap: 8px 12px; overflow-x: visible; }
+    body .pagination-container > * { min-width: 0; max-width: 100%; }
+    body .pagination-info { white-space: normal; overflow-wrap: anywhere; }
+    body.frontend-mail-page #frontendApp .mail-pagination { flex-wrap: wrap !important; justify-content: flex-start !important; overflow-x: visible; }
+    body.frontend-mail-page #frontendApp .mail-pagination > * { max-width: 100%; white-space: normal; }
+    body .modal-header { gap: 12px; }
+    body .modal-title { min-width: 0; overflow-wrap: anywhere; }
+    body .modal-close { flex-shrink: 0; min-width: 44px; min-height: 44px; }
+    body .modal-footer { flex-wrap: wrap !important; }
+    body .modal-footer > .btn { flex: 1 1 auto; }
+}
