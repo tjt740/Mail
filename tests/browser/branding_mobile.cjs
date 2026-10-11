@@ -40,7 +40,7 @@ print(json.dumps(pages))
             }
             if (name === '/api/public-mail-config') return res.end('{"success":true,"key_required":false}');
             if (name === '/admin/api/cards/stats') return res.end('{"success":true,"stats":{"total":0,"active":0,"used":0,"expired":0}}');
-            if (name === '/admin/api/cards') return res.end('{"success":true,"data":[],"pagination":{"page":1,"per_page":20,"total":0,"total_pages":1}}');
+            if (name === '/admin/api/cards') return res.end('{"success":true,"data":[],"pagination":{"page":1,"per_page":20,"total":0,"pages":1}}');
             if (name === '/api/get_mail') return res.end(JSON.stringify({ success: true, mails: [{ id: 'one', subject: 'A very long message subject '.repeat(8), from: 'longsender@example.com', to: 'reader@example.com', date: '2026-10-12 12:00:00', body: 'Body', body_type: 'text' }] }));
             return res.end('{"success":true,"language":"zh","data":[],"groups":[],"mappings":[]}');
         }
