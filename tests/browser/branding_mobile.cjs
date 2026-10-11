@@ -143,3 +143,48 @@ test('scroll gestures do not activate actions or dismiss modal; deliberate taps 
         assert.equal(await page.locator('#touchModal').evaluate(el => el.classList.contains('show')), false);
     } finally { await page.close(); }
 });
+
+test('2 MB animated GIF uploads, previews, saves unchanged and rejects a file one byte larger', async () => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    page.setDefaultTimeout(8000);
+    const gif = fs.readFileSync(path.join(root, 'tests/fixtures/animated-icon.gif'));
+    const limit = 2 * 1024 * 1024;
+    const blocks = [Buffer.from([0x21, 0xfe])];
+    let remaining = limit - gif.length - 3;
+    while (remaining) {
+        let count = Math.min(256, remaining);
+        if (remaining - count === 1) count--;
+        blocks.push(Buffer.from([count - 1]), Buffer.alloc(count - 1, 'x'));
+        remaining -= count;
+    }
+    const padded = Buffer.concat([gif.subarray(0, -1), ...blocks, Buffer.from([0, 0x3b])]);
+    assert.equal(padded.length, limit);
+    const expected = 'data:image/gif;base64,' + padded.toString('base64');
+    try {
+        await page.goto(origin + '/system#sec-pagetitle');
+        await page.waitForFunction(() => document.getElementById('frontendPageTitle').value === '我的邮局');
+        assert.ok((await page.locator('#frontendIconFile').getAttribute('accept')).includes('image/gif'));
+        await page.locator('#frontendIconFile').setInputFiles({ name: 'animated.gif', mimeType: 'image/gif', buffer: padded });
+        await page.waitForFunction(() => document.getElementById('frontendIconImage').value.startsWith('data:image/gif;base64,'));
+        assert.ok(await page.locator('#frontendIconImage').inputValue() === expected, 'Upload must retain every GIF byte');
+        const preview = page.locator('#frontendIconPreviewImage');
+        const before = await preview.screenshot();
+        let changed = false;
+        for (let attempt = 0; attempt < 8 && !changed; attempt++) {
+            await page.waitForTimeout(150);
+            changed = !(await preview.screenshot()).equals(before);
+        }
+        assert.ok(changed, 'The preview must animate between the GIF frames');
+        await page.locator('#pageTitlesSubmit').click();
+        await page.waitForFunction(() => document.body.textContent.includes('标题与图标已保存'));
+        assert.ok(writes.at(-1).frontend_icon_image === expected, 'Saving must not flatten the GIF');
+        await page.reload();
+        await page.waitForFunction(() => document.getElementById('frontendIconImage').value.startsWith('data:image/gif;base64,'));
+        assert.ok(await preview.getAttribute('src') === expected, 'Saved GIF is restored after reload');
+        const count = writes.length;
+        await page.locator('#frontendIconFile').setInputFiles({ name: 'too-large.gif', mimeType: 'image/gif', buffer: Buffer.concat([padded, Buffer.from([0])]) });
+        await page.getByText('请选择不超过 2 MB 的 PNG、JPEG、WebP 或 GIF 图片', { exact: true }).waitFor();
+        assert.equal(writes.length, count);
+        assert.ok(await page.locator('#frontendIconImage').inputValue() === expected, 'Oversize selection retains the saved image');
+    } finally { await page.close(); }
+});

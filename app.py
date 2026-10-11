@@ -3200,18 +3200,21 @@ def _can_manage_site_brand(db):
 
 
 FRONTEND_ICONS = ('mail', 'inbox', 'global', 'rocket')
+MAX_FRONTEND_ICON_BYTES = 2 * 1024 * 1024
 
 
 def _validate_frontend_icon(icon, image):
     if icon not in FRONTEND_ICONS:
         raise ValueError('请选择有效的前台图标')
-    if not isinstance(image, str) or len(image) > 350000:
-        raise ValueError('图标图片不能超过 256 KB')
+    # JSON contains a data URL: allow the base64 expansion and MIME prefix.
+    max_encoded_length = ((MAX_FRONTEND_ICON_BYTES + 2) // 3) * 4 + 32
+    if not isinstance(image, str) or len(image) > max_encoded_length:
+        raise ValueError('图标图片不能超过 2 MB')
     if not image:
         return
-    match = re.fullmatch(r'data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)', image)
+    match = re.fullmatch(r'data:image/(png|jpeg|webp|gif);base64,([A-Za-z0-9+/=]+)', image)
     if not match:
-        raise ValueError('图标仅支持 PNG、JPEG、WebP 图片')
+        raise ValueError('图标仅支持 PNG、JPEG、WebP、GIF 图片')
     try:
         content = base64.b64decode(match[2], validate=True)
     except (ValueError, binascii.Error):
@@ -3220,9 +3223,10 @@ def _validate_frontend_icon(icon, image):
         'png': content.startswith(b'\x89PNG\r\n\x1a\n'),
         'jpeg': content.startswith(b'\xff\xd8\xff'),
         'webp': content.startswith(b'RIFF') and content[8:12] == b'WEBP',
+        'gif': content.startswith((b'GIF87a', b'GIF89a')),
     }
-    if not signatures[match[1]] or len(content) > 256 * 1024:
-        raise ValueError('图标图片无效或超过 256 KB')
+    if not signatures[match[1]] or len(content) > MAX_FRONTEND_ICON_BYTES:
+        raise ValueError('图标图片无效或超过 2 MB')
 
 
 def _public_mail_key_required():

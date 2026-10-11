@@ -2264,15 +2264,15 @@
                 "Ảnh biểu tượng không hợp lệ",
                 "Hindi wastong larawan ng icon"
         ],
-        "PNG、JPEG、WebP，最大 256 KB；建议使用正方形图片。": [
-                "PNG, JPEG or WebP, up to 256 KB. A square image is recommended.",
-                "PNG, JPEG hoặc WebP, tối đa 256 KB. Nên dùng ảnh vuông.",
-                "PNG, JPEG o WebP, hanggang 256 KB. Inirerekomenda ang parisukat na larawan."
+        "PNG、JPEG、WebP、GIF，最大 2 MB；支持 GIF 动画，建议使用正方形图片。": [
+                "PNG, JPEG, WebP or GIF, up to 2 MB. GIF animation is supported; a square image is recommended.",
+                "PNG, JPEG, WebP hoặc GIF, tối đa 2 MB. Hỗ trợ GIF động; nên dùng ảnh vuông.",
+                "PNG, JPEG, WebP o GIF, hanggang 2 MB. Suportado ang animated GIF; inirerekomenda ang parisukat na larawan."
         ],
-        "请选择不超过 256 KB 的 PNG、JPEG 或 WebP 图片": [
-                "Choose a PNG, JPEG or WebP image up to 256 KB",
-                "Chọn ảnh PNG, JPEG hoặc WebP tối đa 256 KB",
-                "Pumili ng PNG, JPEG o WebP na hanggang 256 KB"
+        "请选择不超过 2 MB 的 PNG、JPEG、WebP 或 GIF 图片": [
+                "Choose a PNG, JPEG, WebP or GIF image up to 2 MB",
+                "Chọn ảnh PNG, JPEG, WebP hoặc GIF tối đa 2 MB",
+                "Pumili ng PNG, JPEG, WebP o GIF na hanggang 2 MB"
         ],
         "仅 tjt740 可修改；保存后前台刷新即生效。": [
                 "Only tjt740 can edit. Refresh the public page after saving.",

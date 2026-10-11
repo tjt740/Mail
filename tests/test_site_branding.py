@@ -68,12 +68,47 @@ class SiteBrandingTests(unittest.TestCase):
             db.execute("UPDATE admin_users SET username='another-root' WHERE id=1")
         self.assertEqual(self.owner.post('/admin/api/system-config', json=self.payload).status_code, 403)
 
+    def test_animated_gif_at_two_mb_is_saved_byte_for_byte_and_oversize_is_rejected(self):
+        original = Path('tests/fixtures/animated-icon.gif').read_bytes()
+
+        def padded_gif(size):
+            # Valid GIF comment blocks pad the two-frame fixture to an exact size.
+            remaining = size - len(original) - 3
+            blocks = bytearray(b'\x21\xfe')
+            while remaining:
+                count = min(256, remaining)
+                if remaining - count == 1:
+                    count -= 1
+                blocks.extend(bytes([count - 1]) + b'x' * (count - 1))
+                remaining -= count
+            return original[:-1] + blocks + b'\x00;'
+
+        limit = 2 * 1024 * 1024
+        for size in (limit - 1, limit):
+            image = padded_gif(size)
+            self.assertEqual(len(image), size)
+            self.payload['frontend_icon_image'] = 'data:image/gif;base64,' + base64.b64encode(image).decode()
+            response = self.owner.post('/admin/api/system-config', json=self.payload)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.get_json()['success'])
+            stored = self.owner.get('/admin/api/system-config').get_json()['data']['frontend_icon_image']
+            self.assertTrue(stored == self.payload['frontend_icon_image'], 'Animated GIF must be preserved without conversion')
+            self.assertIn(stored, self.owner.get('/legacy/').get_data(as_text=True))
+
+        accepted = self.payload['frontend_icon_image']
+        oversized = 'data:image/gif;base64,' + base64.b64encode(padded_gif(limit + 1)).decode()
+        for image in (oversized, 'data:image/gif;base64,ZmFrZQ=='):
+            response = self.owner.post('/admin/api/system-config', json=dict(self.payload, frontend_icon_image=image))
+            self.assertEqual(response.status_code, 400)
+            stored = self.owner.get('/admin/api/system-config').get_json()['data']['frontend_icon_image']
+            self.assertTrue(stored == accepted, 'Rejected uploads must keep the previous icon')
+
     def test_validation_rejects_unsafe_images_and_invalid_titles_without_partial_writes(self):
         for changes in ({'frontend_icon': 'bad" onload="alert(1)'},
                         {'frontend_icon_image': 'javascript:alert(1)'},
                         {'frontend_icon_image': 'data:image/svg+xml;base64,PHN2Zz4='},
                         {'frontend_icon_image': 'data:image/png;base64,ZmFrZQ=='},
-                        {'frontend_icon_image': 'x' * 350001},
+                        {'frontend_icon_image': 'x' * (3 * 1024 * 1024)},
                         {'frontend_page_title': ''}, {'frontend_page_title': 'x' * 61},
                         {'frontend_page_title': 'two\nlines'}, {'frontend_page_title': []}):
             with self.subTest(changes=list(changes)):

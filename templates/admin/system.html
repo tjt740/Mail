@@ -1277,8 +1277,8 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="frontendIconFile">上传自定义图标</label>
-                        <input type="file" id="frontendIconFile" class="form-control" accept="image/png,image/jpeg,image/webp" onchange="uploadFrontendIcon(this)">
-                        <small>PNG、JPEG、WebP，最大 256 KB；建议使用正方形图片。</small>
+                        <input type="file" id="frontendIconFile" class="form-control" accept="image/png,image/jpeg,image/webp,image/gif" onchange="uploadFrontendIcon(this)">
+                        <small>PNG、JPEG、WebP、GIF，最大 2 MB；支持 GIF 动画，建议使用正方形图片。</small>
                         <input type="hidden" id="frontendIconImage" value="">
                         <button type="button" class="btn btn-secondary" onclick="resetFrontendIconImage()">恢复内置图标</button>
                     </div>
@@ -2140,8 +2140,8 @@
     async function uploadFrontendIcon(input) {
         const file = input.files[0];
         if (!file) return;
-        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 256 * 1024) {
-            showToast('请选择不超过 256 KB 的 PNG、JPEG 或 WebP 图片', 'error'); input.value = ''; return;
+        if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+            showToast('请选择不超过 2 MB 的 PNG、JPEG、WebP 或 GIF 图片', 'error'); input.value = ''; return;
         }
         const submit = document.getElementById('pageTitlesSubmit');
         submit.disabled = true;
