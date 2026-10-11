@@ -43,14 +43,16 @@
     .mailbox-page body #receiveModal .receive-body { display: flex; flex-direction: column; gap: 0; height: auto; padding: 0 !important; overflow: hidden; }
     .mailbox-page body #receiveModal .receive-sidebar {
         flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 8px; padding: 10px 12px; margin: 0; min-width: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+        align-self: stretch; gap: 12px; padding: 14px 16px; margin: 0; min-width: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
     }
-    .mailbox-page body .receive-account { grid-column: 1 / -1; min-width: 0; }
+    .mailbox-page body .receive-account { grid-column: 1 / -1; min-width: 0; padding: 0; border: 0; }
+    .mailbox-page body .receive-account-icon { display: none; }
+    .mailbox-page body .receive-folders { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0; border: 0; }
     .mailbox-page body .receive-mailbox-copy-row { display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; margin: 0; min-width: 0; }
     .mailbox-page body #receiveMailboxLabel { min-width: 0; font-size: 14px; line-height: 1.4; white-space: normal !important; overflow-wrap: anywhere; }
-    .mailbox-page body .receive-copy-btn { flex: 0 0 36px; width: 36px; height: 36px; }
+    .mailbox-page body .receive-copy-btn { position: static; flex: 0 0 36px; width: 36px; height: 36px; }
     .mailbox-page body .receive-count-field { min-width: 0; display: flex; align-items: center; gap: 8px; }
-    .mailbox-page body .receive-count-field .receive-mailbox-label { flex: 0 0 auto; margin: 0; font-size: 12px; }
+    .mailbox-page body .receive-count-field label { flex: 0 0 auto; margin: 0; font-size: 12px; }
     .mailbox-page body #emailCountInput { flex: 1; min-width: 0; height: 44px; font-size: 16px !important; }
     .mailbox-page body #receiveFetchBtn { min-width: 0; min-height: 44px; padding: 8px !important; margin: 0; white-space: normal; }
     .mailbox-page body .receive-tab { min-width: 0; min-height: 40px; padding: 8px; margin: 0; justify-content: center; font-size: 14px; white-space: normal; }
@@ -70,16 +72,13 @@
     .mailbox-page body .receive-table td:nth-child(2) .receive-cell { white-space: normal; overflow-wrap: anywhere; font-size: 15px; line-height: 1.5; font-weight: 600; }
     .mailbox-page body .receive-table td:nth-child(n+3) { color: var(--text-muted); font-size: 12px; }
     .mailbox-page body .receive-empty { padding: 32px 0; }
-    .mailbox-page body #receivePagination { flex: 0 0 auto; position: static; padding: 12px 16px; margin: 0; gap: 12px 16px; border-top: 1px solid var(--border); font-size: 12px; }
-    .mailbox-page body #receivePagination { justify-content: flex-end !important; }
-    .mailbox-page body #receivePagination .pagination-info { flex: 1 1 100%; margin: 0; font-size: 12px; }
-    .mailbox-page body #receivePagination .page-size-control { font-size: 12px; }
-    .mailbox-page body #receivePagination select { min-height: 36px; padding: 6px !important; }
     .mailbox-page body .receive-search-toolbar { padding: 12px 16px; }
+    .mailbox-page body .receive-list-heading { margin-bottom: 12px; }
+    .mailbox-page body .receive-list-heading h4 { font-size: 15px; }
+    .mailbox-page body #receiveMailCount { font-size: 11px; padding: 3px 8px; }
     .mailbox-page body .receive-search-suggestions { left: 16px; right: 16px; }
     .mailbox-page body #receiveSearchInput { min-height: 44px; }
     .mailbox-page body #receiveSearchClear { flex-basis: 36px; width: 36px; height: 44px; }
-    .mailbox-page body #receivePagination .receive-page-navigation button { min-width: 44px; min-height: 44px; }
     .mailbox-page body .receive-detail-shell { padding: 12px; }
     .mailbox-page body .receive-meta { grid-template-columns: minmax(0, 1fr); }
     .mailbox-page body .receive-meta-item { min-width: 0; }
@@ -117,4 +116,5 @@
     .mailbox-page body #receiveModal .receive-body { flex-direction: row; }
     .mailbox-page body #receiveModal .receive-sidebar { width: 240px; grid-template-columns: minmax(0, 1fr); align-content: start; overflow-y: auto; border-right: 1px solid var(--border); }
     .mailbox-page body .receive-account { grid-column: auto; }
+    .mailbox-page body .receive-folders { grid-template-columns: minmax(0, 1fr); }
 }

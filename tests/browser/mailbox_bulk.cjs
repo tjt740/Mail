@@ -762,7 +762,7 @@ test('group browsing is visible, searchable, remembers the last group and keeps 
     } finally { await page.close(); }
 });
 
-test('addresses and icons copy without receiving; email pagination stays inside the opened mailbox', async () => {
+test('addresses and icons copy without receiving; receiving stays inside the opened mailbox', async () => {
     const page = await newPage();
     try {
         await page.locator('#groupSearchInput').fill('客户');
@@ -804,9 +804,8 @@ test('addresses and icons copy without receiving; email pagination stays inside 
         await page.setViewportSize({ width: 1440, height: 1000 });
         await page.locator('tr[data-mailbox-id="30"] [data-action="receive"]').click();
         await page.waitForFunction(() => document.querySelector('#receiveTableBody').textContent.includes('Mail for account30@example.com'));
-        assert.equal(await page.locator('#receivePreviousPage').isDisabled(), true);
-        assert.equal(await page.locator('#receiveNextPage').isDisabled(), true);
-        assert.equal(await page.locator('#receivePagePosition').innerText(), '1 / 1');
+        assert.equal(await page.locator('#receivePagination').count(), 0);
+        assert.equal(await page.locator('#receiveMailCount').innerText(), '共 1 封邮件');
         assert.equal(await page.locator('#receiveMailboxLabel').innerText(), 'account30@example.com');
         await page.locator('#receiveModal .modal-close').click();
         assert.equal(await page.locator('#adminCurrentGroup').innerText(), '客户服务');
@@ -814,45 +813,43 @@ test('addresses and icons copy without receiving; email pagination stays inside 
     } finally { await page.close(); }
 });
 
-for (const width of [1440, 390, 320]) test(`received email search, suggestions and pagination stay scoped at ${width}px`, async () => {
+for (const width of [1440, 390, 320]) test(`received email search and continuous list stay scoped at ${width}px`, async () => {
     const page = await newPage({ width, height: 1000 });
     try {
+        const fetchRequest = page.waitForRequest(request => request.url().endsWith('/api/get_mail'));
         await page.locator('[data-action="receive"]').first().click();
+        assert.equal((await fetchRequest).postDataJSON().email_limit, 100);
         await page.waitForFunction(() => !receiveState.isFetching && receiveState.mails.length > 0);
         const account = await page.locator('#receiveMailboxLabel').innerText();
         const requests = received.length;
         await page.evaluate(() => {
-            receiveState.mails = Array.from({ length: 25 }, (_, index) => ({
+            receiveState.mails = Array.from({ length: 100 }, (_, index) => ({
                 id: `search-${index}`, folder: 'inbox',
-                subject: index % 12 === 0 ? `Invoice ${index}` : `Delivery ${index}`,
+                subject: [0, 12, 99].includes(index) ? `Invoice ${index}` : `Delivery ${index}`,
                 from: 'Support <help@example.com>', receivedAt: '2026-10-12 12:00:00',
                 body: index === 15 ? '<style>.hidden-marker{}</style><p>兑换码：<b>AB&amp;123</b></p><script>window.searchCodeRan=true</script>' : 'Parcel is ready.',
                 bodyType: index === 15 ? 'html' : 'text'
             }));
             receiveState.mails.push({ id: 'search-trash', folder: 'trash', subject: 'Invoice trash', from: 'trash@example.com', body: 'Trash only' });
-            receiveState.mails[24].subject = 'Invoice <img src=x onerror="window.searchCodeRan=true">';
+            receiveState.mails[99].subject = 'Invoice <img src=x onerror="window.searchCodeRan=true">';
             renderReceiveList();
         });
         const rows = page.locator('#receiveTableBody tr');
         const search = page.locator('#receiveSearchInput');
-        const position = page.locator('#receivePagePosition');
-        assert.equal(await position.innerText(), '1 / 3');
-        assert.equal(await rows.count(), 10);
-        assert.equal(await page.locator('#receivePreviousPage').isDisabled(), true);
-        await page.locator('#receiveNextPage').click();
-        assert.equal(await rows.first().locator('td').first().innerText(), '11');
-        assert.equal(await position.innerText(), '2 / 3');
-        await page.locator('#receiveNextPage').click();
-        assert.equal(await rows.count(), 5);
-        assert.equal(await page.locator('#receiveNextPage').isDisabled(), true);
+        assert.equal(await page.locator('#receivePagination, #receivePerPageSelect').count(), 0);
+        assert.equal(await page.locator('#emailCountInput').inputValue(), '100');
+        assert.equal(await rows.count(), 100);
+        assert.equal(await page.locator('#receiveMailCount').innerText(), '共 100 封邮件');
+        assert.equal(await page.locator('.receive-folder-count[data-folder="inbox"]').innerText(), '100');
+        await rows.last().scrollIntoViewIfNeeded();
+        assert.equal(await rows.last().locator('td').first().innerText(), '100');
         assert.equal(await page.locator('#receiveMailboxLabel').innerText(), account);
-        assert.equal(received.length, requests, 'paging must not fetch another mailbox');
+        assert.equal(received.length, requests, 'scrolling must not send another mail request');
 
         await search.fill('invoice');
         await page.waitForFunction(() => getFilteredReceiveMails().length === 4);
-        assert.equal(await rows.count(), 4, 'search must include every page and received folder');
+        assert.equal(await rows.count(), 4, 'search must include the whole list and every received folder');
         assert.match(await rows.last().innerText(), /垃圾箱/);
-        assert.equal(await position.innerText(), '1 / 1');
         assert.equal(await page.locator('#receiveSearchSuggestions').isVisible(), true);
         assert.equal(await page.locator('#receiveSearchSuggestions img, #receiveTableBody img').count(), 0);
         assert.equal(await page.evaluate(() => window.searchCodeRan), undefined);
@@ -878,47 +875,43 @@ for (const width of [1440, 390, 320]) test(`received email search, suggestions a
         assert.equal(await page.evaluate(() => window.searchCodeRan), undefined);
 
         await search.fill('HELP@EXAMPLE.COM');
-        await page.waitForFunction(() => getFilteredReceiveMails().length === 25);
+        await page.waitForFunction(() => getFilteredReceiveMails().length === 100);
         await search.press('Escape');
-        await page.locator('#receiveNextPage').click();
-        await rows.nth(2).click();
+        await rows.nth(12).scrollIntoViewIfNeeded();
+        const beforeReading = await page.locator('#receiveListView').evaluate(el => el.scrollTop);
+        await rows.nth(12).click();
         await page.locator('.receive-back').click();
-        assert.equal(await position.innerText(), '2 / 3');
+        assert.equal(await page.locator('#receiveListView').evaluate(el => el.scrollTop), beforeReading);
         assert.equal(await search.inputValue(), 'HELP@EXAMPLE.COM');
-        assert.equal(await rows.nth(2).evaluate(el => el === document.activeElement), true);
-        await page.locator('#receivePerPageSelect').selectOption('20');
-        assert.equal(await position.innerText(), '1 / 2');
-        assert.equal(await rows.count(), 20);
+        assert.equal(await rows.nth(12).evaluate(el => el === document.activeElement), true);
+        assert.equal(await rows.count(), 100);
 
         await search.fill('hidden-marker');
         await page.waitForFunction(() => receiveState.searchQuery === 'hidden-marker');
         assert.equal(await page.locator('.receive-empty').innerText(), '没有匹配的邮件');
-        assert.equal(await position.innerText(), '1 / 1');
-        assert.equal(await page.locator('#receivePreviousPage').isDisabled(), true);
-        assert.equal(await page.locator('#receiveNextPage').isDisabled(), true);
+        assert.equal(await page.locator('#receiveMailCount').innerText(), '共 0 封邮件');
         await page.locator('#receiveSearchClear').click();
-        assert.equal(await rows.count(), 20);
+        assert.equal(await rows.count(), 100);
         await search.fill('invoice');
         await page.waitForFunction(() => receiveState.searchQuery === 'invoice');
         await page.locator('.receive-tab[data-folder="trash"]').click();
         assert.equal(await rows.count(), 1);
         assert.match(await rows.innerText(), /Invoice trash/);
-        assert.equal(await position.innerText(), '1 / 1');
         assert.equal(await search.inputValue(), '', 'choosing a folder exits mailbox-wide search');
         await page.locator('.receive-tab[data-folder="inbox"]').click();
-        assert.equal(await rows.count(), 20);
+        assert.equal(await rows.count(), 100);
 
         const dimensions = await page.locator('#receiveModal').evaluate(el => {
-            const main = el.querySelector('.receive-main'), footer = el.querySelector('#receivePagination');
-            const select = el.querySelector('.page-size-control').getBoundingClientRect();
-            const nav = el.querySelector('.receive-page-navigation').getBoundingClientRect();
-            const bounds = footer.getBoundingClientRect();
-            return { overflow: main.scrollWidth > main.clientWidth + 1, gap: nav.left - select.right,
-                rightPadding: bounds.right - nav.right, bottomPadding: bounds.bottom - nav.bottom };
+            const main = el.querySelector('.receive-main'), list = el.querySelector('#receiveListView');
+            const header = el.querySelector('#receiveSearchToolbar').getBoundingClientRect();
+            const field = el.querySelector('.receive-search-field').getBoundingClientRect();
+            const bounds = main.getBoundingClientRect();
+            return { overflow: main.scrollWidth > main.clientWidth + 1,
+                sidePadding: field.left - header.left, bottom: bounds.bottom - list.getBoundingClientRect().bottom };
         });
         assert.equal(dimensions.overflow, false, JSON.stringify(dimensions));
-        assert.ok(dimensions.gap >= 12, JSON.stringify(dimensions));
-        assert.ok(dimensions.rightPadding >= 16 && dimensions.bottomPadding >= 12, JSON.stringify(dimensions));
+        assert.ok(dimensions.sidePadding >= 16, JSON.stringify(dimensions));
+        assert.ok(dimensions.bottom <= 2, 'the list should occupy the old pagination area');
         if (process.env.SCREENSHOT_DIR) {
             fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
             await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mail-search-list-${width}.png`) });
@@ -930,7 +923,6 @@ for (const width of [1440, 390, 320]) test(`received email search, suggestions a
         await page.locator('[data-action="receive"]').nth(1).click();
         await page.waitForFunction(() => !receiveState.isFetching && receiveState.mails.length > 0);
         assert.equal(await search.inputValue(), '');
-        assert.equal(await position.innerText(), '1 / 1');
         assert.notEqual(await page.locator('#receiveMailboxLabel').innerText(), account);
     } finally { await page.close(); }
 });
@@ -1032,7 +1024,6 @@ for (const width of [1440, 390]) test(`all eight palettes keep lists, menus, rec
             await page.waitForFunction(() => !receiveState.isFetching && receiveState.mails.length > 0);
             await page.evaluate(() => {
                 receiveState.mails = Array.from({ length: 12 }, (_, i) => ({ id: String(i), folder: 'inbox', subject: 'Theme fixture — 邮件标题 ' + i, from: 'sender@example.com', to: 'reader@example.com', receivedAt: '2026-10-04T08:00:00Z', body: 'Confirmation code: 123456\n这是一封用于检查主题的示例邮件。', bodyType: 'text' }));
-                receiveState.perPage = 10;
                 renderReceiveList();
             });
             await check('receive-list');
@@ -1045,7 +1036,7 @@ for (const width of [1440, 390]) test(`all eight palettes keep lists, menus, rec
             });
             await check('receive-error');
             assert.equal(await page.locator('#receiveErrorPanel').isVisible(), true);
-            assert.equal(await page.locator('#receiveTableBody tr').count(), 10);
+            assert.equal(await page.locator('#receiveTableBody tr').count(), 12);
             const modal = await page.locator('#receiveModal .modal-content').boundingBox();
             assert.ok(modal.x >= 0 && modal.x + modal.width <= width);
             if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `receive-${theme}-${width}.png`) });

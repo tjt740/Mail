@@ -1456,8 +1456,8 @@
 
     .receive-body {
         display: grid;
-        grid-template-columns: 238px minmax(0, 1fr);
-        gap: 20px;
+        grid-template-columns: 264px minmax(0, 1fr);
+        gap: 24px;
         min-height: 0;
         height: min(720px, calc(90vh - 78px));
         overflow: hidden;
@@ -1470,13 +1470,13 @@
         background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
         border: 1px solid var(--border);
         border-radius: 18px;
-        padding: 18px;
+        padding: 20px;
         display: flex;
         flex-direction: column;
-        gap: 14px;
-        align-self: stretch;
+        gap: 16px;
+        align-self: start;
         min-height: 0;
-        box-shadow: 0 18px 38px rgba(92, 72, 52, 0.08);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
     }
 
     .receive-mailbox-label {
@@ -1486,11 +1486,23 @@
     }
 
     .receive-account {
+        position: relative;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
         min-width: 0;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border);
     }
+
+    .receive-account-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; color: var(--primary-color); background: var(--primary-soft); }
+    .receive-account-icon svg { width: 22px; height: 22px; fill: currentColor; }
+    .receive-count-field { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .receive-count-field label { margin: 0; color: var(--text-muted); font-size: 13px; white-space: nowrap; }
+    #emailCountInput { width: 88px; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font-size: 14px; }
+    .receive-folders { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .receive-folder-name { flex: 1; text-align: left; }
+    .receive-folder-count { flex: 0 0 auto; min-width: 26px; padding: 2px 6px; border-radius: 6px; background: var(--surface-2); color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 
     .receive-mailbox-value {
         font-weight: 700;
@@ -1498,8 +1510,8 @@
         word-break: break-all;
         max-height: 72px;
         overflow: auto;
-        line-height: 1.35;
-        font-size: 16px;
+        line-height: 1.5;
+        font-size: 15px;
     }
 
     .receive-mailbox-copy-row {
@@ -1515,6 +1527,9 @@
     }
 
     .receive-copy-btn {
+        position: absolute;
+        top: 0;
+        right: 0;
         flex: 0 0 auto;
         width: 34px;
         height: 34px;
@@ -1659,14 +1674,14 @@
         border-color: var(--border);
         background: var(--surface-2);
         transform: translateY(-1px);
-        box-shadow: 0 10px 22px rgba(92, 72, 52, 0.08);
+        box-shadow: none;
     }
 
     .receive-tab.active {
         background: var(--surface-2);
         border-color: var(--primary-color);
         color: var(--primary-color);
-        box-shadow: 0 12px 24px rgba(201, 100, 66, 0.13);
+        box-shadow: none;
     }
 
     .receive-tab.active::before {
@@ -1733,16 +1748,20 @@
         min-width: 0;
         min-height: 0;
         overflow: hidden;
-        box-shadow: 0 18px 38px rgba(92, 72, 52, 0.08);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
     }
 
     .receive-search-toolbar {
         position: relative;
         z-index: 4;
         flex: 0 0 auto;
-        padding: 16px 20px;
+        padding: 20px 24px;
         border-bottom: 1px solid var(--border);
     }
+
+    .receive-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+    .receive-list-heading h4 { margin: 0; font-size: 17px; font-weight: 700; color: var(--text); }
+    #receiveMailCount { padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--text-muted); font-size: 12px; white-space: nowrap; }
 
     .receive-search-field {
         display: flex;
@@ -1752,20 +1771,21 @@
         padding: 0 12px;
         border: 1px solid var(--border);
         border-radius: 10px;
-        background: var(--surface);
+        background: var(--surface-2);
         color: var(--text-muted);
     }
 
     .receive-search-field:focus-within {
         border-color: var(--primary-color);
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 12%, transparent);
+        background: var(--surface);
     }
 
     #receiveSearchInput {
         flex: 1;
         width: 100%;
         min-width: 0;
-        min-height: 40px;
+        min-height: 44px;
         padding: 8px 0;
         border: 0 !important;
         outline: 0;
@@ -1793,8 +1813,8 @@
     .receive-search-suggestions {
         position: absolute;
         top: calc(100% - 8px);
-        left: 20px;
-        right: 20px;
+        left: 24px;
+        right: 24px;
         max-height: min(300px, 35dvh);
         overflow-y: auto;
         padding: 6px;
@@ -1885,7 +1905,7 @@
 
     .receive-table {
         width: 100%;
-        min-width: 1040px;
+        min-width: 640px;
         border-collapse: collapse;
         margin-top: 0;
         table-layout: fixed;
@@ -1909,20 +1929,23 @@
     }
 
     .receive-col-index {
-        width: 70px;
+        width: 52px;
     }
 
     .receive-col-subject {
-        width: 44%;
+        width: auto;
     }
 
     .receive-col-from {
-        width: 38%;
+        width: 30%;
     }
 
     .receive-col-time {
-        width: 180px;
+        width: 156px;
     }
+
+    .receive-table td:nth-child(2) { font-weight: 600; }
+    .receive-table td:nth-child(n+3) { color: var(--text-muted); font-size: 13px; }
 
     .receive-cell {
         display: block;
@@ -2108,34 +2131,6 @@
         flex-wrap: wrap;
         gap: 8px;
     }
-
-    #receivePagination {
-        flex: 0 0 auto;
-        position: static;
-        background: var(--surface);
-        padding: 16px 20px;
-        margin: 0;
-        border-top: 1px solid var(--border);
-        display: flex;
-        justify-content: flex-end;
-        flex-wrap: wrap !important;
-        gap: 12px 20px;
-        z-index: 2;
-    }
-
-    #receivePagination .page-size-control {
-        gap: 12px;
-    }
-
-    #receivePagination .receive-page-navigation {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 12px;
-    }
-
-    #receivePagePosition { min-width: 44px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-muted); }
-    #receivePagination .receive-page-navigation button { min-width: 36px; min-height: 36px; padding: 6px; }
 
     .toolbar-row {
         display: grid;
@@ -3561,6 +3556,7 @@
         <div class="modal-body receive-body">
             <div class="receive-sidebar">
                 <div class="receive-account">
+                    <span class="receive-account-icon" aria-hidden="true"><svg><use href="#ai-mail"></use></svg></span>
                     <div class="receive-mailbox-copy-row">
                         <div class="receive-mailbox-value" id="receiveMailboxLabel">-</div>
                         <button class="receive-copy-btn" type="button" onclick="copyCurrentReceiveMailbox()" title="复制邮箱" aria-label="复制邮箱">
@@ -3569,15 +3565,21 @@
                     </div>
                 </div>
                 <div class="receive-count-field">
-                    <div class="receive-mailbox-label">收取<span id="emailCountDisplay">10</span>封</div>
-                    <input type="number" id="emailCountInput" min="1" max="100" value="10" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px;" oninput="updateEmailCountDisplay(this.value)">
+                    <label for="emailCountInput">收取数量</label>
+                    <input type="number" id="emailCountInput" min="1" max="100" value="100" onchange="getReceiveFetchLimit()">
                 </div>
                 <button class="btn btn-primary receive-fetch-btn" id="receiveFetchBtn" onclick="fetchMailboxMails()"><span class="receive-fetch-label">收取邮件</span></button>
-                <button class="receive-tab active" data-folder="inbox" onclick="switchReceiveFolder('inbox')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-download"></use></svg></span> 收件箱</button>
-                <button class="receive-tab" data-folder="trash" onclick="switchReceiveFolder('trash')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 垃圾箱</button>
+                <div class="receive-folders">
+                    <button class="receive-tab active" data-folder="inbox" onclick="switchReceiveFolder('inbox')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-download"></use></svg></span><span class="receive-folder-name">收件箱</span><span class="receive-folder-count" data-folder="inbox" translate="no">0</span></button>
+                    <button class="receive-tab" data-folder="trash" onclick="switchReceiveFolder('trash')"><span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span><span class="receive-folder-name">垃圾箱</span><span class="receive-folder-count" data-folder="trash" translate="no">0</span></button>
+                </div>
             </div>
             <div class="receive-main">
                 <div class="receive-search-toolbar" id="receiveSearchToolbar">
+                    <div class="receive-list-heading">
+                        <h4 id="receiveListTitle">收件箱</h4>
+                        <span id="receiveMailCount" role="status" aria-live="polite">共 0 封邮件</span>
+                    </div>
                     <div class="receive-search-field">
                         <span class="anticon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
                         <input id="receiveSearchInput" type="search" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="receiveSearchSuggestions" aria-label="搜索邮件" placeholder="搜索已收取邮件的标题、发件人或正文">
@@ -3618,7 +3620,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="pagination-container" id="receivePagination"></div>
             </div>
         </div>
     </div>
@@ -4277,8 +4278,6 @@
     let receiveState = {
         mailboxId: null,
         folder: 'inbox',
-        perPage: 10,
-        page: 1,
         searchQuery: '',
         mails: [],
         activeMail: null,
@@ -6383,8 +6382,7 @@
         receiveState.fetchToken += 1;
         receiveState.mailboxId = Number(mailboxId);
         receiveState.folder = 'inbox';
-        receiveState.page = 1;
-        receiveState.perPage = 10;
+        document.getElementById('emailCountInput').value = 100;
         receiveState.searchQuery = '';
         receiveState.listScrollTop = 0;
         clearTimeout(receiveSearchTimer);
@@ -6427,7 +6425,6 @@
 
     function switchReceiveFolder(folder) {
         receiveState.folder = folder;
-        receiveState.page = 1;
         receiveState.activeMail = null;
         receiveState.searchQuery = '';
         clearTimeout(receiveSearchTimer);
@@ -6437,12 +6434,6 @@
         updateReceiveTabActive();
         renderReceiveView();
         document.getElementById('receiveListView').scrollTop = 0;
-    }
-
-    function changeReceivePerPage() {
-        const select = document.getElementById('receivePerPageSelect');
-        receiveState.perPage = parseInt(select.value, 10) || 10;
-        gotoReceivePage(1);
     }
 
     function generateRandomMailCount() {
@@ -6580,9 +6571,7 @@
             return;
         }
         
-        // Get custom email count from input (default 10, max 100)
-        const emailCountInput = document.getElementById('emailCountInput');
-        const emailLimit = emailCountInput ? Math.min(Math.max(parseInt(emailCountInput.value) || 10, 1), 100) : 10;
+        const emailLimit = getReceiveFetchLimit();
         setReceiveError('');
         setReceiveFetchingState(true);
         
@@ -6667,7 +6656,6 @@
                 const isCurrentReceiveView = receiveState.mailboxId === targetMailboxId && receiveState.fetchToken === fetchToken;
                 if (isCurrentReceiveView) {
                     receiveState.mails = allMails;
-                    if (!receiveState.activeMail) receiveState.page = 1;
                     setReceiveError('');
                 }
                 
@@ -6800,7 +6788,6 @@
         const input = document.getElementById('receiveSearchInput');
         input.value = value;
         receiveState.searchQuery = value.trim();
-        receiveState.page = 1;
         receiveState.listScrollTop = 0;
         document.getElementById('receiveSearchClear').classList.toggle('is-hidden', !value);
         renderReceiveList();
@@ -6916,38 +6903,32 @@
             listView.style.display = showDetail ? 'none' : 'block';
             detailView.style.display = showDetail ? 'block' : 'none';
             if (changed) MailboxInteractions.reveal(showDetail ? detailView : listView);
-            const pagination = document.getElementById('receivePagination');
-            if (pagination) {
-                pagination.classList.toggle('is-hidden', showDetail);
-            }
         }
     }
 
     function renderReceiveList() {
         setReceiveView(false);
 
-        const perPageSelect = document.getElementById('receivePerPageSelect');
-        if (perPageSelect) {
-            perPageSelect.value = receiveState.perPage;
-        }
-
         const filtered = getFilteredReceiveMails();
-        const totalPages = Math.max(1, Math.ceil(filtered.length / receiveState.perPage));
-        receiveState.page = Math.max(1, Math.min(receiveState.page, totalPages));
-        const start = (receiveState.page - 1) * receiveState.perPage;
-        const pageData = filtered.slice(start, start + receiveState.perPage);
+        document.getElementById('receiveListTitle').textContent = receiveState.searchQuery
+            ? '搜索结果' : receiveState.folder === 'trash' ? '垃圾箱' : '收件箱';
+        document.getElementById('receiveMailCount').textContent = `共 ${filtered.length} 封邮件`;
+        document.querySelectorAll('.receive-folder-count').forEach(badge => {
+            const count = receiveState.mails.filter(mail => mail.folder === badge.dataset.folder).length;
+            badge.textContent = window.AppI18n ? window.AppI18n.formatNumber(count) : String(count);
+        });
 
         const tbody = document.getElementById('receiveTableBody');
         if (tbody) {
-            const viewKey = JSON.stringify([receiveState.folder, receiveState.page, pageData.map(mail => mail.id)]);
+            const viewKey = JSON.stringify([receiveState.folder, receiveState.searchQuery, filtered.map(mail => mail.id)]);
             const changed = tbody.dataset.viewKey !== viewKey;
             tbody.dataset.viewKey = viewKey;
             tbody.innerHTML = '';
-            if (pageData.length === 0) {
+            if (filtered.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${RECEIVE_TABLE_COLUMNS}" class="receive-empty">${receiveState.searchQuery ? '没有匹配的邮件' : '暂无邮件'}</td></tr>`;
             } else {
-                pageData.forEach((mail, index) => {
-                    const serialNumber = start + index + 1;
+                filtered.forEach((mail, index) => {
+                    const serialNumber = index + 1;
                     const row = document.createElement('tr');
                     row.tabIndex = 0;
                     row.setAttribute('role', 'button');
@@ -6968,41 +6949,6 @@
             if (changed) MailboxInteractions.reveal(tbody);
         }
 
-        renderReceivePagination(totalPages, filtered.length);
-    }
-
-    function renderReceivePagination(totalPages, totalCount) {
-        const container = document.getElementById('receivePagination');
-        if (!container) return;
-        container.innerHTML = `
-            <div class="pagination-info" role="status" aria-live="polite">共 ${totalCount} 封邮件</div>
-            <div class="page-size-control">
-                <label for="receivePerPageSelect">每页</label>
-                <select id="receivePerPageSelect" onchange="changeReceivePerPage()">
-                    ${[10, 20, 50, 100, 150, 200, 300].map(size => `<option value="${size}" ${receiveState.perPage === size ? 'selected' : ''}>${size}条</option>`).join('')}
-                </select>
-            </div>
-            <nav class="receive-page-navigation" aria-label="邮件分页">
-                <button type="button" id="receivePreviousPage" class="page-btn" onclick="gotoReceivePage(receiveState.page - 1)" aria-label="上一页" ${receiveState.page <= 1 ? 'disabled' : ''}>←</button>
-                <span id="receivePagePosition" aria-live="polite">${receiveState.page} / ${totalPages}</span>
-                <button type="button" id="receiveNextPage" class="page-btn" onclick="gotoReceivePage(receiveState.page + 1)" aria-label="下一页" ${receiveState.page >= totalPages ? 'disabled' : ''}>→</button>
-            </nav>`;
-    }
-
-    function gotoReceivePage(page) {
-        const focusedControl = document.activeElement?.closest('#receivePagination') ? document.activeElement.id : '';
-        receiveState.page = page;
-        receiveState.activeMail = null;
-        closeReceiveSearchSuggestions();
-        renderReceiveView();
-        document.getElementById('receiveListView').scrollTop = 0;
-        const control = focusedControl && document.getElementById(focusedControl);
-        if (control) {
-            const target = control.disabled
-                ? document.getElementById(focusedControl === 'receiveNextPage' ? 'receivePreviousPage' : 'receiveNextPage')
-                : control;
-            if (!target.disabled) target.focus({ preventScroll: true });
-        }
     }
 
     function openReceiveDetail(mailId) {
@@ -7108,7 +7054,7 @@
         receiveState.activeMail = null;
         renderReceiveList();
         document.getElementById('receiveListView').scrollTop = receiveState.listScrollTop || 0;
-        const index = getFilteredReceiveMails().findIndex(mail => mail.id === activeId) - (receiveState.page - 1) * receiveState.perPage;
+        const index = getFilteredReceiveMails().findIndex(mail => mail.id === activeId);
         document.querySelectorAll('#receiveTableBody tr')[index]?.focus({ preventScroll: true });
     }
     
@@ -8669,19 +8615,13 @@
         MailboxInteractions.dismiss(toast);
     }
     
-    function updateEmailCountDisplay(value) {
-        const count = Math.min(Math.max(parseInt(value) || 10, 1), 100);
-        const display = document.getElementById('emailCountDisplay');
-        if (display) {
-            display.textContent = count;
-        }
-        // Update the input value to match the constrained value
+    function getReceiveFetchLimit() {
         const input = document.getElementById('emailCountInput');
-        if (input && parseInt(input.value) !== count) {
-            input.value = count;
-        }
+        const count = Math.min(Math.max(parseInt(input?.value, 10) || 100, 1), 100);
+        if (input) input.value = count;
+        return count;
     }
-    
+
     // 工具函数
     function escapeHtml(text) {
         const div = document.createElement('div');
