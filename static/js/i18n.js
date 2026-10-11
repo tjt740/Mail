@@ -2482,6 +2482,19 @@
                 : `Group "${match[1]}" already exists.`;
         }
 
+        if (text === '将添加顶级分组，添加后会自动选中。') {
+            return lang === 'fil' ? 'Magdaragdag ng pangunahing grupo at awtomatiko itong pipiliin.' : lang === 'vi'
+                ? 'Sẽ thêm nhóm cấp cao nhất và tự động chọn sau khi thêm.'
+                : 'A top-level group will be added and selected automatically.';
+        }
+
+        match = text.match(/^将在“(.+)”下添加子分组，添加后会自动选中。$/);
+        if (match) {
+            return lang === 'fil' ? `Magdaragdag ng subgroup sa ilalim ng "${match[1]}" at awtomatiko itong pipiliin.` : lang === 'vi'
+                ? `Sẽ thêm nhóm con trong "${match[1]}" và tự động chọn sau khi thêm.`
+                : `A subgroup will be added under "${match[1]}" and selected automatically.`;
+        }
+
         match = text.match(/^分组名称可用，点击添加后会自动选中。$/);
         if (match) {
             return lang === 'fil' ? 'Maaaring gamitin ang pangalan ng grupo at awtomatiko itong mapipili pagkatapos idagdag.' : lang === 'vi'

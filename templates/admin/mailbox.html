@@ -3567,7 +3567,7 @@
                     <div class="form-group">
                         <label for="groupSelect">分组</label>
                         <div class="mailbox-group-picker">
-                            <select id="groupSelect">
+                            <select id="groupSelect" onchange="validateMailboxNewGroupName()">
                                 <!-- 分组选项通过脚本填充 -->
                             </select>
                             <div class="mailbox-group-create">
@@ -3692,7 +3692,7 @@
                     <div class="form-group">
                         <label for="batchGroupSelect">分组</label>
                         <div class="batch-group-picker">
-                            <select id="batchGroupSelect">
+                            <select id="batchGroupSelect" onchange="validateBatchNewGroupName()">
                                 <!-- 分组选项通过脚本填充 -->
                             </select>
                             <div class="batch-group-create">
@@ -5109,15 +5109,36 @@
             result.push({ ...group, path: currentPath.join('\\') });
             children.forEach(child => traverse(child, currentPath));
         };
-        topGroups.forEach(group => {
-            const children = groups.filter(g => g.parentId === group.id && ![ROOT_GROUP_ID, UNGROUPED_GROUP_ID].includes(g.id));
-            if (children.length === 0) {
-                result.push({ ...group, path: group.name });
-            } else {
-                children.forEach(child => traverse(child, [group.name]));
-            }
-        });
+        topGroups.forEach(group => traverse(group, []));
         return result;
+    }
+
+    function getGroupCreationParent(selectId) {
+        const id = Number(document.getElementById(selectId)?.value);
+        return id > 0 ? getGroupById(id) || null : null;
+    }
+
+    function getGroupCreationHint(selectId) {
+        const parent = getGroupCreationParent(selectId);
+        if (!parent) return '将添加顶级分组，添加后会自动选中。';
+        const path = getSelectableGroups().find(group => group.id === parent.id)?.path || parent.name;
+        return `将在“${path}”下添加子分组，添加后会自动选中。`;
+    }
+
+    function expandGroupAncestors(groupId) {
+        let ancestor = getGroupById(groupId)?.parentId;
+        const seen = new Set();
+        while (ancestor && !seen.has(ancestor)) {
+            seen.add(ancestor);
+            collapsedGroups[ancestor] = false;
+            ancestor = getGroupById(ancestor)?.parentId;
+        }
+        saveGroupCollapseState();
+    }
+
+    function revealCreatedGroup(groupId) {
+        document.getElementById('groupSearchInput').value = '';
+        expandGroupAncestors(groupId);
     }
 
     function normalizeGroupNameForCompare(name) {
@@ -5149,7 +5170,7 @@
 
         if (!name) {
             button.disabled = true;
-            setBatchGroupFeedback('可直接新增分组，添加后会自动选中。');
+            setBatchGroupFeedback(getGroupCreationHint('batchGroupSelect'));
             return false;
         }
 
@@ -5161,7 +5182,7 @@
         }
 
         button.disabled = false;
-        setBatchGroupFeedback('分组名称可用，点击添加后会自动选中。', 'success');
+        setBatchGroupFeedback(getGroupCreationHint('batchGroupSelect'), 'success');
         return true;
     }
 
@@ -5176,6 +5197,7 @@
         const input = document.getElementById('batchNewGroupName');
         const button = document.getElementById('batchCreateGroupBtn');
         const name = input.value.trim();
+        const parentId = getGroupCreationParent('batchGroupSelect')?.id || null;
         let keepServerMessage = false;
         let createdGroup = false;
 
@@ -5191,7 +5213,7 @@
                 body: JSON.stringify({
                     action: 'add',
                     name,
-                    parent_id: null,
+                    parent_id: parentId,
                     sort_order: 0
                 })
             });
@@ -5207,11 +5229,12 @@
             const newGroup = {
                 id: data.group_id,
                 name,
-                parentId: null,
-                parent_id: null,
+                parentId,
+                parent_id: parentId,
                 mailboxCount: 0
             };
             groups.push(newGroup);
+            revealCreatedGroup(newGroup.id);
             recalculateGroupCounts();
             renderGroupTree();
             refreshGroupSelects(
@@ -5255,7 +5278,7 @@
 
         if (!name) {
             button.disabled = true;
-            setMailboxGroupFeedback('可直接新增分组，添加后会自动选中。');
+            setMailboxGroupFeedback(getGroupCreationHint('groupSelect'));
             return false;
         }
 
@@ -5267,7 +5290,7 @@
         }
 
         button.disabled = false;
-        setMailboxGroupFeedback('分组名称可用，点击添加后会自动选中。', 'success');
+        setMailboxGroupFeedback(getGroupCreationHint('groupSelect'), 'success');
         return true;
     }
 
@@ -5285,7 +5308,7 @@
             button.disabled = true;
             button.textContent = '添加分组';
         }
-        setMailboxGroupFeedback('可直接新增分组，添加后会自动选中。');
+        setMailboxGroupFeedback(getGroupCreationHint('groupSelect'));
     }
 
     async function createMailboxGroupFromInput() {
@@ -5293,6 +5316,7 @@
         const input = document.getElementById('mailboxNewGroupName');
         const button = document.getElementById('mailboxCreateGroupBtn');
         const name = input.value.trim();
+        const parentId = getGroupCreationParent('groupSelect')?.id || null;
         let keepServerMessage = false;
         let createdGroup = false;
 
@@ -5308,7 +5332,7 @@
                 body: JSON.stringify({
                     action: 'add',
                     name,
-                    parent_id: null,
+                    parent_id: parentId,
                     sort_order: 0
                 })
             });
@@ -5324,11 +5348,12 @@
             const newGroup = {
                 id: data.group_id,
                 name,
-                parentId: null,
-                parent_id: null,
+                parentId,
+                parent_id: parentId,
                 mailboxCount: 0
             };
             groups.push(newGroup);
+            revealCreatedGroup(newGroup.id);
             recalculateGroupCounts();
             renderGroupTree();
             refreshGroupSelects(
@@ -5578,13 +5603,7 @@
         const savedGroup = getStoredPreference(`mailboxActiveGroup:${CURRENT_ADMIN_USERNAME}`);
         const restoredGroup = new URLSearchParams(window.location.search).get('group') === 'all' ? null : groups.find(group => String(group.id) === savedGroup);
         selectedGroupId = restoredGroup?.id || ROOT_GROUP_ID;
-        let ancestor = getGroupById(selectedGroupId)?.parentId;
-        const seenAncestors = new Set();
-        while (ancestor && !seenAncestors.has(ancestor)) {
-            seenAncestors.add(ancestor);
-            collapsedGroups[ancestor] = false;
-            ancestor = getGroupById(ancestor)?.parentId;
-        }
+        expandGroupAncestors(selectedGroupId);
         renderGroupTree();
         refreshGroupSelects();
         renderMailboxView(1);
@@ -5929,7 +5948,9 @@
                         parent_id: groupModalParentId || null
                     };
                     groups.push(newGroup);
+                    revealCreatedGroup(newGroup.id);
                     selectedGroupId = newGroup.id;
+                    setStoredPreference(`mailboxActiveGroup:${CURRENT_ADMIN_USERNAME}`, String(newGroup.id));
                     recalculateGroupCounts();  // Recalculate counts after group creation
                     showToast('分组添加成功', 'success');
                 } else {
@@ -6984,7 +7005,7 @@
             button.disabled = true;
             button.textContent = '添加分组';
         }
-        setBatchGroupFeedback('可直接新增分组，添加后会自动选中。');
+        setBatchGroupFeedback(getGroupCreationHint('batchGroupSelect'));
     }
     
     // 显示服务器管理模态框
