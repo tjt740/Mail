@@ -177,3 +177,95 @@ test('sidebar child creation reveals and restores the new child through collapse
         assert.equal(await page.locator('.group-item[data-group-id="4"]').isVisible(), true);
     } finally { await page.close(); }
 });
+
+
+for (const width of [1440, 1024, 390]) test(`nested group branches at ${width}px separate selection, expansion and settings`, async () => {
+    const page = await newPage(width);
+    try {
+        groups.push({ id: 4, name: '孙级分组', parent_id: 2 });
+        await page.reload();
+        await page.waitForFunction(() => document.querySelector('#adminMailboxCount').textContent === '2');
+        await page.evaluate(() => setSelectedGroup(1));
+        if (width < 1000) await page.locator('#mobileGroupPanelToggle').click();
+        const parent = page.locator('.group-item[data-group-id="1"]');
+        const child = page.locator('.group-item[data-group-id="2"]');
+        const grandchild = page.locator('.group-item[data-group-id="4"]');
+        const sibling = page.locator('.group-item[data-group-id="3"]');
+        await parent.locator('.group-toggle').click();
+        await child.locator('.group-toggle').click();
+        await page.mouse.move(0, 0);
+        const boxes = await Promise.all([parent, child, grandchild, sibling].map(row => row.boundingBox()));
+        assert.ok(boxes[1].x >= boxes[0].x + 20 && boxes[1].width <= boxes[0].width - 20, 'a child row is physically inset, not just its text');
+        assert.ok(boxes[2].x >= boxes[1].x + 20 && boxes[2].width <= boxes[1].width - 20, 'every descendant gains another level of indentation');
+        assert.ok(boxes[2].height <= 44, 'the desktop sidebar leaves room for a short grandchild name and count');
+        assert.equal(boxes[3].x, boxes[0].x, 'independent groups remain at the root');
+        assert.ok(boxes[3].y >= boxes[2].y + boxes[2].height, 'the entire branch appears before the next root');
+        assert.equal(await grandchild.locator('.group-toggle').count(), 0);
+        const style = await child.evaluate(row => ({
+            background: getComputedStyle(row).backgroundColor,
+            border: getComputedStyle(row).borderTopColor,
+            connector: getComputedStyle(row, '::before').height,
+            branch: getComputedStyle(row.parentElement.parentElement).borderLeftWidth
+        }));
+        assert.equal(style.background, 'rgba(0, 0, 0, 0)', 'unselected descendants use a lightweight tree row');
+        assert.equal(style.border, 'rgba(0, 0, 0, 0)');
+        assert.equal(style.connector, '1px');
+        assert.equal(style.branch, '1px');
+        const controls = await child.evaluate(row => {
+            const arrow = row.querySelector('.group-toggle').getBoundingClientRect();
+            const name = row.querySelector('.group-name').getBoundingClientRect();
+            const settings = row.querySelector('.group-actions-button').getBoundingClientRect();
+            return { arrowRight: arrow.right, nameLeft: name.left, nameRight: name.right, settingsLeft: settings.left };
+        });
+        assert.ok(controls.arrowRight <= controls.nameLeft && controls.nameRight <= controls.settingsLeft);
+        const actions = child.locator('.group-actions-button');
+        await actions.click();
+        assert.equal(await page.locator('#groupContextMenu').isVisible(), true);
+        assert.equal(await child.locator('.group-toggle').getAttribute('aria-expanded'), 'true', 'settings must not collapse the branch');
+        assert.equal(await page.locator('#adminCurrentGroup').innerText(), 'Capcut', 'settings must not select a different group');
+        await page.keyboard.press('Escape');
+        assert.equal(await actions.evaluate(node => node === document.activeElement), true);
+        await page.mouse.move(0, 0);
+        if (process.env.SCREENSHOT_DIR) {
+            fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `nested-tree-${width}.png`) });
+        }
+        await parent.locator('.group-toggle').click();
+        await child.waitFor({ state: 'hidden' });
+        assert.equal(await page.locator('#adminCurrentGroup').innerText(), 'Capcut');
+        await parent.locator('.group-toggle').press('Enter');
+        await grandchild.waitFor({ state: 'visible' });
+        assert.equal(await page.locator('#groupTree').evaluate(node => node.scrollWidth > node.clientWidth), false);
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+        assert.equal(writes.length, 0, 'browsing never changes saved group relationships');
+    } finally { await page.close(); }
+});
+
+test('nested branches animate smoothly, reverse in progress and respect reduced motion', async () => {
+    const page = await newPage();
+    try {
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        const parent = page.locator('.group-item[data-group-id="1"]');
+        const toggle = parent.locator('.group-toggle');
+        const branch = page.locator('#mailbox-group-children-1');
+        const opening = await toggle.evaluate(button => {
+            button.click();
+            const list = document.getElementById(button.getAttribute('aria-controls'));
+            const animation = list.getAnimations()[0];
+            animation.pause(); animation.currentTime = 100;
+            return { frames: animation.effect.getKeyframes(), height: list.getBoundingClientRect().height };
+        });
+        assert.equal(opening.frames[0].height, '0px');
+        assert.ok(opening.height > 0 && opening.height < parseFloat(opening.frames.at(-1).height));
+        await toggle.evaluate(button => button.click());
+        await branch.waitFor({ state: 'hidden' });
+        assert.equal(await branch.evaluate(node => node.inert), true);
+        await toggle.click();
+        await page.waitForFunction(() => !document.getElementById('mailbox-group-children-1').getAnimations().length);
+        assert.equal(await branch.isVisible(), true);
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await toggle.click();
+        assert.equal(await branch.isVisible(), false);
+        assert.equal(await branch.evaluate(node => node.getAnimations().length), 0);
+    } finally { await page.close(); }
+});

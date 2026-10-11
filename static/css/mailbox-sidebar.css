@@ -1,6 +1,6 @@
 /* A persistent edge handle on desktop; an overlay drawer on smaller screens. */
 .mailbox-workspace .content-grid {
-    --group-panel-width: 216px;
+    --group-panel-width: 240px;
     --group-slide-duration: 360ms;
     --group-slide-ease: cubic-bezier(.22, 1, .36, 1);
     position: relative;
@@ -51,7 +51,7 @@
 .mailbox-workspace .group-panel-collapsed .group-sidebar-handle svg { transform: rotate(180deg); }
 .mailbox-workspace .group-sidebar-mobile-toggle, .mailbox-workspace .group-panel-backdrop { display: none !important; }
 @media (min-width: 1000px) and (max-width: 1100px) {
-    .mailbox-workspace .content-grid { --group-panel-width: 185px; gap: 16px; }
+    .mailbox-workspace .content-grid { gap: 16px; }
     .mailbox-workspace .content-grid.group-panel-collapsed { gap: 12px; }
 }
 @media (max-width: 999px) {

@@ -5690,6 +5690,7 @@
 
     function createGroupNode(group, depth = 0) {
         const li = document.createElement('li');
+        li.className = 'group-node';
         const item = document.createElement('div');
         item.className = 'group-item' + (selectedGroupId === group.id ? ' active' : '');
         item.dataset.groupId = group.id;
@@ -5700,7 +5701,6 @@
             if (event.target !== item) return;
             if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedGroup(group.id); }
         });
-        item.style.paddingLeft = `${10 + depth * 12}px`;
         const children = groups.filter(g => g.parentId === group.id && groupMatchesSearch(g));
         const hasChildren = children.length > 0;
 
@@ -5746,11 +5746,19 @@
             name.appendChild(count);
         }
 
+        if (hasChildren) {
+            item.appendChild(toggle);
+        } else {
+            const marker = document.createElement('span');
+            marker.className = 'group-leaf-marker';
+            marker.setAttribute('aria-hidden', 'true');
+            item.appendChild(marker);
+        }
         item.appendChild(name);
         const actions = document.createElement('button');
         actions.type = 'button';
         actions.className = 'group-actions-button';
-        actions.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg>';
+        actions.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9.7 3-.5 2.1-1.5.9-2.1-.6-2.2 3.8 1.6 1.5v1.8l-1.6 1.5 2.2 3.8 2.1-.6 1.5.9.5 2.1h4.6l.5-2.1 1.5-.9 2.1.6 2.2-3.8-1.6-1.5v-1.8l1.6-1.5-2.2-3.8-2.1.6-1.5-.9-.5-2.1z"/><circle cx="12" cy="12" r="3"/></svg>';
         actions.title = '分组操作';
         actions.setAttribute('aria-label', '分组操作');
         actions.setAttribute('aria-expanded', 'false');
@@ -5765,18 +5773,10 @@
             showGroupContextMenu({ pageX: Math.min(rect.left, window.innerWidth - 180) + window.scrollX, pageY: rect.bottom + window.scrollY }, group.id);
         });
         item.appendChild(actions);
-        if (hasChildren) item.appendChild(toggle);
         item.addEventListener('click', (e) => {
             e.stopPropagation();
             setSelectedGroup(group.id);
         });
-        if (hasChildren) {
-            item.addEventListener('dblclick', (e) => {
-                if (e.target.closest('button')) return;
-                e.stopPropagation();
-                toggleGroupChildren(group.id, li, toggle);
-            });
-        }
         item.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             e.stopPropagation();

@@ -648,7 +648,7 @@ test('group browsing is visible, searchable, remembers the last group and keeps 
             menu: node.querySelector('.group-actions-button').getBoundingClientRect().x,
             label: node.querySelector('.group-name').getBoundingClientRect().x
         }));
-        assert.ok(positions.arrow > positions.menu && positions.menu > positions.label, 'the rightmost arrow expands children; the separate dots open group actions');
+        assert.ok(positions.arrow < positions.label && positions.label < positions.menu, 'the left arrow expands children; the right gear opens group actions');
         assert.equal(await group.locator('.group-actions-button .group-chevron').count(), 0);
         assert.equal(await page.locator('.group-item[data-group-id="2"] .group-toggle').count(), 0, 'a leaf group must not show a misleading expansion arrow');
         await toggle.click();

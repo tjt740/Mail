@@ -36,8 +36,8 @@
 .mailbox-workspace .group-item {
     position: relative;
     min-height: 44px;
-    margin-bottom: 8px;
-    padding-block: 9px;
+    margin-bottom: 0;
+    padding-block: 4px;
     border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
     border-radius: 10px;
     background: color-mix(in srgb, var(--surface) 72%, transparent);
@@ -62,6 +62,11 @@
 }
 .mailbox-workspace .group-item.active::before { height: 24px; background: var(--group-accent); }
 .mailbox-workspace .group-item.active :is(.group-name, .group-chevron) { color: var(--group-accent) !important; }
+/* Descendants belong to the parent branch, rather than another top-level card. */
+.mailbox-workspace .group-children .group-item { min-height: 38px; padding-block: 2px; border-color: transparent; border-radius: 6px; background: transparent; }
+.mailbox-workspace .group-children .group-item::before { left: -11px; top: 50%; width: 10px; height: 1px; border-radius: 0; background: var(--border); transform: none; }
+.mailbox-workspace .group-children .group-item.active { border-color: transparent; }
+.mailbox-workspace .group-children .group-item.active::before { height: 1px; background: var(--group-accent); }
 .mailbox-workspace .group-count { color: var(--text-muted) !important; }
 .mailbox-workspace .group-panel-header-toggle { color: var(--accent-violet); background: color-mix(in srgb, var(--accent-violet) 10%, var(--surface)); border-color: color-mix(in srgb, var(--accent-violet) 25%, var(--border)); }
 .mailbox-workspace .toolbar-card {
