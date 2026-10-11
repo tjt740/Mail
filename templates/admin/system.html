@@ -996,11 +996,11 @@
             {% if 'master_key' in admin_permissions %}
             <a href="#sec-masterkey" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> {% if can_manage_public_mail_key %}前台密钥{% else %}万能秘钥{% endif %}</a>
             {% endif %}
-            {% if 'settings' in admin_permissions %}
+            {% if can_manage_site_brand %}
             <a href="#sec-systitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-aim"></use></svg></span> 系统标题</a>
             {% endif %}
-            {% if 'settings' in admin_permissions %}
-            <a href="#sec-pagetitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-tag"></use></svg></span> 页面标题</a>
+            {% if can_manage_site_brand %}
+            <a href="#sec-pagetitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-tag"></use></svg></span> 页面标题与图标</a>
             {% endif %}
             <a href="#sec-info" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-info-circle"></use></svg></span> 系统信息</a>
         </nav>
@@ -1224,6 +1224,7 @@
         </div>
         {% endif %}
 
+        {% if can_manage_site_brand %}
         <!-- 系统标题设置 -->
         <div class="card" id="sec-systitle" hidden>
             <div class="card-header">
@@ -1234,7 +1235,7 @@
                     <div class="form-group">
                         <label class="form-label">系统名称/标题</label>
                         <input type="text" class="form-control" id="systemTitle" name="system_title" 
-                               placeholder="邮件查看系统" value="邮件查看系统">
+                               placeholder="邮件查看系统" value="邮件查看系统" maxlength="60">
                         <small style="color: var(--text-muted);">显示在后端管理页面标题中的系统名称，修改后即时生效</small>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="updateSystemTitle()">更新系统标题</button>
@@ -1245,33 +1246,53 @@
         <!-- 页面标题设置 -->
         <div class="card" id="sec-pagetitle" hidden>
             <div class="card-header">
-                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-tag"></use></svg></span> 页面标题设置</h2>
+                <h2 class="card-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-tag"></use></svg></span> 页面标题与图标</h2>
             </div>
             <div class="card-body">
                 <form id="pageTitlesForm">
                     <div class="form-group">
                         <label class="form-label">API取件页面标题</label>
                         <input type="text" class="form-control" id="apiPageTitle" name="api_page_title" 
-                               placeholder="API取件页面" value="API取件页面">
+                               placeholder="API取件页面" value="API取件页面" maxlength="60">
                         <small style="color: var(--text-muted);">显示在API取件页面的标题</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">前端取件页面标题</label>
                         <input type="text" class="form-control" id="frontendPageTitle" name="frontend_page_title" 
-                               placeholder="邮件查看" value="邮件查看">
+                               placeholder="邮件查看系统" value="邮件查看系统" maxlength="60">
                         <small style="color: var(--text-muted);">显示在前端取件页面的标题</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">管理员登录页面标题</label>
                         <input type="text" class="form-control" id="adminLoginTitle" name="admin_login_title" 
-                               placeholder="管理员登录" value="管理员登录">
+                               placeholder="管理员登录" value="管理员登录" maxlength="60">
                         <small style="color: var(--text-muted);">显示在管理员登录页面的标题</small>
                     </div>
-                    <button type="button" class="btn btn-primary" onclick="updatePageTitles()">更新页面标题</button>
+                    <div class="form-group">
+                        <label class="form-label" for="frontendIcon">前台图标</label>
+                        <select id="frontendIcon" class="form-control" onchange="resetFrontendIconImage()">
+                            <option value="mail">信封</option><option value="inbox">收件箱</option>
+                            <option value="global">地球</option><option value="rocket">火箭</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="frontendIconFile">上传自定义图标</label>
+                        <input type="file" id="frontendIconFile" class="form-control" accept="image/png,image/jpeg,image/webp" onchange="uploadFrontendIcon(this)">
+                        <small>PNG、JPEG、WebP，最大 256 KB；建议使用正方形图片。</small>
+                        <input type="hidden" id="frontendIconImage" value="">
+                        <button type="button" class="btn btn-secondary" onclick="resetFrontendIconImage()">恢复内置图标</button>
+                    </div>
+                    <div class="frontend-brand-preview" aria-label="前台预览">
+                        <span class="brand-preview-icon" aria-hidden="true"><svg><use id="frontendIconPreviewUse" href="#ai-mail"></use></svg><img id="frontendIconPreviewImage" alt="" hidden></span>
+                        <strong id="frontendTitlePreview" translate="no">邮件查看系统</strong>
+                    </div>
+                    <p class="master-key-note">仅 tjt740 可修改；保存后前台刷新即生效。</p>
+                    <button type="button" class="btn btn-primary" id="pageTitlesSubmit" onclick="updatePageTitles()">保存标题与图标</button>
                 </form>
             </div>
         </div>
 
+        {% endif %}
         <!-- 系统信息 -->
         <div class="card" id="sec-info" hidden>
             <div class="card-header">
@@ -1779,7 +1800,7 @@
                     
                     // 更新系统标题设置
                     if (data.data.system_title) {
-                        document.getElementById('systemTitle').value = data.data.system_title;
+                        if (document.getElementById('systemTitle')) document.getElementById('systemTitle').value = data.data.system_title;
                         // 同时更新系统信息区域的显示
                         const systemNameDisplay = document.getElementById('systemNameDisplay');
                         if (systemNameDisplay) {
@@ -1789,15 +1810,21 @@
                     
                     // 更新页面标题设置
                     if (data.data.api_page_title) {
-                        document.getElementById('apiPageTitle').value = data.data.api_page_title;
+                        if (document.getElementById('apiPageTitle')) document.getElementById('apiPageTitle').value = data.data.api_page_title;
                     }
                     if (data.data.frontend_page_title) {
-                        document.getElementById('frontendPageTitle').value = data.data.frontend_page_title;
+                        if (document.getElementById('frontendPageTitle')) document.getElementById('frontendPageTitle').value = data.data.frontend_page_title;
                     }
                     if (data.data.admin_login_title) {
-                        document.getElementById('adminLoginTitle').value = data.data.admin_login_title;
+                        if (document.getElementById('adminLoginTitle')) document.getElementById('adminLoginTitle').value = data.data.admin_login_title;
                     }
  
+                    if (document.getElementById('frontendIcon')) {
+                        document.getElementById('frontendIcon').value = data.data.frontend_icon || 'mail';
+                        document.getElementById('frontendIconImage').value = data.data.frontend_icon_image || '';
+                        previewFrontendBrand();
+                    }
+
                     if (typeof data.data.admin_master_key_set !== 'undefined') {
                         setMasterKeyStatus(data.data.admin_master_key_set);
                     }
@@ -2096,6 +2123,40 @@
         });
     }
 
+    function previewFrontendBrand() {
+        const image = document.getElementById('frontendIconImage').value;
+        const preview = document.getElementById('frontendIconPreviewImage');
+        preview.hidden = !image;
+        if (image) preview.src = image; else preview.removeAttribute('src');
+        document.getElementById('frontendIconPreviewUse').parentElement.toggleAttribute('hidden', Boolean(image));
+        document.getElementById('frontendIconPreviewUse').setAttribute('href', '#ai-' + document.getElementById('frontendIcon').value);
+        document.getElementById('frontendTitlePreview').textContent = document.getElementById('frontendPageTitle').value || '邮件查看系统';
+    }
+    function resetFrontendIconImage() {
+        document.getElementById('frontendIconImage').value = '';
+        document.getElementById('frontendIconFile').value = '';
+        previewFrontendBrand();
+    }
+    async function uploadFrontendIcon(input) {
+        const file = input.files[0];
+        if (!file) return;
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 256 * 1024) {
+            showToast('请选择不超过 256 KB 的 PNG、JPEG 或 WebP 图片', 'error'); input.value = ''; return;
+        }
+        const submit = document.getElementById('pageTitlesSubmit');
+        submit.disabled = true;
+        try {
+            const image = await new Promise((resolve, reject) => {
+                const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file);
+            });
+            const probe = new Image(); probe.src = image; await probe.decode();
+            document.getElementById('frontendIconImage').value = image;
+            previewFrontendBrand();
+        } catch (_) { showToast('图标图片无效', 'error'); }
+        finally { submit.disabled = false; }
+    }
+    document.getElementById('frontendPageTitle')?.addEventListener('input', previewFrontendBrand);
+
     // 更新页面标题
     function updatePageTitles() {
         const apiPageTitle = document.getElementById('apiPageTitle').value.trim();
@@ -2112,7 +2173,9 @@
             action: 'update_page_titles',
             api_page_title: apiPageTitle,
             frontend_page_title: frontendPageTitle,
-            admin_login_title: adminLoginTitle
+            admin_login_title: adminLoginTitle,
+            frontend_icon: document.getElementById('frontendIcon').value,
+            frontend_icon_image: document.getElementById('frontendIconImage').value
         };
 
         fetch('/admin/api/system-config', {
@@ -2125,7 +2188,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showToast('页面标题更新成功', 'success');
+                showToast('标题与图标已保存', 'success');
             } else {
                 showToast(data.message || '更新失败', 'error');
             }

@@ -1141,6 +1141,9 @@
         "无效": ["Invalid", "Không hợp lệ"],
         "待重试": ["Retry needed", "Cần thử lại"],
         "点击邮箱地址复制": ["Click an address to copy it", "Nhấp địa chỉ để sao chép"],
+        "查看详情": ["View details", "Xem chi tiết"],
+        "收起详情": ["Hide details", "Thu gọn chi tiết"],
+        "关闭测试结果": ["Dismiss test result", "Đóng kết quả kiểm tra"],
         "封禁或凭据失效的邮箱。可编辑凭据后重试，或勾选后批量删除。": ["Blocked accounts or invalid credentials. Update credentials and retry, or select mailboxes to delete.", "Tài khoản bị khóa hoặc thông tin xác thực không hợp lệ. Cập nhật rồi thử lại, hoặc chọn hộp thư để xóa."],
         "网络或检测异常，尚不能判断邮箱无效。可以批量重试。": ["Network or test errors do not establish that a mailbox is invalid. Retry these mailboxes in bulk.", "Lỗi mạng hoặc kiểm tra chưa xác định hộp thư không hợp lệ. Có thể thử lại hàng loạt."],
         "这些邮箱尚未测试，可勾选测试或测试全部筛选结果。": ["These mailboxes have not been tested. Test selected mailboxes or all filtered results.", "Các hộp thư này chưa được kiểm tra. Kiểm tra mục đã chọn hoặc tất cả kết quả đã lọc."],
@@ -2019,6 +2022,9 @@
         "无效": "Hindi wasto",
         "待重试": "Kailangang subukan muli",
         "点击邮箱地址复制": "I-click ang address upang kopyahin",
+        "查看详情": "Tingnan ang mga detalye",
+        "收起详情": "Itago ang mga detalye",
+        "关闭测试结果": "Isara ang resulta ng pagsusuri",
         "封禁或凭据失效的邮箱。可编辑凭据后重试，或勾选后批量删除。": "Mga naka-block na account o hindi wastong kredensyal. I-update ang mga kredensyal at subukan muli, o pumili ng mga mailbox na tatanggalin.",
         "网络或检测异常，尚不能判断邮箱无效。可以批量重试。": "Hindi nangangahulugang hindi wasto ang mailbox kapag may error sa network o pagsusuri. Subukan muli ang mga mailbox na ito nang maramihan.",
         "这些邮箱尚未测试，可勾选测试或测试全部筛选结果。": "Hindi pa nasusuri ang mga mailbox na ito. Subukan ang napili o ang lahat ng resulta ng filter.",
@@ -2196,6 +2202,103 @@
         "测试请求未返回账号状态": "Walang ibinalik na katayuan ng account ang pagsusuri",
         "未获得有效检测结果，已保存的账号状态未更改。": "Walang wastong resulta ng pagsusuri. Hindi nagbago ang naka-save na katayuan ng account."
     };
+    // Branding settings use the same translations in the shell and embedded pages.
+    const brandingMessages = {
+        "页面标题与图标": [
+                "Page titles & icon",
+                "Tiêu đề và biểu tượng",
+                "Mga pamagat at icon"
+        ],
+        "前台图标": [
+                "Public page icon",
+                "Biểu tượng trang thư",
+                "Icon ng pampublikong pahina"
+        ],
+        "信封": [
+                "Envelope",
+                "Phong bì",
+                "Sobre"
+        ],
+        "收件箱": [
+                "Inbox",
+                "Hộp thư đến",
+                "Inbox"
+        ],
+        "地球": [
+                "Globe",
+                "Địa cầu",
+                "Globo"
+        ],
+        "火箭": [
+                "Rocket",
+                "Tên lửa",
+                "Rocket"
+        ],
+        "上传自定义图标": [
+                "Upload custom icon",
+                "Tải biểu tượng lên",
+                "Mag-upload ng icon"
+        ],
+        "恢复内置图标": [
+                "Use built-in icon",
+                "Dùng biểu tượng có sẵn",
+                "Gamitin ang built-in na icon"
+        ],
+        "前台预览": [
+                "Public page preview",
+                "Xem trước trang thư",
+                "Preview ng pampublikong pahina"
+        ],
+        "保存标题与图标": [
+                "Save titles & icon",
+                "Lưu tiêu đề và biểu tượng",
+                "I-save ang mga pamagat at icon"
+        ],
+        "标题与图标已保存": [
+                "Titles and icon saved",
+                "Đã lưu tiêu đề và biểu tượng",
+                "Na-save ang mga pamagat at icon"
+        ],
+        "图标图片无效": [
+                "Invalid icon image",
+                "Ảnh biểu tượng không hợp lệ",
+                "Hindi wastong larawan ng icon"
+        ],
+        "PNG、JPEG、WebP，最大 256 KB；建议使用正方形图片。": [
+                "PNG, JPEG or WebP, up to 256 KB. A square image is recommended.",
+                "PNG, JPEG hoặc WebP, tối đa 256 KB. Nên dùng ảnh vuông.",
+                "PNG, JPEG o WebP, hanggang 256 KB. Inirerekomenda ang parisukat na larawan."
+        ],
+        "请选择不超过 256 KB 的 PNG、JPEG 或 WebP 图片": [
+                "Choose a PNG, JPEG or WebP image up to 256 KB",
+                "Chọn ảnh PNG, JPEG hoặc WebP tối đa 256 KB",
+                "Pumili ng PNG, JPEG o WebP na hanggang 256 KB"
+        ],
+        "仅 tjt740 可修改；保存后前台刷新即生效。": [
+                "Only tjt740 can edit. Refresh the public page after saving.",
+                "Chỉ tjt740 được sửa. Tải lại trang thư sau khi lưu.",
+                "Si tjt740 lang ang maaaring mag-edit. I-refresh ang pampublikong pahina matapos i-save."
+        ],
+        "仅 tjt740 可修改标题和图标": [
+                "Only tjt740 can edit titles and icons",
+                "Chỉ tjt740 được sửa tiêu đề và biểu tượng",
+                "Si tjt740 lang ang maaaring mag-edit ng mga pamagat at icon"
+        ],
+        "标题需为 1–60 个字符的单行文字": [
+                "Use a single-line title of 1–60 characters",
+                "Dùng tiêu đề một dòng, từ 1–60 ký tự",
+                "Gumamit ng isang linyang pamagat na may 1–60 character"
+        ],
+        "输入邮箱地址，支持多个\n用换行、空格或逗号分隔": [
+                "Enter mailbox addresses\nSeparate by lines,\nspaces or commas",
+                "Nhập địa chỉ email\nNgăn bằng xuống dòng,\ndấu cách hoặc dấu phẩy",
+                "Ilagay ang mga email\nPaghiwalayin ng linya,\nespasyo o kuwit"
+        ]
+};
+    Object.entries(brandingMessages).forEach(([key, values]) => {
+        ['en', 'vi', 'fil'].forEach((lang, index) => { dictionary[lang][key] = values[index]; });
+    });
+
 
     const originalText = new WeakMap();
     const originalAttrs = new WeakMap();
@@ -2786,6 +2889,11 @@
             setLanguageMenuOpen(menu.hidden, false);
         });
         trigger.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !menu.hidden) {
+                event.preventDefault();
+                setLanguageMenuOpen(false);
+                return;
+            }
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                 event.preventDefault();
                 setLanguageMenuOpen(true, true);

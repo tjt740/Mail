@@ -294,13 +294,13 @@ function LoginPage({ language, onLanguageChange, colorTheme, onColorThemeChange,
   );
 }
 
-function AmbientCanvas() {
+function AmbientCanvas({ variant = 'welcome', className = 'mail-ambient-canvas' }) {
   const ref = useRef(null);
   useEffect(() => {
-    const controller = window.MailMotion?.mount(ref.current, { variant: 'welcome' });
+    const controller = window.MailMotion?.mount(ref.current, { variant });
     return () => controller?.destroy();
-  }, []);
-  return <canvas ref={ref} className="mail-ambient-canvas" aria-hidden="true" />;
+  }, [variant]);
+  return <canvas ref={ref} className={className} aria-hidden="true" />;
 }
 
 function LegacyFrame({ title, src, language, colorTheme }) {
@@ -417,6 +417,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
 
   return (
     <Layout className="admin-app">
+      <AmbientCanvas variant="weather" className="mail-weather-canvas" />
       {!isMobile ? (
         <Sider
           collapsible
@@ -490,7 +491,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
 }
 
 function PublicShell({ language }) {
-  const title = translate(language, appProps.pageTitle || '邮件查看');
+  const title = appProps.pageTitle || translate(language, '邮件查看');
   useEffect(() => { document.title = title; }, [title]);
   return (
     <main className="public-app">

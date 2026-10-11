@@ -1,0 +1,70 @@
+/* Shared viewport and touch rules; tables scroll within their panels. */
+html, body { overscroll-behavior-y: none; }
+body :is(button, .btn, .folder-btn, .system-nav-item, .au-dropdown-item) { white-space: nowrap; touch-action: manipulation; }
+body :is(.main-content, .content, .card, .card-body, .system-sections, .table-container, .table-wrapper, .table-responsive) { min-width: 0; max-width: 100%; }
+body :is(.table-container, .table-wrapper, .table-responsive, .mail-list-wrapper) { overscroll-behavior-x: contain; }
+body :is(.modal-content, .ah-drawer-body, .au-dropdown-menu, .i18n-language-menu) { overscroll-behavior: contain; }
+body:has(.modal.show) { overflow-y: hidden !important; }
+body .au-dropdown-menu { max-width: calc(100vw - 24px); max-height: min(420px, 65dvh); overflow-y: auto; }
+body .frontend-brand-preview { display: flex; align-items: center; gap: 12px; min-width: 0; margin-block: 18px; }
+body .frontend-brand-preview strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body .brand-preview-icon { flex: 0 0 44px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--primary-color, #c96442); color: #fff; overflow: hidden; }
+body .brand-preview-icon svg { width: 24px; height: 24px; fill: currentColor; }
+body .brand-preview-icon [hidden] { display: none; }
+body .brand-preview-icon img, body.frontend-mail-page #frontendApp .frontend-brand-mark img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
+body.frontend-mail-page #frontendApp .header { min-width: 0; overflow: hidden; }
+body.frontend-mail-page #frontendApp .header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.frontend-mail-page #frontendApp .query-control-block .email-query-input {
+    height: 112px !important; min-height: 112px !important; max-height: 112px !important;
+    width: 100%; min-width: 0; padding: 14px !important; font-size: 16px; line-height: 24px;
+    resize: none; white-space: pre; overflow: auto; overscroll-behavior: contain;
+}
+body.frontend-mail-page #frontendApp .query-control-block :is(.count-input, .get-mail-btn) { align-self: end; }
+@media (max-width: 768px) {
+    body :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { font-size: 16px !important; max-width: 100%; }
+    body :is(.table-container, .table-wrapper, .table-responsive) { width: 100%; overflow-x: auto !important; }
+    body :is(th, td) { white-space: nowrap; }
+    body :is(.btn, .au-dropdown-item, .system-nav-item) { min-height: 44px; }
+    body :is(.pagination, .pagination-controls, .filter-actions, .toolbar-actions, .action-buttons, .bulk-actions) { flex-wrap: nowrap !important; max-width: 100%; overflow-x: auto; }
+    body :is(.pagination, .pagination-controls, .filter-actions, .toolbar-actions, .action-buttons, .bulk-actions) > * { flex-shrink: 0; }
+    body .modal { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) !important; }
+    body .modal-content { width: min(100%, 680px) !important; min-width: 0 !important; max-width: 100% !important; max-height: calc(100dvh - 24px) !important; overflow-y: auto; margin-inline: auto !important; }
+    body .modal-footer { display: flex; flex-wrap: nowrap !important; overflow-x: auto; }
+    body .modal-footer > * { flex: 0 0 auto; }
+    body .system-nav { flex-wrap: nowrap !important; overflow-x: auto; }
+    body .system-nav-item { flex-shrink: 0; white-space: nowrap !important; }
+}
+@media (max-width: 560px) {
+    body.frontend-mail-page #frontendApp .query-control-block { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "label label" "email email" "count button"; }
+    body.frontend-mail-page #frontendApp .query-control-block:has(.query-key-field:not([hidden])) { grid-template-areas: "key key" "label label" "email email" "count button"; }
+    body.frontend-mail-page #frontendApp .query-count-field { min-width: 0; }
+    body.frontend-mail-page #frontendApp .query-count-field label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+    body.frontend-mail-page #frontendApp .get-mail-btn { padding-inline: 6px; min-width: 0; font-size: 14px; }
+    body.frontend-mail-page #frontendApp :is(.folder-list, .mail-pagination, .mailbox-chip-list) { flex-wrap: nowrap !important; max-width: 100%; overflow-x: auto; }
+    body.frontend-mail-page #frontendApp :is(.folder-list, .mail-pagination, .mailbox-chip-list) > * { flex-shrink: 0; }
+    body.frontend-mail-page #frontendApp .mail-list-wrapper { overflow: auto !important; }
+    body.frontend-mail-page #frontendApp .mail-table { display: table; table-layout: fixed; min-width: 620px; width: 100%; }
+    body.frontend-mail-page #frontendApp .mail-table:has(.mail-list-empty) { min-width: 0; }
+    body.frontend-mail-page #frontendApp .mail-table thead { display: table-header-group; }
+    body.frontend-mail-page #frontendApp .mail-table colgroup { display: table-column-group; }
+    body.frontend-mail-page #frontendApp .mail-table tbody { display: table-row-group; }
+    body.frontend-mail-page #frontendApp .mail-table tr { display: table-row; }
+    body.frontend-mail-page #frontendApp .mail-table :is(th, td) { display: table-cell; width: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 12px 8px; font-size: 13px; }
+    body.frontend-mail-page #frontendApp .mail-table td::before { display: none; }
+    body.frontend-mail-page #frontendApp .mail-table .mail-list-empty { white-space: normal; padding: 32px 8px; }
+}
+body.frontend-mail-page .scene-controls { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; flex-wrap: nowrap; }
+body.frontend-mail-page .scene-controls button { flex-shrink: 0; }
+@media (max-width: 768px) {
+    body .search-box { min-width: 0; max-width: 100%; }
+    body .search-box input { min-width: 0 !important; width: 0; flex: 1 1 0; }
+    body .search-box .btn { flex: 0 0 auto; }
+    body .pagination-container { display: flex; flex-wrap: nowrap !important; flex-direction: row !important; justify-content: flex-start !important; gap: 12px; max-width: 100%; overflow-x: auto; }
+    body .pagination-container > * { flex: 0 0 auto; white-space: nowrap; }
+    body .mailbox-status-views { display: flex; flex-wrap: nowrap !important; overflow-x: auto !important; gap: 8px !important; max-width: 100%; }
+    body .mailbox-status-views > button { flex-shrink: 0; }
+    body .mailbox-email-address, body .mailbox-email-text, body .receive-mailbox-value { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    body #mailboxTable td:not(.mailbox-col-actions) { white-space: nowrap !important; min-width: 0; }
+    body #mailboxTable td > span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    body #mailboxTable .mailbox-empty-row td { white-space: normal !important; }
+}

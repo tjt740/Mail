@@ -31,8 +31,8 @@
             frames++; time += dt;
             pointer.x += (pointer.tx - pointer.x) * .06; pointer.y += (pointer.ty - pointer.y) * .06;
             ctx.clearRect(0, 0, width, height);
-            window.MailMotion?.drawWeather(ctx, width, height, time, theme, { hero: true, coarse: coarse.matches });
-            if (theme === 'rain') return;
+            window.MailMotion?.drawWeather(ctx, width, height, time, theme, { hero: true, coarse: coarse.matches, lightning: false, motion: !reduced.matches });
+            if (theme === 'rain' || theme === 'sunny') return;
             const radius = Math.min(height * .65, width * .24, 170);
             const glow = ctx.createRadialGradient(width * .73, height * .5, 0, width * .73, height * .5, radius * 1.5);
             glow.addColorStop(0, 'rgba(237,161,106,.15)'); glow.addColorStop(1, 'rgba(237,161,106,0)');

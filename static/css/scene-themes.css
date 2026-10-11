@@ -173,6 +173,47 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primary-color)
 .required-mark { color: var(--accent-coral); }
 .ah-q { color: var(--text); background: var(--surface-3); }
 .ah-q:hover { color: var(--on-primary); }
+
+/* Rain at night: cold glass, wet highlights and distant cyan/violet reflections. */
+:root[data-color-theme="rain"] :is(.admin-app, .admin-app > .ant-layout, .admin-content) {
+    background: radial-gradient(ellipse at 0 10%, #16364b80, transparent 48%),
+        radial-gradient(ellipse at 100% 90%, #382b5080, transparent 50%), var(--app-bg) !important;
+}
+:root[data-color-theme="rain"] :is(.admin-sider, .admin-mobile-drawer .ant-drawer-content) {
+    background: linear-gradient(170deg, #172c42, #0d192b 52%, #202139) !important;
+    box-shadow: inset -1px 0 0 #9cd9f00d, 6px 0 32px #02061140;
+}
+:root[data-color-theme="rain"] .admin-header {
+    background: linear-gradient(105deg, #172c40, #101e32 55%, #25263d) !important;
+    box-shadow: inset 0 -1px 0 #a2dcf012;
+}
+:root[data-color-theme="rain"] .legacy-frame-wrap {
+    border-color: #8fc9e02b !important;
+    box-shadow: 0 18px 48px #02061155, 0 0 32px #79d9ea05, inset 0 1px 0 #d1eaff14;
+}
+:root[data-color-theme="rain"] :is(.mail-panel > .card, .monitor-panel, .account-record) {
+    background: linear-gradient(135deg, #1c334233, transparent 45%, #40345018), var(--surface) !important;
+    border-color: #8fc9e02b !important;
+    box-shadow: inset 0 1px 0 #c7eaff0c, 0 8px 28px #0206112e;
+}
+:root[data-color-theme="rain"] .mailbox-workspace .group-panel {
+    background: linear-gradient(165deg, #193348, #111f32 48%, #24253c) !important;
+    box-shadow: inset 0 1px 0 #c7eaff12, 0 8px 28px #0206112e;
+}
+:root[data-color-theme="rain"] :is(.mailbox-workspace-heading, .monitor-hero, .help-hero) {
+    border-color: #9bd5ed36;
+    box-shadow: inset 0 1px 0 #c7eaff18, inset 0 -1px 0 #a894df12, 0 6px 24px #02061130;
+}
+:root[data-color-theme="rain"] :is(.mailbox-search-field, .react-color-theme-button, .react-language-button, .mailbox-find-row select) {
+    box-shadow: inset 0 1px 3px #02061135, 0 1px 0 #d1eaff09;
+}
+:root[data-color-theme="rain"] .mailbox-email-address { text-shadow: 0 0 16px #7bdfea12; }
+:root[data-color-theme="rain"] .mailbox-workspace .group-item.active {
+    box-shadow: inset 0 0 20px #7bdfea09, 0 0 14px #7bdfea06;
+}
+:root[data-color-theme="rain"] :is(.btn-primary, .page-btn.active, .ant-btn-primary) {
+    box-shadow: 0 2px 14px #79d9ea1c, inset 0 1px 0 #ffffff25;
+}
 @media (prefers-reduced-motion: reduce) {
     /* React/Ant Design manages its own motion lifecycle; disabling its animation
        names here would strand dropdowns in their hidden enter state. */

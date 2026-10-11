@@ -35,6 +35,7 @@ function environment({ saved, blocked = false, languages = ['en-US'], parent } =
     };
     let frameId = 0;
     const scheduled = new Map();
+    const mutations = [];
     const context = vm.createContext({
         window, document, localStorage, navigator: { languages }, Intl, Date, console,
         queueMicrotask, setTimeout, clearTimeout,
@@ -42,13 +43,14 @@ function environment({ saved, blocked = false, languages = ['en-US'], parent } =
         fetch: async () => ({ ok: true, json: async () => ({ success: true, language: 'en' }) }),
         requestAnimationFrame: fn => { scheduled.set(++frameId, fn); return frameId; },
         cancelAnimationFrame: id => scheduled.delete(id),
-        MutationObserver: class { observe() {} disconnect() {} },
+        MutationObserver: class { constructor(callback) { this.callback = callback; } observe() { mutations.push(this.callback); } disconnect() { const index = mutations.indexOf(this.callback); if (index !== -1) mutations.splice(index, 1); } },
         ResizeObserver: class { observe() {} disconnect() {} },
         IntersectionObserver: class { observe() {} disconnect() {} }
     });
     return { context, window, document, frames, media, scheduled, stored: () => stored,
         load(file) { vm.runInContext(fs.readFileSync(path.join(root, 'static/js', file), 'utf8'), context); },
-        step(time) { const callbacks = [...scheduled.values()]; scheduled.clear(); callbacks.forEach(fn => fn(time)); }
+        step(time) { const callbacks = [...scheduled.values()]; scheduled.clear(); callbacks.forEach(fn => fn(time)); },
+        mutate() { [...mutations].forEach(callback => callback()); }
     };
 }
 
@@ -199,10 +201,8 @@ test('Canvas gracefully tolerates unavailable 2D contexts', () => {
 
 test('rain has irregular depth and changing wind, with stable samples and a smaller mobile budget', () => {
     const env = environment(); env.load('motion.js');
-    function sample(time, coarse = false) {
-        const strokes = [];
-        let points = [];
-        const ctx = new Proxy({}, {
+    let strokes = [], points = [];
+    const ctx = new Proxy({}, {
             get: (target, key) => {
                 if (key === 'createRadialGradient') return () => ({ addColorStop() {} });
                 if (key === 'beginPath') return () => { points = []; };
@@ -211,7 +211,9 @@ test('rain has irregular depth and changing wind, with stable samples and a smal
                 return () => {};
             },
             set: (target, key, value) => { target[key] = value; return true; }
-        });
+    });
+    function sample(time, coarse = false) {
+        strokes = [];
         env.window.MailMotion.drawWeather(ctx, 1200, 700, time, 'rain', { coarse });
         return strokes;
     }
@@ -223,6 +225,93 @@ test('rain has irregular depth and changing wind, with stable samples and a smal
     const meanSlope = lines => lines.reduce((sum, { points: [[x0,y0],[x1,y1]] }) => sum + (x1-x0)/(y1-y0), 0) / lines.length;
     assert.ok(Math.abs(meanSlope(first) - meanSlope(later)) > .03, 'gusts should visibly change the rain angle');
     assert.ok([...first, ...later].every(line => line.points.flat().every(Number.isFinite)));
+});
+
+test('storms have irregular lightning intervals and branches, and suppress lightning for reduced motion', () => {
+    const env = environment();
+    vm.runInContext('Math.random = () => .314159', env.context);
+    env.load('motion.js');
+    let points = [], bolts = [];
+    const ctx = new Proxy({}, {
+        get: (target, key) => {
+            if (key === 'createRadialGradient') return () => ({ addColorStop() {} });
+            if (key === 'beginPath') return () => { points = []; };
+            if (key === 'moveTo' || key === 'lineTo') return (x, y) => points.push([x, y]);
+            if (key === 'stroke') return () => { if (points.length > 4 && target.lineWidth === .8) bolts.push({ points, ink: target.strokeStyle }); };
+            return () => {};
+        },
+        set: (target, key, value) => { target[key] = value; return true; }
+    });
+    const strikes = [];
+    let active = false;
+    for (let tick = 0; tick < 900; tick++) {
+        const time = tick / 10;
+        bolts = [];
+        env.window.MailMotion.drawWeather(ctx, 1200, 700, time, 'rain', { foreground: true });
+        if (bolts.length && !active) strikes.push({ time, points: bolts[0].points });
+        active = bolts.length > 0;
+        if (active) {
+            assert.ok(bolts.every(bolt => bolt.points.flat().every(Number.isFinite)));
+            bolts = [];
+            env.window.MailMotion.drawWeather(ctx, 1200, 700, time, 'rain', { foreground: true, motion: false });
+            assert.equal(bolts.length, 0, 'reduced motion must never show a lightning bolt');
+        }
+    }
+    assert.ok(strikes.length >= 4 && strikes.length <= 10);
+    const intervals = strikes.slice(1).map((strike, i) => strike.time - strikes[i].time);
+    assert.ok(intervals.every(interval => interval >= 8 && interval <= 24.2));
+    assert.ok(new Set(intervals.map(interval => interval.toFixed(1))).size >= 3);
+    assert.ok(new Set(strikes.map(strike => strike.points[0][0])).size === strikes.length, 'lightning should change position and geometry');
+});
+
+test('foreground weather runs in sunny and rain, pauses when hidden and stops in other themes', () => {
+    const env = environment(); env.load('motion.js');
+    const { canvas } = canvasFixture(env);
+    const controller = env.window.MailMotion.mount(canvas, { variant: 'weather' });
+    assert.equal(env.scheduled.size, 0);
+    env.document.documentElement.dataset.colorTheme = 'rain'; env.mutate();
+    assert.equal(env.scheduled.size, 1);
+    env.document.hidden = true; env.document.dispatchEvent({ type: 'visibilitychange' });
+    assert.equal(env.scheduled.size, 0);
+    env.document.hidden = false; env.document.dispatchEvent({ type: 'visibilitychange' });
+    assert.equal(env.scheduled.size, 1);
+    env.document.documentElement.dataset.colorTheme = 'sunny'; env.mutate();
+    assert.equal(env.scheduled.size, 1);
+    env.document.documentElement.dataset.colorTheme = 'night'; env.mutate();
+    assert.equal(env.scheduled.size, 0);
+    controller.destroy();
+    env.document.documentElement.dataset.colorTheme = 'rain'; env.mutate();
+    assert.equal(env.scheduled.size, 0);
+});
+
+test('sunny clouds and light drift continuously, occasional birds flap, and mobile has less detail', () => {
+    const env = environment(); env.load('motion.js');
+    let drawing = [], birdWings = [];
+    const ctx = new Proxy({}, {
+        get: (target, key) => {
+            if (key === 'createRadialGradient') return (...args) => { drawing.push(['gradient', ...args]); return { addColorStop() {} }; };
+            if (key === 'quadraticCurveTo') return (...args) => { birdWings.push(args); drawing.push([key, ...args]); };
+            return (...args) => { if (['ellipse', 'arc', 'lineTo', 'translate'].includes(key)) drawing.push([key, ...args]); };
+        },
+        set: (target, key, value) => { target[key] = value; return true; }
+    });
+    function sample(time, options = {}) {
+        drawing = []; birdWings = [];
+        env.window.MailMotion.drawWeather(ctx, 1200, 700, time, 'sunny', { foreground: true, ...options });
+        return { drawing, birdWings };
+    }
+    const first = sample(0), later = sample(4);
+    assert.notDeepEqual(later.drawing, first.drawing, 'sunlight, clouds and pollen should move');
+    assert.deepEqual(sample(0).drawing, first.drawing, 'redrawing a still sunny frame should not randomize it');
+    assert.ok(sample(0, { coarse: true }).drawing.length < first.drawing.length);
+    let birdTime;
+    for (let time = 5; time < 12; time += .1) {
+        if (sample(time).birdWings.length) { birdTime = time; break; }
+    }
+    assert.ok(birdTime, 'a distant flock should occasionally appear');
+    assert.notDeepEqual(sample(birdTime + .2).birdWings, sample(birdTime + .4).birdWings, 'bird wings should flap');
+    assert.equal(sample(birdTime + .2, { motion: false }).birdWings.length, 0, 'reduced motion suppresses bird flights');
+    assert.ok(sample(birdTime + .2).drawing.every(command => command.slice(1).every(Number.isFinite)));
 });
 
 // Optional real-browser regression against the built React shell and shared

@@ -74,10 +74,10 @@
 }
 .mailbox-workspace .mailbox-search-field { border-color: color-mix(in srgb, var(--accent-cyan) 30%, var(--border)) !important; }
 .mailbox-workspace .mailbox-search-field > .anticon { color: var(--accent-cyan); }
-.mailbox-workspace .mailbox-status-views { flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-bottom: 12px; }
+.mailbox-workspace .mailbox-status-views { flex-wrap: wrap; flex-shrink: 0; gap: 6px; margin-top: 0; padding-bottom: 0; }
 .mailbox-workspace .mailbox-status-views button {
     --view-accent: var(--primary-color);
-    padding: 8px 10px;
+    padding: 5px 9px;
     border: 1px solid color-mix(in srgb, var(--view-accent) 20%, var(--surface));
     border-radius: 8px;
     color: var(--view-accent);

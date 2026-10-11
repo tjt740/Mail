@@ -3273,14 +3273,16 @@
                             <select id="ownerFilterSelect" aria-label="按操作人筛选" onchange="filterMailboxesByOwner(this.value)"><option value="">全部操作人</option></select>
                             <button class="btn btn-secondary" id="resetMailboxFiltersBtn" type="button" onclick="resetMailboxFilters()" disabled>重置筛选</button>
                         </div>
-                        <div class="mailbox-status-views" role="group" aria-label="按账号状态筛选">
-                            <button type="button" data-status-view="" onclick="filterMailboxesByTestStatus('')" aria-pressed="true"><span>全部邮箱</span><b data-status-count="">0</b></button>
-                            <button type="button" data-status-view="normal" onclick="filterMailboxesByTestStatus('normal')" aria-pressed="false"><span class="status-dot normal"></span><span>正常</span><b data-status-count="normal">0</b></button>
-                            <button type="button" data-status-view="pending" onclick="filterMailboxesByTestStatus('pending')" aria-pressed="false"><span class="status-dot pending"></span><span>未检测</span><b data-status-count="pending">0</b></button>
-                            <button type="button" id="filterInvalidAccountsBtn" data-status-view="invalid" onclick="filterMailboxesByTestStatus('invalid')" aria-pressed="false"><span class="status-dot invalid"></span><span>无效邮箱</span><b data-status-count="invalid">0</b></button>
-                            <button type="button" data-status-view="retry" onclick="filterMailboxesByTestStatus('retry')" aria-pressed="false"><span class="status-dot retry"></span><span>待重试</span><b data-status-count="retry">0</b></button>
+                        <div class="mailbox-filter-summary">
+                            <div class="mailbox-status-views" role="group" aria-label="按账号状态筛选">
+                                <button type="button" data-status-view="" onclick="filterMailboxesByTestStatus('')" aria-pressed="true"><span>全部邮箱</span><b data-status-count="">0</b></button>
+                                <button type="button" data-status-view="normal" onclick="filterMailboxesByTestStatus('normal')" aria-pressed="false"><span class="status-dot normal"></span><span>正常</span><b data-status-count="normal">0</b></button>
+                                <button type="button" data-status-view="pending" onclick="filterMailboxesByTestStatus('pending')" aria-pressed="false"><span class="status-dot pending"></span><span>未检测</span><b data-status-count="pending">0</b></button>
+                                <button type="button" id="filterInvalidAccountsBtn" data-status-view="invalid" onclick="filterMailboxesByTestStatus('invalid')" aria-pressed="false"><span class="status-dot invalid"></span><span>无效邮箱</span><b data-status-count="invalid">0</b></button>
+                                <button type="button" data-status-view="retry" onclick="filterMailboxesByTestStatus('retry')" aria-pressed="false"><span class="status-dot retry"></span><span>待重试</span><b data-status-count="retry">0</b></button>
+                            </div>
+                            <div class="mailbox-filter-context" id="mailboxFilterContext" hidden></div>
                         </div>
-                        <div class="mailbox-filter-context" id="mailboxFilterContext" hidden></div>
                         <div id="mailboxBatchProgress" class="mailbox-test-result-panel" hidden>
                             <span id="mailboxBatchProgressText" role="status" aria-live="polite"></span>
                             <button class="btn btn-secondary" id="stopBatchTestBtn" type="button" onclick="stopBatchMailboxTests()">停止测试</button>
@@ -3296,7 +3298,7 @@
                                 <button class="btn btn-secondary" id="selectFilteredMailboxesBtn" type="button" onclick="selectFilteredMailboxes()" disabled>全选筛选结果 (0)</button>
                                 <button class="btn btn-secondary" id="batchTestFilteredBtn" type="button" onclick="batchTestMailboxes('filtered')" disabled>测试筛选结果 (0)</button>
                                 <div class="column-config">
-                                    <button class="btn btn-secondary column-config-toggle" id="columnConfigBtn" type="button" onclick="toggleColumnConfig(event)" title="显示列" aria-label="显示列"><span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span></button>
+                                    <button class="btn btn-secondary column-config-toggle" id="columnConfigBtn" type="button" onclick="toggleColumnConfig(event)" title="显示列" aria-label="显示列" aria-controls="columnConfigMenu" aria-expanded="false"><span class="anticon"><svg aria-hidden="true"><use href="#ai-setting"></use></svg></span></button>
                                     <div class="column-config-menu" id="columnConfigMenu" aria-hidden="true"></div>
                                 </div>
                             </div>
@@ -4060,9 +4062,8 @@
         document.addEventListener('click', function(e) {
             const menu = document.getElementById('columnConfigMenu');
             const wrapper = e.target.closest('.column-config');
-            if (menu && !wrapper) {
-                menu.classList.remove('show');
-                MailboxInteractions.popup(menu, false);
+            if (menu && !wrapper && !menu.contains(e.target)) {
+                closeMailboxColumnConfig();
             }
             if (!e.target.closest('.mailbox-actions-more')) {
                 closeMailboxMoreMenus();
@@ -4436,8 +4437,48 @@
     }
 
     function initMailboxColumnConfig() {
+        // Keep the floating menu outside the list card's scrolling/clipping area.
+        const menu = document.getElementById('columnConfigMenu');
+        if (menu) document.body.appendChild(menu);
         renderMailboxColumnConfig();
         renderMailboxTableHeader();
+        window.addEventListener('resize', positionMailboxColumnConfig);
+        window.addEventListener('scroll', positionMailboxColumnConfig, true);
+        window.addEventListener('app-language-change', () => requestAnimationFrame(positionMailboxColumnConfig));
+        if (window.ResizeObserver) {
+            new ResizeObserver(positionMailboxColumnConfig).observe(document.querySelector('.mailbox-list-toolbar'));
+        }
+    }
+
+    function positionMailboxColumnConfig() {
+        const menu = document.getElementById('columnConfigMenu');
+        const trigger = document.getElementById('columnConfigBtn');
+        if (!menu?.classList.contains('show') || !trigger) return;
+        if (!trigger.getClientRects().length) {
+            closeMailboxColumnConfig();
+            return;
+        }
+        const margin = 12, gap = 6;
+        const bounds = trigger.getBoundingClientRect();
+        const viewportWidth = document.documentElement.clientWidth;
+        const viewportHeight = document.documentElement.clientHeight;
+        // Measure all options without temporarily expanding the menu and resetting its scroll.
+        const naturalHeight = menu.scrollHeight + menu.offsetHeight - menu.clientHeight;
+        const below = Math.max(0, viewportHeight - bounds.bottom - gap - margin);
+        const above = Math.max(0, bounds.top - gap - margin);
+        const opensBelow = naturalHeight <= below || below >= above;
+        const height = Math.min(naturalHeight, opensBelow ? below : above);
+        menu.style.maxHeight = `${height}px`;
+        menu.style.left = `${Math.max(margin, Math.min(bounds.right - menu.offsetWidth, viewportWidth - menu.offsetWidth - margin))}px`;
+        menu.style.top = `${Math.max(margin, opensBelow ? bounds.bottom + gap : bounds.top - height - gap)}px`;
+    }
+
+    function closeMailboxColumnConfig() {
+        const menu = document.getElementById('columnConfigMenu');
+        if (!menu) return;
+        menu.classList.remove('show');
+        MailboxInteractions.popup(menu, false);
+        document.getElementById('columnConfigBtn')?.setAttribute('aria-expanded', 'false');
     }
 
     function renderMailboxColumnConfig() {
@@ -4465,6 +4506,8 @@
         const nextVisible = !menu.classList.contains('show');
         MailboxInteractions.popup(menu, nextVisible);
         menu.classList.toggle('show', nextVisible);
+        document.getElementById('columnConfigBtn').setAttribute('aria-expanded', String(nextVisible));
+        if (nextVisible) positionMailboxColumnConfig();
     }
 
     function toggleMailboxColumn(key, checked) {
@@ -4478,6 +4521,7 @@
         saveVisibleMailboxColumns(MAILBOX_COLUMNS.map(column => column.key).filter(columnKey => visibleKeys.has(columnKey)));
         renderMailboxColumnConfig();
         renderMailboxView(currentPage);
+        positionMailboxColumnConfig();
     }
 
     function renderMailboxTableHeader() {
@@ -4947,7 +4991,10 @@
                 pending: '这些邮箱尚未测试，可勾选测试或测试全部筛选结果。'
             };
             const hint = hints[testStatusFilter] || '';
-            if (hint) context.textContent = hint;
+            if (hint) {
+                context.textContent = hint;
+                context.title = hint;
+            }
             MailboxInteractions.expand(context, !!hint);
         }
     }

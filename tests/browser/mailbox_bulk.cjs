@@ -263,6 +263,73 @@ for (const width of [1440, 768, 390]) test(`add menu stays visible and priority 
     } finally { await page.close(); }
 });
 
+for (const viewport of [{ width: 1440, height: 1000 }, { width: 1366, height: 768 }, { width: 1100, height: 600 }, { width: 768, height: 600 }]) {
+    test(`column settings stay visible, clickable and anchored at ${viewport.width}px`, async () => {
+        const page = await newPage(viewport);
+        try {
+            await page.locator('.mailbox-checkbox').first().check();
+            const trigger = page.locator('#columnConfigBtn');
+            const menu = page.locator('#columnConfigMenu');
+            await trigger.click();
+            assert.equal(await trigger.getAttribute('aria-expanded'), 'true');
+            const checkBounds = async () => {
+                const geometry = await menu.evaluate(menu => {
+                    const bounds = menu.getBoundingClientRect();
+                    return { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom,
+                        width: innerWidth, height: innerHeight, rightAligned: Math.abs(bounds.right - document.querySelector('#columnConfigBtn').getBoundingClientRect().right) < 1 };
+                });
+                assert.ok(geometry.left >= 12 && geometry.right <= geometry.width - 12, 'settings must fit horizontally');
+                assert.ok(geometry.top >= 12 && geometry.bottom <= geometry.height - 12, `settings must fit vertically: ${JSON.stringify(geometry)}`);
+                assert.ok(geometry.rightAligned, 'settings should open inward from the right edge of the button');
+            };
+            await checkBounds();
+            await menu.locator('label').last().scrollIntoViewIfNeeded();
+            assert.equal(await menu.locator('label').last().evaluate(label => {
+                const bounds = label.getBoundingClientRect();
+                return label.contains(document.elementFromPoint(bounds.right - 4, bounds.top + bounds.height / 2));
+            }), true, 'last option must not be clipped or covered by the card');
+            await menu.locator('input[data-column-key="group"]').check();
+            assert.equal(await menu.isVisible(), true, 'changing a column must keep settings open');
+            assert.equal(await page.locator('#mailboxTable th.mailbox-col-group').count(), 1);
+            assert.equal(await page.locator('#bulkSelectedCount').innerText(), '1');
+            await page.evaluate(() => AppI18n.setLanguage('en'));
+            await menu.getByText('Group', { exact: true }).waitFor();
+            await checkBounds();
+            await page.setViewportSize({ width: viewport.width, height: 440 });
+            await page.waitForFunction(() => {
+                const bounds = document.querySelector('#columnConfigMenu').getBoundingClientRect();
+                return bounds.top >= 12 && bounds.bottom <= innerHeight - 12;
+            });
+            await checkBounds();
+            await menu.locator('label').last().scrollIntoViewIfNeeded();
+            assert.equal(await menu.locator('label').last().evaluate(label => {
+                const bounds = label.getBoundingClientRect();
+                return label.contains(document.elementFromPoint(bounds.right - 4, bounds.top + bounds.height / 2));
+            }), true, 'scrolling settings must leave the last option clickable in a short viewport');
+            await page.setViewportSize(viewport);
+            await page.waitForFunction(() => {
+                const menu = document.querySelector('#columnConfigMenu').getBoundingClientRect();
+                const trigger = document.querySelector('#columnConfigBtn').getBoundingClientRect();
+                return Math.abs(menu.right - trigger.right) < 1;
+            });
+            await page.evaluate(() => AppI18n.setLanguage('zh'));
+            await menu.getByText('分组', { exact: true }).waitFor();
+            if (process.env.SCREENSHOT_DIR) {
+                fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+                await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-column-settings-${viewport.width}.png`) });
+            }
+            await page.keyboard.press('Escape');
+            await menu.waitFor({ state: 'hidden' });
+            assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
+            assert.equal(await trigger.evaluate(button => button === document.activeElement), true);
+            await trigger.click();
+            await page.locator('#searchInput').click();
+            await menu.waitFor({ state: 'hidden' });
+            assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
+        } finally { await page.close(); }
+    });
+}
+
 test('dashboard status navigation overrides a remembered group', async () => {
     const page = await newPage();
     try {
@@ -418,6 +485,7 @@ test('mobile tools remain inside viewport and labels translate', async () => {
     const page = await newPage({ width: 390, height: 844 });
     try {
         for (const id of ['batchTestFilteredBtn', 'filterInvalidAccountsBtn', 'selectFilteredMailboxesBtn']) {
+            await page.locator(`#${id}`).scrollIntoViewIfNeeded();
             const box = await page.locator(`#${id}`).boundingBox();
             assert.ok(box.x >= 0 && box.x + box.width <= 390, `${id} must fit mobile screen`);
         }

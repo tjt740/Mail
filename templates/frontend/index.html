@@ -2460,10 +2460,9 @@
     <div class="container frontend-shell" id="frontendApp">
         <div class="frontend-topbar">
             <div class="header">
-                <span class="frontend-brand-mark" aria-hidden="true"><svg><use href="#ai-mail"></use></svg></span>
+                <span class="frontend-brand-mark" aria-hidden="true">{% if frontend_icon_image %}<img src="{{ frontend_icon_image }}" alt="">{% else %}<svg><use href="#ai-{{ frontend_icon|default('mail', true) }}"></use></svg>{% endif %}</span>
                 <div class="frontend-brand-copy">
-                    <h1>邮件查看系统</h1>
-                    <p class="frontend-subtitle">输入后台邮箱地址，即刻查看最新邮件</p>
+                    <h1 translate="no" title="{{ page_title|default('邮件查看系统', true) }}">{{ page_title|default('邮件查看系统', true) }}</h1>
                 </div>
             </div>
             <div class="frontend-top-actions header-actions" aria-label="页面操作">
@@ -2512,7 +2511,7 @@
                         <span class="query-label-icon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
                         <span>邮箱查询</span>
                     </label>
-                    <textarea id="emailInput" class="highlight-input email-query-input" placeholder="请输入邮局后台已添加的邮箱地址，支持多个自动识别：user@example.com&#10;test@example.com, demo@example.com"></textarea>
+                    <textarea id="emailInput" class="highlight-input email-query-input" rows="4" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="输入邮箱地址，支持多个&#10;用换行、空格或逗号分隔"></textarea>
                     <div class="query-count-field">
                         <label for="emailCountInput">每个邮箱收取</label>
                         <input type="number" id="emailCountInput" class="form-control count-input highlight-input" min="1" max="100" value="10" placeholder="10">

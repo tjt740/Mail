@@ -24,6 +24,8 @@ import ipaddress
 import re
 import html
 import hashlib
+import base64
+import binascii
 from functools import wraps
 import admin_security as security
 from contextlib import contextmanager
@@ -913,6 +915,12 @@ def create_system_config_table(db, db_type):
                     INDEX idx_config_key (config_key)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ''')
+            # Base64 custom icons can exceed MySQL TEXT's 64 KiB limit.
+            cursor.execute("SHOW COLUMNS FROM system_config LIKE 'config_value'")
+            column = cursor.fetchone()
+            column_type = column['Type'] if isinstance(column, dict) else column[1]
+            if str(column_type).lower() == 'text':
+                cursor.execute('ALTER TABLE system_config MODIFY COLUMN config_value MEDIUMTEXT NOT NULL')
             cursor.close()
         elif db_type == 'postgresql':
             cursor = db.cursor()
@@ -2905,6 +2913,8 @@ def _admin_feature_allowed(db):
                 return True
             if action == 'update_public_mail_key':
                 return _can_manage_public_mail_key(db)
+            if action in ('update_page_titles', 'update_system_title'):
+                return _can_manage_site_brand(db)
             feature = {
                 'add_admin': 'admins', 'delete_admin': 'admins',
                 'reset_admin_password': 'admins', 'update_admin_permissions': 'admins',
@@ -3182,6 +3192,37 @@ def _can_manage_public_mail_key(db):
     """This site-wide switch belongs only to the persisted tjt740 root account."""
     actor = security.current(db)
     return bool(actor and security.is_root(db) and actor['username'].strip().lower() == 'tjt740')
+
+
+def _can_manage_site_brand(db):
+    """Branding is reserved to the persisted owner, regardless of delegated settings grants."""
+    return _can_manage_public_mail_key(db)
+
+
+FRONTEND_ICONS = ('mail', 'inbox', 'global', 'rocket')
+
+
+def _validate_frontend_icon(icon, image):
+    if icon not in FRONTEND_ICONS:
+        raise ValueError('请选择有效的前台图标')
+    if not isinstance(image, str) or len(image) > 350000:
+        raise ValueError('图标图片不能超过 256 KB')
+    if not image:
+        return
+    match = re.fullmatch(r'data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)', image)
+    if not match:
+        raise ValueError('图标仅支持 PNG、JPEG、WebP 图片')
+    try:
+        content = base64.b64decode(match[2], validate=True)
+    except (ValueError, binascii.Error):
+        raise ValueError('图标图片无效')
+    signatures = {
+        'png': content.startswith(b'\x89PNG\r\n\x1a\n'),
+        'jpeg': content.startswith(b'\xff\xd8\xff'),
+        'webp': content.startswith(b'RIFF') and content[8:12] == b'WEBP',
+    }
+    if not signatures[match[1]] or len(content) > 256 * 1024:
+        raise ValueError('图标图片无效或超过 256 KB')
 
 
 def _public_mail_key_required():
@@ -3811,7 +3852,9 @@ def trigger_mail_poll_once(source='manual_poll', admin_username=''):
 def inject_system_title():
     """注入系统标题到所有模板"""
     return {
-        'system_title': get_system_config('system_title', '邮件查看系统')
+        'system_title': get_system_config('system_title', '邮件查看系统'),
+        'frontend_icon': get_system_config('frontend_icon', 'mail'),
+        'frontend_icon_image': get_system_config('frontend_icon_image', ''),
     }
 
 # ===============================
@@ -3998,6 +4041,7 @@ def legacy_admin_system():
     return render_template('admin/system.html',
                          admin_username=session.get('admin_username'),
                          can_manage_public_mail_key=_can_manage_public_mail_key(get_db()),
+                         can_manage_site_brand=_can_manage_site_brand(get_db()),
                          show_mailbox_access=_is_admin_mailbox_scope_manager(get_db(), session.get('admin_id')),
                          embedded=request.args.get('embedded') == '1')
 
@@ -11254,7 +11298,10 @@ def api_admin_system_config():
                     'database_type': app.config['DATABASE_TYPE'],
                     'admin_username': current_admin_username,
                     'api_page_title': system_config.get('api_page_title', 'API取件页面'),
-                    'frontend_page_title': system_config.get('frontend_page_title', '邮件查看'),
+                    'frontend_page_title': system_config.get('frontend_page_title', '邮件查看系统'),
+                    'frontend_icon': system_config.get('frontend_icon', 'mail'),
+                    'frontend_icon_image': system_config.get('frontend_icon_image', ''),
+                    'can_manage_site_brand': _can_manage_site_brand(db),
                     'admin_login_title': system_config.get('admin_login_title', '管理员登录'),
                     'admin_master_key_set': key_set,
                     'current_admin_id': current_admin_id,
@@ -11333,6 +11380,17 @@ def _admin_account_mutation(db, data, action):
 
 def _update_page_titles(db, db_type, data):
     """更新页面标题设置"""
+    if not _can_manage_site_brand(db):
+        return jsonify(success=False, message='仅 tjt740 可修改标题和图标'), 403
+    for key in ('api_page_title', 'frontend_page_title', 'admin_login_title'):
+        if not isinstance(data.get(key), str) or not 1 <= len(data[key].strip()) <= 60 or any(c in data[key] for c in '\r\n\t'):
+            return jsonify(success=False, message='标题需为 1–60 个字符的单行文字'), 400
+    icon = data.get('frontend_icon', get_system_config('frontend_icon', 'mail'))
+    icon_image = data.get('frontend_icon_image', get_system_config('frontend_icon_image', ''))
+    try:
+        _validate_frontend_icon(icon, icon_image)
+    except (TypeError, ValueError) as exc:
+        return jsonify(success=False, message=str(exc)), 400
     api_page_title = data.get('api_page_title', '').strip()
     frontend_page_title = data.get('frontend_page_title', '').strip()
     admin_login_title = data.get('admin_login_title', '').strip()
@@ -11350,7 +11408,9 @@ def _update_page_titles(db, db_type, data):
         config_items = [
             ('api_page_title', api_page_title, 'API取件页面标题'),
             ('frontend_page_title', frontend_page_title, '前端取件页面标题'),
-            ('admin_login_title', admin_login_title, '管理员登录页面标题')
+            ('admin_login_title', admin_login_title, '管理员登录页面标题'),
+            ('frontend_icon', icon, '前台内置图标'),
+            ('frontend_icon_image', icon_image, '前台自定义图标')
         ]
         
         for config_key, config_value, description in config_items:
@@ -11399,6 +11459,7 @@ def _update_page_titles(db, db_type, data):
         })
         
     except Exception as e:
+        db.rollback()
         logger.error(f"Update page titles error: {e}")
         return jsonify({
             'success': False,
@@ -11407,6 +11468,10 @@ def _update_page_titles(db, db_type, data):
 
 def _update_system_title(db, db_type, data):
     """更新系统标题设置"""
+    if not _can_manage_site_brand(db):
+        return jsonify(success=False, message='仅 tjt740 可修改标题和图标'), 403
+    if not isinstance(data.get('system_title'), str) or not 1 <= len(data['system_title'].strip()) <= 60 or any(c in data['system_title'] for c in '\r\n\t'):
+        return jsonify(success=False, message='标题需为 1–60 个字符的单行文字'), 400
     system_title = data.get('system_title', '').strip()
     
     if not system_title:

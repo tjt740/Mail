@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const { contrastFailures } = require('./theme_contrast.cjs');
 const root = path.resolve(__dirname, '../..');
 let server, browser, origin;
 before(async () => {
@@ -46,6 +47,89 @@ async function newPage(options = {}) {
     await page.waitForFunction(() => window.MailScene && window.AppI18n);
     return page;
 }
+
+for (const width of [1440, 390]) test(`all public scene states follow their palette at ${width}px`, async () => {
+    const page = await newPage({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    let release;
+    const pending = new Promise(resolve => { release = resolve; });
+    let responseState = 'success';
+    await page.route('**/api/get_mail', async route => {
+        await pending;
+        const email = route.request().postDataJSON().email;
+        const payload = responseState === 'error' ? { success: false, message: 'Theme fixture request failed' }
+            : { success: true, mails: responseState === 'empty' ? [] : [{ id: email, subject: 'Theme letter for ' + email,
+                from: 'sender@example.com', to: email, body: 'Verification code: 123456', body_type: 'text', date: '2026-10-06 10:00:00',
+                attachments: [{ filename: 'theme-fixture.txt', mime_type: 'text/plain', size: 4, content: 'dGVzdA==' }] }] };
+        await route.fulfill({ contentType: 'application/json', body: JSON.stringify(payload) });
+    });
+    const check = async (mode, state) => {
+        const failures = await contrastFailures(page, 'body');
+        assert.deepEqual(failures, [], JSON.stringify({ width, mode, state, failures }));
+        if (process.env.SCREENSHOT_DIR && ['loading', 'mail-detail', 'error'].includes(state)) {
+            fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `public-${mode}-${state}-${width}.png`), fullPage: true });
+        }
+    };
+    try {
+        for (const mode of ['day', 'night', 'rain']) {
+            await page.locator(`[data-scene="${mode}"]`).click();
+            await check(mode, 'initial-empty');
+            await page.locator('#emailInput').focus();
+            const focus = await page.locator('#emailInput').evaluate(input => {
+                const style = getComputedStyle(input), body = getComputedStyle(document.body);
+                const probe = document.createElement('span'); probe.style.color = body.getPropertyValue('--scene-accent'); document.body.appendChild(probe);
+                const accent = getComputedStyle(probe).color; probe.remove();
+                return { border: style.borderTopColor, accent };
+            });
+            assert.equal(focus.border, focus.accent, 'input focus must use the current scene accent');
+            await page.locator('.i18n-language-trigger').click();
+            await page.locator('.i18n-language-menu:not([hidden])').waitFor();
+            await check(mode, 'language-menu');
+            await page.locator('.i18n-language-trigger').press('Escape');
+            await page.locator('.i18n-language-menu').waitFor({ state: 'hidden' });
+        }
+        await page.locator('#emailInput').fill('reader1@example.com\nreader2@example.com');
+        await page.locator('.get-mail-btn').click();
+        await page.locator('#loading').waitFor({ state: 'visible' });
+        for (const mode of ['day', 'night', 'rain']) {
+            await page.locator(`[data-scene="${mode}"]`).click();
+            await check(mode, 'loading');
+            const loading = await page.locator('#loading').evaluate(element => {
+                const style = getComputedStyle(element);
+                const probe = document.createElement('span'); probe.style.backgroundColor = 'var(--scene-overlay)'; probe.style.color = 'var(--scene-accent)'; element.appendChild(probe);
+                const expected = getComputedStyle(probe); const result = { actual: [style.backgroundColor, style.color], expected: [expected.backgroundColor, expected.color], spinner: getComputedStyle(element.querySelector('.loading-orbit'), '::before').borderTopColor };
+                probe.remove(); return result;
+            });
+            assert.deepEqual(loading.actual, loading.expected);
+            assert.equal(loading.spinner, loading.actual[1]);
+        }
+        release();
+        await page.locator('#loading').waitFor({ state: 'hidden' });
+        for (const mode of ['day', 'night', 'rain']) {
+            await page.locator(`[data-scene="${mode}"]`).click();
+            await check(mode, 'mail-list');
+            await page.locator('#mailTableBody').getByText('Theme letter for reader1@example.com', { exact: true }).click();
+            await page.locator('#mailDisplay.is-visible').waitFor();
+            await check(mode, 'mail-detail');
+            await page.locator('.attachment-download').hover();
+            await check(mode, 'attachment-hover');
+            await page.locator('.back-btn').click();
+            responseState = 'error';
+            await page.locator('.get-mail-btn').click();
+            await page.locator('.toast.error.show').last().waitFor();
+            await check(mode, 'error');
+            responseState = 'empty';
+            await page.locator('.get-mail-btn').click();
+            await page.locator('.mail-list-empty').waitFor();
+            await check(mode, 'empty-result');
+            responseState = 'success';
+            await page.locator('.get-mail-btn').click();
+            await page.locator('#mailTableBody').getByText('Theme letter for reader1@example.com', { exact: true }).waitFor();
+        }
+        assert.deepEqual(errors, []);
+    } finally { release(); await page.close(); }
+});
 
 test('scene changes preserve queries, retrieved mail, selection and readable text', async () => {
     const page = await newPage({ reducedMotion: 'reduce' });

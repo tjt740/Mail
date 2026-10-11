@@ -540,3 +540,15 @@ body,
     right: 12px;
   }
 }
+
+/* Keep the shell within mobile browser chrome and constrain nested layouts. */
+html, body { overscroll-behavior-y: none; }
+.admin-app, .admin-app > .ant-layout, .admin-content { min-width: 0; max-width: 100%; }
+.public-app, .public-app .legacy-frame-wrap { height: 100dvh; min-height: 100dvh; }
+.brand > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.admin-title .ant-typography { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ant-dropdown-menu { max-height: min(500px, 75dvh); overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 768px) {
+  .login-form input { font-size: 16px; }
+  .ant-modal { max-width: calc(100vw - 16px); }
+}

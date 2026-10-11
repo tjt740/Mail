@@ -56,7 +56,7 @@
         el.classList.add('show');
         if (!el.dataset.auModalWired) {
             el.dataset.auModalWired = '1';
-            el.addEventListener('mousedown', function (e) {
+            el.addEventListener('click', function (e) {
                 if (e.target === el) modalClose(el);
             });
         }
@@ -168,6 +168,7 @@
     /* Shared Canvas renderer, also used by the public page and React login. */
     function initCanvas() {
         if (document.getElementById('bgCanvas')) return;
+        window.MailMotion?.mount(document.getElementById('adminWeatherCanvas'), { variant: 'weather' });
         return window.MailMotion?.mount(document.getElementById('adminBgCanvas'), { variant: 'admin' });
     }
 

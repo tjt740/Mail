@@ -178,7 +178,7 @@
             });
             const columnMenu = document.getElementById('columnConfigMenu');
             if (columnMenu?.classList.contains('show')) {
-                columnMenu.classList.remove('show'); popup(columnMenu, false);
+                window.closeMailboxColumnConfig();
                 document.getElementById('columnConfigBtn').focus({ preventScroll: true });
             }
             const more = document.querySelector('.mailbox-actions-more.open [data-action="more"]');

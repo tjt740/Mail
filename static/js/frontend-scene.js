@@ -18,9 +18,6 @@
     const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
     const cleanups = [];
     const stars = Array.from({ length: 140 }, () => ({ x: Math.random(), y: Math.random(), z: .2 + Math.random() * .8, phase: Math.random() * Math.PI * 2 }));
-    const rain = Array.from({ length: 120 }, () => ({ x: Math.random(), y: Math.random(), z: .25 + Math.random() * .75 }));
-    const dust = Array.from({ length: 36 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random(), phase: Math.random() * 6.28 }));
-    const ripples = Array.from({ length: 9 }, (_, index) => ({ x: .08 + Math.random() * .84, y: .72 + Math.random() * .25, phase: index / 9 }));
     const on = (target, type, handler, options = { passive: true }) => {
         target.addEventListener(type, handler, options);
         cleanups.push(() => target.removeEventListener(type, handler, options));
@@ -36,7 +33,7 @@
     const palette = {
         day: { top: '#e3edf9', bottom: '#f4f6fa', glow: 'rgba(255,219,164,.55)', glowEnd: 'rgba(255,219,164,0)', rgb: '100,146,207' },
         night: { top: '#101a34', bottom: '#0c1526', glow: 'rgba(111,116,219,.2)', glowEnd: 'rgba(111,116,219,0)', rgb: '170,194,250' },
-        rain: { top: '#112a38', bottom: '#0c1b29', glow: 'rgba(83,156,180,.16)', glowEnd: 'rgba(83,156,180,0)', rgb: '151,209,225' }
+        rain: { top: '#15283e', bottom: '#080f1c', glow: 'rgba(123,151,205,.16)', glowEnd: 'rgba(123,151,205,0)', rgb: '151,209,225' }
     };
     // Small cached soft sprites avoid allocating gradients for each particle/frame.
     function glowSprite(rgb) {
@@ -47,7 +44,7 @@
         g.addColorStop(0, `rgba(${rgb},.8)`); g.addColorStop(.3, `rgba(${rgb},.3)`); g.addColorStop(1, `rgba(${rgb},0)`);
         ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128); return canvas;
     }
-    const glows = { day: glowSprite('255,255,255'), night: glowSprite('123,143,242'), rain: glowSprite('107,184,205') };
+    const glows = { night: glowSprite('123,143,242') };
     function resizeLayer(l) {
         const rect = l.canvas.getBoundingClientRect();
         l.width = Math.max(1, rect.width); l.height = Math.max(1, rect.height);
@@ -87,64 +84,35 @@
     }
     function drawDay(l, rgb) {
         const { ctx, width: w, height: h } = l;
-        const alpha = ctx.globalAlpha;
-        const sunX = w * .88 + pointer.x * 6, sunY = l === foreground ? 42 : h * .13;
-        ctx.fillStyle = 'rgba(246,198,124,.4)'; ctx.beginPath(); ctx.arc(sunX, sunY, l === foreground ? 20 : 36, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(236,185,112,.22)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(sunX, sunY, l === foreground ? 29 : 48, 0, Math.PI * 2); ctx.stroke();
-        if (glows.day) for (let i = 0; i < 4; i++) {
-            const size = l === foreground ? 250 : 520;
-            const x = w * (i / 3) + Math.sin(time * .07 + i * 2) * 40;
-            const y = h * (.1 + (i % 2) * .4);
-            ctx.globalAlpha = alpha * .55;
-            ctx.drawImage(glows.day, x - size / 2, y - size / 5, size, size * .4);
-        }
-        ctx.globalAlpha = alpha;
-        for (const p of dust.slice(0, coarse.matches ? 18 : 36)) {
-            const x = ((p.x + time * (.003 + p.z * .004)) % 1) * w + pointer.x * p.z * 9;
-            const y = p.y * h + Math.sin(time * .4 + p.phase) * 10;
-            ctx.fillStyle = `rgba(${rgb},${.15 + p.z * .2})`; ctx.beginPath(); ctx.arc(x, y, 1 + p.z, 0, Math.PI * 2); ctx.fill();
-        }
+        window.MailMotion?.drawWeather(ctx, w, h, time, 'sunny', { hero: l === foreground, coarse: coarse.matches, motion: !reduced.matches });
     }
     function drawNight(l, rgb, isRain) {
         const { ctx, width: w, height: h } = l;
+        if (isRain) {
+            window.MailMotion?.drawWeather(ctx, w, h, time, 'rain', { hero: l === foreground, coarse: coarse.matches, lightning: l === backdrop, motion: !reduced.matches });
+            return;
+        }
         const alpha = ctx.globalAlpha;
-        const glow = glows[isRain ? 'rain' : 'night'];
+        const glow = glows.night;
         if (glow) {
             ctx.globalAlpha = alpha * .38;
             ctx.drawImage(glow, w * .48 + Math.sin(time * .09) * 30, -h * .45, w * .7, h * 1.4);
             ctx.globalAlpha = alpha;
         }
         const moonX = w * .88 + pointer.x * 5, moonY = l === foreground ? 42 : h * .13;
-        ctx.fillStyle = isRain ? 'rgba(183,218,231,.25)' : 'rgba(223,234,255,.8)';
+        ctx.fillStyle = 'rgba(223,234,255,.8)';
         ctx.beginPath(); ctx.arc(moonX, moonY, l === foreground ? 16 : 24, 0, Math.PI * 2); ctx.fill();
-        if (!isRain) {
-            for (const s of stars.slice(0, coarse.matches ? 50 : 140)) {
-                const opacity = .25 + .4 * (.5 + .5 * Math.sin(time * .7 + s.phase));
-                ctx.fillStyle = `rgba(${rgb},${opacity})`;
-                ctx.beginPath(); ctx.arc(s.x * w + pointer.x * s.z * 12, s.y * h + pointer.y * s.z * 7, .45 + s.z * 1.1, 0, Math.PI * 2); ctx.fill();
-            }
-            // One unhurried shooting star per 16-second cycle, with a soft trail.
-            const progress = (time % 16) / 2.2;
-            if (progress < 1) {
-                const x = w * (.48 + progress * .3), y = h * (.12 + progress * .26);
-                ctx.strokeStyle = `rgba(${rgb},${Math.sin(progress * Math.PI) * .45})`;
-                ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 52, y - 19); ctx.stroke();
-            }
-        } else {
-            const count = coarse.matches ? 45 : 120;
-            for (let i = 0; i < count; i++) {
-                const p = rain[i], speed = 110 + p.z * 230;
-                const y = (p.y * (h + 40) + time * speed) % (h + 40) - 20;
-                const x = ((p.x * w - time * (20 + p.z * 20)) % (w + 40) + w + 40) % (w + 40) - 20;
-                ctx.strokeStyle = `rgba(${rgb},${.12 + p.z * .22})`; ctx.lineWidth = .5 + p.z * .7;
-                ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 3 - p.z * 3, y + 9 + p.z * 16); ctx.stroke();
-            }
-            for (const ripple of ripples) {
-                const p = (time * .45 + ripple.phase) % 1;
-                ctx.strokeStyle = `rgba(${rgb},${(1 - p) * .2})`; ctx.lineWidth = .7;
-                ctx.beginPath(); ctx.ellipse(ripple.x * w, ripple.y * h, 2 + p * 26, 1 + p * 6, 0, 0, Math.PI * 2); ctx.stroke();
-            }
+        for (const s of stars.slice(0, coarse.matches ? 50 : 140)) {
+            const opacity = .25 + .4 * (.5 + .5 * Math.sin(time * .7 + s.phase));
+            ctx.fillStyle = `rgba(${rgb},${opacity})`;
+            ctx.beginPath(); ctx.arc(s.x * w + pointer.x * s.z * 12, s.y * h + pointer.y * s.z * 7, .45 + s.z * 1.1, 0, Math.PI * 2); ctx.fill();
+        }
+        // One unhurried shooting star per 16-second cycle, with a soft trail.
+        const progress = (time % 16) / 2.2;
+        if (progress < 1) {
+            const x = w * (.48 + progress * .3), y = h * (.12 + progress * .26);
+            ctx.strokeStyle = `rgba(${rgb},${Math.sin(progress * Math.PI) * .45})`;
+            ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 52, y - 19); ctx.stroke();
         }
     }
     function drawOrbits(l) {
@@ -186,7 +154,10 @@
         hero.style.setProperty('--scene-tilt-x', `${still ? 0 : pointer.x * 10}deg`);
         hero.style.setProperty('--scene-tilt-y', `${still ? 0 : -pointer.y * 7}deg`);
         layers.forEach(drawSky);
-        if (foreground) drawOrbits(foreground);
+        if (foreground && weights.night > .001) {
+            foreground.ctx.save(); foreground.ctx.globalAlpha = weights.night;
+            drawOrbits(foreground); foreground.ctx.restore();
+        }
     }
     function canAnimate() { return !destroyed && !reduced.matches && !document.hidden && !suspended && layers.length > 0; }
     function stop() { if (raf !== null) cancelAnimationFrame(raf); raf = null; last = 0; }

@@ -63,9 +63,9 @@
             gap: 8px;
             min-height: 36px;
             padding: 8px 10px;
-            border: 1px solid rgba(201, 100, 66, 0.18);
+            border: 1px solid var(--border);
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.94);
+            background: var(--surface);
             box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
             backdrop-filter: blur(12px);
         }
@@ -112,9 +112,9 @@
             min-height: 40px;
             min-width: 96px;
             padding: 0 34px 0 14px;
-            border-color: #e5e7eb;
+            border-color: var(--border);
             border-radius: 10px;
-            background: #ffffff;
+            background: var(--surface);
             box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
             gap: 0;
             backdrop-filter: none;
@@ -187,7 +187,7 @@
             margin: 0;
             overflow: visible;
             clip: auto;
-            color: #475569;
+            color: var(--text-muted);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -211,7 +211,7 @@
         }
         .i18n-switcher.i18n-switcher--icon:hover .i18n-switcher-icon,
         .i18n-switcher.i18n-switcher--icon:focus-within .i18n-switcher-icon {
-            color: #c96442;
+            color: var(--primary-color);
         }
         .i18n-language-trigger {
             width: 100%;
@@ -239,9 +239,9 @@
             z-index: 5200;
             width: 206px;
             padding: 7px;
-            border: 1px solid rgba(86, 78, 65, 0.12);
+            border: 1px solid var(--border);
             border-radius: 15px;
-            background: rgba(255, 255, 255, 0.97);
+            background: var(--surface-2);
             box-shadow: 0 18px 46px rgba(52, 45, 36, 0.18), 0 2px 10px rgba(52, 45, 36, 0.06);
             backdrop-filter: blur(20px);
             transform-origin: top right;
@@ -259,9 +259,9 @@
             right: 16px;
             width: 9px;
             height: 9px;
-            border-top: 1px solid rgba(86, 78, 65, 0.12);
-            border-left: 1px solid rgba(86, 78, 65, 0.12);
-            background: rgba(255, 255, 255, 0.97);
+            border-top: 1px solid var(--border);
+            border-left: 1px solid var(--border);
+            background: var(--surface-2);
             transform: rotate(45deg);
         }
         .i18n-switcher:not(.i18n-switcher--header) .i18n-language-menu::before {
@@ -277,7 +277,7 @@
             border: 0;
             border-radius: 11px;
             background: transparent;
-            color: #3f3b34;
+            color: var(--text);
             display: grid;
             grid-template-columns: 34px minmax(0, 1fr) 18px;
             align-items: center;
@@ -290,15 +290,15 @@
         .i18n-language-option:hover,
         .i18n-language-option:focus-visible {
             outline: 0;
-            color: #a9442d;
-            background: #fff5ef;
+            color: var(--primary-color);
+            background: var(--primary-soft);
         }
         .i18n-language-option:active {
             transform: scale(0.985);
         }
         .i18n-language-option.is-active {
-            color: #a9442d;
-            background: rgba(201, 100, 66, 0.11);
+            color: var(--primary-color);
+            background: var(--primary-soft);
             font-weight: 700;
         }
         .i18n-language-mark {
@@ -308,16 +308,16 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            color: #706a60;
-            background: #f3f1ec;
+            color: var(--text-muted);
+            background: var(--surface-3);
             font-size: 11px;
             font-weight: 800;
             letter-spacing: -0.02em;
         }
         .i18n-language-option.is-active .i18n-language-mark {
-            color: #fff;
-            background: linear-gradient(145deg, #d67a55, #b94d32);
-            box-shadow: 0 5px 12px rgba(185, 77, 50, 0.2);
+            color: var(--on-primary, #fff);
+            background: var(--primary-color);
+            box-shadow: 0 5px 12px var(--primary-soft);
         }
         .i18n-language-name {
             min-width: 0;
@@ -329,7 +329,7 @@
         .i18n-language-check {
             width: 17px;
             height: 17px;
-            color: #b94d32;
+            color: var(--primary-color);
             opacity: 0;
             transform: scale(0.7);
             transition: opacity 0.15s ease, transform 0.15s ease;
@@ -543,11 +543,13 @@
     {% if request.path and '/admin' in request.path %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/scene-themes.css') }}">
     {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
 </head>
 <body class="preload{% if embedded %} embedded-view{% endif %}">
     {% include '_icons.html' %}
     {% if request.path and '/admin' in request.path %}
     <canvas id="adminBgCanvas" aria-hidden="true"></canvas>
+    {% if not embedded %}<canvas id="adminWeatherCanvas" class="mail-weather-canvas" aria-hidden="true"></canvas>{% endif %}
     {% endif %}
     <script>
         (function() {
@@ -582,6 +584,7 @@
     <script src="{{ url_for('static', filename='js/admin-help.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin-help-ui.js') }}"></script>
     {% endif %}
+    <script src="{{ url_for('static', filename='js/touch-controls.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
