@@ -3243,9 +3243,7 @@
             <div class="mail-panel">
                 <div class="mailbox-workspace-heading">
                     <div class="mailbox-heading-copy">
-                        <span class="mailbox-eyebrow">邮箱工作台</span>
                         <h2 id="adminCurrentGroup">所有分组</h2>
-                        <p>按分组找到邮箱，点击地址即可复制。</p>
                     </div>
                     <div class="mailbox-heading-actions">
                         <button class="btn btn-secondary group-sidebar-mobile-toggle" id="mobileGroupPanelToggle" type="button" data-group-panel-toggle data-i18n-ignore onclick="toggleMailboxGroupPanel()" aria-controls="groupPanel" aria-expanded="false" aria-label="展开分组侧栏" title="展开分组侧栏">
@@ -3317,7 +3315,6 @@
                             </button>
                             <button class="btn btn-secondary" data-bulk-action="clear" type="button" onclick="clearMailboxSelection()">取消选择</button>
                         </div>
-                        <div id="mailboxLatestTestResult" class="mailbox-test-result-panel" role="status" aria-live="polite" hidden></div>
                         <div class="table-container">
                             <table id="mailboxTable">
                                 <colgroup id="mailboxTableColumns"></colgroup>
@@ -4621,7 +4618,6 @@
         };
         const note = !hasStatus ? '未获得有效检测结果，已保存的账号状态未更改。'
             : (!mailboxId ? '当前为保存前的测试结果。' : '');
-        renderMailboxTestPanel('mailboxLatestTestResult', result, note);
         if (String(document.getElementById('mailboxId')?.value || '') === String(mailboxId || '')) {
             renderMailboxTestPanel('mailboxFormTestResult', result, note);
         }
@@ -7443,15 +7439,17 @@
         const panel = document.getElementById('mailboxBatchProgress');
         const text = document.getElementById('mailboxBatchProgressText');
         const stop = document.getElementById('stopBatchTestBtn');
-        panel.hidden = false;
-        const label = state.running
-            ? (state.stopped ? '正在停止（等待进行中的测试完成）' : '批量测试中')
-            : (state.stopped ? '批量测试已停止' : '批量测试完成');
+        panel.hidden = !state.running;
+        stop.hidden = !state.running;
+        if (!state.running) {
+            text.replaceChildren();
+            return;
+        }
+        const label = state.stopped ? '正在停止（等待进行中的测试完成）' : '批量测试中';
         text.innerHTML = `<span class="mailbox-batch-summary"><span>${escapeHtml(label)}</span>：<strong translate="no">${state.completed} / ${state.total}</strong></span>
             <span class="mailbox-test-tag normal"><span>正常</span> <b translate="no">${state.normal}</b></span>
             <span class="mailbox-test-tag banned"><span>无效</span> <b translate="no">${state.invalid}</b></span>
             <span class="mailbox-test-tag test_error"><span>待重试</span> <b translate="no">${state.retry}</b></span>`;
-        stop.hidden = !state.running;
         stop.disabled = state.stopped;
     }
 

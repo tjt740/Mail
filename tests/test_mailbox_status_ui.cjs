@@ -17,7 +17,7 @@ function declaration(name, kind = 'function') {
 function setup() {
     const elements = {
         mailboxId: { value: '1' }, email: { value: 'new@example.com' },
-        mailboxLatestTestResult: { hidden: true }, mailboxFormTestResult: { hidden: true },
+        mailboxFormTestResult: { hidden: true },
         mailboxForm: {}
     };
     const context = vm.createContext({
@@ -83,7 +83,7 @@ for (const [status, label] of Object.entries({
         await context.testMailbox(1);
         assert.equal(context.mailboxData[0].account_status, status);
         assert.equal(context.renderCount, 1);
-        for (const id of ['mailboxLatestTestResult', 'mailboxFormTestResult']) {
+        for (const id of ['mailboxFormTestResult']) {
             assert.equal(elements[id].hidden, false);
             assert.ok(elements[id].innerHTML.includes(label));
             assert.ok(elements[id].innerHTML.includes('API detail'));
@@ -115,18 +115,20 @@ test('request and login failures display feedback without overwriting saved stat
     context.fetch = async () => ({ success: false, message: '登录状态已失效' });
     await context.testMailbox(1);
     assert.equal(context.mailboxData[0].account_status, 'normal');
-    assert.ok(elements.mailboxLatestTestResult.innerHTML.includes('已保存的账号状态未更改'));
+    assert.ok(elements.mailboxFormTestResult.innerHTML.includes('已保存的账号状态未更改'));
     context.fetch = async () => { throw new Error('Failed to fetch'); };
     await context.testMailbox(1);
     assert.equal(context.mailboxData[0].account_status, 'normal');
-    assert.ok(elements.mailboxLatestTestResult.innerHTML.includes('Failed to fetch'));
+    assert.ok(elements.mailboxFormTestResult.innerHTML.includes('Failed to fetch'));
 });
 
 test('result details are escaped and another mailbox modal is not overwritten', () => {
     const { context, elements } = setup();
-    elements.mailboxId.value = '2';
     context.updateMailboxTestResult(1, { account_status: 'test_error', message: '<img src=x onerror="alert(1)">' });
-    assert.ok(elements.mailboxLatestTestResult.innerHTML.includes('&lt;img'));
-    assert.ok(!elements.mailboxLatestTestResult.innerHTML.includes('<img'));
+    assert.ok(elements.mailboxFormTestResult.innerHTML.includes('&lt;img'));
+    assert.ok(!elements.mailboxFormTestResult.innerHTML.includes('<img'));
+    elements.mailboxId.value = '2';
+    elements.mailboxFormTestResult.hidden = true;
+    context.updateMailboxTestResult(1, { account_status: 'test_error', message: 'another mailbox result' });
     assert.equal(elements.mailboxFormTestResult.hidden, true);
 });
