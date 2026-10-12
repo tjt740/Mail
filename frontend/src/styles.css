@@ -205,6 +205,8 @@ body {
 
 .admin-header {
   height: 64px;
+  /* Grid/flex handles centering; a header-sized line box pushes mobile controls down. */
+  line-height: normal;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -227,6 +229,11 @@ body {
 .admin-actions {
   flex: 0 0 auto;
   gap: 8px !important;
+}
+
+.admin-actions > .ant-space-item {
+  display: flex;
+  align-items: center;
 }
 
 .admin-user {

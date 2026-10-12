@@ -550,7 +550,7 @@ class AdminPermissionsTestCase(unittest.TestCase):
     def test_public_key_switch_defaults_off_requires_a_key_and_strict_boolean(self):
         anonymous = app_module.app.test_client()
         response = anonymous.get('/api/public-mail-config')
-        self.assertEqual(response.get_json(), {'success': True, 'key_required': False})
+        self.assertEqual(response.get_json(), {'success': True, 'key_required': False, 'provider': 'mailbox', 'email_limit': 5})
         self.assertEqual(response.headers['Cache-Control'], 'no-store')
         self.assertEqual(self.root.post('/admin/api/system-config', json={
             'action': 'update_public_mail_key', 'enabled': True,
@@ -567,7 +567,7 @@ class AdminPermissionsTestCase(unittest.TestCase):
         response = self.root.post('/admin/api/system-config', json={'action': 'update_public_mail_key', 'enabled': True})
         self.assertTrue(response.get_json()['data']['public_mail_key_required'])
         anonymous = app_module.app.test_client()
-        self.assertEqual(anonymous.get('/api/public-mail-config').get_json(), {'success': True, 'key_required': True})
+        self.assertEqual(anonymous.get('/api/public-mail-config').get_json(), {'success': True, 'key_required': True, 'provider': 'mailbox', 'email_limit': 5})
         page = anonymous.get('/legacy/').get_data(as_text=True)
         self.assertIn('id="publicMailKeyField" >', page)
         self.assertNotIn('global-secret-123', page)

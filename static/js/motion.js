@@ -12,7 +12,7 @@
     const rainFields = new WeakMap();
     const stormFields = new WeakMap();
     const sunnyFields = new WeakMap();
-    let cloudSprites;
+    let cloudSprites, sunSprite, stormSprites, glassSprite, rainSprite;
     const fraction = value => value - Math.floor(value);
     const rainNoise = seed => fraction(Math.sin(seed * 127.1 + 311.7) * 43758.5453);
     function stormField(ctx, time = 0) {
@@ -35,16 +35,33 @@
     function windTravel(time) {
         return 74 * time - 68 / .53 * Math.cos(time * .53) - 34 / 1.37 * Math.cos(time * 1.37 + 1.1) - 46 / .19 * Math.cos(time * .19 + 2.4);
     }
-    function drawRain(ctx, width, height, time, { hero, coarse, foreground }) {
+    function getRainSprite() {
+        if (rainSprite || !document.createElement) return rainSprite;
+        const canvas = document.createElement('canvas'); canvas.width = 10; canvas.height = 96;
+        const paint = canvas.getContext('2d');
+        if (!paint?.createImageData) return null;
+        const pixels = paint.createImageData(10, 96);
+        for (let y = 0; y < 96; y++) for (let x = 0; x < 10; x++) {
+            const progress = y/96, center = (x-4.5)/(1.1 + progress*.7);
+            const alpha = Math.exp(-center*center*1.6) * Math.pow(progress, .9) * Math.min(1, (96-y)/6);
+            const i = (y*10+x)*4;
+            pixels.data[i] = 169 + progress*32; pixels.data[i+1] = 215 + progress*17;
+            pixels.data[i+2] = 237 + progress*12; pixels.data[i+3] = alpha*255;
+        }
+        paint.putImageData(pixels, 0, 0); rainSprite = canvas;
+        return canvas;
+    }
+    function drawRain(ctx, width, height, time, { hero, coarse, foreground, illumination = 0 }) {
         const salt = stormField(ctx, time).salt;
+        const sprite = getRainSprite();
         const noise = seed => rainNoise(seed + salt);
-        const count = Math.min(coarse ? 64 : 170, Math.max(coarse ? 32 : 64, Math.round(width * height / (hero ? 2300 : foreground ? 10000 : 8500))));
+        const count = Math.min(coarse ? 64 : 170, Math.max(coarse ? 32 : 64, Math.round(width * height / (hero ? 2300 : foreground ? 7000 : 6500))));
         let drops = rainFields.get(ctx);
         if (!drops || drops.length !== count) {
             drops = Array.from({ length: count }, (_, i) => {
-                const depth = .28 + noise(i + 3) * .72;
+                const depth = .16 + (i % 3) * .28 + noise(i + 3) * .26;
                 return { seed: i + 1, depth, phase: noise(i + 71), speed: 180 + depth * 370 + noise(i + 29) * 140,
-                    length: 9 + depth * 23 + noise(i + 47) * 11, alpha: .07 + depth * .2, width: .45 + depth * .9 };
+                    length: 5 + depth * depth * 37 + noise(i + 47) * 8, alpha: .08 + depth * .22, width: .35 + depth * .9 };
             });
             rainFields.set(ctx, drops);
         }
@@ -53,7 +70,7 @@
         const mistCount = coarse ? 2 : 3;
         for (let i = 0; i < mistCount; i++) {
             const x = width * (.18 + i * .36) + Math.sin(time * .17 + i * 2.3) * width * .2;
-            const y = height * (.2 + i * .28) + Math.sin(time * .23 + i) * height * .06;
+            const y = height * (.18 + i * .32) + Math.sin(time * .23 + i) * height * .04;
             const radius = Math.max(90, Math.min(width * .48, 520));
             ctx.save(); ctx.translate(x, y); ctx.scale(1, hero ? .28 : .4);
             const mist = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
@@ -78,12 +95,29 @@
             // Slowly moving showers create dense patches and gaps, without blinking drops.
             const shower = .63 + .37 * Math.sin(x / Math.max(width, 1) * 5.7 - time * .72 + drop.phase);
             // Near rain belongs mostly to the glass edges, keeping text unobscured.
-            const edge = foreground ? .13 + .87 * Math.pow(Math.min(1, Math.abs(x / width - .5) * 2), 3) : 1;
-            ctx.strokeStyle = `rgba(169,215,237,${drop.alpha * shower * edge * (hero ? 1.3 : 1)})`;
-            ctx.lineWidth = drop.width;
-            ctx.beginPath(); ctx.moveTo(x - slant * length, y - length); ctx.lineTo(x, y); ctx.stroke();
+            const edge = foreground ? .12 + .88 * Math.pow(Math.min(1, Math.abs(x / width - .5) * 2), 2) : 1;
+            const opacity = drop.alpha * shower * edge * (hero ? 1.3 : 1) * (1 + illumination * .6);
+            if (sprite) {
+                // Soft optical streaks taper into a brighter head instead of hard, uniform lines.
+                ctx.save(); ctx.translate(x, y); ctx.rotate(-Math.atan(slant)); ctx.globalAlpha *= opacity;
+                ctx.drawImage(sprite, -drop.width*2, -length, drop.width*4, length); ctx.restore();
+            } else {
+                ctx.strokeStyle = `rgba(169,215,237,${opacity})`; ctx.lineWidth = drop.width;
+                ctx.beginPath(); ctx.moveTo(x - slant * length, y - length); ctx.lineTo(x, y); ctx.stroke();
+            }
         });
-        // Staggered impacts in a shallow ground plane. Positions change between rain cycles.
+        // Soft, fragmented sky reflections sit low in a shallow wet ground plane.
+        const floor = foreground ? .92 : hero ? .8 : .89;
+        for (let i = 0; i < (coarse ? 2 : 4); i++) {
+            const x = width * (.07 + noise(i + 801) * .86), y = height * (.95 + noise(i + 811) * .04);
+            const radius = Math.max(45, Math.min(220, width * .18));
+            ctx.save(); ctx.translate(x, y); ctx.scale(1, .075);
+            const reflection = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+            reflection.addColorStop(0, `rgba(125,183,210,${(foreground ? .045 : .12) * (1 + illumination)})`);
+            reflection.addColorStop(1, 'rgba(125,183,210,0)');
+            ctx.fillStyle = reflection; ctx.fillRect(-radius, -radius, radius*2, radius*2); ctx.restore();
+        }
+        // Impacts expand into several fading rings; perspective flattens the distant ones.
         const impacts = coarse ? 5 : hero ? 14 : 18;
         for (let i = 0; i < impacts; i++) {
             const clock = time * (.42 + noise(i + 301) * .55) + noise(i + 401);
@@ -91,33 +125,58 @@
             if (age > .68) continue;
             const progress = age / .68;
             const x = noise(i + cycle * 31.7 + 501) * width;
-            const y = height * (.77 + noise(i + cycle * 13.1 + 601) * .2);
-            const radius = 2 + progress * (10 + noise(i + 701) * 15);
+            const distance = noise(i + cycle * 13.1 + 601);
+            const y = height * (floor + distance * (1-floor) * .95);
+            const radius = 2 + progress * (8 + distance * 15);
+            const flatten = .12 + distance * .15;
+            const edge = foreground ? .2 + .8 * Math.abs(x/width-.5)*2 : 1;
+            const opacity = Math.sin(progress * Math.PI) * (hero ? .26 : foreground ? .16 : .2) * edge;
             ctx.lineWidth = .6;
-            ctx.strokeStyle = `rgba(157,215,226,${Math.sin(progress * Math.PI) * (hero ? .23 : foreground ? .09 : .14)})`;
-            ctx.beginPath(); ctx.ellipse(x, y, radius, radius * .22, 0, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = `rgba(157,215,226,${opacity})`;
+            ctx.beginPath(); ctx.ellipse(x, y, radius, radius * flatten, 0, 0, Math.PI * 2); ctx.stroke();
+            if (progress > .2) {
+                ctx.strokeStyle = `rgba(157,215,226,${opacity * .45})`;
+                ctx.beginPath(); ctx.ellipse(x, y, radius * .63, radius * .63 * flatten, 0, 0, Math.PI * 2); ctx.stroke();
+            }
             if (progress < .3) {
-                const splash = Math.sin(progress / .3 * Math.PI) * 5;
+                const splash = Math.sin(progress / .3 * Math.PI) * (3 + distance * 4);
                 ctx.beginPath(); ctx.moveTo(x - 3, y - splash); ctx.lineTo(x, y); ctx.lineTo(x + 3 + wind * .015, y - splash * .75); ctx.stroke();
+                ctx.fillStyle = `rgba(191,225,242,${opacity})`;
+                ctx.beginPath(); ctx.arc(x + 2 + wind * .014, y - splash - 2, .65, 0, Math.PI * 2); ctx.fill();
             }
         }
     }
 
-    function drawStorm(ctx, width, height, time, { coarse, foreground, lightning, motion }) {
+    function getStormSprites() {
+        if (stormSprites) return stormSprites;
+        stormSprites = getCloudSprites().map(source => {
+            const canvas = document.createElement('canvas'), lit = document.createElement('canvas');
+            canvas.width = lit.width = source.canvas.width; canvas.height = lit.height = source.canvas.height;
+            const paint = canvas.getContext('2d'), light = lit.getContext('2d');
+            if (!paint || !light) return null;
+            const pixels = paint.createImageData(canvas.width, canvas.height);
+            const highlights = paint.createImageData(canvas.width, canvas.height);
+            for (let i = 0; i < source.opacity.length; i++) {
+                const shade = source.shade[i] / 255, offset = i * 4;
+                // Preserve the actual cloud volume, with cool lit crests and dense charcoal bases.
+                pixels.data[offset] = 13 + shade * 58;
+                pixels.data[offset+1] = 24 + shade * 62;
+                pixels.data[offset+2] = 42 + shade * 68;
+                pixels.data[offset+3] = source.opacity[i];
+                highlights.data[offset] = 103 + shade * 105;
+                highlights.data[offset+1] = 134 + shade * 96;
+                highlights.data[offset+2] = 179 + shade * 71;
+                highlights.data[offset+3] = source.opacity[i];
+            }
+            paint.putImageData(pixels, 0, 0); light.putImageData(highlights, 0, 0);
+            return { canvas, lit };
+        }).filter(Boolean);
+        return stormSprites;
+    }
+
+    function drawStorm(ctx, width, height, time, { hero, coarse, foreground, lightning, motion }) {
         const field = stormField(ctx, time);
-        // Broad cloud shadows roll slowly across the upper sky.
-        for (let i = 0; i < (coarse ? 2 : 4); i++) {
-            const radius = Math.max(160, width * .46);
-            const x = width * (i * .34) + Math.sin(time * .035 + i * 2.1 + field.salt) * width * .18;
-            ctx.save(); ctx.translate(x, height * (.015 + i % 2 * .09)); ctx.scale(1, .32);
-            const cloud = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-            cloud.addColorStop(0, `rgba(4,9,22,${foreground ? .10 : .28})`);
-            cloud.addColorStop(.65, `rgba(15,28,49,${foreground ? .04 : .10})`);
-            cloud.addColorStop(1, 'rgba(15,28,49,0)');
-            ctx.fillStyle = cloud; ctx.fillRect(-radius, -radius, radius * 2, radius * 2); ctx.restore();
-        }
-        if (!lightning || !motion) return;
-        if (time >= field.next) {
+        if (lightning && motion && time >= field.next) {
             const { random } = field;
             const left = random() < .5;
             let x = left ? .02 + random() * .16 : .82 + random() * .16, y = -.025;
@@ -133,49 +192,103 @@
                 return [start, [start[0] + side * (.02 + random() * .02), start[1] + .025],
                     [start[0] + side * (.045 + random() * .025), start[1] + .075]];
             });
-            // Long, irregular quiet intervals, with an occasional softer afterglow.
             field.strike = { start: time, points, branches, x: points[0][0], echo: random() > .4, strength: .65 + random() * .35 };
             field.next = time + 8 + random() * 16;
         }
         const strike = field.strike;
-        if (!strike) return;
-        const age = time - strike.start;
-        if (age < 0 || age > 1.6) return;
-        const pulse = Math.exp(-Math.pow((age - .20) / .18, 2)) + (strike.echo ? .40 * Math.exp(-Math.pow((age - .67) / .24, 2)) : 0);
-        const intensity = Math.min(1, pulse) * strike.strength;
-        if (intensity < .008) return;
+        const age = strike ? time - strike.start : -1;
+        const pulse = age >= 0 && age < 1.6 && motion && lightning ?
+            Math.exp(-Math.pow((age-.20)/.18, 2)) + (strike.echo ? .40 * Math.exp(-Math.pow((age-.67)/.24, 2)) : 0) : 0;
+        const intensity = Math.min(1, pulse) * (strike?.strength || 0);
+        const sprites = getStormSprites();
+        const count = coarse ? 4 : 7;
+        const noise = seed => rainNoise(seed + field.salt);
+        for (let i = 0; i < count; i++) {
+            const near = i >= (coarse ? 2 : 4);
+            const cloudWidth = Math.max(hero ? 210 : 330, width * (near ? .85 : .7)) * (.85 + noise(i+50)*.3);
+            const span = width + cloudWidth;
+            const drift = time * (near ? 7 : 2.6) + Math.sin(time * .08 + i) * 9;
+            const x = fraction(i/count + noise(i+10)*.12 + drift/span) * span - cloudWidth;
+            const cloudHeight = Math.min(hero ? height*.95 : height*.46, cloudWidth * (near ? .32 : .4));
+            const y = -cloudHeight * .37 + height * (near ? .04 : -.02) + noise(i+30)*height*.055;
+            const edge = foreground ? .3 + .7*Math.pow(Math.min(1, Math.abs((x+cloudWidth*.5)/width-.5)*2), 2) : 1;
+            const alpha = (foreground ? (near ? .3 : .24) : near ? .8 : .58) * edge;
+            const sprite = sprites[i % sprites.length];
+            if (sprite) {
+                ctx.save(); ctx.globalAlpha *= alpha;
+                ctx.drawImage(sprite.canvas, x, y, cloudWidth, cloudHeight);
+                if (intensity > .008) {
+                    // The same flash lights only nearby cloud volumes; no independent white overlay.
+                    const proximity = Math.exp(-Math.abs((x+cloudWidth*.5)/width-strike.x)*3.6);
+                    ctx.globalAlpha *= intensity * proximity * .8;
+                    ctx.drawImage(sprite.lit, x, y, cloudWidth, cloudHeight);
+                }
+                ctx.restore();
+            }
+        }
+        if (intensity < .008) return 0;
         const x = width * strike.x;
-        const glow = ctx.createRadialGradient(x, 0, 0, x, 0, Math.max(width, height) * .85);
-        glow.addColorStop(0, `rgba(181,210,255,${intensity * .16})`);
-        glow.addColorStop(.30, `rgba(126,168,230,${intensity * .055})`);
+        const glow = ctx.createRadialGradient(x, 0, 0, x, 0, Math.max(width, height)*.65);
+        glow.addColorStop(0, `rgba(181,210,255,${intensity*.14})`);
+        glow.addColorStop(.30, `rgba(126,168,230,${intensity*.045})`);
         glow.addColorStop(1, 'rgba(126,168,230,0)');
         ctx.fillStyle = glow; ctx.fillRect(0, 0, width, height);
-        // Local illumination, rather than a white flash over the entire interface.
         const paths = [strike.points, ...strike.branches];
         for (const [lineWidth, alpha] of [[7, .035], [2.4, .16], [.8, .62]]) {
             ctx.lineWidth = lineWidth; ctx.strokeStyle = `rgba(208,229,255,${intensity * alpha})`;
             paths.forEach(points => {
-                ctx.beginPath(); points.forEach(([px, py], index) => index ? ctx.lineTo(px * width, py * height) : ctx.moveTo(px * width, py * height)); ctx.stroke();
+                ctx.beginPath(); points.forEach(([px, py], index) => index ? ctx.lineTo(px*width, py*height) : ctx.moveTo(px*width, py*height)); ctx.stroke();
             });
         }
+        return intensity;
+    }
+
+    function getGlassSprite() {
+        if (glassSprite || !document.createElement) return glassSprite;
+        const canvas = document.createElement('canvas'); canvas.width = 40; canvas.height = 56;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        // A transparent lens: dark rim, inverted cool light, and a small reflected sky highlight.
+        const lens = ctx.createRadialGradient(24, 36, 1, 20, 28, 17);
+        lens.addColorStop(0, 'rgba(194,224,244,.36)');
+        lens.addColorStop(.35, 'rgba(103,155,183,.13)');
+        lens.addColorStop(.68, 'rgba(12,25,42,.03)');
+        lens.addColorStop(.91, 'rgba(5,12,24,.35)');
+        lens.addColorStop(1, 'rgba(12,25,42,0)');
+        ctx.fillStyle = lens; ctx.beginPath(); ctx.ellipse(20, 29, 15, 22, -.12, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = 'rgba(196,225,246,.48)'; ctx.lineWidth = 1.1;
+        ctx.beginPath(); ctx.ellipse(20, 29, 13, 19, -.12, Math.PI*1.08, Math.PI*1.64); ctx.stroke();
+        ctx.fillStyle = 'rgba(222,242,255,.6)'; ctx.beginPath(); ctx.ellipse(14, 17, 2, 3.5, .4, 0, Math.PI*2); ctx.fill();
+        glassSprite = canvas; return canvas;
     }
 
     function drawWetGlass(ctx, width, height, time, coarse) {
-        const salt = stormField(ctx, time).salt;
-        for (let i = 0; i < (coarse ? 6 : 14); i++) {
-            const seed = i * 19.1 + salt;
-            const clock = time * (.025 + rainNoise(seed) * .022) + rainNoise(seed + 11);
+        const salt = stormField(ctx, time).salt, sprite = getGlassSprite();
+        for (let i = 0; i < (coarse ? 10 : 24); i++) {
+            const seed = i*19.1 + salt;
+            const size = 2 + rainNoise(seed+31)*4;
+            const clock = time*(.012 + rainNoise(seed)*.018) + rainNoise(seed+11);
             const age = fraction(clock), cycle = Math.floor(clock);
-            const side = i % 2;
-            const x = width * (side ? .97 - rainNoise(seed + cycle) * .035 : .012 + rainNoise(seed + cycle) * .035);
-            const y = age * (height + 80) - 40;
-            const length = 18 + rainNoise(seed + 37) * 65;
-            ctx.lineWidth = .6 + rainNoise(seed + 21);
-            ctx.strokeStyle = `rgba(175,219,241,${.055 + rainNoise(seed + 5) * .065})`;
-            ctx.beginPath(); ctx.moveTo(x, y - length);
-            ctx.bezierCurveTo(x - 2, y - length * .5, x + 2, y - length * .3, x, y); ctx.stroke();
-            ctx.fillStyle = 'rgba(190,226,248,.16)';
-            ctx.beginPath(); ctx.ellipse(x, y, 1.1, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+            // Surface tension pins small drops, then larger beads slide with a slight meander.
+            const pinned = i%3 === 0;
+            const travel = pinned ? rainNoise(seed+45) : age*age;
+            const side = i%2;
+            const x = width*(side ? .988-rainNoise(seed+cycle)*.065 : .012+rainNoise(seed+cycle)*.065) + Math.sin(travel*11+seed)*1.5;
+            const y = travel*(height+70)-35;
+            const length = pinned ? 0 : 15 + size*7;
+            if (length) {
+                ctx.lineWidth = size*.35;
+                ctx.strokeStyle = `rgba(163,207,231,${.045 + size*.008})`;
+                ctx.beginPath(); ctx.moveTo(x-1, y-length);
+                ctx.bezierCurveTo(x-3, y-length*.5, x+2, y-length*.3, x, y); ctx.stroke();
+            }
+            if (sprite) {
+                ctx.save(); ctx.globalAlpha *= .55 + size*.05;
+                ctx.drawImage(sprite, x-size, y-size*1.4, size*2, size*2.8); ctx.restore();
+            } else {
+                ctx.fillStyle = 'rgba(190,226,248,.16)';
+                ctx.beginPath(); ctx.ellipse(x, y, size*.35, size*.8, 0, 0, Math.PI*2); ctx.fill();
+            }
         }
     }
 
@@ -280,9 +393,62 @@
                 pixels.data[i] = red / opacity; pixels.data[i + 1] = green / opacity;
                 pixels.data[i + 2] = blue / opacity; pixels.data[i + 3] = opacity * 255;
             }
-            paint.putImageData(pixels, 0, 0); cloudSprites.push(canvas);
+            paint.putImageData(pixels, 0, 0);
+            // Keep optical depth for solar occlusion and a thin-edge light texture.
+            const opacity = new Uint8Array(canvas.width * canvas.height), shade = new Uint8Array(opacity.length);
+            const rim = document.createElement('canvas'); rim.width = canvas.width; rim.height = canvas.height;
+            const rimPaint = rim.getContext('2d'), rimPixels = paint.createImageData(canvas.width, canvas.height);
+            for (let i = 0; i < opacity.length; i++) {
+                const a = pixels.data[i * 4 + 3] / 255;
+                opacity[i] = pixels.data[i * 4 + 3];
+                shade[i] = Math.max(0, (pixels.data[i * 4] - 189) / 66 * 255);
+                rimPixels.data[i * 4] = 255; rimPixels.data[i * 4 + 1] = 250; rimPixels.data[i * 4 + 2] = 232;
+                rimPixels.data[i * 4 + 3] = Math.pow(4 * a * (1 - a), 1.5) * 160;
+            }
+            rimPaint?.putImageData(rimPixels, 0, 0);
+            cloudSprites.push({ canvas, opacity, shade, rim: rimPaint ? rim : null });
         }
         return cloudSprites;
+    }
+
+    function paintSun(ctx, x, y, radius) {
+        const bloom = ctx.createRadialGradient(x, y, 0, x, y, radius * 4);
+        bloom.addColorStop(0, 'rgba(255,251,233,.48)');
+        bloom.addColorStop(.24, 'rgba(255,246,217,.30)');
+        bloom.addColorStop(.4, 'rgba(255,239,195,.12)');
+        bloom.addColorStop(.65, 'rgba(255,232,180,.035)');
+        bloom.addColorStop(1, 'rgba(255,232,180,0)');
+        ctx.fillStyle = bloom; ctx.fillRect(x - radius * 4, y - radius * 4, radius * 8, radius * 8);
+        const disc = ctx.createRadialGradient(x, y, 0, x, y, radius * 1.06);
+        disc.addColorStop(0, '#fffffc'); disc.addColorStop(.65, '#fffefa');
+        disc.addColorStop(.86, 'rgba(255,249,228,.99)'); disc.addColorStop(.93, 'rgba(255,243,207,.92)');
+        disc.addColorStop(.98, 'rgba(255,241,201,.45)'); disc.addColorStop(1, 'rgba(255,241,201,0)');
+        ctx.fillStyle = disc; ctx.fillRect(x - radius * 1.06, y - radius * 1.06, radius * 2.12, radius * 2.12);
+    }
+
+    function sunLayer(field) {
+        if (field.sunLayer) return field.sunLayer;
+        if (!document.createElement) return null;
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        if (!sunSprite) {
+            const sprite = document.createElement('canvas'); sprite.width = sprite.height = 256;
+            const paint = sprite.getContext('2d');
+            if (!paint) return null;
+            paintSun(paint, 128, 128, 32); sunSprite = sprite;
+        }
+        field.sunLayer = { canvas, ctx };
+        return field.sunLayer;
+    }
+
+    function cloudOpacity(cloud, x, y) {
+        const { sprite, left, top, width, height } = cloud;
+        const px = (x - left) / width * (sprite.canvas.width - 1), py = (y - top) / height * (sprite.canvas.height - 1);
+        if (px < 0 || py < 0 || px >= sprite.canvas.width - 1 || py >= sprite.canvas.height - 1) return 0;
+        const ix = Math.floor(px), iy = Math.floor(py), fx = px - ix, fy = py - iy;
+        const i = iy * sprite.canvas.width + ix, a = sprite.opacity, row = sprite.canvas.width;
+        return ((a[i] * (1 - fx) + a[i + 1] * fx) * (1 - fy) + (a[i + row] * (1 - fx) + a[i + row + 1] * fx) * fy) / 255;
     }
 
     function drawSunny(ctx, width, height, time, { hero, coarse, foreground, motion }) {
@@ -291,42 +457,9 @@
         const radius = hero ? 21 : foreground ? 26 : 30;
         const sunX = foreground ? width + radius * .35 : width * .87;
         const sunY = height * (hero ? .28 : .12);
-        const warmth = .86 + Math.sin(time * .24 + field.salt) * .14;
-        const haloRadius = foreground ? Math.min(620, width * .5) : radius * 5;
-        const halo = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, haloRadius);
-        halo.addColorStop(0, `rgba(255,204,105,${warmth * (foreground ? .25 : .5)})`);
-        halo.addColorStop(.42, `rgba(255,218,147,${warmth * (foreground ? .065 : .14)})`);
-        halo.addColorStop(1, 'rgba(255,228,173,0)');
-        ctx.fillStyle = halo; ctx.fillRect(sunX - haloRadius, sunY - haloRadius, haloRadius * 2, haloRadius * 2);
-
-        // Warm, broad shafts of light sway slowly as clouds pass over the sun.
-        const reach = Math.max(width, height) * 1.25;
-        const light = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, reach);
-        light.addColorStop(0, `rgba(255,220,145,${foreground ? .085 : .13})`);
-        light.addColorStop(.6, `rgba(255,230,181,${foreground ? .018 : .035})`);
-        light.addColorStop(1, 'rgba(255,235,196,0)');
-        ctx.fillStyle = light;
-        for (let i = 0; i < (coarse ? 3 : 5); i++) {
-            const angle = 1.78 + i * .20 + Math.sin(time * .09 + i) * .035;
-            const spread = .022 + noise(i + 101) * .025;
-            ctx.beginPath(); ctx.moveTo(sunX, sunY);
-            ctx.lineTo(sunX + Math.cos(angle - spread) * reach, sunY + Math.sin(angle - spread) * reach);
-            ctx.lineTo(sunX + Math.cos(angle + spread) * reach, sunY + Math.sin(angle + spread) * reach);
-            ctx.closePath(); ctx.fill();
-        }
-        ctx.fillStyle = foreground ? 'rgba(255,213,114,.42)' : '#ffe5a0';
-        ctx.beginPath(); ctx.arc(sunX, sunY, radius, 0, Math.PI * 2); ctx.fill();
-        ctx.lineCap = 'round'; ctx.lineWidth = hero ? 1.2 : 1.5;
-        for (let i = 0; i < 12; i++) {
-            const angle = i / 12 * Math.PI * 2 + time * .022;
-            const start = radius + 7, end = start + 6 + Math.sin(time * .4 + i) * 2;
-            ctx.strokeStyle = `rgba(235,179,73,${foreground ? .14 : .28})`;
-            ctx.beginPath(); ctx.moveTo(sunX + Math.cos(angle) * start, sunY + Math.sin(angle) * start);
-            ctx.lineTo(sunX + Math.cos(angle) * end, sunY + Math.sin(angle) * end); ctx.stroke();
-        }
 
         // Layered cloud volumes have lit crests, cool shaded bases and wispy edges.
-        const clouds = getCloudSprites();
+        const clouds = getCloudSprites(), layout = [];
         for (let i = 0; i < (coarse ? 3 : 5); i++) {
             if (!clouds.length) break;
             const size = hero ? 28 + noise(i + 11) * 40 : 48 + noise(i + 11) * 58;
@@ -335,13 +468,64 @@
             const x = fraction(noise(i + 31) + time * speed / span) * span - size * 2;
             const y = height * (.06 + noise(i + 41) * (hero ? .35 : .20));
             const edge = foreground ? .24 + .76 * Math.pow(Math.min(1, Math.abs(x / width - .5) * 2), 2) : 1;
-            ctx.save();
-            ctx.globalAlpha *= (foreground ? .42 : hero ? .80 : .66) * edge;
             const sprite = clouds[Math.floor(noise(i + 51) * clouds.length)];
             const drift = Math.sin(time * .035 + i) * size * .035;
-            ctx.drawImage(sprite, x - size * 1.9, y - size * .75 + drift, size * 3.8, size * 2.1);
-            ctx.restore();
+            layout.push({ sprite, left: x - size * 1.9, top: y - size * .75 + drift, width: size * 3.8, height: size * 2.1,
+                alpha: (foreground ? .42 : hero ? .80 : .66) * edge });
         }
+
+        // Sample the solar disc, so atmospheric light follows passing clouds rather than a pulse.
+        const opticalStrength = foreground ? .72 : .97;
+        let visibility = 0;
+        for (let i = 0; i < 9; i++) {
+            const angle = i * Math.PI / 4, distance = i ? radius * .72 : 0;
+            let transmission = 1;
+            for (const cloud of layout) transmission *= 1 - cloudOpacity(cloud, sunX + Math.cos(angle) * distance, sunY + Math.sin(angle) * distance) * opticalStrength;
+            visibility += transmission / 9;
+        }
+        const haloRadius = foreground ? Math.min(620, width * .5) : radius * 8;
+        const light = (foreground ? .17 : .28) * (.25 + visibility * .75);
+        const halo = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, haloRadius);
+        halo.addColorStop(0, `rgba(255,242,207,${light})`);
+        halo.addColorStop(.22, `rgba(255,237,192,${light * .5})`);
+        halo.addColorStop(.55, `rgba(255,232,180,${light * .12})`);
+        halo.addColorStop(1, 'rgba(255,232,180,0)');
+        ctx.fillStyle = halo; ctx.fillRect(sunX - haloRadius, sunY - haloRadius, haloRadius * 2, haloRadius * 2);
+
+        // Mask only a small cached solar patch; never read back or blur the full viewport.
+        const extent = radius * 4, left = sunX - extent, top = sunY - extent, scale = 256 / (extent * 2);
+        const nearby = layout.filter(cloud => cloud.left < sunX + extent && cloud.left + cloud.width > left && cloud.top < sunY + extent && cloud.top + cloud.height > top);
+        const layer = sunLayer(field);
+        ctx.save(); ctx.globalAlpha *= foreground ? .62 : 1;
+        if (layer) {
+            const paint = layer.ctx;
+            paint.clearRect(0, 0, 256, 256); paint.drawImage(sunSprite, 0, 0);
+            paint.save(); paint.globalCompositeOperation = 'destination-out'; paint.globalAlpha = opticalStrength;
+            for (const cloud of nearby) paint.drawImage(cloud.sprite.canvas, (cloud.left - left) * scale, (cloud.top - top) * scale, cloud.width * scale, cloud.height * scale);
+            paint.restore(); ctx.drawImage(layer.canvas, left, top, extent * 2, extent * 2);
+        } else paintSun(ctx, sunX, sunY, radius);
+        ctx.restore();
+        for (const cloud of layout) {
+            ctx.save(); ctx.globalAlpha *= cloud.alpha;
+            ctx.drawImage(cloud.sprite.canvas, cloud.left, cloud.top, cloud.width, cloud.height); ctx.restore();
+        }
+        // Backlight only translucent wisps close to the sun; dense cloud bodies stay shaded.
+        if (layer && nearby.length) {
+            const paint = layer.ctx;
+            paint.clearRect(0, 0, 256, 256); paint.save();
+            for (const cloud of nearby) {
+                if (!cloud.sprite.rim) continue;
+                paint.globalAlpha = cloud.alpha;
+                paint.drawImage(cloud.sprite.rim, (cloud.left - left) * scale, (cloud.top - top) * scale, cloud.width * scale, cloud.height * scale);
+            }
+            paint.globalAlpha = 1; paint.globalCompositeOperation = 'destination-in';
+            const rimLight = paint.createRadialGradient(128, 128, 0, 128, 128, 100);
+            rimLight.addColorStop(0, `rgba(255,255,255,${.3 + visibility * .5})`);
+            rimLight.addColorStop(.4, 'rgba(255,255,255,.22)'); rimLight.addColorStop(1, 'rgba(255,255,255,0)');
+            paint.fillStyle = rimLight; paint.fillRect(0, 0, 256, 256); paint.restore();
+            ctx.drawImage(layer.canvas, left, top, extent * 2, extent * 2);
+        }
+        ctx.lineCap = 'round';
 
         // Airborne pollen follows the breeze; center particles stay faint near text.
         for (let i = 0; i < (coarse ? 12 : 30); i++) {
@@ -377,28 +561,183 @@
         }
     }
 
+    const nightFields = new WeakMap();
+    let moonSprite, nightCloudSprites;
+    const smooth = value => { const v = Math.max(0, Math.min(1, value)); return v*v*(3-2*v); };
+    function surfaceNoise(x, y) {
+        const ix = Math.floor(x), iy = Math.floor(y), fx = smooth(x-ix), fy = smooth(y-iy);
+        const a = rainNoise(ix + iy*57.3), b = rainNoise(ix+1 + iy*57.3);
+        const c = rainNoise(ix + (iy+1)*57.3), d = rainNoise(ix+1 + (iy+1)*57.3);
+        return (a+(b-a)*fx)*(1-fy)+(c+(d-c)*fx)*fy;
+    }
+    function getMoonSprite() {
+        if (moonSprite || !document.createElement) return moonSprite;
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = 256;
+        const paint = canvas.getContext('2d');
+        if (!paint?.createImageData) return null;
+        const pixels = paint.createImageData(256, 256);
+        // A front-lit full moon: faint maria and crater detail, without a dark terminator.
+        const maria = [[-.28,-.38,.27,.28],[.13,-.46,.23,.19],[.38,-.2,.2,.24],[-.46,.01,.22,.34],[-.18,.16,.23,.21],[.24,.04,.14,.13]];
+        const craters = Array.from({length:72},(_,i)=>{
+            const angle = rainNoise(i+311)*Math.PI*2, distance = Math.sqrt(rainNoise(i+441))*.95;
+            return {x:Math.cos(angle)*distance,y:Math.sin(angle)*distance,r:.012+Math.pow(rainNoise(i+671),2)*.095};
+        });
+        for (let y=0;y<256;y++) for (let x=0;x<256;x++) {
+            const nx=(x-127.5)/120, ny=(y-127.5)/120, rr=nx*nx+ny*ny;
+            if (rr>=1) continue;
+            const terrain=surfaceNoise(nx*8+21,ny*8+13)*.6+surfaceNoise(nx*23+9,ny*23+3)*.4;
+            let mare=0, relief=0;
+            for (const [mx,my,rx,ry] of maria) {
+                const distance=Math.hypot((nx-mx)/rx,(ny-my)/ry);
+                mare=Math.max(mare,1-smooth((distance+(terrain-.5)*.5-.55)/.5));
+            }
+            for (const crater of craters) {
+                const dx=nx-crater.x, dy=ny-crater.y, distance=Math.hypot(dx,dy)/crater.r;
+                if (distance>1.3) continue;
+                const rim=Math.exp(-Math.pow((distance-.94)/.13,2));
+                const directional=(dx*.8-dy*.6)/Math.max(crater.r*.25,Math.hypot(dx,dy));
+                relief+=rim*(.06+directional*.06)-Math.exp(-Math.pow(distance/.65,4))*.06;
+            }
+            const illumination=1-rr*.025;
+            const albedo=.965-mare*.085+(terrain-.5)*.035+(surfaceNoise(nx*85,ny*85)-.5)*.008+relief*.18;
+            const value=Math.max(0,Math.min(1,albedo*illumination));
+            const index=(y*256+x)*4;
+            pixels.data[index]=246*value; pixels.data[index+1]=245*value; pixels.data[index+2]=238*value;
+            pixels.data[index+3]=smooth((1-Math.sqrt(rr))*18)*255;
+        }
+        paint.putImageData(pixels,0,0); moonSprite=canvas; return canvas;
+    }
+    function getNightCloudSprites() {
+        if (nightCloudSprites) return nightCloudSprites;
+        nightCloudSprites=getCloudSprites().map(source=>{
+            const canvas=document.createElement('canvas'); canvas.width=source.canvas.width; canvas.height=source.canvas.height;
+            const paint=canvas.getContext('2d'); if (!paint) return null;
+            const pixels=paint.createImageData(canvas.width,canvas.height);
+            for (let i=0;i<source.opacity.length;i++) {
+                const light=source.shade[i]/255, offset=i*4;
+                pixels.data[offset]=38+light*64; pixels.data[offset+1]=51+light*65; pixels.data[offset+2]=75+light*63;
+                pixels.data[offset+3]=source.opacity[i];
+            }
+            paint.putImageData(pixels,0,0); return {canvas,opacity:source.opacity};
+        }).filter(Boolean);
+        return nightCloudSprites;
+    }
+    function nightField(ctx,time) {
+        let field=nightFields.get(ctx);
+        if (!field) {
+            const salt=Math.random()*1000;
+            const stars=Array.from({length:150},(_,i)=>({x:rainNoise(i+salt),y:rainNoise(i+salt+701),
+                magnitude:rainNoise(i+salt+173),phase:rainNoise(i+salt+811)*Math.PI*2,warm:rainNoise(i+salt+923)>.8}));
+            field={salt,stars,next:time+12+rainNoise(salt)*9,meteor:null,layer:null};
+            nightFields.set(ctx,field);
+        }
+        return field;
+    }
+    function drawNightSky(ctx,width,height,time,{hero,coarse,foreground,motion}) {
+        const field=nightField(ctx,time), sprites=getNightCloudSprites(), moon=foreground?null:getMoonSprite();
+        const noise=seed=>rainNoise(seed+field.salt);
+        const radius=hero?Math.min(22,height*.11):26;
+        const moonX=width*(hero?.77:.86), moonY=height*(hero?.28:.16);
+        const clouds=[];
+        for (let i=0;i<(coarse?2:4);i++) {
+            if (!sprites.length) break;
+            const size=(hero?160:260)+noise(i+21)*(hero?110:220);
+            const span=width+size, speed=2+noise(i+31)*4;
+            const x=fraction(noise(i+41)+time*speed/span)*span-size;
+            const h=size*(.20+noise(i+51)*.08);
+            const y=height*(.03+noise(i+61)*.18)-h*.3;
+            clouds.push({sprite:sprites[i%sprites.length],left:x,top:y,width:size,height:h,alpha:foreground?.13:hero?.34:.25});
+        }
+        // Optical depth comes from the moving cloud texture, including at the moon's edge.
+        const transmission=(x,y)=>clouds.reduce((light,cloud)=>light*(1-cloudOpacity(cloud,x,y)*cloud.alpha*1.8),1);
+        let visibility=0;
+        for (let i=0;i<9;i++) {
+            const a=i*Math.PI/4, r=i?radius*.7:0;
+            visibility+=transmission(moonX+Math.cos(a)*r,moonY+Math.sin(a)*r)/9;
+        }
+        // The foreground carries only thin clouds and sparse stars, avoiding a second moon over controls.
+        if (!foreground) {
+            const halo=ctx.createRadialGradient(moonX,moonY,0,moonX,moonY,radius*6);
+            halo.addColorStop(0,`rgba(222,228,238,${.20*visibility})`);
+            halo.addColorStop(.16,`rgba(207,218,235,${.14*visibility})`);
+            halo.addColorStop(.30,`rgba(181,202,231,${.055*visibility})`);
+            halo.addColorStop(.60,`rgba(145,173,214,${.015*visibility})`);
+            halo.addColorStop(1,'rgba(145,173,214,0)');
+            ctx.fillStyle=halo; ctx.fillRect(moonX-radius*6,moonY-radius*6,radius*12,radius*12);
+        }
+        const count=coarse?50:hero?90:150;
+        for (const star of field.stars.slice(0,count)) {
+            const x=star.x*width, y=star.y*height;
+            const distance=Math.hypot(x-moonX,y-moonY);
+            if (!foreground && distance<radius*1.05) continue;
+            const edge=foreground?.12+.88*Math.pow(Math.abs(x/width-.5)*2,2):1;
+            const washed=foreground?1:1-.75*Math.exp(-distance*distance/(radius*radius*35));
+            const twinkle=motion?1+Math.sin(time*(.35+star.magnitude*.4)+star.phase)*.10:1;
+            const opacity=(.11+Math.pow(star.magnitude,3)*.64)*edge*washed*twinkle*transmission(x,y);
+            const r=.35+Math.pow(star.magnitude,4)*.9;
+            const ink=star.warm?'244,229,205':'206,221,244';
+            if (star.magnitude>.95) {
+                const glow=ctx.createRadialGradient(x,y,0,x,y,r*3.6);
+                glow.addColorStop(0,`rgba(${ink},${opacity*.22})`); glow.addColorStop(1,`rgba(${ink},0)`);
+                ctx.fillStyle=glow; ctx.fillRect(x-r*4,y-r*4,r*8,r*8);
+            }
+            ctx.fillStyle=`rgba(${ink},${opacity})`; ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+        }
+        const extent=radius*256/240;
+        if (moon && !foreground) {
+            if (!field.layer) {
+                const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
+                const paint=canvas.getContext('2d'); if (paint) field.layer={canvas,paint};
+            }
+            ctx.save();
+            if (field.layer) {
+                const {canvas,paint}=field.layer, left=moonX-extent,top=moonY-extent,scale=256/(extent*2);
+                paint.clearRect(0,0,256,256);paint.drawImage(moon,0,0);
+                paint.save();paint.globalCompositeOperation='destination-out';
+                for (const cloud of clouds) {
+                    if (cloud.left>moonX+extent||cloud.left+cloud.width<left||cloud.top>moonY+extent||cloud.top+cloud.height<top) continue;
+                    paint.globalAlpha=cloud.alpha*1.8;
+                    paint.drawImage(cloud.sprite.canvas,(cloud.left-left)*scale,(cloud.top-top)*scale,cloud.width*scale,cloud.height*scale);
+                }
+                paint.restore();ctx.drawImage(canvas,left,top,extent*2,extent*2);
+            } else ctx.drawImage(moon,moonX-extent,moonY-extent,extent*2,extent*2);
+            ctx.restore();
+        } else if (!foreground) {
+            ctx.fillStyle='rgba(237,236,229,.94)';ctx.beginPath();ctx.arc(moonX,moonY,radius,0,Math.PI*2);ctx.fill();
+        }
+        for (const cloud of clouds) {
+            ctx.save();ctx.globalAlpha*=cloud.alpha;
+            ctx.drawImage(cloud.sprite.canvas,cloud.left,cloud.top,cloud.width,cloud.height);ctx.restore();
+        }
+        // An occasional distant meteor, with irregular quiet intervals rather than a repeating orbit.
+        if (!motion||(!foreground&&!hero)) return;
+        if (time>=field.next) {
+            field.meteor={start:time,x:.16+noise(time+83)*.55,y:.05+noise(time+97)*.16};
+            field.next=time+28+noise(time+113)*30;
+        }
+        const meteor=field.meteor;
+        if (!meteor) return;
+        const age=(time-meteor.start)/.9;
+        if (age<0||age>1) return;
+        const opacity=Math.sin(age*Math.PI)*(foreground?.2:.4);
+        const x=width*(meteor.x+age*.16),y=height*meteor.y+age*height*.12;
+        for(let i=0;i<8;i++) {
+            ctx.strokeStyle=`rgba(210,229,248,${opacity*(1-i/8)})`;ctx.lineWidth=.8;
+            ctx.beginPath();ctx.moveTo(x-i*5,y-i*1.8);ctx.lineTo(x-(i+1)*5,y-(i+1)*1.8);ctx.stroke();
+        }
+    }
+
     function drawWeather(ctx, width, height, time, scene, { hero = false, coarse = false, foreground = false, lightning = true, motion = true } = {}) {
         if (!['sunny', 'night', 'rain'].includes(scene)) return;
         ctx.save();
         if (scene === 'sunny') {
             drawSunny(ctx, width, height, time, { hero, coarse, foreground, motion });
         } else if (scene === 'rain') {
-            drawStorm(ctx, width, height, time, { coarse, foreground, lightning, motion });
-            drawRain(ctx, width, height, time, { hero, coarse, foreground });
+            const illumination = drawStorm(ctx, width, height, time, { hero, coarse, foreground, lightning, motion });
+            drawRain(ctx, width, height, time, { hero, coarse, foreground, illumination });
             if (foreground) drawWetGlass(ctx, width, height, time, coarse);
         } else if (scene === 'night') {
-            for (let i=0; i < (coarse ? 18 : 36); i++) {
-                const x = (i * 137.5 + 43) % width, y = (i * 83.7 + 23) % height;
-                ctx.fillStyle = `rgba(225,226,255,${.2 + (1 + Math.sin(time*.6+i))*.17})`;
-                ctx.beginPath(); ctx.arc(x,y,i%5===0?1.6:.8,0,Math.PI*2); ctx.fill();
-            }
-        }
-        if (scene === 'night') {
-            const x = width * .87, y = hero ? height*.28 : height*.12, radius = hero ? 21 : 30;
-            const glow = ctx.createRadialGradient(x,y,0,x,y,radius*3.2);
-            glow.addColorStop(0,'rgba(220,210,255,.2)'); glow.addColorStop(1,'rgba(220,210,255,0)');
-            ctx.fillStyle=glow;ctx.fillRect(x-radius*3.2,y-radius*3.2,radius*6.4,radius*6.4);
-            ctx.fillStyle='#e4defa';ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
+            drawNightSky(ctx, width, height, time, { hero, coarse, foreground, motion });
         }
         ctx.restore();
     }
@@ -456,7 +795,7 @@
             color = color.map((value, index) => value + (targetColor[index] - value) * (reduced.matches ? 1 : Math.min(1, dt * 5)));
             ctx.clearRect(0, 0, width, height);
             if (variant === 'weather') {
-                if (['rain', 'sunny'].includes(document.documentElement.dataset.colorTheme)) {
+                if (['rain', 'sunny', 'night'].includes(document.documentElement.dataset.colorTheme)) {
                     drawWeather(ctx, width, height, time, document.documentElement.dataset.colorTheme, { coarse: coarse.matches, foreground: true, motion: !reduced.matches });
                 }
                 return;
@@ -491,8 +830,8 @@
                 ctx.fillRect(0, 0, width, height);
             }
             drawWeather(ctx, width, height, time, document.documentElement.dataset.colorTheme, { coarse: coarse.matches, lightning: variant !== 'admin', motion: !reduced.matches });
-            // Keep sunny and rainy skies filled with their natural weather.
-            if (['rain', 'sunny'].includes(document.documentElement.dataset.colorTheme)) { ripples.length = 0; return; }
+            // Scene themes use natural skies instead of geometric decorations.
+            if (['rain', 'sunny', 'night'].includes(document.documentElement.dataset.colorTheme)) { ripples.length = 0; return; }
             if (variant === 'admin') {
                 // Three tilted orbital paths add depth without another animation loop.
                 for (let orbit = 0; orbit < 3; orbit++) {
@@ -553,7 +892,7 @@
             }
         }
 
-        function canAnimate() { return !destroyed && !suspended && !document.hidden && visible && !reduced.matches && (variant !== 'weather' || ['rain', 'sunny'].includes(document.documentElement.dataset.colorTheme)); }
+        function canAnimate() { return !destroyed && !suspended && !document.hidden && visible && !reduced.matches && (variant !== 'weather' || ['rain', 'sunny', 'night'].includes(document.documentElement.dataset.colorTheme)); }
         function tick(now) {
             raf = null;
             if (!canAnimate()) return;
@@ -614,7 +953,7 @@
                 listeners.forEach((remove) => remove());
                 themeObserver.disconnect(); resizeObserver?.disconnect(); intersection?.disconnect();
                 ctx.clearRect(0, 0, width, height);
-                rainFields.delete(ctx); stormFields.delete(ctx); sunnyFields.delete(ctx);
+                rainFields.delete(ctx); stormFields.delete(ctx); sunnyFields.delete(ctx); nightFields.delete(ctx);
                 instances.delete(canvas);
             }
         };

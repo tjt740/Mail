@@ -133,8 +133,8 @@ test('theme sync works without local storage and on a narrow screen', async () =
     } finally { await page.close(); }
 });
 
-test('rain animates background, hero and glass layers, remains bounded and freezes for reduced motion', async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 1050 }, reducedMotion: 'no-preference' });
+for (const width of [1440, 390]) test(`rain animates all layers, remains bounded and freezes at ${width}px`, async () => {
+    const page = await browser.newPage({ viewport: { width, height: 1050 }, reducedMotion: 'no-preference', hasTouch: width === 390 });
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     try {
         await page.goto(origin + '/admin/home'); await themeState(page, 'sunny');
@@ -156,7 +156,11 @@ test('rain animates background, hero and glass layers, remains bounded and freez
             const rect = button.getBoundingClientRect();
             return button.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
         }), true, 'rain must not intercept header buttons');
-        if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'rain-wind-active.png'), fullPage: true });
+        if (process.env.SCREENSHOT_DIR) {
+            fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `rain-wind-active-${width}.png`), fullPage: true });
+            await frame.locator('.monitor-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `rain-clouds-hero-${width}.png`) });
+        }
         await page.emulateMedia({ reducedMotion: 'reduce' });
         await frame.waitForFunction(() => !MailDashboard.scene.animating);
         const snapshots = await frame.evaluate(() => ['adminBgCanvas', 'monitorScene'].map(id => document.getElementById(id).toDataURL()));
@@ -165,11 +169,78 @@ test('rain animates background, hero and glass layers, remains bounded and freez
         const stillGlass = await glass.evaluate(canvas => canvas.toDataURL());
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         assert.equal(await glass.evaluate(canvas => canvas.toDataURL()), stillGlass);
-        await choose(page, '夜间'); await themeState(page, 'night');
+        await choose(page, '暖陶橙'); await themeState(page, 'clay');
         assert.equal(await glass.isVisible(), false);
         assert.equal(await glass.evaluate(canvas => !canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data.some(value => value)), true, 'entering a theme without foreground weather must clear the canvas');
         assert.deepEqual(errors, []);
     } finally { await page.close(); }
+});
+
+for (const [theme,label] of [['rain','雨夜'],['night','夜间']]) test(`${theme} reuses textures without per-frame pixel processing`, async () => {
+    const page = await browser.newPage({viewport:{width:1440,height:1050},reducedMotion:'reduce'});
+    try {
+        await page.goto(origin+'/admin/home'); await themeState(page,'sunny');
+        await choose(page,label); await themeState(page,theme);
+        const result=await page.evaluate(theme=>{
+            const canvas=document.createElement('canvas'); canvas.width=1440; canvas.height=900;
+            const ctx=canvas.getContext('2d');
+            const draw=(time=0,coarse=false)=>{
+                ctx.clearRect(0,0,1440,900);
+                MailMotion.drawWeather(ctx,1440,900,time,theme,{foreground:theme==='rain',hero:theme==='night',motion:false,coarse});
+            };
+            draw(); const still=canvas.toDataURL(); draw(); const stable=still===canvas.toDataURL();
+            const prototype=CanvasRenderingContext2D.prototype;
+            const original=Object.fromEntries(['getImageData','createImageData','putImageData'].map(name=>[name,prototype[name]]));
+            const calls={getImageData:0,createImageData:0,putImageData:0};
+            let elapsed, changed;
+            try {
+                Object.keys(original).forEach(name=>{prototype[name]=function(...args){calls[name]++;return original[name].apply(this,args);};});
+                const start=performance.now();
+                for(let i=1;i<=30;i++) draw(i/30);
+                elapsed=(performance.now()-start)/30;
+                changed=still!==canvas.toDataURL();
+                draw(2,true);
+            } finally { Object.keys(original).forEach(name=>{prototype[name]=original[name];}); }
+            return {stable,changed,calls,averageDrawMs:Math.round(elapsed*100)/100};
+        },theme);
+        assert.equal(result.stable,true,'Static weather must keep its texture geometry');
+        assert.equal(result.changed,true,'Clouds and weather must move when time advances');
+        assert.deepEqual(result.calls,{getImageData:0,createImageData:0,putImageData:0});
+        console.log(theme,'drawing benchmark (1440×900, cached textures):',result.averageDrawMs,'ms/frame');
+    } finally {await page.close();}
+});
+
+for (const width of [1440,390]) test(`moonlit night animates, stays readable and freezes at ${width}px`,async()=>{
+    const page=await browser.newPage({viewport:{width,height:1000},reducedMotion:'no-preference',hasTouch:width===390});
+    const errors=[];page.on('pageerror',error=>errors.push(error.message));
+    try {
+        await page.goto(origin+'/admin/home');await themeState(page,'sunny');
+        await choose(page,'夜间');await themeState(page,'night');
+        const frame=page.frames().find(frame=>frame.url().includes('/legacy/'));
+        await frame.waitForFunction(()=>MailDashboard.scene?.frameCount>8);
+        const canvas=page.locator('.mail-weather-canvas');
+        assert.equal(await canvas.isVisible(),true);
+        assert.equal(await canvas.evaluate(el=>el.width*el.height<=2404000),true);
+        const before=await canvas.evaluate(el=>el.toDataURL());
+        await page.waitForFunction(before=>document.querySelector('.mail-weather-canvas').toDataURL()!==before,before);
+        assert.equal(await canvas.evaluate(el=>getComputedStyle(el).pointerEvents),'none');
+        assert.deepEqual(await contrastFailures(page,'.admin-header'),[]);
+        if(process.env.SCREENSHOT_DIR) {
+            fs.mkdirSync(process.env.SCREENSHOT_DIR,{recursive:true});
+            await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,`night-sky-${width}.png`),fullPage:true});
+            await frame.locator('.monitor-hero').screenshot({path:path.join(process.env.SCREENSHOT_DIR,`night-moon-hero-${width}.png`)});
+        }
+        await page.emulateMedia({reducedMotion:'reduce'});
+        await frame.waitForFunction(()=>!MailDashboard.scene.animating);
+        const frozen=await canvas.evaluate(el=>el.toDataURL());
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+        assert.equal(await canvas.evaluate(el=>el.toDataURL()),frozen);
+        await choose(page,'暖陶橙');await themeState(page,'clay');
+        assert.equal(await canvas.isVisible(),false);
+        assert.equal(await canvas.evaluate(el=>!el.getContext('2d').getImageData(0,0,el.width,el.height).data.some(value=>value)),true);
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+        assert.deepEqual(errors,[]);
+    } finally {await page.close();}
 });
 
 for (const width of [1440, 390]) test(`sunny weather animates and freezes cleanly at ${width}px`, async () => {
@@ -197,7 +268,7 @@ for (const width of [1440, 390]) test(`sunny weather animates and freezes cleanl
         assert.equal(await canvas.evaluate(canvas => canvas.toDataURL()), staticFrame);
         await choose(page, '雨夜'); await themeState(page, 'rain');
         assert.notEqual(await canvas.evaluate(canvas => canvas.toDataURL()), staticFrame);
-        await choose(page, '夜间'); await themeState(page, 'night');
+        await choose(page, '暖陶橙'); await themeState(page, 'clay');
         assert.equal(await canvas.isVisible(), false);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         assert.deepEqual(errors, []);

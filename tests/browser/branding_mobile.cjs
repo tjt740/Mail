@@ -138,10 +138,8 @@ for (const width of [320, 390, 768, 1440]) test(`public input, single-line resul
             const controls = await page.evaluate(() => [...document.querySelectorAll('#emailInput, .query-count-field, .get-mail-btn, .frontend-top-actions')].map(el => { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right }; }));
             assert.ok(controls.every(r => r.left >= 0 && r.right <= width), JSON.stringify({ lang, controls }));
         }
-        await page.locator('#emailCountInput').fill('12');
-        await page.locator('#emailCountInput').hover();
-        await page.mouse.wheel(0, 200);
-        assert.equal(await page.locator('#emailCountInput').inputValue(), '12');
+        assert.equal(await page.locator('#emailCountInput').count(), 0);
+        assert.ok(await page.locator('.query-count-field').isVisible());
         await page.locator('#emailInput').fill('reader@example.com');
         await page.locator('.get-mail-btn').click();
         await page.locator('#mailTableBody tr:not(:has(.mail-list-empty))').waitFor();

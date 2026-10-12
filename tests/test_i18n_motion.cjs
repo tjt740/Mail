@@ -56,7 +56,9 @@ function environment({ saved, blocked = false, languages = ['en-US'], parent } =
 
 test('locale fallback recognizes regional browser languages and honors saved preferences', () => {
     for (const [options, expected] of [
-        [{ languages: ['vi-VN'] }, 'vi'], [{ languages: ['zh-TW'] }, 'zh'],
+        [{ languages: ['vi-VN'] }, 'vi'], [{ languages: ['zh-TW'] }, 'zh-TW'],
+        [{ languages: ['zh-HK'] }, 'zh-TW'], [{ languages: ['zh-Hant'] }, 'zh-TW'],
+        [{ saved: 'zh-TW', languages: ['en'] }, 'zh-TW'],
         [{ languages: ['fil-PH'] }, 'fil'], [{ languages: ['tl-PH'] }, 'fil'],
         [{ languages: ['tl'] }, 'fil'], [{ saved: 'fil', languages: ['en-US'] }, 'fil'],
         [{ languages: ['fr-FR'] }, 'en'], [{ saved: 'vi', languages: ['zh-CN'] }, 'vi'],
@@ -264,7 +266,7 @@ test('storms have irregular lightning intervals and branches, and suppress light
     assert.ok(new Set(strikes.map(strike => strike.points[0][0])).size === strikes.length, 'lightning should change position and geometry');
 });
 
-test('foreground weather runs in sunny and rain, pauses when hidden and stops in other themes', () => {
+test('foreground weather runs in all three scenes, pauses when hidden and stops in plain themes', () => {
     const env = environment(); env.load('motion.js');
     const { canvas } = canvasFixture(env);
     const controller = env.window.MailMotion.mount(canvas, { variant: 'weather' });
@@ -278,10 +280,43 @@ test('foreground weather runs in sunny and rain, pauses when hidden and stops in
     env.document.documentElement.dataset.colorTheme = 'sunny'; env.mutate();
     assert.equal(env.scheduled.size, 1);
     env.document.documentElement.dataset.colorTheme = 'night'; env.mutate();
+    assert.equal(env.scheduled.size, 1);
+    env.document.documentElement.dataset.colorTheme = 'clay'; env.mutate();
     assert.equal(env.scheduled.size, 0);
     controller.destroy();
     env.document.documentElement.dataset.colorTheme = 'rain'; env.mutate();
     assert.equal(env.scheduled.size, 0);
+});
+
+test('night stars stay in place, twinkle independently and suppress meteors for reduced motion', () => {
+    const env = environment(); env.load('motion.js');
+    let stars = [], strokes = 0;
+    const ctx = new Proxy({}, {
+        get(target,key) {
+            if(key==='createRadialGradient') return ()=>({addColorStop(){}});
+            if(key==='arc') return (x,y,r)=>stars.push({x,y,r,ink:target.fillStyle});
+            if(key==='stroke') return ()=>{strokes++;};
+            return ()=>{};
+        },
+        set(target,key,value) {target[key]=value;return true;}
+    });
+    const sample=(time,options={})=>{
+        stars=[];strokes=0;
+        env.window.MailMotion.drawWeather(ctx,1200,700,time,'night',{foreground:true,...options});
+        return {stars,strokes};
+    };
+    const first=sample(0),later=sample(4);
+    assert.deepEqual(sample(0),first);
+    assert.deepEqual(later.stars.map(({x,y,r})=>({x,y,r})),first.stars.map(({x,y,r})=>({x,y,r})),'Distant stars must not drift like floating particles');
+    assert.notDeepEqual(later.stars,first.stars,'Star brightness varies gently');
+    assert.ok(sample(0,{coarse:true}).stars.length<first.stars.length);
+    assert.ok(new Set(first.stars.map(star=>star.r.toFixed(2))).size>15);
+    let meteorTime;
+    for(let time=12;time<22;time+=.1) if(sample(time).strokes) {meteorTime=time;break;}
+    assert.ok(meteorTime);
+    assert.equal(sample(meteorTime+.1,{motion:false}).strokes,0);
+    assert.equal(sample(meteorTime+2).strokes,0,'Meteors end rather than repeating continuously');
+    assert.ok(first.stars.every(({x,y,r})=>[x,y,r].every(Number.isFinite)));
 });
 
 test('sunny clouds and light drift continuously, occasional birds flap, and mobile has less detail', () => {
@@ -394,4 +429,20 @@ test('browser: language and reduced-motion changes preserve state and dropdown p
         await browser.close();
         await new Promise(resolve => server.close(resolve));
     }
+});
+
+test('Traditional Chinese translates dynamic UI text and formats dates while preserving interpolation', () => {
+    const env = environment({ saved: 'zh-TW' }); env.load('i18n.js');
+    const i18n = env.window.AppI18n;
+    assert.equal(i18n.locale, 'zh-TW');
+    assert.equal(i18n.t('邮箱管理'), '郵箱管理');
+    assert.equal(i18n.t('系统设置'), '系統設定');
+    assert.equal(i18n.t('成功获取 5 封邮件，2 个邮箱失败'), '成功取得 5 封郵件，2 個郵箱失敗');
+    assert.equal(i18n.t('仅 tjt740 本人可配置。Token 只保存在服务端，保存后不回显。'), '僅 tjt740 本人可設定。Token 只儲存在服務端，儲存後不回顯。');
+    assert.equal(i18n.t('后台加载文件夹'), '後台載入資料夾');
+    assert.ok(i18n.formatDate('2026-10-12T12:00:00Z').includes('2026'));
+    i18n.setLanguage('en');
+    assert.equal(i18n.t('每个邮箱展示最近 5 封邮件'), 'Show the latest 5 messages per mailbox');
+    i18n.setLanguage('zh');
+    assert.equal(i18n.t('系统设置'), '系统设置');
 });

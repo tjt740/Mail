@@ -1,6 +1,7 @@
 /* Shared viewport and touch rules; tables scroll within their panels. */
 html, body { overscroll-behavior-y: none; }
-body :is(button, .btn, .folder-btn, .system-nav-item, .au-dropdown-item) { white-space: nowrap; touch-action: manipulation; }
+body :is(button, .btn, .folder-btn, .au-dropdown-item) { white-space: nowrap; touch-action: manipulation; }
+body .system-nav-item { touch-action: manipulation; }
 body :is(.main-content, .content, .card, .card-body, .system-sections, .table-container, .table-wrapper, .table-responsive) { min-width: 0; max-width: 100%; }
 body :is(.table-container, .table-wrapper, .table-responsive, .mail-list-wrapper) { overscroll-behavior-x: contain; }
 body :is(.modal-content, .ah-drawer-body, .au-dropdown-menu, .i18n-language-menu) { overscroll-behavior: contain; }
@@ -31,8 +32,6 @@ body.frontend-mail-page #frontendApp .query-control-block :is(.count-input, .get
     body .modal-content { width: min(100%, 680px) !important; min-width: 0 !important; max-width: 100% !important; max-height: calc(100dvh - 24px) !important; overflow-y: auto; margin-inline: auto !important; }
     body .modal-footer { display: flex; flex-wrap: nowrap !important; overflow-x: auto; }
     body .modal-footer > * { flex: 0 0 auto; }
-    body .system-nav { flex-wrap: nowrap !important; overflow-x: auto; }
-    body .system-nav-item { flex-shrink: 0; white-space: nowrap !important; }
 }
 @media (max-width: 560px) {
     body.frontend-mail-page #frontendApp .query-control-block { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "label label" "email email" "count button"; }

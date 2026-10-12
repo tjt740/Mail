@@ -69,3 +69,6 @@ static/uploads/
 # 配置文件（可选）
 # config.local.py
 .deploy.env
+
+# Private Supply credential store
+db/supply/

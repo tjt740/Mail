@@ -1604,6 +1604,7 @@
     }
 
     /* ------------------------------------------------ 卡密状态面板 */
+    #frontendApp .folder-btn[hidden],
     #frontendApp .card-status-panel[hidden],
     #frontendApp .mailbox-switcher[hidden] {
         display: none !important;
@@ -2512,10 +2513,7 @@
                         <span>邮箱查询</span>
                     </label>
                     <textarea id="emailInput" class="highlight-input email-query-input" rows="4" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="输入邮箱地址，支持多个&#10;用换行、空格或逗号分隔"></textarea>
-                    <div class="query-count-field">
-                        <label for="emailCountInput">每个邮箱收取</label>
-                        <input type="number" id="emailCountInput" class="form-control count-input highlight-input" min="1" max="100" value="10" placeholder="10">
-                    </div>
+                    <div class="query-count-field"><span id="publicMailLimitHint" data-i18n-ignore>每个邮箱展示最近 5 封邮件</span></div>
                     <button class="get-mail-btn" onclick="getMail()">
                         <span class="anticon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
                         <span>获取邮件</span>
@@ -2647,6 +2645,12 @@
     };
     const REQUEST_FOLDER_MAP = { inbox: 'INBOX', trash: 'Trash' };
     const EMAIL_REGEX = /[\w.!#$%&'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}/g;
+    let publicMailLimit = 5;
+    function renderPublicMailLimit() {
+        const source = `每个邮箱展示最近 ${publicMailLimit} 封邮件`;
+        document.getElementById('publicMailLimitHint').textContent = window.AppI18n?.t(source) || source;
+    }
+    window.addEventListener('app-language-change', renderPublicMailLimit);
     let publicMailKeyRequired = {{ public_mail_key_required|default(false)|tojson }};
 
     function applyPublicMailPolicy(required) {
@@ -2665,7 +2669,14 @@
             throw new Error('暂时无法确认取件方式，请稍后重试');
         }
         applyPublicMailPolicy(data.key_required);
+        publicMailLimit = Number.isInteger(data.email_limit) && data.email_limit >= 1 && data.email_limit <= 20 ? data.email_limit : 5;
+        renderPublicMailLimit();
+        const supply = data.provider === 'supply';
+        document.querySelector('[data-folder="trash"]').hidden = supply;
+        if (supply && mailState.folder !== 'inbox') switchFolder('inbox');
     }
+
+    refreshPublicMailPolicy().catch(() => {});
 
     // Refresh when returning to this page and before every batch; never persist the key.
     document.addEventListener('visibilitychange', () => {
@@ -2964,10 +2975,8 @@
     async function getMail() {
         const emailInput = document.getElementById('emailInput');
         const mailDisplay = document.getElementById('mailDisplay');
-        const emailCountInput = document.getElementById('emailCountInput');
         
         const emails = parseEmailsFromInput(emailInput.value);
-        const emailLimit = Math.min(Math.max(parseInt(emailCountInput.value, 10) || 10, 1), 100);
         
         if (emails.length === 0) {
             showToast('请输入邮箱地址', 'error');
@@ -3003,7 +3012,7 @@
                 const requestData = {
                     email,
                     email_index: 0,
-                    email_limit: emailLimit,
+                    email_limit: publicMailLimit,
                     folder: requestFolder
                 };
                 if (masterKey) requestData.master_key = masterKey;
@@ -3062,7 +3071,7 @@
             mailState.mails = fetchedMails.map((item, index) => {
                 const derivedId = item.id ?? generateMailId(index);
                 return {
-                    id: normalizeMailId(derivedId),
+                    id: normalizeMailId(`${item.query_email}:${derivedId}`),
                     mailbox: item.query_email || item.to || '',
                     subject: item.subject || '(无主题)',
                     from: item.from || '未知',
@@ -3077,6 +3086,7 @@
                 };
             });
             mailState.page = 1;
+            mailState.perPage = Math.max(5, mailState.mails.length);
             mailState.activeMailId = null;
             mailState.mailboxes = queryEmails;
             mailState.activeMailbox = 'all';
@@ -3149,52 +3159,9 @@
         highlightMainTableActiveRow();
     }
     
-    function renderPagination(totalCount, totalPagesOverride) {
+    function renderPagination(totalCount) {
         const container = document.getElementById('mailPagination');
-        if (!container) return;
-        const totalPages = totalPagesOverride || Math.max(1, Math.ceil(totalCount / mailState.perPage));
-        mailState.page = Math.min(mailState.page, totalPages);
-        
-        let html = `<div class="pagination-info">共 ${totalCount} 封邮件，第 ${mailState.page} / ${totalPages} 页</div>`;
-        html += `<div class="page-size-control">
-            <label for="mailPerPageSelect">每页</label>
-            <select id="mailPerPageSelect" onchange="changeMailPerPage()">
-                <option value="10" ${mailState.perPage === 10 ? 'selected' : ''}>10条</option>
-                <option value="30" ${mailState.perPage === 30 ? 'selected' : ''}>30条</option>
-                <option value="60" ${mailState.perPage === 60 ? 'selected' : ''}>60条</option>
-                <option value="100" ${mailState.perPage === 100 ? 'selected' : ''}>100条</option>
-                <option value="150" ${mailState.perPage === 150 ? 'selected' : ''}>150条</option>
-            </select>
-        </div>`;
-        if (totalPages > 1) {
-            html += '<div class="pagination-buttons">';
-            if (mailState.page > 1) {
-                html += `<button class="page-btn" onclick="gotoMailPage(${mailState.page - 1})">« 上一页</button>`;
-            }
-            let startPage = Math.max(1, mailState.page - 2);
-            let endPage = Math.min(totalPages, mailState.page + 2);
-            if (startPage > 1) {
-                html += `<button class="page-btn" onclick="gotoMailPage(1)">1</button>`;
-                if (startPage > 2) {
-                    html += '<span class="page-ellipsis">...</span>';
-                }
-            }
-            for (let i = startPage; i <= endPage; i++) {
-                const activeClass = i === mailState.page ? 'active' : '';
-                html += `<button class="page-btn ${activeClass}" onclick="gotoMailPage(${i})">${i}</button>`;
-            }
-            if (endPage < totalPages) {
-                if (endPage < totalPages - 1) {
-                    html += '<span class="page-ellipsis">...</span>';
-                }
-                html += `<button class="page-btn" onclick="gotoMailPage(${totalPages})">${totalPages}</button>`;
-            }
-            if (mailState.page < totalPages) {
-                html += `<button class="page-btn" onclick="gotoMailPage(${mailState.page + 1})">下一页 »</button>`;
-            }
-            html += '</div>';
-        }
-        container.innerHTML = html;
+        if (container) container.innerHTML = `<div class="pagination-info">共 ${totalCount} 封邮件</div>`;
     }
     function highlightMainTableActiveRow() {
         document.querySelectorAll('#mailTableBody tr').forEach(row => {

@@ -32,6 +32,7 @@ import {
   UserOutlined
 } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
+import zhTW from 'antd/locale/zh_TW';
 import enUS from 'antd/locale/en_US';
 import viVN from 'antd/locale/vi_VN';
 import filPH from './locales/fil_PH.js';
@@ -50,7 +51,7 @@ const { Title, Text } = Typography;
 const appProps = window.__MAIL_APP_PROPS__ || {};
 const COLOR_THEME_STORAGE_KEY = 'mailSystemColorTheme';
 const LANGUAGE_OPTIONS = window.AppI18n.languages;
-const ANT_LOCALES = { zh: zhCN, en: enUS, vi: viVN, fil: filPH };
+const ANT_LOCALES = { zh: zhCN, 'zh-TW': zhTW, en: enUS, vi: viVN, fil: filPH };
 const COLOR_THEME_OPTIONS = window.MailThemes.themes.map(item => ({ ...item, labelKey: item.name }));
 
 const adminMenuDefinitions = [

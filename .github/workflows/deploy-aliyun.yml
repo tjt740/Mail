@@ -69,8 +69,10 @@ jobs:
             --exclude 'db/*.db-wal' \
             --exclude 'db/*.db-shm' \
             --exclude 'db/flask_secret.key' \
+            --exclude 'db/supply/' \
             --exclude 'db/backups/' \
             --exclude 'db/backup*/' \
+            --exclude 'static/uploads/' \
             --exclude 'logs/' \
             -e "ssh -i ~/.ssh/aliyun_deploy_key -p ${ALIYUN_PORT:-22}" \
             ./ "$ALIYUN_USER@$ALIYUN_HOST:$ALIYUN_DEPLOY_PATH/"

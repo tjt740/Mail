@@ -173,4 +173,4 @@ body, .admin-app, .admin-header, .admin-sider, .legacy-frame-wrap,
     z-index: 10;
     pointer-events: none;
 }
-:root:is([data-color-theme="rain"], [data-color-theme="sunny"]) .mail-weather-canvas { display: block; }
+:root:is([data-color-theme="rain"], [data-color-theme="sunny"], [data-color-theme="night"]) .mail-weather-canvas { display: block; }

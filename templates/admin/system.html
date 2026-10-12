@@ -4,6 +4,7 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-tree.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/supply-settings.css') }}">
 <style>
     * {
         margin: 0;
@@ -644,6 +645,7 @@
     .system-nav-item {
         display: flex;
         align-items: center;
+        min-width: 0;
         gap: 10px;
         padding: 10px 12px;
         border-radius: 9px;
@@ -651,6 +653,8 @@
         text-decoration: none;
         font-size: 14px;
         font-weight: 500;
+        white-space: normal;
+        overflow-wrap: anywhere;
         transition: background 0.15s ease, color 0.15s ease;
     }
     .system-nav-item:hover {
@@ -679,14 +683,18 @@
         .system-nav {
             position: static;
             flex: 0 0 auto;
-            flex-direction: row;
-            flex-wrap: nowrap;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             width: 100%;
-            overflow-x: auto;
+            min-width: 0;
+            gap: 6px;
         }
-        .system-nav-item { flex: 0 0 auto; white-space: nowrap; }
         .system-sections { width: 100%; }
         .system-layout { gap: 12px; }
+    }
+    @media (max-width: 560px) {
+        .system-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .system-nav-item { gap: 8px; padding-inline: 8px; }
     }
 
     /* 系统设置布局校准：统一标题、标签、控件与辅助文案基线。 */
@@ -927,6 +935,7 @@
             flex-wrap: wrap;
         }
     }
+
 </style>
 {% endblock %}
 
@@ -995,6 +1004,9 @@
             {% endif %}
             {% if 'master_key' in admin_permissions %}
             <a href="#sec-masterkey" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-safety-certificate"></use></svg></span> {% if can_manage_public_mail_key %}前台密钥{% else %}万能秘钥{% endif %}</a>
+            {% endif %}
+            {% if can_manage_supply_token %}
+            <a href="#sec-supply" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span> Supply 邮件服务</a>
             {% endif %}
             {% if can_manage_site_brand %}
             <a href="#sec-systitle" class="system-nav-item"><span class="anticon"><svg aria-hidden="true"><use href="#ai-aim"></use></svg></span> 系统标题</a>
@@ -1184,6 +1196,70 @@
         </div>
         {% endif %}
 
+        {% if can_manage_supply_token %}
+        <div class="card" id="sec-supply" hidden>
+            <div class="card-header"><h2 class="card-title">Supply 邮件服务</h2></div>
+            <div class="card-body supply-settings">
+                <div class="supply-health" id="supplyHealth" data-state="untested">
+                    <div class="supply-health-info">
+                        <span class="form-label">API 连通性</span>
+                        <strong id="supplyConnectionStatus" data-state="untested" role="status" aria-live="polite">待检测</strong>
+                        <span class="master-key-note" id="supplyTokenStatus">正在读取配置…</span>
+                        <button type="button" class="btn supply-action-secondary" id="supplyTestButton" disabled><svg class="supply-button-icon" aria-hidden="true"><use href="#ai-reload"></use></svg><span data-button-label>测试连通</span></button>
+                    </div>
+                    <div class="supply-connection-scene" id="supplyConnectionScene">
+                        <canvas id="supplyConnectionCanvas" aria-hidden="true"></canvas>
+                        <span class="supply-scene-node supply-scene-mail" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg></span>
+                        <span class="supply-scene-label supply-label-mail" aria-hidden="true">邮局</span>
+                        <button type="button" class="supply-scene-hub" id="supplyConnectionHub" aria-label="测试连通" title="测试连通" data-i18n-ignore disabled><svg aria-hidden="true" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path class="supply-icon-link" d="m13 20-2 2a5 5 0 0 1-7-7l5-5a5 5 0 0 1 7 0m3 2 2-2a5 5 0 0 1 7 7l-5 5a5 5 0 0 1-7 0m-5-1 10-10"/><path class="supply-icon-check" d="m8 16 5 5 11-11"/><path class="supply-icon-failed" d="m11 11 10 10m0-10L11 21"/><circle class="supply-icon-loading" cx="16" cy="16" r="10"/></svg></button>
+                        <span class="supply-scene-node supply-scene-cloud" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a5 5 0 0 1-1-9.9A6.5 6.5 0 0 1 18.4 8a5 5 0 0 1-.4 10"/><path d="m9 14 3-3 3 3m-3-3v10"/></svg></span>
+                        <span class="supply-scene-label supply-label-cloud" translate="no" aria-hidden="true">Supply</span>
+                        <span class="supply-scene-status" id="supplySceneStatus" aria-hidden="true">待检测</span>
+                    </div>
+                    <div class="supply-health-meta" id="supplyConnectionMeta" hidden>
+                        <span class="supply-meta-item"><span>检测时间</span><time id="supplyCheckedAt"></time></span>
+                        <span class="supply-meta-item"><span>响应耗时</span><strong id="supplyLatency"></strong></span>
+                        <span class="supply-meta-stage" id="supplyCheckStage"></span>
+                    </div>
+                </div>
+                <div class="supply-config-panel">
+                    <form id="supplyLimitForm" class="supply-config-row">
+                        <label class="form-label supply-setting-label" for="supplyMailLimit"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg><span>展示邮件数量</span></label>
+                        <div class="supply-setting-content">
+                            <div class="supply-control-line supply-count-controls">
+                                <input type="number" class="form-control" id="supplyMailLimit" min="1" max="20" step="1" value="5" required disabled>
+                                <div class="supply-limit-presets" role="group" aria-label="展示邮件数量">
+                                    {% for count in [1, 5, 10, 20] %}<button type="button" class="supply-limit-preset" data-limit="{{ count }}" aria-pressed="{{ 'true' if count == 5 else 'false' }}" disabled>{{ count }}</button>{% endfor %}
+                                </div>
+                                <button type="submit" class="btn supply-action-secondary" id="supplyLimitSubmit" disabled><svg class="supply-button-icon" aria-hidden="true"><use href="#ai-save"></use></svg><span data-button-label>保存数量</span></button>
+                            </div>
+                            <span id="supplyLimitStatus" role="status" aria-live="polite"></span>
+                        </div>
+                    </form>
+                    <form id="supplyTokenForm" class="supply-config-row" autocomplete="off">
+                        <label class="form-label supply-setting-label" for="supplyTokenInput"><svg aria-hidden="true"><use href="#ai-key"></use></svg><span>Supply Token</span></label>
+                        <div class="supply-control-line">
+                            <div class="supply-token-field">
+                                <input type="password" class="form-control" id="supplyTokenInput" autocomplete="new-password" autocapitalize="off" spellcheck="false" maxlength="512" placeholder="输入新的 Supply Token" required>
+                                <button type="button" class="supply-token-toggle" id="supplyTokenToggle" aria-label="显示 Token" title="显示 Token" aria-controls="supplyTokenInput" aria-pressed="false" data-i18n-ignore disabled><svg aria-hidden="true"><use href="#ai-eye"></use></svg></button>
+                            </div>
+                            <button type="submit" class="btn supply-action-primary" id="supplyTokenSubmit"><svg class="supply-button-icon" aria-hidden="true"><use href="#ai-safety-certificate"></use></svg><span data-button-label>验证并保存 Token</span></button>
+                        </div>
+                    </form>
+                    <form id="supplyPreviewForm" class="supply-config-row">
+                        <label class="form-label supply-setting-label" for="supplyPreviewEmail"><svg aria-hidden="true"><use href="#ai-mail"></use></svg><span>预览邮箱</span></label>
+                        <div class="supply-control-line">
+                            <input type="email" class="form-control" id="supplyPreviewEmail" placeholder="输入邮箱地址" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="254" required>
+                            <button type="submit" class="btn supply-action-secondary" id="supplyPreviewButton" disabled><svg class="supply-button-icon" aria-hidden="true"><use href="#ai-eye"></use></svg><span data-button-label>预览邮件</span></button>
+                        </div>
+                    </form>
+                </div>
+                <div id="supplyPreviewStatus" role="status" aria-live="polite"></div>
+                <div id="supplyPreviewResults" class="supply-preview-results"></div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- 管理员万能秘钥 -->
         {% if 'master_key' in admin_permissions %}
         <div class="card" id="sec-masterkey" hidden>
@@ -1328,6 +1404,10 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/admin-tree.js') }}"></script>
+{% if can_manage_supply_token %}
+<script src="{{ url_for('static', filename='js/supply-connection.js') }}"></script>
+<script src="{{ url_for('static', filename='js/supply-settings.js') }}"></script>
+{% endif %}
 <script>
     // Toast 统一走 AdminUI.toast（window.showToast 由 admin-ui.js 提供）
 
@@ -1349,6 +1429,8 @@
             window.history.pushState(null, '', selected.hash);
         }
     }
+
+
 
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('#systemNav .system-nav-item').forEach(link => {

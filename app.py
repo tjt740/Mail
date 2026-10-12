@@ -28,6 +28,7 @@ import base64
 import binascii
 from functools import wraps
 import admin_security as security
+import supply_mail
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.message import EmailMessage
@@ -2718,7 +2719,7 @@ def legacy_index():
     )
 
 
-SUPPORTED_PUBLIC_LANGUAGES = ('zh', 'en', 'vi', 'fil')
+SUPPORTED_PUBLIC_LANGUAGES = ('zh', 'zh-TW', 'en', 'vi', 'fil')
 CHINESE_LANGUAGE_COUNTRIES = {'CN', 'HK', 'MO', 'TW'}
 COUNTRY_HEADER_NAMES = (
     'CF-IPCountry',
@@ -2804,6 +2805,8 @@ def _language_for_country(country):
         return 'vi'
     if country == 'PH':
         return 'fil'
+    if country in ('TW', 'HK', 'MO'):
+        return 'zh-TW'
     if country in CHINESE_LANGUAGE_COUNTRIES:
         return 'zh'
     return 'en'
@@ -2811,12 +2814,12 @@ def _language_for_country(country):
 
 def _language_from_accept_header():
     best = request.accept_languages.best_match(
-        ['zh-CN', 'zh-TW', 'zh', 'vi-VN', 'vi', 'fil-PH', 'fil', 'tl-PH', 'tl', 'en'],
+        ['zh-CN', 'zh-TW', 'zh-HK', 'zh-MO', 'zh-Hant', 'zh-Hant-TW', 'zh-Hant-HK', 'zh-Hans', 'zh', 'vi-VN', 'vi', 'fil-PH', 'fil', 'tl-PH', 'tl', 'en'],
         default='en',
     )
     normalized = str(best or 'en').lower()
     if normalized.startswith('zh'):
-        return 'zh'
+        return 'zh-TW' if ('hant' in normalized or normalized in ('zh-tw', 'zh-hk', 'zh-mo')) else 'zh'
     if normalized.startswith('vi'):
         return 'vi'
     if normalized.startswith(('fil', 'tl')):
@@ -2955,6 +2958,8 @@ def _admin_feature_allowed(db):
             'poller': 'settings', 'mailbox-access': 'mailbox_access',
             'servers': 'mailbox' if request.method == 'GET' else 'settings',
         }
+        if endpoint == 'supply-token':
+            return _can_manage_public_mail_key(db)
         if endpoint == 'system-config':
             if request.method == 'GET':
                 return True
@@ -3289,10 +3294,142 @@ def _public_mail_key_required():
     return bool(rows and rows[0]['config_value'] != '0')
 
 
+def _supply_token_path():
+    return app.config.get('SUPPLY_TOKEN_FILE') or os.environ.get('SUPPLY_TOKEN_FILE') or os.path.join(
+        os.path.dirname(os.path.abspath(app.config['DATABASE'])), 'supply', 'token.json')
+
+
+@app.after_request
+def protect_mail_responses(response):
+    if request.path in ('/api/get_mail', '/admin/api/supply-token'):
+        response.headers['Cache-Control'] = 'no-store, private'
+    return response
+
+
+def _supply_mail_limit():
+    try:
+        rows = security.query(get_db(), 'SELECT config_value FROM system_config WHERE config_key = ?',
+                              ('supply_mail_limit',))
+        return supply_mail.validate_mail_limit(int(rows[0]['config_value'])) if rows else supply_mail.DEFAULT_MAIL_LIMIT
+    except Exception:
+        raise supply_mail.SupplyError('storage') from None
+
+
+def _supply_owner_is_current():
+    security.invalidate()
+    actor = security.current(get_db())
+    return bool(_can_manage_public_mail_key(get_db()) and
+                session.get('admin_session_version') == actor['session_version'])
+
+
+def _supply_connection(token):
+    # A check applies only to the token that was actually tested. Never expose its digest.
+    try:
+        saved = json.loads(get_system_config('supply_connection', '{}'))
+        if token and saved.get('token_digest') == hashlib.sha256(token.encode()).hexdigest():
+            return {key: saved[key] for key in ('status', 'checked_at', 'latency_ms', 'stage')}
+    except (ValueError, KeyError, TypeError, AttributeError):
+        pass
+    return {'status': 'untested', 'checked_at': None, 'latency_ms': None, 'stage': None}
+
+
+def _record_supply_connection(token, started, status='connected', stage='token'):
+    connection = dict(status=status, checked_at=datetime.now(timezone.utc).isoformat(),
+                      latency_ms=max(0, round((time.monotonic() - started) * 1000)), stage=stage)
+    # A failed candidate or a concurrent token replacement must not overwrite the saved token's status.
+    if token and token == supply_mail.load_token(_supply_token_path()):
+        saved = dict(connection, token_digest=hashlib.sha256(token.encode()).hexdigest())
+        try:
+            set_system_config(get_db(), app.config['DATABASE_TYPE'], 'supply_connection',
+                              json.dumps(saved), 'json', 'Supply 最近连通性检测')
+        except Exception:
+            logger.error('Unable to persist Supply connection status')
+    return connection
+
+
+@app.route('/admin/api/supply-token', methods=['GET', 'POST'])
+@admin_required
+def api_admin_supply_token():
+    if not _can_manage_public_mail_key(get_db()):
+        return jsonify(success=False, message='仅 tjt740 可管理 Supply Token'), 403
+    token = None
+    action = 'save'
+    started = time.monotonic()
+    try:
+        path = _supply_token_path()
+        if request.method == 'GET':
+            token = supply_mail.load_token(path)
+            return jsonify(success=True, configured=bool(token), email_limit=_supply_mail_limit(),
+                           connection=_supply_connection(token))
+        origin = request.headers.get('Origin')
+        if (request.headers.get('Sec-Fetch-Site') == 'cross-site' or
+                (origin and origin.rstrip('/') != request.host_url.rstrip('/'))):
+            return jsonify(success=False, message='请求来源无效'), 403
+        if not request.is_json or len(request.get_data(cache=True)) > 2048:
+            return jsonify(success=False, message='请求内容无效'), 400
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(success=False, message='请求内容无效'), 400
+        action = data.get('action', 'save')
+        if action not in ('save', 'settings', 'test', 'preview', 'reveal'):
+            return jsonify(success=False, message='未知的操作类型'), 400
+        if action == 'settings':
+            limit = supply_mail.validate_mail_limit(data.get('email_limit'))
+            set_system_config(get_db(), app.config['DATABASE_TYPE'], 'supply_mail_limit', limit, 'number', 'Supply 展示邮件数量')
+            return jsonify(success=True, email_limit=_supply_mail_limit())
+        if action == 'preview':
+            email = data.get('email')
+            if not isinstance(email, str) or len(email.strip()) > 254 or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email.strip()):
+                return jsonify(success=False, message='请输入有效的邮箱地址'), 400
+            limit = supply_mail.validate_mail_limit(data.get('email_limit', _supply_mail_limit()))
+        token = (supply_mail.validate_token_input(data.get('token')) if action == 'save'
+                 else supply_mail.load_token(path))
+        if not token:
+            return jsonify(success=False, code='not_configured', message='尚未配置 Supply Token'), 400
+        if action == 'reveal':
+            # Plaintext is returned only for an explicit, same-origin owner request.
+            if not _supply_owner_is_current():
+                return jsonify(success=False, message='会话已过期，请重新登录'), 403
+            return jsonify(success=True, token=token)
+        started = time.monotonic()
+        if action == 'preview':
+            result = supply_mail.Client(token).fetch(email.strip().lower(), limit=limit)
+        else:
+            supply_mail.Client(token).validate()
+        if not _supply_owner_is_current():
+            return jsonify(success=False, message='会话已过期，请重新登录'), 403
+        if action == 'save':
+            supply_mail.save_token(path, token)
+        connection = _record_supply_connection(token, started, stage='mail' if action == 'preview' else 'token')
+        if action == 'preview':
+            return jsonify(**result, configured=True, connection=connection)
+        return jsonify(success=True, configured=True, updated=action == 'save', connection=connection,
+                       message='Supply Token 已验证并保存' if action == 'save' else '连接成功')
+    except ValueError as error:
+        return jsonify(success=False, message=str(error)), 400
+    except supply_mail.SupplyError as error:
+        if action == 'reveal':
+            return jsonify(success=False, code=error.code, message=error.message), error.status
+        if token and _supply_owner_is_current():
+            connection = _record_supply_connection(token, started,
+                status='connected' if error.code == 'missing' else 'failed')
+        else:
+            connection = {'status': 'failed', 'checked_at': datetime.now(timezone.utc).isoformat(),
+                          'latency_ms': None, 'stage': 'token'}
+        status = 422 if action == 'save' and error.code == 'auth' else error.status
+        return jsonify(success=False, code=error.code, message=error.message, connection=connection), status
+    except Exception:
+        logger.error('Unable to update Supply settings')
+        return jsonify(success=False, code='storage', message='邮件服务配置读写失败，请联系管理员'), 500
+
+
 @app.route('/api/public-mail-config')
 def api_public_mail_config():
     try:
-        response = jsonify(success=True, key_required=_public_mail_key_required())
+        token = supply_mail.load_token(_supply_token_path())
+        response = jsonify(success=True, key_required=_public_mail_key_required(),
+                           provider='supply' if token else 'mailbox',
+                           email_limit=_supply_mail_limit() if token else supply_mail.DEFAULT_MAIL_LIMIT)
     except Exception:
         logger.exception('Public mail access configuration unavailable')
         response = jsonify(success=False, message='暂时无法确认取件方式，请稍后重试')
@@ -4099,6 +4236,7 @@ def legacy_admin_system():
                          admin_username=session.get('admin_username'),
                          can_manage_public_mail_key=_can_manage_public_mail_key(get_db()),
                          can_manage_site_brand=_can_manage_site_brand(get_db()),
+                         can_manage_supply_token=_can_manage_public_mail_key(get_db()),
                          show_mailbox_access=_is_admin_mailbox_scope_manager(get_db(), session.get('admin_id')),
                          embedded=request.args.get('embedded') == '1')
 
@@ -4302,13 +4440,16 @@ def api_get_mail():
     """取件：前台地址查询遵守密钥开关，后台和卡密取件保留各自的授权校验。"""
     try:
         data = request.get_json()
-        if not data:
+        if not isinstance(data, dict) or not data:
             return jsonify({
                 'success': False,
                 'message': '请求数据无效'
             })
             
-        email = data.get('email', '').strip()
+        email = data.get('email', '')
+        if not isinstance(email, str) or len(email.strip()) > 254 or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email.strip()):
+            return jsonify(success=False, message='请输入有效的邮箱地址'), 400
+        email = email.strip()
         card_key = (data.get('card_key', '') or request.headers.get('X-Card-Key', '') or '').strip()
         admin_access = bool(data.get('admin_access', False))
         # 兼容只有一个“卡密/万能秘钥”输入框的旧客户端：显式 master_key
@@ -4336,6 +4477,8 @@ def api_get_mail():
         # Get optional email_limit parameter for fetching multiple emails
         email_limit = safe_int(data.get('email_limit', 1), 1)
         email_limit = min(max(email_limit, 1), 200)
+        if is_public_lookup and not is_admin_session:
+            email_limit = 5
         
         # Optional folder selection
         folder = (data.get('folder') or 'INBOX').strip() or 'INBOX'
@@ -4388,12 +4531,18 @@ def api_get_mail():
                 if folder:
                     script_args.extend(['--folder', folder])
                 
-                result = subprocess.run(script_args, capture_output=True, text=True, timeout=30)
-                
-                if result.returncode == 0:
-                    # 解析JSON输出
+                token = supply_mail.load_token(_supply_token_path()) if is_public_lookup and not is_admin_session else None
+                if token:
+                    if folder.upper() != 'INBOX':
+                        return jsonify(success=False, code='folder', message='此邮件服务仅支持收件箱'), 400
+                    response_data = supply_mail.Client(token).fetch(email.lower(), limit=_supply_mail_limit())
+                else:
+                    result = subprocess.run(script_args, capture_output=True, text=True, timeout=30)
+                    if result.returncode != 0:
+                        return jsonify(success=False, message=f'邮件获取失败: {result.stderr or "未知错误"}')
                     response_data = json.loads(result.stdout)
-                    
+
+                if isinstance(response_data, dict):
                     if response_data.get('success'):
                         # 记录公开查询或管理员访问日志
                         user_ip = request.environ.get('HTTP_X_FORWARDED_FOR') or request.environ.get('REMOTE_ADDR') or 'unknown'
@@ -4427,12 +4576,10 @@ def api_get_mail():
                             db.commit()
                     
                     return jsonify(response_data)
-                else:
-                    return jsonify({
-                        'success': False,
-                        'message': f'邮件获取失败: {result.stderr or "未知错误"}'
-                    })
-                    
+                return jsonify(success=False, message='邮件服务响应格式错误'), 502
+
+            except supply_mail.SupplyError as error:
+                return jsonify(success=False, code=error.code, message=error.message), error.status
             except subprocess.TimeoutExpired:
                 return jsonify({
                     'success': False,
