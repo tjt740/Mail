@@ -89,13 +89,13 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
     align-items: center;
     flex: 0 0 auto;
     min-height: 208px;
-    margin-bottom: 12px;
-    padding: 28px 36px;
+    margin-bottom: 16px;
+    padding: 26px 36px;
     overflow: hidden;
-    border: 0;
-    border-radius: 14px;
+    border: 1px solid var(--scene-border);
+    border-radius: 24px;
     background: var(--scene-surface);
-    box-shadow: none;
+    box-shadow: var(--scene-shadow);
     transition: background-color .8s ease, border-color .8s ease, box-shadow .8s ease;
 }
 #sceneCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
@@ -105,20 +105,30 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
 :root[data-color-theme] .scene-hero { background: var(--scene-hero-bg); }
 :root[data-color-theme] .scene-hero :is(h2, .scene-satellite) { color: var(--scene-hero-text); }
 :root[data-color-theme] .scene-hero :is(.scene-eyebrow, .scene-description) { color: color-mix(in srgb, var(--scene-hero-text) 90%, var(--scene-bg)); }
-.scene-copy { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 20px; max-width: calc(100% - 300px); }
-.scene-eyebrow { display: none; }
+.scene-copy { position: relative; z-index: 2; max-width: 70%; }
+.scene-eyebrow { display: flex; align-items: center; gap: 8px; color: var(--scene-muted); font-size: 11px; letter-spacing: .16em; margin: 0 0 12px; }
 .scene-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--scene-accent); box-shadow: 0 0 0 4px var(--scene-soft); }
-.scene-copy h2 { margin: 0; color: var(--scene-text); font-size: clamp(24px, 2.2vw, 32px); font-weight: 600; line-height: 1.4; letter-spacing: -.035em; }
-.scene-description { display: none; }
-.scene-controls { display: inline-flex; align-items: center; gap: 3px; padding: 0; border: 0; border-radius: 6px; background: transparent; }
+.scene-copy h2 { margin: 0; color: var(--scene-text); font-size: clamp(21px, 2.2vw, 32px); font-weight: 650; line-height: 1.35; letter-spacing: -.035em; }
+.scene-description { margin: 10px 0 18px; font-size: 13px; color: var(--scene-muted); }
+.scene-controls {
+    display: inline-flex; align-items: center; gap: 3px; padding: 4px;
+    border: 1px solid var(--scene-border); border-radius: 12px;
+    background: color-mix(in srgb, var(--scene-inner) 38%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
 .scene-controls button {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    min-height: 40px; padding: 7px 14px; border: 0; border-radius: 8px;
-    background: transparent; color: var(--scene-hero-text, var(--scene-text)); font: inherit; font-size: 13px; cursor: pointer;
+    min-height: 32px; padding: 5px 12px; border: 1px solid transparent; border-radius: 8px;
+    background: transparent; color: var(--scene-hero-text, var(--scene-text)); font: inherit; font-size: 12px; cursor: pointer;
     transition: color .25s ease, background-color .35s ease, box-shadow .35s ease, transform .25s ease;
 }
 .scene-controls button:hover { color: var(--scene-text); background: var(--scene-soft); }
-.scene-controls button[aria-pressed="true"] { color: var(--scene-accent); background: var(--scene-input); box-shadow: none; }
+.scene-controls button[aria-pressed="true"] {
+    color: var(--scene-accent);
+    background: color-mix(in srgb, var(--scene-input) 58%, transparent);
+    border-color: var(--scene-border);
+    box-shadow: 0 2px 7px rgb(20 40 75 / 6%);
+}
 .scene-controls button:active { transform: scale(.95); }
 .scene-controls button:focus-visible { outline: 2px solid var(--scene-accent); outline-offset: 2px; }
 
@@ -321,13 +331,14 @@ body.frontend-mail-page #frontendApp :is(.mail-input-card, .query-control-block,
 @media (max-height: 620px) and (min-width: 561px) { .scene-hero { min-height: 172px; padding-block: 20px; } .scene-art { transform: translateY(-50%) scale(.8); } }
 @media (max-width: 560px) {
     :root body.frontend-mail-page { padding: 8px !important; }
-    .scene-hero { min-height: 180px; padding: 22px 18px; margin-bottom: 10px; border-radius: 12px; }
+    .scene-hero { min-height: 205px; padding: 22px 18px 18px; margin-bottom: 10px; border-radius: 18px; }
     .scene-copy { display: block; max-width: 100%; width: 100%; }
     .scene-copy h2 { max-width: calc(100% - 96px); font-size: 21px; line-height: 1.4; }
     .scene-copy h2 span { display: block; }
+    .scene-eyebrow { font-size: 10px; margin-bottom: 10px; }
+    .scene-description { max-width: 70%; font-size: 11px; margin: 8px 0 18px; }
     .scene-art { right: -50px; top: 42%; transform: translateY(-50%) scale(.6); }
     .scene-controls { gap: 2px; }
-    .scene-controls { margin-top: 20px; }
     .scene-controls button { min-height: 40px; padding-inline: 10px; }
     body.frontend-mail-page #frontendApp .mail-input-card { backdrop-filter: none; }
 }
