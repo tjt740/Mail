@@ -5,6 +5,7 @@ html:has(body.frontend-mail-page) {
     overflow: hidden !important;
 }
 body.frontend-mail-page {
+    --workspace-glass: color-mix(in srgb, var(--scene-input) 60%, transparent);
     height: 100dvh;
     min-height: 0;
     overflow: hidden !important;
@@ -42,9 +43,10 @@ body.frontend-mail-page #frontendApp .mail-workspace {
     padding: 0 !important;
     border: 0 !important;
     border-radius: 8px !important;
-    background: var(--scene-input) !important;
+    background: var(--workspace-glass) !important;
     box-shadow: none !important;
-    backdrop-filter: none;
+    -webkit-backdrop-filter: blur(22px) saturate(115%);
+    backdrop-filter: blur(22px) saturate(115%);
 }
 body.frontend-mail-page #frontendApp .mail-query-panel {
     flex: 0 0 auto;
@@ -52,8 +54,18 @@ body.frontend-mail-page #frontendApp .mail-query-panel {
     margin: 0 0 10px;
     border: 0;
     border-radius: 12px;
-    background: var(--scene-input);
+    background: var(--workspace-glass);
     box-shadow: 0 1px 3px rgb(15 23 42 / 4%);
+    -webkit-backdrop-filter: blur(22px) saturate(115%);
+    backdrop-filter: blur(22px) saturate(115%);
+}
+/* A single frosted layer lets the weather show through without stacking
+   opaque reading surfaces inside it. Keep text and controls fully opaque. */
+body.frontend-mail-page #frontendApp .mail-workspace :is(.mail-list-panel, .mail-list-wrapper, .mail-display) {
+    background: transparent !important;
+}
+body.frontend-mail-page #frontendApp .mail-workspace :is(.folder-panel, .mailbox-switcher) {
+    background: color-mix(in srgb, var(--scene-accent) 3%, transparent) !important;
 }
 body.frontend-mail-page #frontendApp .mail-query-panel .control-row {
     margin: 0 !important;
@@ -99,7 +111,7 @@ body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block .ema
     margin: 0;
     padding: 12px 14px !important;
     border-radius: 8px !important;
-    background: var(--scene-inner) !important;
+    background: color-mix(in srgb, var(--scene-inner) 38%, transparent) !important;
     box-shadow: none !important;
     font-size: 14px;
     line-height: 22px;
@@ -258,6 +270,9 @@ body.frontend-mail-page #frontendApp .mail-workspace .mail-table th {
     font-size: 12px;
     font-weight: 500;
     color: var(--scene-muted) !important;
+    background: color-mix(in srgb, var(--scene-bg) 82%, transparent) !important;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
 }
 body.frontend-mail-page #frontendApp .mail-workspace .mail-table td { padding: 13px 14px; }
 body.frontend-mail-page #frontendApp .mail-workspace .mail-table .col-subject { font-weight: 600; }
@@ -337,7 +352,9 @@ body.frontend-mail-page #frontendApp .mail-workspace .mail-display-actions {
     position: sticky;
     top: 0;
     z-index: 3;
-    background: var(--scene-input);
+    background: color-mix(in srgb, var(--scene-bg) 82%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
 }
 body.frontend-mail-page #frontendApp .mail-workspace .mail-header { margin-bottom: 12px; }
 @media (max-width: 900px) {
@@ -548,4 +565,29 @@ body.frontend-mail-page #frontendApp .mail-workspace .loading-text {
     body.frontend-mail-page #frontendApp .mail-workspace .mail-layout { grid-template-columns: 144px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
     body.frontend-mail-page #frontendApp .mail-workspace .mail-layout.is-single-mailbox { grid-template-columns: minmax(0, 1fr); }
     body.frontend-mail-page #frontendApp .mail-workspace .folder-panel { padding: 8px !important; border-bottom: 0 !important; border-right: 1px solid var(--scene-border) !important; }
+}
+
+/* One cadence for public controls, with complete-frame palette/text changes. */
+:root[data-frontend-transition]::view-transition { pointer-events: none; }
+:root[data-frontend-transition]::view-transition-group(root) { animation-duration: 380ms; animation-timing-function: cubic-bezier(.22, 1, .36, 1); }
+:root[data-frontend-transition]::view-transition-old(root) { animation: frontendPaletteFade 380ms cubic-bezier(.22, 1, .36, 1) both; mix-blend-mode: normal; z-index: 1; }
+:root[data-frontend-transition]::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+:root[data-frontend-transition="language"]::view-transition-old(root) { animation-duration: 260ms; }
+@keyframes frontendPaletteFade { to { opacity: 0; } }
+body.frontend-mail-page #frontendSettingsMenu { animation: none; }
+body.frontend-mail-page #frontendSettings :is(button, .frontend-theme-preview, .frontend-settings-check) { transition-timing-function: cubic-bezier(.22, 1, .36, 1); }
+body.frontend-mail-page #frontendApp :is(.get-mail-btn, .back-btn, .folder-btn, .page-btn, .mailbox-chip, .attachment-download, .scene-controls button) {
+    transition-duration: 180ms !important;
+    transition-timing-function: cubic-bezier(.22, 1, .36, 1) !important;
+}
+body.frontend-mail-page #frontendApp :is(.back-btn, .folder-btn, .page-btn, .mailbox-chip, .attachment-download):active,
+body.frontend-mail-page #frontendApp .mail-query-panel .get-mail-btn:active:not(:disabled) { transform: scale(.98) !important; }
+body.frontend-mail-page #frontendApp .mail-display.is-visible { animation: none; }
+body.frontend-mail-page #frontendApp .mail-table tr.mail-row-enter { animation: frontendRowEnter 240ms cubic-bezier(.22, 1, .36, 1) both; }
+body.frontend-mail-page #frontendApp .mail-list-view { transition: opacity 200ms ease; }
+body.frontend-mail-page .toast { transition-duration: 240ms; transition-timing-function: cubic-bezier(.22, 1, .36, 1); }
+@keyframes frontendRowEnter { from { opacity: .65; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+    :root[data-frontend-transition]::view-transition-old(root) { animation: none; }
+    body.frontend-mail-page #frontendApp :is(.get-mail-btn, .back-btn, .folder-btn, .page-btn, .mailbox-chip, .attachment-download, .scene-controls button) { transition-duration: 0s !important; }
 }

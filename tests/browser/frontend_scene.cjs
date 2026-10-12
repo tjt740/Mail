@@ -248,7 +248,7 @@ test('envelope unfolds on hover, closes on leave and supports keyboard and touch
         if (process.env.SCREENSHOT_DIR) await page.locator('.scene-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'envelope-open-desktop.png') });
         await page.mouse.move(4, 4);
         await page.waitForFunction(() => document.querySelector('.scene-envelope-trigger').getAttribute('aria-expanded') === 'false');
-        await page.waitForTimeout(950);
+        await page.waitForFunction(() => MailScene.state.envelope.lift === 0 && MailScene.state.envelope.angle === 0);
         assert.equal(await paperY(), 0);
         await trigger.focus();
         await trigger.press('Enter');
@@ -268,52 +268,110 @@ test('envelope unfolds on hover, closes on leave and supports keyboard and touch
     } finally { await mobile.close(); }
 });
 
-test('envelope lid folds toward the viewer before the paper lifts and reverses without resetting', async () => {
+test('envelope joints retain momentum, keep a fixed hinge and settle after rapid reversals', async () => {
     const page = await newPage({ reducedMotion: 'no-preference', deviceScaleFactor: 2 });
     try {
-        await page.locator('.scene-envelope-trigger').hover();
         await page.evaluate(() => {
-            window.foldTracks = [...document.querySelectorAll('.scene-envelope-flap, .scene-letter, .scene-envelope-seal')]
-                .map(el => el.getAnimations()[0]);
+            window.foldSamples = [];
+            const sample = () => {
+                foldSamples.push({ ...MailScene.state.envelope });
+                if (!foldSamples.some(s => s.lift === 42)) requestAnimationFrame(sample);
+            };
+            requestAnimationFrame(sample);
         });
-        const poseAt = async progress => page.evaluate(progress => {
-            foldTracks.forEach(animation => { animation.pause(); animation.currentTime = animation.effect.getTiming().duration * progress; });
+        await page.locator('.scene-envelope-trigger').hover();
+        await page.waitForFunction(() => MailScene.state.envelope.angle > 80 && MailScene.state.envelope.angle < 160);
+        const reversal = await page.evaluate(() => {
+            const before = MailScene.state.envelope;
+            document.querySelector('.scene-envelope-trigger').dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+            return { before, after: MailScene.state.envelope };
+        });
+        assert.ok(reversal.before.angularVelocity > 0);
+        assert.equal(reversal.after.angle, reversal.before.angle, 'Reversal must not jump to another pose');
+        assert.equal(reversal.after.angularVelocity, reversal.before.angularVelocity, 'Momentum decelerates rather than flipping instantly');
+        await page.waitForTimeout(100);
+        await page.evaluate(() => document.querySelector('.scene-envelope-trigger').dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })));
+        await page.waitForFunction(() => MailScene.state.envelope.lift === 42 && MailScene.state.envelope.angularVelocity === 0);
+        const geometry = await page.evaluate(() => {
             const flap = document.querySelector('.scene-envelope-flap');
             const matrix = new DOMMatrixReadOnly(getComputedStyle(flap).transform);
-            const paper = new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.scene-letter')).transform);
-            return { tipDepth: matrix.m23 * flap.offsetHeight + matrix.m43, paperY: paper.m42, hingeDepth: matrix.m43, flapY: matrix.m42, flipped: matrix.m22 };
-        }, progress);
-        const early = await poseAt(.13);
-        assert.ok(early.tipDepth > 15, 'The lid must travel in front of the envelope, not disappear behind it');
-        assert.equal(early.paperY, 0, 'The letter waits for the lid to clear the pocket');
-        if (process.env.SCREENSHOT_DIR) await page.locator('.scene-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'envelope-opening.png') });
-        const open = await poseAt(1);
-        assert.equal(open.flipped, -1, 'The fully open flap lies flat behind the letter');
-        assert.equal(open.hingeDepth, early.hingeDepth, 'The fold does not slide away from its hinge');
-        assert.equal(open.flapY, early.flapY);
-        if (process.env.SCREENSHOT_DIR) await page.locator('.scene-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'envelope-open-seam.png') });
-        const midway = await poseAt(.55);
-        const reversed = await page.evaluate(() => {
-            const trigger = document.querySelector('.scene-envelope-trigger');
-            trigger.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
-            return new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.scene-letter')).transform).m42;
+            return { flipped: matrix.m22, hinge: matrix.m43, shift: matrix.m42,
+                sealOnLid: flap.contains(document.querySelector('.scene-envelope-seal')),
+                waits: foldSamples.filter(s => s.angle < 90).every(s => s.lift === 0),
+                intermediate: foldSamples.some(s => s.lift > 0 && s.lift < 42) };
         });
-        assert.ok(Math.abs(reversed - midway.paperY) < .1, 'Leaving must reverse from the rendered position without a jump');
-        await page.waitForFunction(() => foldTracks.every(animation => animation.playbackRate < 0 && animation.currentTime < 550));
-        const continued = await page.evaluate(() => {
-            const trigger = document.querySelector('.scene-envelope-trigger');
-            const paper = document.querySelector('.scene-letter');
-            const before = new DOMMatrixReadOnly(getComputedStyle(paper).transform).m42;
-            trigger.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
-            return { before, after: new DOMMatrixReadOnly(getComputedStyle(paper).transform).m42,
-                sameTracks: foldTracks.every(animation => animation.effect.target.getAnimations().includes(animation)) };
-        });
-        assert.ok(Math.abs(continued.before - continued.after) < .1);
-        assert.ok(continued.sameTracks);
+        assert.ok(geometry.flipped < -.98);
+        assert.equal(geometry.hinge, 2);
+        assert.equal(geometry.shift, 0);
+        assert.ok(geometry.sealOnLid && geometry.waits && geometry.intermediate, JSON.stringify(geometry));
+        if (process.env.SCREENSHOT_DIR) await page.locator('.scene-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'envelope-physical-open.png') });
+        for (let i = 0; i < 6; i++) {
+            await page.evaluate(open => document.querySelector('.scene-envelope-trigger').dispatchEvent(new PointerEvent(open ? 'pointerenter' : 'pointerleave', { pointerType: 'mouse' })), i % 2 === 1);
+            await page.waitForTimeout(55);
+        }
+        await page.locator('.scene-envelope-trigger').press('Escape');
+        await page.waitForFunction(() => MailScene.state.envelope.angle === 0 && MailScene.state.envelope.lift === 0);
+        await page.locator('.scene-envelope-trigger').press('Enter');
         await page.emulateMedia({ reducedMotion: 'reduce' });
-        await page.waitForFunction(() => foldTracks.every(animation => Math.abs(animation.currentTime - animation.effect.getTiming().duration) < .1 && ['paused', 'finished'].includes(animation.playState)));
+        await page.waitForFunction(() => MailScene.state.envelope.angle === 184 && MailScene.state.envelope.lift === 42);
         await page.locator('.scene-envelope-trigger').press('Escape');
         assert.equal(await page.locator('.scene-letter').evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42), 0);
+    } finally { await page.close(); }
+});
+
+test('public preference and popup transitions remain interruptible and preserve the query', async () => {
+    const page = await newPage({ reducedMotion: 'no-preference' });
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    try {
+        await page.locator('#emailInput').fill('reader@example.com');
+        await page.locator('#frontendSettingsButton').click();
+        await page.locator('#frontendSettingsMenu').waitFor({ state: 'visible' });
+        await page.waitForTimeout(260);
+        await page.locator('#frontendSettingsButton').press('Escape');
+        assert.equal(await page.locator('#frontendSettingsMenu').evaluate(el => el.inert), true);
+        assert.equal(await page.locator('#frontendSettingsMenu').isVisible(), true, 'Closing has an exit transition');
+        await page.locator('#frontendSettingsButton').click();
+        await page.waitForTimeout(260);
+        assert.equal(await page.locator('#frontendSettingsButton').getAttribute('aria-expanded'), 'true');
+        assert.equal(await page.locator('#frontendSettingsMenu').evaluate(el => el.inert), false);
+        await page.locator('#colorThemeMenu [data-theme="night"]').click();
+        await page.waitForFunction(() => document.documentElement.dataset.colorTheme === 'night');
+        await page.waitForFunction(() => !document.documentElement.dataset.frontendTransition);
+        await page.evaluate(() => {
+            FrontendMotion.change(() => AppColorTheme.setTheme('rain'));
+            FrontendMotion.change(() => AppColorTheme.setTheme('sunny'));
+        });
+        await page.waitForFunction(() => document.documentElement.dataset.colorTheme === 'sunny' && !document.documentElement.dataset.frontendTransition);
+        for (const lang of ['en', 'zh-TW']) {
+            await page.locator('#frontendSettingsButton').click();
+            await page.locator(`#i18nLanguageMenu [data-language="${lang}"]`).click();
+            await page.waitForFunction(lang => AppI18n.language === lang && !document.documentElement.dataset.frontendTransition, lang);
+            assert.equal(await page.locator('#emailInput').inputValue(), 'reader@example.com');
+            assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1));
+        }
+        await page.evaluate(() => { document.startViewTransition = undefined; FrontendMotion.change(() => AppI18n.setLanguage('zh'), 'language'); });
+        assert.equal(await page.evaluate(() => AppI18n.language), 'zh', 'Older browsers apply preferences without waiting on animation');
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.locator('#frontendSettingsButton').click();
+        await page.locator('#frontendSettingsButton').press('Escape');
+        assert.equal(await page.locator('#frontendSettingsMenu').isVisible(), false);
+        assert.deepEqual(errors, []);
+    } finally { await page.close(); }
+});
+
+test('image preview fades and Escape returns to the same inbox reader', async () => {
+    const page = await newPage({ reducedMotion: 'no-preference' });
+    try {
+        await page.locator('#emailInput').fill('reader@example.com');
+        await page.locator('.get-mail-btn').click();
+        await page.getByText('Scene test letter', { exact: true }).click();
+        await page.evaluate(() => openImageModal('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="100"%3E%3Crect width="300" height="100" fill="skyblue"/%3E%3C/svg%3E'));
+        await page.locator('#imageModal.show').waitFor();
+        await page.locator('body').press('Escape');
+        await page.waitForFunction(() => !document.getElementById('imageModal').classList.contains('show'));
+        assert.equal(await page.locator('#mailDisplay').isVisible(), true);
+        assert.equal(await page.locator('#mailSubject').innerText(), 'Scene test letter');
+        assert.equal(await page.evaluate(() => window.scrollY), 0);
     } finally { await page.close(); }
 });
 
@@ -632,7 +690,7 @@ test('unavailable storage or Canvas preserves functional scene controls and quer
         });
         await page.goto(origin);
         await page.locator('[data-scene="night"]').click();
-        assert.equal(await page.evaluate(() => MailScene.state.scene), 'night');
+        await page.waitForFunction(() => MailScene.state.scene === 'night');
         assert.equal(await page.evaluate(() => MailScene.state.animating), false);
         await page.locator('#emailInput').fill('reader@example.com');
         assert.equal(await page.locator('#emailInput').inputValue(), 'reader@example.com');

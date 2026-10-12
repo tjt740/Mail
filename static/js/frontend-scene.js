@@ -21,49 +21,66 @@
     const envelope = hero.querySelector('.scene-envelope-trigger');
     const envelopeArt = hero.querySelector('.scene-art');
     const notice = hero.querySelector('.scene-envelope-notice');
-    let envelopeOpen = false, envelopeAnimations = null, noticeAnimation = null, pendingNotice = false;
-    const envelopeDuration = 1050;
-    function createEnvelopeAnimations() {
-        const tracks = [
-            ['.scene-envelope-flap', [
-                { transform: 'translateZ(2px) rotateX(0deg)', offset: 0, easing: 'cubic-bezier(.4,0,.2,1)' },
-                { transform: 'translateZ(2px) rotateX(180deg)', offset: .62 },
-                { transform: 'translateZ(2px) rotateX(180deg)', offset: 1 }
-            ]],
-            ['.scene-letter', [
-                { transform: 'translate3d(0, 0, 1px)', offset: 0 },
-                { transform: 'translate3d(0, 0, 1px)', offset: .42, easing: 'cubic-bezier(.22,.75,.25,1)' },
-                { transform: 'translate3d(0, -42px, 3px)', offset: 1 }
-            ]],
-            ['.scene-envelope-seal', [
-                { transform: 'translateZ(5px) scale(1)', opacity: 1, offset: 0, easing: 'ease-out' },
-                { transform: 'translateZ(9px) scale(.94)', opacity: 0, offset: .14 },
-                { transform: 'translateZ(9px) scale(.94)', opacity: 0, offset: 1 }
-            ]]
-        ];
-        return tracks.map(([selector, keyframes]) => {
-            const animation = envelope.querySelector(selector).animate(keyframes, { duration: envelopeDuration, fill: 'both' });
-            animation.pause();
-            animation.currentTime = 0;
-            return animation;
-        });
+    let envelopeOpen = false, noticeAnimation = null, pendingNotice = false;
+    const lid = { position: 0, velocity: 0 };
+    const paper = { position: 0, velocity: 0 };
+    const bodyRock = { position: 0, velocity: 0 };
+    const fold = envelope?.querySelector('.scene-envelope-flap');
+    const letter = envelope?.querySelector('.scene-letter');
+    const float = envelope?.querySelector('.scene-envelope-float');
+    const shadow = envelopeArt?.querySelector('.scene-envelope-shadow');
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    const smooth = value => { const x = clamp(value, 0, 1); return x * x * (3 - 2 * x); };
+
+    function spring(joint, target, stiffness, damping, dt) {
+        // Small integration steps make the same paper weight stable at both
+        // 30 and 120 Hz. Changing direction retains position AND velocity.
+        joint.velocity += ((target - joint.position) * stiffness - joint.velocity * damping) * dt;
+        joint.position += joint.velocity * dt;
+        if (Math.abs(joint.position - target) < .015 && Math.abs(joint.velocity) < .06) {
+            joint.position = target;
+            joint.velocity = 0;
+        }
+    }
+    function paintEnvelope() {
+        if (!envelope) return;
+        const opening = clamp(lid.position / 184, 0, 1);
+        const lift = paper.position / 42;
+        const bob = reduced.matches ? 0 : Math.sin(time * .85) * 1.6;
+        fold.style.transform = `translateZ(2px) rotateX(${lid.position}deg)`;
+        fold.style.setProperty('--fold-shade', (Math.sin(opening * Math.PI) * .22).toFixed(3));
+        letter.style.transform = `translate3d(0, ${-paper.position}px, ${1 + lift * 2}px) rotateZ(${Math.sin(lift * Math.PI) * -.65}deg)`;
+        letter.style.boxShadow = `0 ${-3 - lift * 4}px ${8 + lift * 10}px var(--envelope-shadow)`;
+        float.style.transform = `translate3d(0, ${bob - opening * 2}px, 0) rotateZ(${bodyRock.position}deg)`;
+        shadow.style.transform = `scale(${1 - opening * .08 + bob * .01})`;
+        shadow.style.opacity = String(.15 - opening * .025 + bob * .004);
     }
     function syncEnvelopeMotion() {
-        if (!envelopeAnimations) return;
-        envelopeAnimations.forEach(animation => {
-            if (reduced.matches) {
-                animation.pause();
-                animation.currentTime = envelopeOpen ? envelopeDuration : 0;
-            } else if (document.hidden || suspended) {
-                animation.pause();
-            } else {
-                // Reverse the existing timeline rather than starting delayed
-                // transitions again. The paper returns before the lid closes.
-                animation.updatePlaybackRate(envelopeOpen ? 1 : -1);
-                const time = animation.currentTime || 0;
-                if (envelopeOpen ? time < envelopeDuration : time > 0) animation.play();
-            }
-        });
+        if (reduced.matches) {
+            lid.position = envelopeOpen ? 184 : 0;
+            paper.position = envelopeOpen ? 42 : 0;
+            lid.velocity = paper.velocity = bodyRock.position = bodyRock.velocity = 0;
+            paintEnvelope();
+        }
+    }
+    function advanceEnvelope(dt) {
+        if (!envelope) return;
+        if (reduced.matches) { syncEnvelopeMotion(); return; }
+        let remaining = dt;
+        while (remaining > 0) {
+            const step = Math.min(remaining, 1 / 120);
+            // The pocket constrains the letter until the lid clears it. On
+            // closing, the lid waits for the paper to slide safely back inside.
+            const paperTarget = envelopeOpen ? 42 * smooth((lid.position - 115) / 64) : 0;
+            const lidTarget = envelopeOpen ? 184 : 184 * smooth(paper.position / 10);
+            spring(lid, lidTarget, 160, 23, step);
+            spring(paper, paperTarget, 180, 25, step);
+            if (lid.position < 0) { lid.position = 0; lid.velocity = 0; }
+            if (paper.position < 0) { paper.position = 0; paper.velocity = 0; }
+            spring(bodyRock, clamp(lid.velocity * .006 - paper.velocity * .016, -2.2, 2.2), 110, 19, step);
+            remaining -= step;
+        }
+        paintEnvelope();
     }
     function stopNotice() {
         noticeAnimation?.cancel();
@@ -76,8 +93,8 @@
         envelope.setAttribute('aria-expanded', String(open));
         envelope.setAttribute('aria-label', open ? '合上信封' : '打开信封');
         if (open) envelopeArt.classList.remove('has-new-mail');
-        envelopeAnimations ||= createEnvelopeAnimations();
         syncEnvelopeMotion();
+        if (!destroyed && !raf && canAnimate()) update();
     }
     function notifyNewMail() {
         if (destroyed || !notice) return;
@@ -179,6 +196,7 @@
     }
     function render(dt) {
         time += dt; frameCount++;
+        advanceEnvelope(dt);
         const easing = 1 - Math.exp(-dt * 4);
         const still = reduced.matches;
         modes.forEach(mode => { weights[mode] += ((mode === scene ? 1 : 0) - weights[mode]) * (still ? 1 : easing); });
@@ -188,11 +206,14 @@
         hero.style.setProperty('--scene-tilt-y', `${still ? 0 : -pointer.y * 7}deg`);
         layers.forEach(drawSky);
     }
-    function canAnimate() { return !destroyed && !reduced.matches && !document.hidden && !suspended && layers.length > 0; }
+    function canAnimate() {
+        const moving = envelope && (lid.position !== (envelopeOpen ? 184 : 0) || paper.position !== (envelopeOpen ? 42 : 0) || bodyRock.position !== 0 || bodyRock.velocity !== 0);
+        return !destroyed && !reduced.matches && !document.hidden && !suspended && (layers.length > 0 || moving);
+    }
     function stop() { if (raf !== null) cancelAnimationFrame(raf); raf = null; last = 0; }
     function tick(now) {
         raf = null;
-        if (!canAnimate()) return;
+        if (!canAnimate()) { syncEnvelopeMotion(); root.dataset.sceneRunning = 'false'; return; }
         const elapsed = last ? now - last : 0;
         if (!last || !coarse.matches || elapsed >= 32) { render(last ? Math.min(elapsed / 1000, .05) : 0); last = now; }
         raf = requestAnimationFrame(tick);
@@ -211,7 +232,7 @@
         if (!modes.includes(mode) || destroyed) return;
         // Scene buttons are shortcuts to the same preference as the theme menu.
         if (persist && window.AppColorTheme) {
-            window.AppColorTheme.setTheme(themeForScene[mode]);
+            window.FrontendMotion.change(() => window.AppColorTheme.setTheme(themeForScene[mode]), 'theme');
             return;
         }
         scene = mode;
@@ -260,11 +281,14 @@
     on(coarse, 'change', resize);
     window.MailScene = {
         setScene, applyTheme, notifyNewMail,
-        get state() { return { scene, animating: canAnimate(), frameCount }; },
+        get state() { return { scene, animating: canAnimate(), frameCount,
+            envelope: { open: envelopeOpen, angle: lid.position, lift: paper.position,
+                angularVelocity: lid.velocity, paperVelocity: paper.velocity } }; },
         destroy() {
             destroyed = true; stop(); stopNotice(); pendingNotice = false; observer?.disconnect(); cleanups.forEach(remove => remove());
             setEnvelopeOpen(false); envelopeArt?.classList.remove('has-new-mail');
-            envelopeAnimations?.forEach(animation => animation.cancel());
+            lid.position = paper.position = lid.velocity = paper.velocity = bodyRock.position = bodyRock.velocity = 0;
+            paintEnvelope();
             root.dataset.sceneRunning = 'false';
             layers.forEach(l => { l.ctx.clearRect(0, 0, l.width, l.height); l.skies = {}; });
         }

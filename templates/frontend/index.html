@@ -2435,8 +2435,7 @@
                             <span class="scene-envelope-back"></span>
                             <span class="scene-letter"><span></span><span></span><span></span></span>
                             <span class="scene-envelope-front"></span>
-                            <span class="scene-envelope-flap"></span>
-                            <span class="scene-envelope-seal"><svg><use href="#ai-mail"></use></svg></span>
+                            <span class="scene-envelope-flap"><span class="scene-envelope-seal"><svg><use href="#ai-mail"></use></svg></span></span>
                         </span>
                         <span class="scene-envelope-notification"></span>
                     </span>
@@ -2702,7 +2701,7 @@
         }
         mailDisplay?.classList.add('is-visible');
         if (mailDisplay) mailDisplay.scrollTop = 0;
-        window.MailMotion?.reveal(mailDisplay);
+        window.FrontendMotion?.reveal(mailDisplay);
     }
     
     function closeMailModal(shouldResetSelection = false) {
@@ -2714,7 +2713,7 @@
         mailDisplay?.classList.remove('is-visible');
         if (listView) {
             listView.style.display = '';
-            window.MailMotion?.reveal(listView, -1);
+            window.FrontendMotion?.reveal(listView, -1);
         }
         if (shouldResetSelection) {
             mailState.activeMailId = null;
@@ -2923,7 +2922,7 @@
             chip.setAttribute('aria-selected', String(active));
         });
         renderMailList();
-        window.MailMotion?.reveal(document.getElementById('mailTableBody'));
+        window.FrontendMotion?.reveal(document.getElementById('mailTableBody'));
     }
 
     function switchFolder(folder) {
@@ -2934,7 +2933,7 @@
             btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
         renderMailList();
-        window.MailMotion?.reveal(document.getElementById('mailTableBody'));
+        window.FrontendMotion?.reveal(document.getElementById('mailTableBody'));
         if (mailState.activeMailId) {
             const activeMail = mailState.mails.find(item => item.id === mailState.activeMailId);
             if (activeMail && normalizeFolderName(activeMail.folder) === folder) {
@@ -3136,7 +3135,7 @@
                     row.dataset.mailId = mailId ?? '';
                     if (animateRows) {
                         row.classList.add('mail-row-enter');
-                        row.style.animationDelay = `${Math.min(idx * 40, 600)}ms`;
+                        row.style.animationDelay = `${Math.min(idx * 18, 160)}ms`;
                     }
                     row.innerHTML = `
                         <td class="col-index" data-label="序号">${start + idx + 1}</td>
@@ -3181,7 +3180,7 @@
     function gotoMailPage(page) {
         mailState.page = Math.max(1, page);
         renderMailList();
-        window.MailMotion?.reveal(document.getElementById('mailTableBody'));
+        window.FrontendMotion?.reveal(document.getElementById('mailTableBody'));
     }
 
     function backToList() {
@@ -3316,14 +3315,14 @@
     function openImageModal(src) {
         const modal = document.getElementById('imageModal');
         const modalImg = document.getElementById('modalImage');
-        modal.classList.add('show');
         modalImg.src = src;
+        window.FrontendMotion.overlay(modal, true);
         document.body.style.overflow = 'hidden';
     }
     
     function closeImageModal() {
         const modal = document.getElementById('imageModal');
-        modal.classList.remove('show');
+        window.FrontendMotion.overlay(modal, false);
         document.body.style.overflow = '';
     }
     
@@ -3338,6 +3337,10 @@
     
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
+            if (imageModal?.classList.contains('show')) {
+                closeImageModal();
+                return;
+            }
             const mailDisplay = document.getElementById('mailDisplay');
             if (mailDisplay && mailDisplay.classList.contains('is-visible')) {
                 closeMailModal(false);
@@ -3441,6 +3444,7 @@
     renderMailList();
 
 </script>
+<script src="{{ url_for('static', filename='js/frontend-motion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/frontend-scene.js') }}"></script>
 <script src="{{ url_for('static', filename='js/mail-loading.js') }}"></script>
 <script src="{{ url_for('static', filename='js/frontend-settings.js') }}"></script>

@@ -33,16 +33,18 @@
         const themeMenu = wrapper.querySelector('#colorThemeMenu');
         const languageMenu = wrapper.querySelector('#i18nLanguageMenu');
 
-        function setOpen(open, focusOption = false) {
-            panel.hidden = !open;
+        function setOpen(open, focusOption = false, immediate = false) {
+            window.FrontendMotion.popup(panel, open, immediate);
             trigger.setAttribute('aria-expanded', String(open));
             if (open && focusOption) themeMenu.querySelector('[aria-selected="true"]')?.focus();
         }
 
-        function select(apply) {
-            setOpen(false);
-            apply();
-            trigger.focus();
+        function select(apply, kind) {
+            window.FrontendMotion.change(() => {
+                setOpen(false, false, true);
+                apply();
+                trigger.focus({ preventScroll: true });
+            }, kind);
         }
 
         window.AppColorTheme.themes.forEach(theme => {
@@ -58,7 +60,7 @@
             option.style.setProperty('--option-surface', palette.surface);
             option.innerHTML = '<span class="frontend-theme-preview" aria-hidden="true"></span><span class="frontend-settings-name"></span><span class="frontend-settings-check" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m3.5 8 3 3 6-6"/></svg></span>';
             option.querySelector('.frontend-settings-name').textContent = theme.name;
-            option.addEventListener('click', () => select(() => window.AppColorTheme.setTheme(theme.key)));
+            option.addEventListener('click', () => select(() => window.AppColorTheme.setTheme(theme.key), 'theme'));
             themeMenu.appendChild(option);
         });
 
@@ -72,7 +74,7 @@
             option.innerHTML = '<span class="frontend-language-mark" aria-hidden="true"></span><span class="frontend-settings-name"></span><span class="frontend-settings-check" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m3.5 8 3 3 6-6"/></svg></span>';
             option.querySelector('.frontend-language-mark').textContent = language.mark;
             option.querySelector('.frontend-settings-name').textContent = language.name;
-            option.addEventListener('click', () => select(() => window.AppI18n.setLanguage(language.key)));
+            option.addEventListener('click', () => select(() => window.AppI18n.setLanguage(language.key), 'language'));
             languageMenu.appendChild(option);
         });
 
@@ -89,7 +91,7 @@
             });
         }
 
-        trigger.addEventListener('click', () => setOpen(panel.hidden));
+        trigger.addEventListener('click', () => setOpen(trigger.getAttribute('aria-expanded') !== 'true'));
         wrapper.querySelector('.frontend-settings-close').addEventListener('click', () => {
             setOpen(false);
             trigger.focus();
