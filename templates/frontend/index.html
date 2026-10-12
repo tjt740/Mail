@@ -1800,67 +1800,12 @@
         gap: 14px;
     }
 
-    .loading-orbit {
-        position: relative;
-        width: 36px;
-        height: 36px;
-        display: inline-block;
-    }
-
-    .loading-orbit::before,
-    .loading-orbit::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: 50%;
-        border: 3px solid transparent;
-    }
-
-    .loading-orbit::before {
-        border-top-color: var(--primary-color, #c96442);
-        border-right-color: var(--primary-color, #c96442);
-        animation: spin 1s linear infinite;
-    }
-
-    .loading-orbit::after {
-        inset: 7px;
-        border-bottom-color: #d97706;
-        border-left-color: #d97706;
-        animation: spin 0.8s linear infinite reverse;
-    }
-
-    .loading-dots {
-        display: inline-flex;
-        gap: 4px;
-        margin-left: 4px;
-        vertical-align: baseline;
-    }
-
-    .loading-dots i {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: currentColor;
-        animation: loadingDotPulse 1.2s ease-in-out infinite;
-    }
-
-    .loading-dots i:nth-child(2) { animation-delay: 0.2s; }
-    .loading-dots i:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes loadingDotPulse {
-        0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
-        40% { opacity: 1; transform: scale(1); }
-    }
-
     /* ------------------------------------------------ 降级：减少动态效果 */
     @media (prefers-reduced-motion: reduce) {
         #frontendApp .mail-table tr.mail-row-enter,
         #frontendApp .mail-display.is-visible,
         #frontendApp .card-status-panel,
-        #frontendApp .mailbox-switcher,
-        .loading-orbit::before,
-        .loading-orbit::after,
-        .loading-dots i {
+        #frontendApp .mailbox-switcher {
             animation: none !important;
         }
     }
@@ -2532,8 +2477,8 @@
             <div class="mailbox-chip-list" id="mailboxChipList" role="tablist" aria-label="邮箱切换"></div>
         </div>
 
-        <div class="mail-layout">
-            <nav class="folder-panel" id="folderPanel" aria-label="邮箱文件夹">
+        <div class="mail-layout is-single-mailbox">
+            <nav class="folder-panel" id="folderPanel" aria-label="邮箱文件夹" hidden>
                 <div class="folder-heading">
                     <span class="anticon"><svg aria-hidden="true"><use href="#ai-inbox"></use></svg></span>
                     <span>邮箱文件夹</span>
@@ -2552,10 +2497,13 @@
                 </div>
             </nav>
             <div class="mail-list-panel" id="mailListPanel">
-                <div class="loading" id="loading">
+                <div class="loading" id="loading" role="status" aria-live="polite">
                     <div class="loading-inner">
-                        <span class="loading-orbit" aria-hidden="true"></span>
-                        <span class="loading-text">正在获取邮件，请稍候<span class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span></span>
+                        <div class="mail-loading-visual" aria-hidden="true">
+                            <canvas id="mailLoadingCanvas"></canvas>
+                            <span class="mail-loading-fallback" hidden><svg><use href="#ai-mail"></use></svg></span>
+                        </div>
+                        <span class="loading-text">正在获取邮件，请稍候</span>
                     </div>
                 </div>
                 <div class="mail-list-view" id="mailListView">
@@ -2837,6 +2785,8 @@
             loading.style.display = isLoading ? 'flex' : 'none';
         }
         document.getElementById('mailListPanel')?.classList.toggle('is-loading', isLoading);
+        document.getElementById('mailListPanel')?.setAttribute('aria-busy', String(isLoading));
+        window.MailLoading?.setActive(isLoading);
         if (getMailBtn) {
             getMailBtn.disabled = isLoading;
             getMailBtn.setAttribute('aria-busy', String(isLoading));
@@ -2889,12 +2839,19 @@
         }
     }
 
+    function updateMailboxLayout(mailboxCount) {
+        const single = mailboxCount <= 1;
+        document.getElementById('folderPanel').hidden = single;
+        document.querySelector('.mail-layout').classList.toggle('is-single-mailbox', single);
+    }
+
     function renderMailboxList() {
         const switcher = document.getElementById('mailboxSwitcher');
         const chipList = document.getElementById('mailboxChipList');
         if (!switcher || !chipList) return;
 
         const mailboxes = mailState.mailboxes;
+        updateMailboxLayout(mailboxes.length);
         if (mailboxes.length <= 1) {
             switcher.hidden = true;
             chipList.innerHTML = '';
@@ -3017,6 +2974,9 @@
             return;
         }
         
+        // A single-mailbox query opens directly in the inbox without folder navigation.
+        if (emails.length === 1 && mailState.folder !== 'inbox') switchFolder('inbox');
+        updateMailboxLayout(emails.length);
         closeMailModal(false);
         toggleLoading(true);
         
@@ -3455,4 +3415,5 @@
 
 </script>
 <script src="{{ url_for('static', filename='js/frontend-scene.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mail-loading.js') }}"></script>
 {% endblock %}

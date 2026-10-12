@@ -264,8 +264,6 @@ body.frontend-mail-page #frontendApp .loading {
     background: var(--scene-overlay) !important;
     border-radius: inherit;
 }
-body.frontend-mail-page #frontendApp .loading-orbit::before { border-top-color: var(--scene-accent); border-right-color: var(--scene-accent); }
-body.frontend-mail-page #frontendApp .loading-orbit::after { border-bottom-color: var(--scene-secondary); border-left-color: var(--scene-secondary); }
 body.frontend-mail-page #frontendApp :is(.verification-code, .attachment-icon, .mail-images h4, .mail-attachments h4) { color: var(--scene-accent) !important; }
 body.frontend-mail-page #frontendApp :is(.image-item, .image-info, .attachment-item, .card-status-panel, .mailbox-switcher) {
     color: var(--scene-text) !important; background: var(--scene-inner) !important; border-color: var(--scene-border) !important;

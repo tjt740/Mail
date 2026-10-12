@@ -47,22 +47,117 @@ async function newPage(options = {}) {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, ...options });
     page.setDefaultTimeout(5000);
     await page.goto(origin);
-    await page.waitForFunction(() => window.MailScene && window.AppI18n);
+    await page.waitForFunction(() => window.MailScene && window.AppI18n && !document.body.classList.contains('preload'));
     return page;
 }
 
+test('canvas mail loader rotates only during retrieval, follows themes and respects motion/lifecycle settings', async () => {
+    const page = await newPage({ deviceScaleFactor: 3 });
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    try {
+        await page.route('**/api/get_mail', async route => {
+            await gate;
+            await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, mails: [] }) });
+        });
+        assert.equal(await page.evaluate(() => MailLoading.state.animating), false);
+        await page.locator('#emailInput').fill('reader@example.com');
+        await page.locator('.get-mail-btn').click();
+        await page.locator('#loading').waitFor({ state: 'visible' });
+        assert.equal(await page.evaluate(() => MailLoading.state.animating), true);
+        const pixels = () => page.locator('#mailLoadingCanvas').evaluate(canvas => canvas.toDataURL());
+        const first = await pixels();
+        await page.waitForTimeout(180);
+        assert.notEqual(await pixels(), first);
+        assert.ok(await page.locator('#mailLoadingCanvas').evaluate(canvas => canvas.width * canvas.height <= 180000));
+        if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'canvas-loading-desktop.png'), fullPage: true });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.waitForFunction(() => !MailLoading.state.animating);
+        const still = await pixels();
+        await page.waitForTimeout(120);
+        assert.equal(await pixels(), still);
+        await page.locator('[data-scene="night"]').click();
+        await page.waitForTimeout(80);
+        assert.notEqual(await pixels(), still);
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await page.waitForFunction(() => MailLoading.state.animating);
+        await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+        const paused = await page.evaluate(() => MailLoading.state.frameCount);
+        await page.waitForTimeout(100);
+        assert.equal(await page.evaluate(() => MailLoading.state.frameCount), paused);
+        await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+        await page.waitForFunction(previous => MailLoading.state.frameCount > previous, paused);
+        release();
+        await page.locator('#loading').waitFor({ state: 'hidden' });
+        assert.equal(await page.evaluate(() => MailLoading.state.active || MailLoading.state.animating), false);
+        const stopped = await page.evaluate(() => MailLoading.state.frameCount);
+        await page.waitForTimeout(100);
+        assert.equal(await page.evaluate(() => MailLoading.state.frameCount), stopped);
+    } finally { release(); await page.close(); }
+});
+
+for (const width of [320, 390, 1440]) test(`single-mailbox results fill the panel and totals keep side spacing at ${width}px`, async () => {
+    const page = await newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
+    let fail = false;
+    try {
+        await page.route('**/api/get_mail', async route => {
+            await new Promise(resolve => setTimeout(resolve, 120));
+            await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: !fail, message: 'Fixture failure', mails: fail ? [] : [{ id: 'one', subject: 'UI fixture letter', from: 'sender@example.com', to: 'reader@example.com', body: 'Message body' }] }) });
+        });
+        for (const count of [1, 2, 1]) {
+            await page.locator('#emailInput').fill(count === 1 ? 'reader@example.com' : 'reader@example.com, second@example.com');
+            await page.locator('.get-mail-btn').click();
+            await page.locator('#loading').waitFor({ state: 'visible' });
+            assert.equal(await page.locator('#folderPanel').isVisible(), count > 1);
+            await page.locator('#loading').waitFor({ state: 'hidden' });
+            assert.equal(await page.locator('#folderPanel').isVisible(), count > 1);
+            assert.equal(await page.locator('#mailboxSwitcher').isVisible(), count > 1);
+            const bounds = await page.evaluate(() => {
+                const panel = document.getElementById('mailListPanel').getBoundingClientRect();
+                const layout = document.querySelector('.mail-layout').getBoundingClientRect();
+                const total = document.querySelector('.pagination-info').getBoundingClientRect();
+                return { left: panel.left - layout.left, gap: panel.right - total.right, overflow: document.documentElement.scrollWidth > innerWidth };
+            });
+            if (count === 1) assert.ok(Math.abs(bounds.left) < 2, JSON.stringify(bounds));
+            assert.ok(bounds.gap >= 20, JSON.stringify(bounds));
+            assert.equal(bounds.overflow, false);
+        }
+        if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `single-mailbox-${width}.png`), fullPage: true });
+        await page.locator('#mailTableBody tr[data-mail-id]').click();
+        await page.locator('#mailDisplay.is-visible').waitFor();
+        await page.locator('.back-btn').click();
+        fail = true;
+        await page.locator('.get-mail-btn').click();
+        await page.locator('#loading').waitFor({ state: 'visible' });
+        await page.locator('#loading').waitFor({ state: 'hidden' });
+        assert.equal(await page.evaluate(() => MailLoading.state.active || MailLoading.state.animating), false);
+        assert.equal(await page.locator('#folderPanel').isVisible(), false);
+    } finally { await page.close(); }
+});
+
 test('envelope unfolds on hover, closes on leave and supports keyboard and touch', async () => {
-    const page = await newPage();
+    const page = await newPage({ reducedMotion: 'no-preference' });
     try {
         const trigger = page.locator('.scene-envelope-trigger');
         const paperY = () => page.locator('.scene-letter').evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42);
+        assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), false);
         assert.equal(await paperY(), 0);
+        // Sample rendered frames in the page, not a wall-clock instant that can
+        // arrive late when other browser tests are taking screenshots.
+        await page.locator('.scene-letter').evaluate(el => {
+            window.paperTravel = [];
+            const started = performance.now();
+            const sample = () => {
+                const y = new DOMMatrixReadOnly(getComputedStyle(el).transform).m42;
+                window.paperTravel.push(y);
+                if (y > -42 && performance.now() - started < 2000) requestAnimationFrame(sample);
+            };
+            requestAnimationFrame(sample);
+        });
         await trigger.hover();
         await page.waitForFunction(() => document.querySelector('.scene-envelope-trigger').getAttribute('aria-expanded') === 'true');
-        await page.waitForTimeout(450);
-        const halfway = await paperY();
-        assert.ok(halfway < 0 && halfway > -42, `paper should travel smoothly, got ${halfway}`);
-        await page.waitForTimeout(500);
+        await page.waitForFunction(() => new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.scene-letter')).transform).m42 === -42);
+        assert.equal(await page.evaluate(() => window.paperTravel.some(y => y < 0 && y > -42)), true, 'paper must render intermediate positions');
         assert.equal(await paperY(), -42);
         if (process.env.SCREENSHOT_DIR) await page.locator('.scene-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'envelope-open-desktop.png') });
         await page.mouse.move(4, 4);
@@ -265,11 +360,11 @@ for (const width of [1440, 390]) test(`all public scene states follow their pale
             const loading = await page.locator('#loading').evaluate(element => {
                 const style = getComputedStyle(element);
                 const probe = document.createElement('span'); probe.style.backgroundColor = 'var(--scene-overlay)'; probe.style.color = 'var(--scene-accent)'; element.appendChild(probe);
-                const expected = getComputedStyle(probe); const result = { actual: [style.backgroundColor, style.color], expected: [expected.backgroundColor, expected.color], spinner: getComputedStyle(element.querySelector('.loading-orbit'), '::before').borderTopColor };
+                const expected = getComputedStyle(probe); const result = { actual: [style.backgroundColor, style.color], expected: [expected.backgroundColor, expected.color], canvas: !!element.querySelector('#mailLoadingCanvas') };
                 probe.remove(); return result;
             });
             assert.deepEqual(loading.actual, loading.expected);
-            assert.equal(loading.spinner, loading.actual[1]);
+            assert.equal(loading.canvas, true);
         }
         release();
         await page.locator('#loading').waitFor({ state: 'hidden' });
@@ -396,6 +491,8 @@ for (const width of [320, 390, 768, 1440]) test(`scenes, translations and contro
 
 test('unavailable storage or Canvas preserves functional scene controls and query form', async () => {
     const page = await browser.newPage();
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
     try {
         const errors = []; page.on('pageerror', error => errors.push(error.message));
         await page.addInitScript(() => {
@@ -408,6 +505,16 @@ test('unavailable storage or Canvas preserves functional scene controls and quer
         assert.equal(await page.evaluate(() => MailScene.state.animating), false);
         await page.locator('#emailInput').fill('reader@example.com');
         assert.equal(await page.locator('#emailInput').inputValue(), 'reader@example.com');
+        await page.route('**/api/get_mail', async route => {
+            await gate;
+            await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, mails: [] }) });
+        });
+        await page.locator('.get-mail-btn').click();
+        await page.locator('#loading').waitFor({ state: 'visible' });
+        assert.equal(await page.locator('.mail-loading-fallback').isVisible(), true);
+        assert.equal(await page.evaluate(() => MailLoading.state.animating), false);
+        release();
+        await page.locator('#loading').waitFor({ state: 'hidden' });
         assert.deepEqual(errors, []);
-    } finally { await page.close(); }
+    } finally { release(); await page.close(); }
 });

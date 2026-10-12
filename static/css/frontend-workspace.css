@@ -155,7 +155,7 @@ body.frontend-mail-page #frontendApp .mail-workspace .mail-list-toolbar {
     justify-content: space-between;
     gap: 16px;
     min-height: 62px;
-    padding: 16px 24px;
+    padding: 16px 28px;
     border-bottom: 1px solid var(--scene-border);
 }
 body.frontend-mail-page #frontendApp .mail-workspace .mail-list-toolbar h2 {
@@ -237,9 +237,50 @@ body.frontend-mail-page #frontendApp .mail-workspace .back-btn { border-radius: 
     body.frontend-mail-page #frontendApp .mail-workspace .folder-heading { display: none; }
     body.frontend-mail-page #frontendApp .mail-workspace .folder-list { flex-direction: row; }
     body.frontend-mail-page #frontendApp .mail-workspace .folder-btn { width: auto; min-height: 44px; gap: 10px; }
-    body.frontend-mail-page #frontendApp .mail-workspace .mail-list-toolbar { min-height: 54px; padding: 12px 16px; }
+    body.frontend-mail-page #frontendApp .mail-workspace .mail-list-toolbar { min-height: 54px; padding: 12px 20px; }
     body.frontend-mail-page #frontendApp .mail-workspace .mail-display { padding: 16px !important; }
     body.frontend-mail-page #frontendApp .mail-workspace .mailbox-switcher { padding: 12px 16px; }
+}
+
+/* Removing the single-mailbox navigation also removes its grid track. */
+body.frontend-mail-page #frontendApp .mail-workspace .folder-panel[hidden] { display: none !important; }
+body.frontend-mail-page #frontendApp .mail-workspace .mail-layout.is-single-mailbox {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+}
+body.frontend-mail-page #frontendApp .mail-workspace .mail-pagination { margin-inline-end: 4px; }
+body.frontend-mail-page #frontendApp .mail-workspace .loading-inner {
+    flex-direction: column;
+    width: 100%;
+    max-width: 360px;
+    max-height: 100%;
+    gap: 10px;
+}
+body.frontend-mail-page #frontendApp .mail-workspace .mail-loading-visual {
+    position: relative;
+    flex: 0 1 140px;
+    width: min(320px, 100%);
+    height: 140px;
+    min-height: 44px;
+}
+body.frontend-mail-page #frontendApp .mail-workspace #mailLoadingCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+body.frontend-mail-page #frontendApp .mail-workspace .mail-loading-fallback {
+    display: grid;
+    place-items: center;
+    height: 100%;
+}
+body.frontend-mail-page #frontendApp .mail-workspace .mail-loading-fallback svg { width: 56px; height: 56px; fill: currentColor; }
+body.frontend-mail-page #frontendApp .mail-workspace .mail-loading-visual [hidden] { display: none !important; }
+body.frontend-mail-page #frontendApp .mail-workspace .loading-text {
+    flex: 0 0 auto;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.6;
+    padding-inline: 10px;
 }
 /* These translations use three short lines so their hints fit narrow screens. */
 body.frontend-mail-page #frontendApp .mail-workspace .query-control-block .email-query-input:is(:lang(en), :lang(vi), :lang(fil)) {
