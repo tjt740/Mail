@@ -2687,14 +2687,13 @@
         return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}-${index}`;
     }
     
-    let readingScrollPosition = null;
+    let readingListScrollTop = null;
 
     function openMailModal() {
         const app = document.getElementById('frontendApp');
         if (!app.classList.contains('is-reading')) {
-            readingScrollPosition = { page: window.scrollY, list: document.querySelector('.mail-list-wrapper')?.scrollTop || 0 };
+            readingListScrollTop = document.querySelector('.mail-list-wrapper')?.scrollTop || 0;
             app.classList.add('is-reading');
-            window.scrollTo({ top: 0, behavior: 'instant' });
         }
         const mailDisplay = document.getElementById('mailDisplay');
         const listView = document.getElementById('mailListView');
@@ -2702,6 +2701,7 @@
             listView.style.display = 'none';
         }
         mailDisplay?.classList.add('is-visible');
+        if (mailDisplay) mailDisplay.scrollTop = 0;
         window.MailMotion?.reveal(mailDisplay);
     }
     
@@ -2720,11 +2720,10 @@
             mailState.activeMailId = null;
             highlightMainTableActiveRow();
         }
-        if (wasReading && readingScrollPosition) {
+        if (wasReading && readingListScrollTop !== null) {
             const wrapper = document.querySelector('.mail-list-wrapper');
-            if (wrapper) wrapper.scrollTop = readingScrollPosition.list;
-            window.scrollTo({ top: readingScrollPosition.page, behavior: 'instant' });
-            readingScrollPosition = null;
+            if (wrapper) wrapper.scrollTop = readingListScrollTop;
+            readingListScrollTop = null;
         }
     }
     

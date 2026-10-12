@@ -162,17 +162,19 @@ for (const [width, height] of [[1280, 720], [390, 844], [844, 390]]) test(`50 ma
                 overflowX: document.documentElement.scrollWidth > innerWidth };
         });
         assert.ok(sizes.chips <= 104 && sizes.chipScroll > sizes.chips, JSON.stringify(sizes));
-        assert.ok(sizes.panel >= 360 && sizes.panel <= 760 && sizes.listScroll > sizes.list, JSON.stringify(sizes));
+        assert.ok(sizes.panel > 60 && sizes.panel < height && sizes.list >= 30 && sizes.listScroll > sizes.list, JSON.stringify(sizes));
         assert.equal(sizes.overflowX, false);
-        // The outer page must remain scrollable, including beside the nested lists.
+        // Wheel gestures outside the inbox must not move the viewport.
         await page.mouse.move(3, 40);
         await page.mouse.wheel(0, 650);
-        await page.waitForFunction(() => document.scrollingElement.scrollTop > 0).catch(async () => {
-            assert.fail('Page did not scroll: ' + JSON.stringify(await page.evaluate(() => [document.documentElement, document.body, document.getElementById('frontendApp')].map(el => ({
-                tag: el.tagName, height: el.clientHeight, scrollHeight: el.scrollHeight, scrollTop: el.scrollTop,
-                overflow: getComputedStyle(el).overflowY, cssHeight: getComputedStyle(el).height
-            })))));
+        await page.waitForTimeout(100);
+        assert.equal(await page.evaluate(() => document.scrollingElement.scrollTop), 0);
+        const edges = await page.locator('.mail-workspace').evaluate(el => {
+            const box = el.getBoundingClientRect();
+            return { left: box.left, right: innerWidth - box.right, bottom: innerHeight - box.bottom,
+                pageOverflow: document.documentElement.scrollHeight > innerHeight + 1 };
         });
+        assert.ok(edges.left >= 8 && edges.right >= 8 && edges.bottom >= 8 && !edges.pageOverflow, JSON.stringify(edges));
         const last = page.locator('.mailbox-chip[data-mailbox="mailbox50@example.com"]');
         await last.scrollIntoViewIfNeeded();
         const before = await page.locator('#mailboxChipList').evaluate(el => el.scrollTop);
@@ -190,17 +192,22 @@ for (const [width, height] of [[1280, 720], [390, 844], [844, 390]]) test(`50 ma
         await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 100));
         await page.mouse.wheel(0, 900);
         await page.waitForFunction(() => document.querySelector('.mail-list-wrapper').scrollTop > 0);
+        await page.locator('#mailTableBody tr[data-mail-id]').last().scrollIntoViewIfNeeded();
+        const listScroll = await list.evaluate(el => el.scrollTop);
         await page.locator('#mailTableBody tr[data-mail-id]').last().click();
         await page.locator('#mailDisplay.is-visible').waitFor();
         assert.match(await page.locator('#mailSubject').innerText(), /mailbox50@example.com/);
+        assert.ok(await page.locator('.scene-hero').isVisible());
+        assert.ok(await page.locator('.mail-query-panel').isVisible());
         await page.locator('.back-btn').click();
+        assert.equal(await list.evaluate(el => el.scrollTop), listScroll);
         if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `batch-mailbox-${width}.png`), fullPage: true });
         empty = true;
         await page.locator('.get-mail-btn').click();
         await page.locator('.mail-list-empty').waitFor();
         assert.equal(await page.locator('.mailbox-chip').count(), 51);
         assert.ok(await page.locator('#mailboxChipList').evaluate(el => el.scrollHeight > el.clientHeight && el.clientHeight <= 104));
-        assert.ok(await page.locator('#mailListPanel').evaluate(el => el.clientHeight >= 360));
+        assert.ok(await page.locator('#mailListPanel').evaluate(el => el.clientHeight > 60));
         empty = false;
         await page.locator('#emailInput').fill('solo@example.com');
         await page.locator('.get-mail-btn').click();

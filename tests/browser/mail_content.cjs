@@ -212,7 +212,7 @@ test('mailbox list deduplicates before pagination and preserves group/owner filt
     } finally { await page.close(); }
 });
 
-for (const width of [390, 1440]) test(`public reader expands for late images and long mail, then shrinks at ${width}px`, async () => {
+for (const width of [390, 1440]) test(`public reader stays inside the inbox with complete images and long mail at ${width}px`, async () => {
     const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
     let release;
     const gate = new Promise(resolve => { release = resolve; });
@@ -224,8 +224,7 @@ for (const width of [390, 1440]) test(`public reader expands for late images and
         });
         await page.goto(origin);
         await page.locator('#emailInput').fill('reader@example.com\nsecond@example.com');
-        await page.evaluate(() => window.scrollTo(0, 150));
-        const before = await page.evaluate(() => window.scrollY);
+        const before = await page.locator('.mail-workspace').boundingBox();
         const image = { content_id: '<banner>', mime_type: 'image/svg+xml', content: Buffer.from(svg).toString('base64'), filename: 'banner.svg' };
         await showMail(page, false, `<h2>Full message</h2><img id="inline" style="display:block" src="cid:banner"><img id="remote" style="display:block" src="${origin}/late-banner.svg">` +
             '<p>Complete text and formatting stay readable.</p>'.repeat(45) + '<p id="end">End of message</p>', 'html', [image]);
@@ -239,25 +238,28 @@ for (const width of [390, 1440]) test(`public reader expands for late images and
         await page.waitForFunction(height => document.querySelector('.mail-content-frame').getBoundingClientRect().height > height + 80, beforeImage);
         await frame.waitForFunction(() => document.documentElement.scrollHeight <= innerHeight + 1);
         assert.ok(await page.locator('#mailImages').isHidden(), 'Embedded images must not be duplicated in a separate gallery');
-        assert.ok(await page.locator('.scene-hero').isHidden());
-        assert.ok(await page.locator('.mail-query-panel').isHidden());
+        assert.ok(await page.locator('.scene-hero').isVisible());
+        assert.ok(await page.locator('.mail-query-panel').isVisible());
+        assert.deepEqual(await page.locator('.mail-workspace').boundingBox(), before, 'Reading must not resize or move the inbox');
         assert.equal(await page.evaluate(() => window.scrollY), 0);
-        assert.ok(await page.locator('#mailDisplay').evaluate(el => el.scrollHeight <= el.clientHeight + 1));
+        assert.ok(await page.locator('#mailDisplay').evaluate(el => el.scrollHeight > el.clientHeight));
         assert.ok(await page.locator('#mailListPanel').evaluate(el => el.scrollHeight <= el.clientHeight + 1));
-        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-        assert.ok(await page.evaluate(() => window.scrollY > 500));
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight + 1));
+        await page.locator('#mailDisplay').evaluate(el => { el.scrollTop = el.scrollHeight; });
+        assert.ok(await page.locator('#mailDisplay').evaluate(el => el.scrollTop > 500));
+        assert.equal(await page.evaluate(() => window.scrollY), 0);
         assert.ok(await page.locator('.back-btn').evaluate(el => {
             const box = el.getBoundingClientRect();
-            return box.top >= 0 && box.bottom <= innerHeight;
-        }), 'Back stays reachable when reading the end');
+            return el.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+        }), 'Back stays reachable inside the inbox when reading the end');
         await page.locator('.back-btn').click();
         assert.ok(await page.locator('.mail-query-panel').isVisible());
         assert.equal(await page.locator('#emailInput').inputValue(), 'reader@example.com\nsecond@example.com');
-        assert.equal(await page.evaluate(() => window.scrollY), before);
+        assert.equal(await page.evaluate(() => window.scrollY), 0);
 
         await showMail(page, false, '<p>A short complete message.</p>');
         await page.waitForFunction(() => parseInt(document.querySelector('.mail-content-frame').style.height) === 120);
+        assert.equal(await page.locator('#mailDisplay').evaluate(el => el.scrollTop), 0, 'Each new message starts at its beginning');
         assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), 'Short messages should fit in one screen');
     } finally { release(); await page.close(); }
 });
