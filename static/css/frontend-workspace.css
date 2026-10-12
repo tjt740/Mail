@@ -315,7 +315,31 @@ body.frontend-mail-page #frontendApp .mail-workspace .mail-body {
     background: transparent !important;
     overflow: visible !important;
 }
-body.frontend-mail-page #frontendApp .mail-workspace .mail-content-frame { border-radius: 0; height: max(360px, calc(100dvh - 370px)); }
+body.frontend-mail-page #frontendApp .mail-workspace .mail-content-frame { border-radius: 0; height: 320px; }
+/* A focused reader gives the message the full page, with one scroll surface.
+   The isolated HTML frame reports its actual height after layout/image loads. */
+body.frontend-mail-page #frontendApp.is-reading > :is(.scene-hero, .mail-query-panel),
+body.frontend-mail-page #frontendApp.is-reading .mail-workspace :is(.mailbox-switcher, .folder-panel) { display: none !important; }
+body.frontend-mail-page #frontendApp.is-reading .mail-workspace { overflow: visible; }
+body.frontend-mail-page #frontendApp.is-reading .mail-workspace .mail-layout { display: block; }
+body.frontend-mail-page #frontendApp.is-reading .mail-workspace .mail-list-panel {
+    height: auto !important;
+    min-height: calc(100dvh - 86px) !important;
+    max-height: none;
+    overflow: visible;
+}
+body.frontend-mail-page #frontendApp.is-reading .mail-workspace .mail-display {
+    flex: 0 0 auto;
+    max-height: none;
+    overflow: visible !important;
+}
+body.frontend-mail-page #frontendApp.is-reading .mail-workspace .mail-display-actions {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--scene-input);
+}
+body.frontend-mail-page #frontendApp.is-reading .mail-workspace .mail-header { margin-bottom: 12px; }
 @media (max-width: 900px) {
     body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block {
         grid-template-columns: minmax(0, 1fr) auto;
@@ -465,5 +489,4 @@ body.frontend-mail-page #frontendApp .mail-workspace .loading-text {
     body.frontend-mail-page #frontendApp .mail-workspace .mail-subject { font-size: 18px; }
     body.frontend-mail-page #frontendApp .mail-workspace .mail-meta { flex-direction: column; gap: 4px; }
     body.frontend-mail-page #frontendApp .mail-workspace .back-btn { min-height: 44px; }
-    body.frontend-mail-page #frontendApp .mail-workspace .mail-content-frame { height: max(440px, 65dvh); }
 }

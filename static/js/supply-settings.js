@@ -137,7 +137,13 @@
                 meta.appendChild(date);
                 const content = document.createElement('div');
                 content.className = 'supply-mail-content';
-                content.append(meta, mailNode('pre', mail.body || '(邮件内容为空)', true));
+                const body = mail.body_type === 'html' ? window.MailContent.createFrame(mail.body || '', {
+                    title: `邮件正文：${mail.subject || '无主题'}`,
+                    className: 'supply-mail-frame',
+                    images: mail.images || [],
+                    attachments: mail.attachments || []
+                }) : mailNode('pre', mail.body || '(邮件内容为空)', true);
+                content.append(meta, body);
                 detail.appendChild(content);
                 get('supplyPreviewResults').appendChild(detail);
             });

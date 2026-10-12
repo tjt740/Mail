@@ -1477,6 +1477,8 @@ class ProxyMailFetcher:
                 image_info = {
                     'filename': filename,
                     'mime_type': content_type,
+                    'content_id': (part.get('Content-ID') or '').strip('<>'),
+                    'size': len(payload),
                     'content': base64.b64encode(payload).decode('ascii')
                 }
                 

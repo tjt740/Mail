@@ -95,6 +95,7 @@
 #sec-supply #supplyPreviewStatus { font-size: 13px; color: var(--text-muted); }
 #sec-supply #supplyPreviewStatus:empty, #sec-supply .supply-preview-results:empty { display: none; }
 #sec-supply .supply-preview-results { display: grid; gap: 10px; min-width: 0; }
+#sec-supply .supply-mail-frame { display: block; width: 100%; height: 360px; border: 0; background: #fff; }
 #sec-supply .supply-preview-results details { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); transition: border-color .2s, box-shadow .2s; }
 #sec-supply .supply-preview-results details[open] { border-color: color-mix(in srgb, var(--primary-color) 36%, var(--border)); box-shadow: 0 3px 12px color-mix(in srgb, var(--primary-color) 6%, transparent); }
 #sec-supply .supply-preview-results summary { position: relative; padding: 16px 42px 16px 16px; cursor: pointer; overflow-wrap: anywhere; font-weight: 600; list-style: none; }

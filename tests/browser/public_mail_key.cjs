@@ -69,7 +69,7 @@ print(json.dumps(pages))
                         res.statusCode=502; return res.end(JSON.stringify({success:false,message:'邮件服务暂时无法连接，请稍后重试',connection:connectionState}));
                     }
                     if (data.action === 'preview') {
-                        return res.end(JSON.stringify({success:true,configured:true,connection:connectionState,mails:previewMode==='empty'?[]:Array.from({length:Math.min(data.email_limit,8)},(_,i)=>({subject:'原始邮件 '+(8-i),body:'验证码 003821 <script>window.previewInjected=true</script>',from:'sender@example.com',to:data.email,date:'2026-10-12T12:00:00Z'}))}));
+                        return res.end(JSON.stringify({success:true,configured:true,connection:connectionState,mails:previewMode==='empty'?[]:Array.from({length:Math.min(data.email_limit,8)},(_,i)=>({subject:'原始邮件 '+(8-i),body_type:previewMode==='html'?'html':'text',body:'验证码 003821 <script>window.previewInjected=true</script>',from:'sender@example.com',to:data.email,date:'2026-10-12T12:00:00Z'}))}));
                     }
                 }
                 return res.end(JSON.stringify({success:true,configured:tokenConfigured,email_limit:supplyLimit,connection:connectionState}));
@@ -383,6 +383,14 @@ for (const width of [390,1440]) test(`Supply settings save quantity, report conn
         assert.equal(await page.locator('#supplyPreviewResults pre').first().textContent(),'验证码 003821 <script>window.previewInjected=true</script>');
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
         await shot(page,'supply-preview-'+width);
+        previewMode='html';
+        await page.locator('#supplyPreviewButton').click();
+        const htmlPreview=page.locator('#supplyPreviewResults .supply-mail-frame').first();
+        await htmlPreview.waitFor();
+        const mailFrame=await (await htmlPreview.elementHandle()).contentFrame();
+        assert.ok((await mailFrame.locator('body').textContent()).includes('验证码 003821'));
+        assert.equal(await mailFrame.locator('script').count(),0);
+        assert.equal(await page.evaluate(()=>window.previewInjected),undefined);
         previewMode='empty';
         await page.locator('#supplyPreviewButton').click();
         await page.waitForFunction(()=>!document.getElementById('supplyPreviewButton').disabled && document.getElementById('supplyPreviewStatus').textContent);

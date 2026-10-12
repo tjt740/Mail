@@ -2687,7 +2687,15 @@
         return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}-${index}`;
     }
     
+    let readingScrollPosition = null;
+
     function openMailModal() {
+        const app = document.getElementById('frontendApp');
+        if (!app.classList.contains('is-reading')) {
+            readingScrollPosition = { page: window.scrollY, list: document.querySelector('.mail-list-wrapper')?.scrollTop || 0 };
+            app.classList.add('is-reading');
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        }
         const mailDisplay = document.getElementById('mailDisplay');
         const listView = document.getElementById('mailListView');
         if (listView) {
@@ -2698,6 +2706,9 @@
     }
     
     function closeMailModal(shouldResetSelection = false) {
+        const app = document.getElementById('frontendApp');
+        const wasReading = app.classList.contains('is-reading');
+        app.classList.remove('is-reading');
         const mailDisplay = document.getElementById('mailDisplay');
         const listView = document.getElementById('mailListView');
         mailDisplay?.classList.remove('is-visible');
@@ -2708,6 +2719,12 @@
         if (shouldResetSelection) {
             mailState.activeMailId = null;
             highlightMainTableActiveRow();
+        }
+        if (wasReading && readingScrollPosition) {
+            const wrapper = document.querySelector('.mail-list-wrapper');
+            if (wrapper) wrapper.scrollTop = readingScrollPosition.list;
+            window.scrollTo({ top: readingScrollPosition.page, behavior: 'instant' });
+            readingScrollPosition = null;
         }
     }
     
@@ -2736,9 +2753,9 @@
     }
 
     function stripHtmlToText(value) {
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = value || '';
-        return wrapper.textContent || wrapper.innerText || '';
+        const doc = new DOMParser().parseFromString(value || '', 'text/html');
+        doc.querySelectorAll('script, style, head').forEach(node => node.remove());
+        return doc.body.textContent || '';
     }
 
     function extractVerificationCodeFromMail(mail) {
@@ -3168,16 +3185,10 @@
         window.MailMotion?.reveal(document.getElementById('mailTableBody'));
     }
 
-    const SCROLL_BEHAVIOR = (typeof CSS !== 'undefined' && CSS.supports && CSS.supports('scroll-behavior', 'smooth')) ? 'smooth' : 'auto';
-
     function backToList() {
-        const wrapper = document.querySelector('.mail-list-wrapper');
         mailState.activeMailId = null;
         renderMailList();
         closeMailModal(false);
-        if (wrapper) {
-            wrapper.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : SCROLL_BEHAVIOR });
-        }
     }
     
     function displayMail(mail) {
@@ -3193,11 +3204,15 @@
         document.getElementById('mailDate').textContent = formatDateTime(mail.date);
         
         const mailBodyElement = document.getElementById('mailBody');
+        let inlineImages = new Set();
         if ((mail.body_type || '').toLowerCase() === 'html') {
             const frame = window.MailContent.createFrame(mail.body || '(邮件内容为空)', {
-                title: `邮件正文：${mail.subject || '无主题'}`
+                title: `邮件正文：${mail.subject || '无主题'}`,
+                autoResize: true,
+                images: mail.images || [],
+                attachments: mail.attachments || []
             });
-
+            inlineImages = frame.renderedInlineImages;
             mailBodyElement.replaceChildren(frame);
             mailBodyElement.classList.add('mail-body--html');
             mailBodyElement.classList.remove('mail-body--text');
@@ -3209,7 +3224,7 @@
             mailBodyElement.style.whiteSpace = 'pre-wrap';
         }
         
-        displayImages(mail.images || []);
+        displayImages((mail.images || []).filter(image => !inlineImages.has(image)));
         displayAttachments(mail.attachments || []);
         
         mailDisplay?.classList.add('is-visible');
@@ -3220,7 +3235,8 @@
         const imagesSection = document.getElementById('mailImages');
         const imageContainer = document.getElementById('imageContainer');
         
-        if (images && images.length > 0) {
+        images = (images || []).filter(image => window.MailContent.imageSource(image));
+        if (images.length > 0) {
             imageContainer.innerHTML = '';
             
             images.forEach((image) => {
@@ -3228,7 +3244,8 @@
                 imageItem.className = 'image-item';
                 
                 const img = document.createElement('img');
-                img.src = 'data:' + image.mime_type + ';base64,' + image.content;
+                img.src = window.MailContent.imageSource(image);
+                img.referrerPolicy = 'no-referrer';
                 img.alt = image.filename;
                 img.onclick = () => openImageModal(img.src);
                 
@@ -3236,7 +3253,7 @@
                 imageInfo.className = 'image-info';
                 imageInfo.innerHTML = `
                     <div class="attachment-name" translate="no">${escapeHtml(image.filename)}</div>
-                    <div class="attachment-meta">${formatFileSize(image.size)} • ${image.mime_type}</div>
+                    <div class="attachment-meta">${formatFileSize(image.size)} • ${escapeHtml(image.mime_type)}</div>
                 `;
                 
                 imageItem.appendChild(img);
@@ -3267,12 +3284,15 @@
                     <div class="attachment-icon">${icon}</div>
                     <div class="attachment-info">
                         <div class="attachment-name" translate="no">${escapeHtml(attachment.filename)}</div>
-                        <div class="attachment-meta">${formatFileSize(attachment.size)} • ${attachment.mime_type}</div>
+                        <div class="attachment-meta">${formatFileSize(attachment.size)} • ${escapeHtml(attachment.mime_type)}</div>
                     </div>
-                    <button class="attachment-download" onclick="downloadAttachment('${attachment.content}', '${escapeHtml(attachment.filename)}', '${attachment.mime_type}')">
+                    <button type="button" class="attachment-download">
                         下载
                     </button>
                 `;
+                attachmentItem.querySelector('.attachment-download').addEventListener('click', () => {
+                    downloadAttachment(attachment.content, attachment.filename, attachment.mime_type);
+                });
                 
                 attachmentList.appendChild(attachmentItem);
             });

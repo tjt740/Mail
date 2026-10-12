@@ -48,7 +48,8 @@ class SupplyClientTests(unittest.TestCase):
         self.assertEqual([m['subject'] for m in result['mails']], [f'Message {i}' for i in range(8, 3, -1)])
         self.assertEqual(len({m['id'] for m in result['mails']}), 5)
         self.assertEqual(result['total'], 8)
-        self.assertEqual(result['mails'][0]['body'], '验证码 003821')
+        self.assertEqual(result['mails'][0]['body'], mail_rows()[0]['content'])
+        self.assertEqual(result['mails'][0]['body_type'], 'html')
         self.assertEqual(result['mails'][0]['from'], 'Sender <sender@example.com>')
         self.assertEqual(post.call_args.kwargs['json'], {'id': 'right-id'})
         self.assertEqual(post.call_args.kwargs['headers']['Token'], TOKEN)
@@ -114,6 +115,22 @@ class SupplyClientTests(unittest.TestCase):
         self.assertEqual(supply_mail.normalize_date('2026-10-12 20:00:00'), '2026-10-12T12:00:00.000Z')
         mail = supply_mail.normalize_mail({'title': 'Title', 'text': 'plain < 5 > 2', 'senderEmail': 'sender@example.com'}, 0)
         self.assertEqual(mail['body'], 'plain < 5 > 2')
+
+    def test_html_layout_and_inline_image_metadata_are_preserved(self):
+        html = '<html><style>p { color: blue }</style><p>完整正文</p><img src="cid:banner"><img src="https://example.com/photo.png"></html>'
+        image = {'filename': 'banner.png', 'mime_type': 'image/png', 'content': 'aGVsbG8=', 'contentId': '<banner>', 'size': 5}
+        mail = supply_mail.normalize_mail({'html_body': html, 'text': 'fallback', 'images': [None, image],
+                                           'attachments': {'invalid': True}}, 0)
+        self.assertEqual(mail['body'], html)
+        self.assertEqual(mail['body_type'], 'html')
+        self.assertEqual(len(mail['images']), 1)
+        self.assertEqual(mail['images'][0]['content_id'], 'banner')
+        self.assertEqual(mail['images'][0]['content'], image['content'])
+        self.assertEqual(mail['images'][0]['size'], 5)
+        self.assertEqual(mail['attachments'], [])
+        plain = supply_mail.normalize_mail({'body': 'Literal <b>text</b>', 'body_type': 'text'}, 0)
+        self.assertEqual(plain['body_type'], 'text')
+        self.assertEqual(plain['body'], 'Literal <b>text</b>')
 
 
 class SupplyIntegrationTests(unittest.TestCase):

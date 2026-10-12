@@ -6,7 +6,6 @@ import tempfile
 import time
 from datetime import datetime, timezone, timedelta
 from email.utils import getaddresses, parsedate_to_datetime
-from html.parser import HTMLParser
 from pathlib import Path
 
 import requests
@@ -193,29 +192,6 @@ class Client:
                 'fetchedAt': datetime.now(timezone.utc).isoformat(), 'provider': 'supply'}
 
 
-class PlainText(HTMLParser):
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
-        self.parts = []
-        self.hidden = 0
-
-    def handle_starttag(self, tag, attrs):
-        if tag in ('script', 'style', 'head'):
-            self.hidden += 1
-        if not self.hidden and tag in ('p', 'div', 'br', 'li', 'tr', 'hr'):
-            self.parts.append('\n')
-
-    def handle_endtag(self, tag):
-        if tag in ('script', 'style', 'head'):
-            self.hidden = max(0, self.hidden - 1)
-        if not self.hidden and tag in ('p', 'div', 'li', 'tr'):
-            self.parts.append('\n')
-
-    def handle_data(self, value):
-        if not self.hidden:
-            self.parts.append(value)
-
-
 def text(value):
     return value if isinstance(value, str) else ''
 
@@ -243,11 +219,26 @@ def normalize_mail(row, index):
     def first(*keys):
         return next((row[key] for key in keys if row.get(key) not in (None, '')), '')
 
-    body = text(first('content', 'body', 'text'))
-    if re.search(r'</?[a-zA-Z][^>]*>', body):
-        parser = PlainText()
-        parser.feed(body)
-        body = re.sub(r'\n[ \t]*\n+', '\n\n', ''.join(parser.parts)).strip()
+    html_body = text(first('html', 'html_body', 'body_html', 'htmlBody'))
+    body = html_body or text(first('content', 'body', 'text'))
+    declared_type = text(first('body_type', 'bodyType', 'content_type', 'contentType')).lower()
+    is_html = bool(html_body) or declared_type in ('html', 'text/html') or (
+        declared_type not in ('text', 'text/plain') and bool(re.search(r'</?[a-zA-Z][^>]*>', body)))
+    # Preserve the original document; the client renders it in an isolated mail frame.
+    def assets(key):
+        values = row.get(key)
+        if not isinstance(values, list):
+            return []
+        result = []
+        for value in values:
+            if not isinstance(value, dict):
+                continue
+            item = {name: text(value.get(name)) for name in ('filename', 'mime_type', 'content', 'url')}
+            item['content_id'] = text(value.get('content_id') or value.get('contentId') or value.get('cid')).strip('<>')
+            size = value.get('size')
+            item['size'] = size if type(size) is int and size >= 0 else 0
+            result.append(item)
+        return result
     date = normalize_date(first('createTime', 'createdAt', 'sendTime', 'date', 'time'))
     subject = text(first('subject', 'title'))
     sender = text(first('from', 'sender', 'senderEmail'))
@@ -255,5 +246,6 @@ def normalize_mail(row, index):
         name, address = text(row.get('from_name')), text(row.get('from_email'))
         sender = f'{name} <{address}>' if name and address else name or address
     return {'id': str(row.get('id') if row.get('id') is not None else f'{date}:{subject}:{index}'),
-            'subject': subject, 'body': body, 'body_type': 'text', 'date': date,
+            'subject': subject, 'body': body, 'body_type': 'html' if is_html else 'text', 'date': date,
+            'images': assets('images'), 'attachments': assets('attachments'),
             'from': sender, 'to': text(first('to', 'recipient', 'email')), 'folder': 'inbox'}

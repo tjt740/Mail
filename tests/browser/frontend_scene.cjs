@@ -481,7 +481,8 @@ test('scene changes preserve queries, retrieved mail, selection and readable tex
         await page.getByText('Scene test letter', { exact: true }).click();
         await page.locator('#mailDisplay.is-visible').waitFor();
         for (const mode of ['night', 'rain', 'day']) {
-            await page.locator(`[data-scene="${mode}"]`).click();
+            await page.locator('#frontendSettingsButton').click();
+            await page.locator(`#colorThemeMenu [data-theme="${mode === 'day' ? 'sunny' : mode}"]`).click();
             assert.equal(await page.locator(`[data-scene="${mode}"]`).getAttribute('aria-pressed'), 'true');
             assert.equal(await page.locator('#emailInput').inputValue(), 'reader@example.com');
             assert.equal(await page.locator('#mailSubject').innerText(), 'Scene test letter');

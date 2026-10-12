@@ -7013,7 +7013,9 @@
             if (isHtml) {
                 body.replaceChildren(window.MailContent.createFrame(mail.body || '（无正文）', {
                     title: `邮件正文：${mail.subject || '无主题'}`,
-                    className: 'receive-content-frame'
+                    className: 'receive-content-frame',
+                    images: mail.images || [],
+                    attachments: mail.attachments || []
                 }));
                 body.style.whiteSpace = 'normal';
             } else {

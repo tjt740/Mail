@@ -68,8 +68,8 @@ after(async () => {
     if (server) await new Promise(resolve => server.close(resolve));
 });
 
-async function showMail(page, admin, html, type = 'html') {
-    await page.evaluate(({ admin, html, type }) => {
+async function showMail(page, admin, html, type = 'html', images = [], attachments = []) {
+    await page.evaluate(({ admin, html, type, images, attachments }) => {
         const mail = { id: 'fixture', subject: 'Account invitation', from: 'team@example.com', to: 'reader@example.com',
             body: html, bodyType: type, body_type: type, date: '2026-09-23T08:00:00Z', receivedAt: '2026-09-23T08:00:00Z', folder: 'inbox' };
         if (admin) {
@@ -78,8 +78,8 @@ async function showMail(page, admin, html, type = 'html') {
             receiveState.mails = [mail];
             receiveState.activeMail = mail;
             renderReceiveDetail(mail);
-        } else displayMail(mail);
-    }, { admin, html, type });
+        } else displayMail({ ...mail, images, attachments });
+    }, { admin, html, type, images, attachments });
 }
 
 for (const admin of [true, false]) {
@@ -209,5 +209,88 @@ test('mailbox list deduplicates before pagination and preserves group/owner filt
         await page.evaluate(() => { selectedGroupId = ROOT_GROUP_ID; ownerFilter = 'owner-b'; renderMailboxView(1); });
         assert.equal(await page.locator('#mailboxTable tbody tr').count(), 1);
         assert.equal(await page.locator('#adminMailboxCount').innerText(), '1');
+    } finally { await page.close(); }
+});
+
+for (const width of [390, 1440]) test(`public reader expands for late images and long mail, then shrinks at ${width}px`, async () => {
+    const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320"><rect width="640" height="320" fill="#527f96"/></svg>';
+    try {
+        await page.route('**/late-banner.svg', async route => {
+            await gate;
+            await route.fulfill({ contentType: 'image/svg+xml', body: svg });
+        });
+        await page.goto(origin);
+        await page.locator('#emailInput').fill('reader@example.com\nsecond@example.com');
+        await page.evaluate(() => window.scrollTo(0, 150));
+        const before = await page.evaluate(() => window.scrollY);
+        const image = { content_id: '<banner>', mime_type: 'image/svg+xml', content: Buffer.from(svg).toString('base64'), filename: 'banner.svg' };
+        await showMail(page, false, `<h2>Full message</h2><img id="inline" style="display:block" src="cid:banner"><img id="remote" style="display:block" src="${origin}/late-banner.svg">` +
+            '<p>Complete text and formatting stay readable.</p>'.repeat(45) + '<p id="end">End of message</p>', 'html', [image]);
+        const element = page.locator('.mail-content-frame');
+        const frame = await (await element.elementHandle()).contentFrame();
+        await frame.waitForFunction(() => document.getElementById('inline').naturalWidth > 0);
+        await page.waitForFunction(() => parseInt(document.querySelector('.mail-content-frame').style.height) > 1000);
+        const beforeImage = (await element.boundingBox()).height;
+        release();
+        await frame.waitForFunction(() => document.getElementById('remote').naturalWidth > 0);
+        await page.waitForFunction(height => document.querySelector('.mail-content-frame').getBoundingClientRect().height > height + 80, beforeImage);
+        await frame.waitForFunction(() => document.documentElement.scrollHeight <= innerHeight + 1);
+        assert.ok(await page.locator('#mailImages').isHidden(), 'Embedded images must not be duplicated in a separate gallery');
+        assert.ok(await page.locator('.scene-hero').isHidden());
+        assert.ok(await page.locator('.mail-query-panel').isHidden());
+        assert.equal(await page.evaluate(() => window.scrollY), 0);
+        assert.ok(await page.locator('#mailDisplay').evaluate(el => el.scrollHeight <= el.clientHeight + 1));
+        assert.ok(await page.locator('#mailListPanel').evaluate(el => el.scrollHeight <= el.clientHeight + 1));
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        assert.ok(await page.evaluate(() => window.scrollY > 500));
+        assert.ok(await page.locator('.back-btn').evaluate(el => {
+            const box = el.getBoundingClientRect();
+            return box.top >= 0 && box.bottom <= innerHeight;
+        }), 'Back stays reachable when reading the end');
+        await page.locator('.back-btn').click();
+        assert.ok(await page.locator('.mail-query-panel').isVisible());
+        assert.equal(await page.locator('#emailInput').inputValue(), 'reader@example.com\nsecond@example.com');
+        assert.equal(await page.evaluate(() => window.scrollY), before);
+
+        await showMail(page, false, '<p>A short complete message.</p>');
+        await page.waitForFunction(() => parseInt(document.querySelector('.mail-content-frame').style.height) === 120);
+        assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), 'Short messages should fit in one screen');
+    } finally { release(); await page.close(); }
+});
+
+test('public auto-size bridge permits no mail scripts or forged resize messages', async () => {
+    const page = await browser.newPage();
+    try {
+        await page.goto(origin);
+        assert.equal(await page.evaluate(() => extractVerificationCodeFromMail({
+            body_type: 'html', body: '<style>.a{color:#123456}</style><script>const code=654321</script><p>验证码：003821</p>'
+        })), '003821', 'Only visible mail text participates in verification-code extraction');
+        await showMail(page, false, `<script nonce="mail-provided">window.mailCodeRan = true</script>
+            <svg onload="window.mailCodeRan = true"></svg><img src="bad" onerror="window.mailCodeRan = true">
+            <p id="safe">Safe content</p>`);
+        const element = page.locator('.mail-content-frame');
+        const frame = await (await element.elementHandle()).contentFrame();
+        await frame.locator('#safe').waitFor();
+        await page.waitForFunction(() => !!document.querySelector('.mail-content-frame').style.height);
+        assert.equal(await frame.locator('script').count(), 1, 'Only the trusted measurement bridge remains');
+        assert.equal(await frame.locator('[onload], [onerror], [nonce="mail-provided"]').count(), 0);
+        assert.equal(await frame.evaluate(() => window.mailCodeRan), undefined);
+        assert.ok(!(await element.getAttribute('sandbox')).includes('allow-same-origin'));
+        assert.ok(await frame.evaluate(() => { try { return !parent.document; } catch (_) { return true; } }));
+        await frame.evaluate(() => {
+            const script = document.createElement('script');
+            script.nonce = 'mail-provided';
+            script.textContent = 'window.mailCodeRan = true';
+            document.body.appendChild(script);
+        });
+        assert.equal(await frame.evaluate(() => window.mailCodeRan), undefined, 'CSP rejects any script without the bridge nonce');
+        const height = await element.evaluate(el => el.style.height);
+        await page.evaluate(() => window.postMessage({ type: 'mail-content-height', id: document.querySelector('.mail-content-frame').dataset.mailContentId, height: 99999 }, '*'));
+        await page.waitForTimeout(80);
+        assert.equal(await element.evaluate(el => el.style.height), height, 'The sender window is validated in addition to the ID');
     } finally { await page.close(); }
 });
