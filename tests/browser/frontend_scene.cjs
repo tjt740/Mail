@@ -85,6 +85,10 @@ for (const width of [1440, 390]) test(`public theme menu and scene shortcuts sta
             await check(theme, ['night','rain'].includes(theme) ? theme : 'day');
             accents.add(await frame.locator('.get-mail-btn').evaluate(button => getComputedStyle(button).backgroundImage + getComputedStyle(button).backgroundColor));
             if (['sunny','night','rain'].includes(theme)) skies.add(await frame.locator('#sceneCanvas').evaluate(canvas => canvas.toDataURL()));
+            if (process.env.SCREENSHOT_DIR) {
+                fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+                await frame.locator('.scene-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `envelope-${theme}-${width}.png`) });
+            }
         }
         assert.equal(accents.size, 8, 'every palette must visibly change the primary action');
         assert.equal(skies.size, 3, 'weather selection must update the rendered canvas, including reduced motion');

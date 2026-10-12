@@ -123,16 +123,63 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
 .scene-controls button:focus-visible { outline: 2px solid var(--scene-accent); outline-offset: 2px; }
 
 /* True CSS perspective with independently layered paper, envelope and seal. */
-.scene-art { position: absolute; right: 9%; top: 50%; width: 250px; height: 200px; transform: translateY(-50%); perspective: 800px; pointer-events: none; }
+.scene-art {
+    --envelope-back: color-mix(in srgb, var(--app-primary) 78%, var(--app-secondary));
+    --envelope-fold-left: color-mix(in srgb, var(--app-primary) 32%, white);
+    --envelope-fold-right: color-mix(in srgb, var(--app-primary) 17%, white);
+    --envelope-flap: color-mix(in srgb, var(--app-primary) 60%, white);
+    --envelope-base: color-mix(in srgb, var(--app-primary) 40%, white);
+    --envelope-paper: color-mix(in srgb, var(--app-primary) 2%, white);
+    --envelope-paper-bottom: color-mix(in srgb, var(--app-primary) 9%, white);
+    --envelope-line: color-mix(in srgb, var(--app-primary) 28%, white);
+    --envelope-line-strong: color-mix(in srgb, var(--app-primary) 58%, white);
+    --envelope-edge: color-mix(in srgb, var(--app-primary) 12%, white);
+    --envelope-seal: color-mix(in srgb, var(--app-primary) 3%, white);
+    --envelope-seal-bottom: color-mix(in srgb, var(--app-primary) 18%, white);
+    --envelope-seal-ink: var(--app-primary);
+    --envelope-shadow: color-mix(in srgb, var(--app-primary) 23%, transparent);
+    --envelope-glow: color-mix(in srgb, var(--app-primary) 16%, transparent);
+    --envelope-finish: linear-gradient(125deg, #ffffff24, transparent 48%, #ffffff0a);
+    position: absolute; right: 9%; top: 50%; width: 250px; height: 200px;
+    transform: translateY(-50%); perspective: 800px; pointer-events: none;
+}
+:root[data-color-theme="sunny"] .scene-art {
+    --envelope-back: #538caa; --envelope-fold-left: #a9d4df; --envelope-fold-right: #d7ece4;
+    --envelope-flap: #83b7d2; --envelope-base: #b8d8e6;
+    --envelope-paper: #fffdf5; --envelope-paper-bottom: #f7eedb;
+    --envelope-line: #d5d8c9; --envelope-line-strong: #c4aa72; --envelope-edge: #f4f5e7;
+    --envelope-seal: #fff9e5; --envelope-seal-bottom: #f0d99e; --envelope-seal-ink: #805d25;
+    --envelope-shadow: #47799930; --envelope-glow: #ffdf9145;
+}
+:root[data-color-theme="night"] .scene-art {
+    --envelope-back: #292c57; --envelope-fold-left: #555f99; --envelope-fold-right: #7574aa;
+    --envelope-flap: #424979; --envelope-base: #505887;
+    --envelope-paper: #dce4f5; --envelope-paper-bottom: #aebcdb;
+    --envelope-line: #99a8cb; --envelope-line-strong: #747eaa; --envelope-edge: #aeb7e0;
+    --envelope-seal: #e5e0fc; --envelope-seal-bottom: #ada8df; --envelope-seal-ink: #3a3b6d;
+    --envelope-shadow: #050b2b66; --envelope-glow: #bba6ff38;
+    --envelope-finish: radial-gradient(circle at 19% 30%, #e9e8ff99 0 .7px, transparent 1.5px), radial-gradient(circle at 84% 68%, #e9e8ff77 0 .6px, transparent 1.4px), linear-gradient(115deg, #d6d6ff25, transparent 38%, #c5b5ff0c);
+}
+:root[data-color-theme="rain"] .scene-art {
+    --envelope-back: #152c43; --envelope-fold-left: #2b596e; --envelope-fold-right: #3c7482;
+    --envelope-flap: #24445c; --envelope-base: #285169;
+    --envelope-paper: #c5dbe0; --envelope-paper-bottom: #8eabba;
+    --envelope-line: #839eae; --envelope-line-strong: #527689; --envelope-edge: #7bb9c3;
+    --envelope-seal: #d6f2ee; --envelope-seal-bottom: #84bacb; --envelope-seal-ink: #1c4d5b;
+    --envelope-shadow: #03152477; --envelope-glow: #79d9ea33;
+    --envelope-finish: radial-gradient(ellipse 2px 3.5px at 20% 26%, #ecffff99 12%, #adcfd244 45%, #0b2e4955 75%, transparent 100%), radial-gradient(ellipse 1.5px 3px at 82% 63%, #ecffff77 12%, #adcfd233 45%, #0b2e4944 75%, transparent 100%), radial-gradient(ellipse 1px 2px at 31% 75%, #ecffff88 12%, transparent 100%), linear-gradient(118deg, transparent 20%, #c3ffff18 40%, transparent 60%);
+}
+.scene-art::before { content: ''; position: absolute; inset: 0 15px; border-radius: 50%; background: radial-gradient(ellipse, var(--envelope-glow), transparent 68%); }
 .scene-envelope-float { position: absolute; left: 50px; top: 43px; width: 150px; height: 108px; transform-style: preserve-3d; animation: scene-float 6s ease-in-out infinite; }
 .scene-envelope { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transform: rotateX(calc(-12deg + var(--scene-tilt-y, 0deg))) rotateY(calc(-22deg + var(--scene-tilt-x, 0deg))) rotateZ(-9deg); }
-.scene-envelope-back { position: absolute; inset: 0; border-radius: 13px; background: linear-gradient(140deg, #9abcf3, #587dcc); box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); transform: translateZ(-6px); }
-.scene-letter { position: absolute; inset: -27px 13px 12px; padding: 19px 17px; border: 1px solid #fff; border-radius: 9px; background: linear-gradient(140deg, #fff, #e6effe); transform: translateZ(0); box-shadow: 0 -6px 18px rgba(48, 76, 128, .1); }
-.scene-letter i { display: block; width: 72%; height: 4px; margin-bottom: 9px; border-radius: 4px; background: #c6d6f2; }
-.scene-letter i:first-child { width: 35%; background: #96b4e8; }
+.scene-envelope-back { position: absolute; inset: 0; border-radius: 13px; background: linear-gradient(140deg, var(--envelope-flap), var(--envelope-back)); box-shadow: inset 0 0 0 1px var(--envelope-edge); transform: translateZ(-6px); }
+.scene-letter { position: absolute; inset: -27px 13px 12px; padding: 19px 17px; border: 1px solid var(--envelope-edge); border-radius: 9px; background: linear-gradient(140deg, var(--envelope-paper), var(--envelope-paper-bottom)); transform: translateZ(0); box-shadow: 0 -6px 18px var(--envelope-shadow); }
+.scene-letter i { display: block; width: 72%; height: 4px; margin-bottom: 9px; border-radius: 4px; background: var(--envelope-line); }
+.scene-letter i:first-child { width: 35%; background: var(--envelope-line-strong); }
 .scene-letter i:last-child { width: 50%; }
-.scene-envelope-front { position: absolute; inset: 0; border: 1px solid rgba(255,255,255,.7); border-radius: 12px; background: linear-gradient(32deg, #b4cdf6 49.5%, transparent 50.5%), linear-gradient(-32deg, #d0e1ff 49.5%, transparent 50.5%), linear-gradient(180deg, #7fa6e7, #adc9f8); transform: translateZ(8px); box-shadow: 0 12px 24px rgba(29, 69, 141, .16); }
-.scene-envelope-seal { position: absolute; left: 59px; top: 53px; display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #e6eeff; border-radius: 50%; background: linear-gradient(130deg, #f9fbff, #c4d9ff); color: #678dcf; transform: translateZ(13px); box-shadow: 0 3px 7px rgba(45,81,143,.16); }
+.scene-envelope-front { position: absolute; inset: 0; border: 1px solid var(--envelope-edge); border-radius: 12px; background: linear-gradient(32deg, var(--envelope-fold-left) 49.5%, transparent 50.5%), linear-gradient(-32deg, var(--envelope-fold-right) 49.5%, transparent 50.5%), linear-gradient(180deg, var(--envelope-flap), var(--envelope-base)); transform: translateZ(8px); box-shadow: 0 12px 24px var(--envelope-shadow), inset 0 1px 0 var(--envelope-edge); }
+.scene-envelope-front::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--envelope-finish); }
+.scene-envelope-seal { position: absolute; left: 59px; top: 53px; display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--envelope-edge); border-radius: 50%; background: linear-gradient(130deg, var(--envelope-seal), var(--envelope-seal-bottom)); color: var(--envelope-seal-ink); transform: translateZ(13px); box-shadow: 0 3px 7px var(--envelope-shadow), 0 0 16px var(--envelope-glow); }
 .scene-envelope-seal svg { width: 17px; height: 17px; fill: currentColor; }
 .scene-envelope-shadow { position: absolute; left: 68px; bottom: 17px; width: 135px; height: 17px; border-radius: 50%; background: var(--scene-accent); opacity: .15; filter: blur(8px); animation: scene-shadow 6s ease-in-out infinite; }
 .scene-orbit { position: absolute; inset: 10px -8px; border: 1px solid var(--scene-border); border-radius: 50%; transform: rotateZ(-28deg) rotateX(57deg); }
