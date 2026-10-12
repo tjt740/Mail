@@ -122,7 +122,8 @@ test('owner switch saves and survives refresh, rolls back failed updates, and is
         await page.waitForFunction(()=>document.getElementById('publicMailKeyRequired').checked);
         await shot(page,'owner-key-settings');
         rejectUpdates=true;
-        await page.getByRole('switch').uncheck();
+        // A rejected save can roll back before Playwright's uncheck assertion.
+        await page.getByRole('switch').click();
         await page.waitForFunction(()=>!document.getElementById('publicMailKeyRequired').disabled);
         assert.equal(await page.getByRole('switch').isChecked(),true);
         assert.equal(enabled,true);

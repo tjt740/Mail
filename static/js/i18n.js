@@ -2343,6 +2343,8 @@
 
 
     const supplyMessages = {
+    "打开信封": ["Open envelope", "Mở phong bì", "Buksan ang sobre"],
+    "合上信封": ["Close envelope", "Đóng phong bì", "Isara ang sobre"],
     "等待响应…": ["Waiting for response…", "Đang chờ phản hồi…", "Naghihintay ng tugon…"],
     "点击重试": ["Click to retry", "Nhấn để thử lại", "I-click para subukan muli"],
     "点击检测": ["Click to test", "Nhấn để kiểm tra", "I-click para suriin"],

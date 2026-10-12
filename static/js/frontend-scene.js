@@ -18,6 +18,52 @@
         target.addEventListener(type, handler, options);
         cleanups.push(() => target.removeEventListener(type, handler, options));
     };
+    const envelope = hero.querySelector('.scene-envelope-trigger');
+    const envelopeArt = hero.querySelector('.scene-art');
+    const notice = hero.querySelector('.scene-envelope-notice');
+    let envelopeOpen = false, noticeAnimation = null, pendingNotice = false;
+    function stopNotice() {
+        noticeAnimation?.cancel();
+        noticeAnimation = null;
+    }
+    function setEnvelopeOpen(open) {
+        envelopeOpen = open;
+        if (!envelope) return;
+        envelope.setAttribute('aria-expanded', String(open));
+        envelope.setAttribute('aria-label', open ? '合上信封' : '打开信封');
+        if (open) envelopeArt.classList.remove('has-new-mail');
+    }
+    function notifyNewMail() {
+        if (destroyed || !notice) return;
+        envelopeArt.classList.add('has-new-mail');
+        if (document.hidden || suspended) { pendingNotice = true; return; }
+        pendingNotice = false;
+        // One damped wobble for a batch. Neither the ambient float nor scene
+        // changes can restart it; reduced motion keeps only the notification dot.
+        if (reduced.matches || noticeAnimation) return;
+        noticeAnimation = notice.animate([
+            { transform: 'translateY(0) rotateZ(0deg)', offset: 0 },
+            { transform: 'translateY(-5px) rotateZ(-9deg)', offset: .16 },
+            { transform: 'translateY(-5px) rotateZ(8deg)', offset: .32 },
+            { transform: 'translateY(-3px) rotateZ(-6deg)', offset: .47 },
+            { transform: 'translateY(-2px) rotateZ(4deg)', offset: .62 },
+            { transform: 'translateY(-1px) rotateZ(-2deg)', offset: .77 },
+            { transform: 'translateY(0) rotateZ(0deg)', offset: 1 }
+        ], { duration: 1100, easing: 'ease-in-out', iterations: 1 });
+        noticeAnimation.onfinish = () => { noticeAnimation = null; };
+    }
+    if (envelope) {
+        on(envelope, 'pointerenter', event => {
+            if (event.pointerType === 'touch') return;
+            setEnvelopeOpen(true);
+        });
+        on(envelope, 'pointerleave', event => { if (event.pointerType !== 'touch') setEnvelopeOpen(false); });
+        on(envelope, 'click', () => setEnvelopeOpen(!envelopeOpen));
+        on(envelope, 'keydown', event => {
+            if (event.key === 'Escape') setEnvelopeOpen(false);
+        });
+        on(envelope, 'blur', () => setEnvelopeOpen(false));
+    }
     function layer(id, maxPixels) {
         const canvas = document.getElementById(id);
         const ctx = canvas?.getContext('2d');
@@ -103,6 +149,8 @@
     }
     function update() {
         stop();
+        if (document.hidden || suspended || reduced.matches) stopNotice();
+        if (!document.hidden && !suspended && pendingNotice) notifyNewMail();
         root.dataset.sceneRunning = String(canAnimate());
         if (destroyed) return;
         render(0);
@@ -149,7 +197,7 @@
         pointer.ty = (event.clientY - rect.top) / rect.height * 2 - 1;
     });
     on(hero, 'pointerleave', () => { pointer.tx = pointer.ty = 0; });
-    on(window, 'blur', () => { pointer.tx = pointer.ty = 0; });
+    on(window, 'blur', () => { pointer.tx = pointer.ty = 0; setEnvelopeOpen(false); });
     on(document, 'visibilitychange', update);
     on(window, 'pagehide', () => { suspended = true; update(); });
     on(window, 'pageshow', () => { suspended = false; update(); });
@@ -160,10 +208,11 @@
     else on(window, 'resize', resize);
     on(coarse, 'change', resize);
     window.MailScene = {
-        setScene, applyTheme,
+        setScene, applyTheme, notifyNewMail,
         get state() { return { scene, animating: canAnimate(), frameCount }; },
         destroy() {
-            destroyed = true; stop(); observer?.disconnect(); cleanups.forEach(remove => remove());
+            destroyed = true; stop(); stopNotice(); pendingNotice = false; observer?.disconnect(); cleanups.forEach(remove => remove());
+            setEnvelopeOpen(false); envelopeArt?.classList.remove('has-new-mail');
             root.dataset.sceneRunning = 'false';
             layers.forEach(l => { l.ctx.clearRect(0, 0, l.width, l.height); l.skies = {}; });
         }

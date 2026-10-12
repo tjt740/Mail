@@ -2480,20 +2480,26 @@
                 <button type="button" data-scene="rain" aria-pressed="false"><span aria-hidden="true">☂</span><span>雨夜</span></button>
             </div>
         </div>
-        <div class="scene-art" aria-hidden="true">
-            <div class="scene-orbit scene-orbit-one"></div>
-            <div class="scene-orbit scene-orbit-two"></div>
-            <div class="scene-envelope-float">
-                <div class="scene-envelope">
-                    <div class="scene-envelope-back"></div>
-                    <div class="scene-letter"><i></i><i></i><i></i></div>
-                    <div class="scene-envelope-front"></div>
-                    <div class="scene-envelope-seal"><svg><use href="#ai-mail"></use></svg></div>
-                </div>
-            </div>
-            <span class="scene-satellite scene-satellite-one">✦</span>
-            <span class="scene-satellite scene-satellite-two">✧</span>
-            <div class="scene-envelope-shadow"></div>
+        <div class="scene-art">
+            <div class="scene-orbit scene-orbit-one" aria-hidden="true"></div>
+            <div class="scene-orbit scene-orbit-two" aria-hidden="true"></div>
+            <button class="scene-envelope-trigger" type="button" aria-label="打开信封" aria-expanded="false">
+                <span class="scene-envelope-float" aria-hidden="true">
+                    <span class="scene-envelope-notice">
+                        <span class="scene-envelope">
+                            <span class="scene-envelope-back"></span>
+                            <span class="scene-letter"><span></span><span></span><span></span></span>
+                            <span class="scene-envelope-front"></span>
+                            <span class="scene-envelope-flap"></span>
+                            <span class="scene-envelope-seal"><svg><use href="#ai-mail"></use></svg></span>
+                        </span>
+                        <span class="scene-envelope-notification"></span>
+                    </span>
+                </span>
+            </button>
+            <span class="scene-satellite scene-satellite-one" aria-hidden="true">✦</span>
+            <span class="scene-satellite scene-satellite-two" aria-hidden="true">✧</span>
+            <div class="scene-envelope-shadow" aria-hidden="true"></div>
         </div>
     </section>
 
@@ -2645,7 +2651,23 @@
     const REQUEST_FOLDER_MAP = { inbox: 'INBOX', trash: 'Trash' };
     const EMAIL_REGEX = /[\w.!#$%&'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}/g;
     let publicMailLimit = 5;
+    // Page-local identities prevent repeated queries from replaying the arrival cue.
+    const receivedMailKeys = new Set();
     let publicMailKeyRequired = {{ public_mail_key_required|default(false)|tojson }};
+
+    function recordNewMail(items) {
+        let hasNewMail = false;
+        items.forEach(item => {
+            const folder = normalizeFolderName(item.folder || mailState.folder);
+            if (folder !== 'inbox') return;
+            const identity = item.id != null ? String(item.id)
+                : [item.date || '', item.from || '', item.to || '', item.subject || '', item.body || ''];
+            const key = JSON.stringify([item.query_email.toLowerCase(), folder, identity]);
+            if (!receivedMailKeys.has(key)) hasNewMail = true;
+            receivedMailKeys.add(key);
+        });
+        return hasNewMail;
+    }
 
     function applyPublicMailPolicy(required) {
         publicMailKeyRequired = required;
@@ -3095,6 +3117,7 @@
             }
             renderMailboxList();
             renderMailList();
+            if (recordNewMail(fetchedMails)) window.MailScene?.notifyNewMail();
             
         } catch (error) {
             console.error('请求失败:', error);

@@ -10,6 +10,7 @@ const { contrastFailures } = require('./theme_contrast.cjs');
 const root = path.resolve(__dirname, '../..');
 let server, browser, origin;
 before(async () => {
+    if (process.env.SCREENSHOT_DIR) fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
     const html = execFileSync(process.env.PYTHON_BIN || path.join(root, '.venv/bin/python'), ['-c', `
 from flask import Flask, render_template
 import sys
@@ -49,6 +50,111 @@ async function newPage(options = {}) {
     await page.waitForFunction(() => window.MailScene && window.AppI18n);
     return page;
 }
+
+test('envelope unfolds on hover, closes on leave and supports keyboard and touch', async () => {
+    const page = await newPage();
+    try {
+        const trigger = page.locator('.scene-envelope-trigger');
+        const paperY = () => page.locator('.scene-letter').evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42);
+        assert.equal(await paperY(), 0);
+        await trigger.hover();
+        await page.waitForFunction(() => document.querySelector('.scene-envelope-trigger').getAttribute('aria-expanded') === 'true');
+        await page.waitForTimeout(450);
+        const halfway = await paperY();
+        assert.ok(halfway < 0 && halfway > -42, `paper should travel smoothly, got ${halfway}`);
+        await page.waitForTimeout(500);
+        assert.equal(await paperY(), -42);
+        if (process.env.SCREENSHOT_DIR) await page.locator('.scene-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'envelope-open-desktop.png') });
+        await page.mouse.move(4, 4);
+        await page.waitForFunction(() => document.querySelector('.scene-envelope-trigger').getAttribute('aria-expanded') === 'false');
+        await page.waitForTimeout(950);
+        assert.equal(await paperY(), 0);
+        await trigger.focus();
+        await trigger.press('Enter');
+        assert.equal(await trigger.getAttribute('aria-expanded'), 'true');
+        await trigger.press('Escape');
+        assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
+    } finally { await page.close(); }
+    const mobile = await newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+    try {
+        const trigger = mobile.locator('.scene-envelope-trigger');
+        await trigger.tap();
+        assert.equal(await trigger.getAttribute('aria-expanded'), 'true');
+        assert.equal(await mobile.locator('.scene-letter').evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42), -42);
+        if (process.env.SCREENSHOT_DIR) await mobile.locator('.scene-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'envelope-open-mobile.png') });
+        await trigger.tap();
+        assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
+    } finally { await mobile.close(); }
+});
+
+test('new mail gives one arrival cue per batch and repeated, failed or empty queries do not replay it', async () => {
+    const page = await newPage();
+    let items = [{ id: 'a', subject: 'First letter' }, { id: 'b', subject: 'Second letter' }], success = true;
+    try {
+        await page.evaluate(() => {
+            window.arrivalStarts = 0;
+            const animate = Element.prototype.animate;
+            Element.prototype.animate = function (...args) {
+                if (this.matches('.scene-envelope-notice')) window.arrivalStarts++;
+                return animate.apply(this, args);
+            };
+        });
+        await page.route('**/api/get_mail', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success, mails: items }) }));
+        await page.locator('#emailInput').fill('reader@example.com');
+        const fetchMail = async () => {
+            const response = page.waitForResponse(response => response.url().endsWith('/api/get_mail'));
+            await page.locator('.get-mail-btn').click();
+            await response;
+            await page.waitForFunction(() => !document.querySelector('.get-mail-btn').disabled);
+        };
+        const count = () => page.evaluate(() => window.arrivalStarts);
+        await fetchMail();
+        assert.equal(await count(), 1);
+        assert.equal(await page.locator('.scene-art').evaluate(el => el.classList.contains('has-new-mail')), true);
+        assert.equal(await page.locator('.scene-envelope-notice').evaluate(el => el.getAnimations()[0].effect.getTiming().iterations), 1);
+        await page.waitForTimeout(1300);
+        assert.equal(await page.locator('.scene-envelope-notice').evaluate(el => el.getAnimations().length), 0);
+        items.reverse();
+        await fetchMail();
+        assert.equal(await count(), 1);
+        await page.locator('[data-scene="night"]').click();
+        await page.locator('.scene-envelope-trigger').hover();
+        assert.equal(await page.locator('.scene-art').evaluate(el => el.classList.contains('has-new-mail')), false);
+        await page.mouse.move(4, 4);
+        items.push({ id: 'c', subject: 'New letter' }, { id: 'd', subject: 'Another new letter' });
+        await fetchMail();
+        assert.equal(await count(), 2);
+        await page.waitForTimeout(1200);
+        success = false;
+        await fetchMail();
+        success = true; const savedItems = items; items = [];
+        await fetchMail();
+        items = savedItems;
+        await fetchMail();
+        assert.equal(await count(), 2);
+        // Missing provider IDs must not use the random IDs assigned to table rows.
+        items = [{ subject: 'No provider ID', date: '2026-10-12', body: 'Stable message body' }];
+        await fetchMail();
+        assert.equal(await count(), 3);
+        await page.waitForTimeout(1200);
+        await fetchMail();
+        assert.equal(await count(), 3);
+        await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+        items = [{ id: 'background', subject: 'While hidden' }];
+        await fetchMail();
+        assert.equal(await count(), 3);
+        await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+        assert.equal(await count(), 4);
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        items = [{ id: 'reduced', subject: 'Quiet notification' }];
+        await fetchMail();
+        assert.equal(await count(), 4);
+        assert.equal(await page.locator('.scene-envelope-notice').evaluate(el => el.getAnimations().length), 0);
+        assert.equal(await page.locator('.scene-art').evaluate(el => el.classList.contains('has-new-mail')), true);
+        await page.evaluate(() => MailScene.destroy());
+        assert.equal(await page.locator('.scene-art').evaluate(el => el.classList.contains('has-new-mail')), false);
+    } finally { await page.close(); }
+});
 
 for (const width of [1440, 390]) test(`public theme menu and scene shortcuts stay synchronized in the shell at ${width}px`, async () => {
     const page = await browser.newPage({ viewport: { width, height: 950 }, reducedMotion: 'reduce' });
