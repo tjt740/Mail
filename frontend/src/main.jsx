@@ -493,12 +493,12 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
   );
 }
 
-function PublicShell({ language }) {
+function PublicShell({ language, colorTheme }) {
   const title = appProps.pageTitle || translate(language, '邮件查看');
   useEffect(() => { document.title = title; }, [title]);
   return (
     <main className="public-app">
-      <LegacyFrame title={title} src={buildLegacyUrl('/')} language={language} />
+      <LegacyFrame title={title} src={buildLegacyUrl('/')} language={language} colorTheme={colorTheme} />
     </main>
   );
 }
@@ -519,7 +519,7 @@ function Router({ language, setLanguage, colorTheme, onColorThemeChange }) {
   if (path.startsWith('/admin')) {
     return <AdminShell language={language} onLanguageChange={setLanguage} colorTheme={colorTheme} onColorThemeChange={onColorThemeChange} t={t} />;
   }
-  return <PublicShell language={language} />;
+  return <PublicShell language={language} colorTheme={colorTheme} />;
 }
 
 function MailApp() {

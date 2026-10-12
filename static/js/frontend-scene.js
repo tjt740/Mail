@@ -5,14 +5,11 @@
     const hero = document.querySelector('.scene-hero');
     if (!hero) return;
     const modes = ['day', 'night', 'rain'];
+    const themeForScene = { day: 'sunny', night: 'night', rain: 'rain' };
+    const sceneForTheme = theme => ['night', 'rain'].includes(theme) ? theme : 'day';
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     const coarse = matchMedia('(pointer: coarse)');
-    const colorScheme = matchMedia('(prefers-color-scheme: dark)');
-    const storage = {
-        get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } },
-        set(key, value) { try { localStorage.setItem(key, value); } catch (_) {} }
-    };
-    let scene = modes.includes(storage.get('mailScene')) ? storage.get('mailScene') : (colorScheme.matches ? 'night' : 'day');
+    let scene = sceneForTheme(root.dataset.colorTheme), appliedTheme = null;
     let destroyed = false, suspended = false, raf = null, last = 0, time = 0, frameCount = 0;
     const weights = Object.fromEntries(modes.map(mode => [mode, mode === scene ? 1 : 0]));
     const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
@@ -34,6 +31,7 @@
         night: { top: '#101a34', bottom: '#0c1526', glow: 'rgba(111,116,219,.2)', glowEnd: 'rgba(111,116,219,0)', rgb: '170,194,250' },
         rain: { top: '#15283e', bottom: '#080f1c', glow: 'rgba(123,151,205,.16)', glowEnd: 'rgba(123,151,205,0)', rgb: '151,209,225' }
     };
+    const daylight = palette.day;
     function resizeLayer(l) {
         const rect = l.canvas.getBoundingClientRect();
         l.width = Math.max(1, rect.width); l.height = Math.max(1, rect.height);
@@ -112,11 +110,36 @@
     }
     function setScene(mode, persist = true) {
         if (!modes.includes(mode) || destroyed) return;
+        // Scene buttons are shortcuts to the same preference as the theme menu.
+        if (persist && window.AppColorTheme) {
+            window.AppColorTheme.setTheme(themeForScene[mode]);
+            return;
+        }
         scene = mode;
         root.dataset.mailScene = mode;
         document.querySelectorAll('[data-scene]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.scene === mode)));
-        if (persist) storage.set('mailScene', mode);
         update();
+    }
+    function applyTheme(theme) {
+        const p = window.MailThemes.get(theme);
+        if (destroyed || appliedTheme === p.key) return;
+        appliedTheme = p.key;
+        // Keep public reading surfaces and weather on the shared palette. Using
+        // concrete values avoids cycles with the legacy --surface/--text aliases.
+        const variables = {
+            bg: p.background, surface: `color-mix(in srgb, ${p.surface} 92%, transparent)`,
+            inner: p.surface2, input: p.surface, text: p.text, muted: p.muted, border: p.border,
+            accent: p.primary, secondary: p.secondary, 'on-accent': p.dark ? '#102130' : '#ffffff',
+            success: p.mint, danger: p.coral, warning: p.gold, soft: p.soft,
+            overlay: `color-mix(in srgb, ${p.surface2} 96%, transparent)`,
+            backdrop: p.dark ? 'rgba(2,8,21,.80)' : 'rgba(17,36,63,.55)'
+        };
+        Object.entries(variables).forEach(([name, value]) => document.body.style.setProperty(`--scene-${name}`, value));
+        palette.day = p.key === 'sunny' ? daylight : {
+            ...daylight, top: p.background, bottom: p.surface2, glow: p.soft + '88', glowEnd: p.soft + '00'
+        };
+        resize();
+        setScene(sceneForTheme(p.key), false);
     }
     document.querySelectorAll('[data-scene]').forEach(button => on(button, 'click', () => setScene(button.dataset.scene)));
     on(hero, 'pointermove', event => {
@@ -131,17 +154,13 @@
     on(window, 'pagehide', () => { suspended = true; update(); });
     on(window, 'pageshow', () => { suspended = false; update(); });
     on(reduced, 'change', update);
-    on(colorScheme, 'change', () => { if (!modes.includes(storage.get('mailScene'))) setScene(colorScheme.matches ? 'night' : 'day', false); });
-    on(window, 'storage', event => {
-        if (event.key === 'mailScene') setScene(modes.includes(event.newValue) ? event.newValue : (colorScheme.matches ? 'night' : 'day'), false);
-    });
     function resize() { if (!destroyed) { layers.forEach(resizeLayer); render(0); } }
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize);
     if (observer) layers.forEach(l => observer.observe(l.canvas));
     else on(window, 'resize', resize);
     on(coarse, 'change', resize);
     window.MailScene = {
-        setScene,
+        setScene, applyTheme,
         get state() { return { scene, animating: canAnimate(), frameCount }; },
         destroy() {
             destroyed = true; stop(); observer?.disconnect(); cleanups.forEach(remove => remove());
@@ -149,5 +168,5 @@
             layers.forEach(l => { l.ctx.clearRect(0, 0, l.width, l.height); l.skies = {}; });
         }
     };
-    resize(); setScene(scene, false);
+    applyTheme(window.AppColorTheme?.theme || root.dataset.colorTheme);
 })();

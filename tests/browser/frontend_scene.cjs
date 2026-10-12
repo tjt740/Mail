@@ -32,7 +32,9 @@ with app.test_request_context('/'):
             if (pathname === '/api/public-mail-config') return res.end(JSON.stringify({ success: true, key_required: false }));
             return res.end(JSON.stringify({ success: true, language: 'zh', mails: [{ id: 'scene-fixture', subject: 'Scene test letter', from: 'sender@example.com', to: 'reader@example.com', body: 'Your verification code: 123456', body_type: 'text', date: '2026-10-02 10:00:00' }] }));
         }
-        res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(html);
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        if (pathname === '/shell') return res.end(`<!doctype html><html data-i18n-managed="react"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/static/react/assets/main.css"></head><body><div id="root"></div><script>window.__MAIL_APP_PROPS__={pageTitle:'Mail'};</script><script type="module" src="/static/react/assets/main.js"></script></body></html>`);
+        res.end(html);
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     origin = `http://127.0.0.1:${server.address().port}`;
@@ -47,6 +49,61 @@ async function newPage(options = {}) {
     await page.waitForFunction(() => window.MailScene && window.AppI18n);
     return page;
 }
+
+for (const width of [1440, 390]) test(`public theme menu and scene shortcuts stay synchronized in the shell at ${width}px`, async () => {
+    const page = await browser.newPage({ viewport: { width, height: 950 }, reducedMotion: 'reduce' });
+    page.setDefaultTimeout(5000);
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    try {
+        if (width === 390) await page.addInitScript(() => {
+            Storage.prototype.getItem = () => { throw Error('Storage blocked'); };
+            Storage.prototype.setItem = () => { throw Error('Storage blocked'); };
+        });
+        else await page.addInitScript(() => {
+            // A stale preference from the old scene switcher must not override the theme.
+            localStorage.setItem('mailScene', 'day');
+        });
+        await page.goto(origin + '/shell');
+        await page.frameLocator('iframe').locator('#colorThemeButton').waitFor();
+        const frame = page.frames().find(frame => frame.url().includes('/legacy/'));
+        const timeOrigin = await frame.evaluate(() => performance.timeOrigin);
+        await frame.locator('#emailInput').fill('reader@example.com');
+        const skies = new Set(), accents = new Set();
+        const check = async (theme, scene) => {
+            await frame.waitForFunction(({theme,scene}) => document.documentElement.dataset.colorTheme === theme && document.documentElement.dataset.mailScene === scene && MailScene.state.scene === scene, {theme,scene});
+            await page.waitForFunction(theme => document.documentElement.dataset.colorTheme === theme, theme);
+            assert.equal(await frame.locator(`[data-scene="${scene}"]`).getAttribute('aria-pressed'), 'true');
+            assert.equal(await frame.locator(`#colorThemeMenu [data-theme="${theme}"]`).getAttribute('aria-selected'), 'true');
+            assert.equal(await frame.locator('#emailInput').inputValue(), 'reader@example.com');
+            assert.equal(await frame.evaluate(() => performance.timeOrigin), timeOrigin);
+            assert.deepEqual(await contrastFailures(frame, 'body'), []);
+            assert.equal(await frame.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+        };
+        for (const theme of ['sunny','night','rain','clay','ocean','emerald','violet','rose']) {
+            await frame.locator('#colorThemeButton').click();
+            await frame.locator(`#colorThemeMenu [data-theme="${theme}"]`).click();
+            await check(theme, ['night','rain'].includes(theme) ? theme : 'day');
+            accents.add(await frame.locator('.get-mail-btn').evaluate(button => getComputedStyle(button).backgroundImage + getComputedStyle(button).backgroundColor));
+            if (['sunny','night','rain'].includes(theme)) skies.add(await frame.locator('#sceneCanvas').evaluate(canvas => canvas.toDataURL()));
+        }
+        assert.equal(accents.size, 8, 'every palette must visibly change the primary action');
+        assert.equal(skies.size, 3, 'weather selection must update the rendered canvas, including reduced motion');
+        for (const scene of ['night','day','rain']) {
+            await frame.locator(`[data-scene="${scene}"]`).click();
+            await check(scene === 'day' ? 'sunny' : scene, scene);
+        }
+        if (width === 1440) {
+            await page.reload();
+            await page.frameLocator('iframe').locator('[data-scene="rain"][aria-pressed="true"]').waitFor();
+            assert.equal(await page.locator('html').getAttribute('data-color-theme'), 'rain');
+        }
+        if (process.env.SCREENSHOT_DIR) {
+            fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `public-theme-sync-${width}.png`), fullPage: true });
+        }
+        assert.deepEqual(errors, []);
+    } finally { await page.close(); }
+});
 
 for (const width of [1440, 390]) test(`all public scene states follow their palette at ${width}px`, async () => {
     const page = await newPage({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });

@@ -2442,12 +2442,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/frontend-scene.css') }}">
 <script>
     (function () {
-        let scene = 'day';
-        try {
-            const saved = localStorage.getItem('mailScene');
-            scene = ['day', 'night', 'rain'].includes(saved) ? saved : (matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'day');
-        } catch (_) {}
-        document.documentElement.dataset.mailScene = scene;
+        const theme = document.documentElement.dataset.colorTheme;
+        document.documentElement.dataset.mailScene = ['night', 'rain'].includes(theme) ? theme : 'day';
     })();
 </script>
 {% endblock %}

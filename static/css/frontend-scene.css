@@ -1,4 +1,4 @@
-/* Public mailbox scenes. Kept separate from the admin color and motion layers. */
+/* Public reading surfaces use the shared theme, with decorative weather layers. */
 body.frontend-mail-page {
     --scene-bg: #edf2f8;
     --scene-surface: rgba(255, 255, 255, .86);
@@ -102,6 +102,9 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
 :root[data-mail-scene="day"] .scene-hero {
     background: linear-gradient(115deg, rgba(224, 241, 253, .94), rgba(213, 232, 248, .88) 62%, rgba(252, 239, 213, .80));
 }
+:root[data-color-theme] .scene-hero { background: var(--scene-hero-bg); }
+:root[data-color-theme] .scene-hero :is(h2, .scene-satellite) { color: var(--scene-hero-text); }
+:root[data-color-theme] .scene-hero :is(.scene-eyebrow, .scene-description) { color: color-mix(in srgb, var(--scene-hero-text) 90%, var(--scene-bg)); }
 .scene-copy { position: relative; z-index: 2; max-width: 70%; }
 .scene-eyebrow { display: flex; align-items: center; gap: 8px; color: var(--scene-muted); font-size: 11px; letter-spacing: .16em; margin: 0 0 12px; }
 .scene-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--scene-accent); box-shadow: 0 0 0 4px var(--scene-soft); }

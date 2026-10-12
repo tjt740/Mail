@@ -166,7 +166,7 @@ python app.py
 - 后台首页提供邮箱健康分布、近 7 天收件/失败趋势、轮询状态、代理/卡密余量与近期失败记录，每 30 秒刷新。邮箱与日志按当前管理员访问范围统计，其他面板遵循对应功能权限；点击健康状态或待处理数量可直达邮箱筛选。更新失败保留上次数据与时间。
 - 后台 `admin-motion.js` 提供 Canvas 3D 邮件轨道与卡片倾斜反馈，`admin-dashboard.js` 提供图表和数字过渡；移动端限制帧率和像素数，页面隐藏或减少动态效果时暂停。Canvas 不可用时仍可通过日期按钮查看趋势数据。
 - 颜色菜单新增晴天、夜间、雨夜，采用多色统计卡、导航与图表，配有阳光云层、星光和雨幕。共享 `theme-palettes.js` 同步外框、内嵌页面、表单和弹窗；切换主题保留输入与筛选，选择保存在本机，存储不可用时当前页面仍可切换。原有五种配色继续可选。
-- 前台的 `frontend-scene.js` / `frontend-scene.css` 提供白天、黑夜、雨夜场景：双层 Canvas 绘制云雾、光点、星空、流星、雨丝、涟漪与透视光轨，CSS 3D 信封响应鼠标移动。场景选择保存在本机，前台不提供手动暂停入口，未选择时跟随系统明暗偏好；移动端降低粒子数与帧率，后台和减少动态效果模式暂停动画。场景切换保留查询及邮件阅读状态。
+- 前台的 `frontend-scene.js` / `frontend-scene.css` 提供白天、黑夜、雨夜场景：双层 Canvas 绘制云雾、月光、星空、流星、雨丝与涟漪，CSS 3D 信封响应鼠标移动。主题菜单与场景按钮联动，共用 `mailSystemColorTheme` 保存选择，默认晴天；其他颜色主题使用白天天气及对应配色，旧的独立场景偏好不再覆盖主题。前台不提供手动暂停入口；移动端降低粒子数与帧率，后台和减少动态效果模式暂停动画。切换保留查询及邮件阅读状态，浏览器禁止存储时仍可在当前页面切换。
 - 修改共享脚本或 React 代码后运行 `npm --prefix frontend run build` 更新部署资源。回归检查：`node --test tests/*.cjs` 和 `python -m unittest discover -s tests`（使用已安装依赖的 Python 环境）。
 - 安装 Playwright 和对应浏览器后，可用 `RUN_BROWSER_TESTS=1 node --test tests/test_i18n_motion.cjs` 运行隔离的浏览器回归。也可通过 `PLAYWRIGHT_MODULE` 指定模块路径、`BROWSER_CHANNEL=chrome` 使用本机 Chrome；测试自行启动临时页面服务，不连接业务数据库。
 - 前台场景回归：`node --test tests/browser/frontend_scene.cjs`，覆盖场景切换、取件阅读、偏好保存、减少动态效果、页面隐藏/恢复、Canvas 降级和四种语言的窄屏布局。

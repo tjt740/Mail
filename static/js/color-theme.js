@@ -28,6 +28,7 @@
         const config = THEMES.find((item) => item.key === nextTheme) || THEMES[0];
         currentTheme = nextTheme;
         window.MailThemes.apply(nextTheme);
+        window.MailScene?.applyTheme(nextTheme);
         document.querySelectorAll('meta[name="theme-color"], meta[name="msapplication-TileColor"]').forEach((meta) => {
             meta.setAttribute('content', config.color);
         });
