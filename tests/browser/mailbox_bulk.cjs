@@ -471,7 +471,16 @@ test('batch failures stream full escaped logs, keep scroll position and reset on
         assert.equal(await panel.locator('pre').first().textContent(), detail);
         assert.equal(await panel.locator('img').count(), 0);
         const scroll = await page.locator('#mailboxBatchFailures').evaluate(node => { node.scrollTop = 80; return node.scrollTop; });
+        const toggle = page.locator('#toggleBatchTestBtn');
+        await toggle.click();
+        assert.equal(await page.locator('#mailboxBatchDetails').isVisible(), false);
+        assert.equal(await panel.isVisible(), true);
+        assert.equal(await page.locator('#mailboxBatchProgressBar').isVisible(), true);
         await page.waitForFunction(() => !mailboxBatchTest.running);
+        assert.equal(await page.locator('#mailboxBatchDetails').isVisible(), false, 'incoming results and completion must not reopen collapsed logs');
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+        await toggle.press('Enter');
+        assert.equal(await page.locator('#mailboxBatchDetails').isVisible(), true);
         assert.equal(await page.locator('#mailboxBatchFailures').evaluate(node => node.scrollTop), scroll);
         assert.equal(await panel.locator('[role="listitem"]').count(), 4);
         assert.equal(await page.locator('#mailboxBatchFailureCount').textContent(), '4');
@@ -479,6 +488,8 @@ test('batch failures stream full escaped logs, keep scroll position and reset on
         await page.evaluate(() => AppI18n.setLanguage('en'));
         await page.getByRole('heading', { name: 'Failed mailbox logs' }).waitFor();
         assert.equal(await panel.locator('pre').first().textContent(), detail, 'raw logs must not be translated');
+        await toggle.getByText('Collapse', { exact: true }).click();
+        await toggle.getByText('Expand', { exact: true }).waitFor();
         await page.locator('#dismissBatchTestBtn').click();
         await panel.waitFor({ state: 'hidden' });
         assert.equal(await page.locator('#bulkSelectedCount').textContent(), '6');
@@ -488,6 +499,7 @@ test('batch failures stream full escaped logs, keep scroll position and reset on
         await page.locator('#batchTestSelectedBtn').click();
         await page.waitForFunction(() => !mailboxBatchTest.running);
         assert.equal(await panel.isVisible(), true);
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'true', 'a new run starts expanded');
         assert.equal(await panel.locator('[role="listitem"]').count(), 0);
         assert.equal(await page.locator('#mailboxBatchFailureCount').textContent(), '0');
         await page.getByText('All tests passed. No failures recorded.', { exact: true }).waitFor();
@@ -544,6 +556,16 @@ for (const width of [1440, 390]) test(`batch failure panel fits the workspace an
             if (width === 1440) await page.evaluate(() => window.scrollTo(0, 0));
             else await panel.scrollIntoViewIfNeeded();
             await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-batch-failures-${width}.png`) });
+        }
+        const expandedHeight = (await panel.boundingBox()).height;
+        await page.locator('#toggleBatchTestBtn').click();
+        assert.equal(await page.locator('#mailboxBatchDetails').isVisible(), false);
+        assert.ok((await panel.boundingBox()).height < expandedHeight - 100, 'collapsing logs gives the mailbox list its space back');
+        assert.equal(await page.locator('#dismissBatchTestBtn').isVisible(), true);
+        if (process.env.SCREENSHOT_DIR) {
+            if (width === 1440) await page.evaluate(() => window.scrollTo(0, 0));
+            else await panel.scrollIntoViewIfNeeded();
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-batch-collapsed-${width}.png`) });
         }
         await page.locator('#dismissBatchTestBtn').click();
         await panel.waitFor({ state: 'hidden' });

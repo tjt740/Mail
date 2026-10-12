@@ -3434,12 +3434,15 @@
                             <div class="mailbox-batch-header">
                                 <div id="mailboxBatchProgressText" role="status" aria-live="polite" aria-atomic="true"></div>
                                 <button class="btn btn-secondary" id="stopBatchTestBtn" type="button" onclick="stopBatchMailboxTests()">停止测试</button>
+                                <button class="btn btn-secondary" id="toggleBatchTestBtn" type="button" onclick="toggleBatchMailboxDetails()" aria-controls="mailboxBatchDetails" aria-expanded="true"><span>收起</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                                 <button class="btn btn-secondary" id="dismissBatchTestBtn" type="button" onclick="dismissBatchMailboxResults()" hidden>关闭</button>
                             </div>
                             <progress id="mailboxBatchProgressBar" max="1" value="0" aria-label="测试进度"></progress>
-                            <div class="mailbox-batch-log-heading"><h3>失败邮箱日志</h3><span id="mailboxBatchFailureCount" translate="no">0</span><span class="mailbox-batch-log-hint">仅显示本次测试失败的邮箱</span></div>
-                            <div id="mailboxBatchFailures" class="mailbox-batch-failures" role="list" aria-label="失败邮箱日志" tabindex="0" hidden></div>
-                            <p id="mailboxBatchEmpty" class="mailbox-batch-empty"></p>
+                            <div id="mailboxBatchDetails" class="mailbox-batch-details">
+                                <div class="mailbox-batch-log-heading"><h3>失败邮箱日志</h3><span id="mailboxBatchFailureCount" translate="no">0</span><span class="mailbox-batch-log-hint">仅显示本次测试失败的邮箱</span></div>
+                                <div id="mailboxBatchFailures" class="mailbox-batch-failures" role="list" aria-label="失败邮箱日志" tabindex="0" hidden></div>
+                                <p id="mailboxBatchEmpty" class="mailbox-batch-empty"></p>
+                            </div>
                         </section>
                         <div id="mailboxLatestTestResult" class="mailbox-test-result-panel" role="status" aria-live="polite" aria-hidden="true" hidden inert></div>
                         <div class="table-container">
@@ -7738,6 +7741,10 @@
         panel.hidden = state.dismissed;
         stop.hidden = !state.running;
         document.getElementById('dismissBatchTestBtn').hidden = state.running;
+        const toggle = document.getElementById('toggleBatchTestBtn');
+        toggle.setAttribute('aria-expanded', String(!state.collapsed));
+        toggle.querySelector('span').textContent = state.collapsed ? '展开' : '收起';
+        document.getElementById('mailboxBatchDetails').hidden = state.collapsed;
         const label = state.running
             ? (state.stopped ? '正在停止（等待进行中的测试完成）' : '批量测试中')
             : (state.stopped ? '批量测试已停止' : '批量测试完成');
@@ -7768,6 +7775,12 @@
             : (state.stopped ? '已完成的测试中暂无失败记录。' : '本次测试全部通过，无失败记录。');
     }
 
+    function toggleBatchMailboxDetails() {
+        if (!mailboxBatchTest || mailboxBatchTest.dismissed) return;
+        mailboxBatchTest.collapsed = !mailboxBatchTest.collapsed;
+        renderBatchMailboxProgress();
+    }
+
     function dismissBatchMailboxResults() {
         if (!mailboxBatchTest || mailboxBatchTest.running) return;
         mailboxBatchTest.dismissed = true;
@@ -7792,7 +7805,7 @@
         }
         dismissMailboxTestResult();
         const targets = new Map(mailboxes.map(mailbox => [Number(mailbox.id), { email: mailbox.email }]));
-        const state = { running: true, stopped: false, dismissed: false, total: ids.length, completed: 0, normal: 0, invalid: 0, retry: 0, failures: [], renderedFailures: 0 };
+        const state = { running: true, stopped: false, dismissed: false, collapsed: false, total: ids.length, completed: 0, normal: 0, invalid: 0, retry: 0, failures: [], renderedFailures: 0 };
         mailboxBatchTest = state;
         document.getElementById('mailboxBatchFailures').replaceChildren();
         updateMailboxHealthTools();
