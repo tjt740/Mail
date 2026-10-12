@@ -331,6 +331,81 @@ body.frontend-mail-page #frontendApp .mail-workspace .mail-content-frame { borde
     body.frontend-mail-page #frontendApp .mail-workspace .mailbox-chip { min-height: 40px; }
 }
 
+/* A single public settings entry keeps the header clear on narrow screens. */
+body.frontend-mail-page #frontendSettings { position: relative; }
+body.frontend-mail-page #frontendSettingsButton {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--scene-border);
+    border-radius: 12px;
+    background: var(--scene-input);
+    color: var(--scene-text);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgb(15 23 42 / 4%);
+}
+body.frontend-mail-page #frontendSettingsButton svg { width: 22px; height: 22px; fill: currentColor; transition: transform .25s ease; }
+body.frontend-mail-page #frontendSettingsButton[aria-expanded="true"] svg { transform: rotate(45deg); }
+body.frontend-mail-page #frontendSettingsButton:is(:hover, [aria-expanded="true"]) { color: var(--scene-accent); border-color: var(--scene-accent); }
+body.frontend-mail-page #frontendSettingsMenu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 100;
+    box-sizing: border-box;
+    width: 304px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100dvh - 88px);
+    overflow-y: auto;
+    padding: 16px;
+    border: 1px solid var(--scene-border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--scene-input) 100%, var(--scene-bg));
+    color: var(--scene-text);
+    box-shadow: 0 12px 40px rgb(15 23 42 / 16%), 0 2px 8px rgb(15 23 42 / 6%);
+    animation: frontendSettingsIn .16s ease-out;
+}
+body.frontend-mail-page #frontendSettingsMenu[hidden] { display: none !important; }
+body.frontend-mail-page #frontendSettings .frontend-settings-title { margin: 0 0 16px; padding: 0; font-size: 16px; line-height: 1.4; color: var(--scene-text); }
+body.frontend-mail-page #frontendSettings .frontend-settings-section + .frontend-settings-section { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--scene-border); }
+body.frontend-mail-page #frontendSettings h3 { margin: 0 0 8px; padding: 0; font-size: 12px; font-weight: 500; line-height: 1.5; color: var(--scene-muted); }
+body.frontend-mail-page #frontendSettings .frontend-settings-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+body.frontend-mail-page #frontendSettings [role="option"] {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) 14px;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    padding: 8px;
+    gap: 6px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--scene-text);
+    background: transparent;
+    font-size: 13px;
+    line-height: 1.4;
+    font-weight: 400;
+    text-align: left;
+    cursor: pointer;
+    transform: none;
+}
+body.frontend-mail-page #frontendSettings #i18nLanguageMenu [role="option"] { grid-template-columns: minmax(0, 1fr) 14px; }
+body.frontend-mail-page #frontendSettings [role="option"]:is(:hover, .is-active) { background: var(--surface-3); color: var(--scene-text); }
+body.frontend-mail-page #frontendSettings [role="option"].is-active { font-weight: 600; }
+body.frontend-mail-page #frontendSettings :is(button, [role="option"]):focus-visible { outline: 2px solid var(--scene-accent); outline-offset: 2px; }
+body.frontend-mail-page #frontendSettings .color-theme-swatch { width: 20px; height: 20px; border: 1px solid rgb(255 255 255 / 60%); border-radius: 6px; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 6%); }
+body.frontend-mail-page #frontendSettings .frontend-settings-name { overflow-wrap: anywhere; }
+body.frontend-mail-page #frontendSettings .frontend-settings-check { color: var(--scene-accent); opacity: 0; font-size: 13px; }
+body.frontend-mail-page #frontendSettings .is-active .frontend-settings-check { opacity: 1; }
+@keyframes frontendSettingsIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+    body.frontend-mail-page #frontendSettingsMenu { animation: none; }
+    body.frontend-mail-page #frontendSettingsButton svg { transition: none; }
+}
+
 /* Removing the single-mailbox navigation also removes its grid track. */
 body.frontend-mail-page #frontendApp .mail-workspace .folder-panel[hidden] { display: none !important; }
 body.frontend-mail-page #frontendApp .mail-workspace .mail-layout.is-single-mailbox {

@@ -344,7 +344,7 @@ for (const width of [1440, 390]) test(`public theme menu and scene shortcuts sta
             localStorage.setItem('mailScene', 'day');
         });
         await page.goto(origin + '/shell');
-        await page.frameLocator('iframe').locator('#colorThemeButton').waitFor();
+        await page.frameLocator('iframe').locator('#frontendSettingsButton').waitFor();
         const frame = page.frames().find(frame => frame.url().includes('/legacy/'));
         const timeOrigin = await frame.evaluate(() => performance.timeOrigin);
         await frame.locator('#emailInput').fill('reader@example.com');
@@ -360,7 +360,7 @@ for (const width of [1440, 390]) test(`public theme menu and scene shortcuts sta
             assert.equal(await frame.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         };
         for (const theme of ['sunny','night','rain','clay','ocean','emerald','violet','rose']) {
-            await frame.locator('#colorThemeButton').click();
+            await frame.locator('#frontendSettingsButton').click();
             await frame.locator(`#colorThemeMenu [data-theme="${theme}"]`).click();
             await check(theme, ['night','rain'].includes(theme) ? theme : 'day');
             accents.add(await frame.locator('.get-mail-btn').evaluate(button => getComputedStyle(button).backgroundImage + getComputedStyle(button).backgroundColor));
@@ -424,11 +424,11 @@ for (const width of [1440, 390]) test(`all public scene states follow their pale
                 return { border: style.borderTopColor, accent };
             });
             assert.equal(focus.border, focus.accent, 'input focus must use the current scene accent');
-            await page.locator('.i18n-language-trigger').click();
-            await page.locator('.i18n-language-menu:not([hidden])').waitFor();
+            await page.locator('#frontendSettingsButton').click();
+            await page.locator('#frontendSettingsMenu:not([hidden])').waitFor();
             await check(mode, 'language-menu');
-            await page.locator('.i18n-language-trigger').press('Escape');
-            await page.locator('.i18n-language-menu').waitFor({ state: 'hidden' });
+            await page.locator('#frontendSettingsButton').press('Escape');
+            await page.locator('#frontendSettingsMenu').waitFor({ state: 'hidden' });
         }
         await page.locator('#emailInput').fill('reader1@example.com\nreader2@example.com');
         await page.locator('.get-mail-btn').click();

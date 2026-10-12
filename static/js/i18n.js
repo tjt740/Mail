@@ -2246,6 +2246,7 @@
     };
     // Branding settings use the same translations in the shell and embedded pages.
     const brandingMessages = {
+        "设置": ["Settings", "Cài đặt", "Mga setting"],
         "页面标题与图标": [
                 "Page titles & icon",
                 "Tiêu đề và biểu tượng",
@@ -3105,6 +3106,7 @@
     }
 
     function createSwitcher() {
+        if (document.body.classList.contains('frontend-mail-page')) return;
         if (document.getElementById('i18nLanguageSwitcher')) return;
 
         const headerUserInfo = document.querySelector('.header-actions .user-info');

@@ -68,6 +68,7 @@
     }
 
     function createSwitcher() {
+        if (document.body.classList.contains('frontend-mail-page')) return;
         if (document.getElementById('colorThemeSwitcher')) return;
         const isFrontend = document.body.classList.contains('frontend-mail-page');
         const isEmbeddedAdmin = document.body.classList.contains('embedded-view') && !isFrontend;
