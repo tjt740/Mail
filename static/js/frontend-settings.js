@@ -13,7 +13,12 @@
                 <svg aria-hidden="true" viewBox="0 0 1024 1024"><use href="#ai-setting"></use></svg>
             </button>
             <div id="frontendSettingsMenu" role="dialog" aria-label="设置" hidden>
-                <h2 class="frontend-settings-title">设置</h2>
+                <div class="frontend-settings-header">
+                    <h2 class="frontend-settings-title">设置</h2>
+                    <button type="button" class="frontend-settings-close" aria-label="关闭">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                    </button>
+                </div>
                 <section class="frontend-settings-section" aria-labelledby="frontendThemeLabel">
                     <h3 id="frontendThemeLabel">颜色主题</h3>
                     <div id="colorThemeMenu" class="frontend-settings-options" role="listbox" aria-labelledby="frontendThemeLabel"></div>
@@ -48,7 +53,10 @@
             option.setAttribute('role', 'option');
             option.style.setProperty('--option-color', theme.color);
             option.style.setProperty('--option-secondary', theme.secondary);
-            option.innerHTML = '<span class="color-theme-swatch" aria-hidden="true"></span><span class="frontend-settings-name"></span><span class="frontend-settings-check" aria-hidden="true">✓</span>';
+            const palette = window.MailThemes.get(theme.key);
+            option.style.setProperty('--option-preview', palette.hero);
+            option.style.setProperty('--option-surface', palette.surface);
+            option.innerHTML = '<span class="frontend-theme-preview" aria-hidden="true"></span><span class="frontend-settings-name"></span><span class="frontend-settings-check" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m3.5 8 3 3 6-6"/></svg></span>';
             option.querySelector('.frontend-settings-name').textContent = theme.name;
             option.addEventListener('click', () => select(() => window.AppColorTheme.setTheme(theme.key)));
             themeMenu.appendChild(option);
@@ -61,7 +69,8 @@
             option.dataset.language = language.key;
             option.setAttribute('role', 'option');
             option.setAttribute('translate', 'no');
-            option.innerHTML = '<span class="frontend-settings-name"></span><span class="frontend-settings-check" aria-hidden="true">✓</span>';
+            option.innerHTML = '<span class="frontend-language-mark" aria-hidden="true"></span><span class="frontend-settings-name"></span><span class="frontend-settings-check" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m3.5 8 3 3 6-6"/></svg></span>';
+            option.querySelector('.frontend-language-mark').textContent = language.mark;
             option.querySelector('.frontend-settings-name').textContent = language.name;
             option.addEventListener('click', () => select(() => window.AppI18n.setLanguage(language.key)));
             languageMenu.appendChild(option);
@@ -81,6 +90,10 @@
         }
 
         trigger.addEventListener('click', () => setOpen(panel.hidden));
+        wrapper.querySelector('.frontend-settings-close').addEventListener('click', () => {
+            setOpen(false);
+            trigger.focus();
+        });
         trigger.addEventListener('keydown', event => {
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                 event.preventDefault();
