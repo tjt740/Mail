@@ -2456,8 +2456,28 @@
                     <small id="publicMailKeyHint">验证密钥后获取邮件，密钥仅用于本次页面取件。</small>
                 </div>
                 <label for="emailInput" class="query-input-label">
-                    <span class="query-label-icon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
-                    <span id="emailQueryLabel">邮箱查询</span>
+                    <span class="query-search-visual" aria-hidden="true">
+                        <svg viewBox="0 0 112 88" fill="none">
+                            <circle class="query-search-glow" cx="54" cy="46" r="34"/>
+                            <rect class="query-search-stack" x="25" y="22" width="57" height="40" rx="8" transform="rotate(-9 53 42)"/>
+                            <rect class="query-search-envelope" x="17" y="31" width="62" height="42" rx="8"/>
+                            <path class="query-search-fold" d="m22 37 22 17a6 6 0 0 0 8 0l22-17M22 67l15-12m37 12L59 55"/>
+                            <path class="query-search-beam" d="M25 36h46"/>
+                            <g class="query-search-lens">
+                                <path class="query-search-handle" d="m84 65 12 12"/>
+                                <circle class="query-search-glass" cx="73" cy="54" r="15"/>
+                                <path class="query-search-shine" d="M66 53a7 7 0 0 1 7-7"/>
+                            </g>
+                            <g class="query-search-result">
+                                <circle cx="27" cy="29" r="11"/>
+                                <path class="query-search-check" d="m22 29 3 3 7-7"/>
+                                <path class="query-search-error" d="m24 26 6 6m0-6-6 6"/>
+                                <path class="query-search-empty" d="M23 29h8"/>
+                                <path class="query-search-partial" d="M27 24v5m0 4v.1"/>
+                            </g>
+                        </svg>
+                    </span>
+                    <span id="emailQueryLabel" class="query-label-text">邮箱查询</span>
                 </label>
                 <textarea id="emailInput" class="highlight-input email-query-input" rows="5" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="输入邮箱地址，支持多个&#10;用换行、空格或逗号分隔"></textarea>
                 <button class="get-mail-btn" onclick="getMail()">
@@ -3002,6 +3022,8 @@
         updateMailboxLayout(emails.length);
         closeMailModal(false);
         toggleLoading(true);
+        window.MailQueryMotion?.start();
+        let queryOutcome = 'error';
         
         try {
             const queryEmails = emails;
@@ -3054,6 +3076,9 @@
                 }
             });
 
+            queryOutcome = errorMessages.length
+                ? (fetchedMails.length ? 'partial' : 'error')
+                : (fetchedMails.length ? 'success' : 'empty');
             if (fetchedMails.length === 0) {
                 mailState.mails = [];
                 mailState.activeMailId = null;
@@ -3104,9 +3129,11 @@
             
         } catch (error) {
             console.error('请求失败:', error);
+            queryOutcome = 'error';
             showToast('网络请求失败，请检查网络连接', 'error');
         } finally {
             toggleLoading(false);
+            window.MailQueryMotion?.finish(queryOutcome);
         }
     }
     
@@ -3447,5 +3474,6 @@
 <script src="{{ url_for('static', filename='js/frontend-motion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/frontend-scene.js') }}"></script>
 <script src="{{ url_for('static', filename='js/mail-loading.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mail-query-motion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/frontend-settings.js') }}"></script>
 {% endblock %}

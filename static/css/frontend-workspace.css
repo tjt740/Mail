@@ -87,6 +87,9 @@ body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block:has(
     grid-template-areas: "key key key" "label email button";
 }
 body.frontend-mail-page #frontendApp .mail-query-panel .query-input-label {
+    position: relative;
+    justify-content: center;
+    cursor: text;
     margin: 0;
     gap: 9px;
     font-size: 14px;
@@ -94,14 +97,36 @@ body.frontend-mail-page #frontendApp .mail-query-panel .query-input-label {
     letter-spacing: 0;
     white-space: normal;
 }
-body.frontend-mail-page #frontendApp .mail-query-panel .query-label-icon {
-    width: 20px;
-    height: 20px;
-    flex: 0 0 20px;
-    border-radius: 0;
-    background: transparent !important;
-    color: var(--scene-muted) !important;
+/* Keep the translated input label accessible while the illustration replaces
+   its visible text. The artwork occupies the existing label grid track. */
+body.frontend-mail-page #frontendApp .query-label-text { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.query-search-visual { display: block; flex: 0 0 auto; width: 104px; height: 82px; color: var(--scene-accent); }
+.query-search-visual svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.query-search-glow { fill: color-mix(in srgb, var(--scene-accent) 6%, transparent); }
+.query-search-stack { fill: color-mix(in srgb, var(--scene-accent) 12%, transparent); stroke: color-mix(in srgb, var(--scene-accent) 20%, transparent); }
+.query-search-envelope { fill: color-mix(in srgb, var(--scene-input) 80%, transparent); stroke: color-mix(in srgb, var(--scene-accent) 55%, transparent); stroke-width: 1.5; }
+.query-search-fold { stroke: color-mix(in srgb, var(--scene-accent) 65%, transparent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.query-search-beam { opacity: 0; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.query-search-lens { transform-box: fill-box; transform-origin: center; }
+.query-search-glass { fill: color-mix(in srgb, var(--scene-inner) 78%, transparent); stroke: currentColor; stroke-width: 2.7; }
+.query-search-handle { stroke: currentColor; stroke-width: 5; stroke-linecap: round; }
+.query-search-shine { stroke: currentColor; stroke-width: 2; stroke-linecap: round; opacity: .4; }
+.query-search-result { opacity: 0; transform: scale(.7); transform-box: fill-box; transform-origin: center; transition: opacity 220ms ease, transform 320ms cubic-bezier(.22,1,.36,1); }
+.query-search-result circle { fill: var(--scene-success); stroke: var(--scene-bg); stroke-width: 2; }
+.query-search-result path { display: none; stroke: var(--scene-input); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.query-search-visual[data-result] .query-search-result { opacity: 1; transform: scale(1); }
+.query-search-visual[data-result="success"] .query-search-check,
+.query-search-visual[data-result="error"] .query-search-error,
+.query-search-visual[data-result="empty"] .query-search-empty,
+.query-search-visual[data-result="partial"] .query-search-partial { display: block; }
+.query-search-visual[data-result="error"] .query-search-result circle { fill: var(--scene-danger); }
+.query-search-visual[data-result="empty"] .query-search-result circle { fill: var(--scene-muted); }
+.query-search-visual[data-result="partial"] .query-search-result circle { fill: var(--scene-warning); }
+@media (max-width: 900px) {
+    body.frontend-mail-page #frontendApp .mail-query-panel .query-input-label { justify-content: flex-start; }
+    .query-search-visual { width: 62px; height: 44px; }
 }
+@media (prefers-reduced-motion: reduce) { .query-search-result { transition: none; } }
 body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block .email-query-input {
     height: 102px;
     min-height: 102px;

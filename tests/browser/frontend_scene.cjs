@@ -96,6 +96,51 @@ test('canvas mail loader rotates only during retrieval, follows themes and respe
     } finally { release(); await page.close(); }
 });
 
+test('query illustration scans during retrieval, reports the actual outcome and rests afterwards', async () => {
+    const page = await newPage();
+    let release, gate = new Promise(resolve => { release = resolve; }), outcome = 'success';
+    try {
+        await page.route('**/api/get_mail', async route => {
+            await gate;
+            const failed = outcome === 'error' || (outcome === 'partial' && route.request().postDataJSON().email === 'broken@example.com');
+            await route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+                success: !failed, message: failed ? 'Fixture failure' : undefined,
+                mails: failed || outcome === 'empty' ? [] : [{ id: 'query-motion', subject: 'Query fixture', body: 'Hello', body_type: 'text' }]
+            }) });
+        });
+        assert.equal(await page.getByRole('textbox', { name: '邮箱查询', exact: true }).count(), 1);
+        await page.locator('.query-input-label').click();
+        assert.equal(await page.locator('#emailInput').evaluate(input => document.activeElement === input), true);
+        assert.ok(await page.locator('.query-search-lens').evaluate(lens => lens.getAnimations().some(animation => animation.effect.getTiming().iterations === 1)));
+        await page.locator('#emailInput').fill('reader@example.com');
+        await page.locator('.get-mail-btn').click();
+        await page.waitForFunction(() => document.querySelector('.query-search-visual').dataset.state === 'loading');
+        assert.ok(await page.locator('.query-search-lens').evaluate(lens => lens.getAnimations().some(animation => animation.effect.getTiming().iterations === Infinity)));
+        const first = await page.locator('.query-search-lens').evaluate(lens => getComputedStyle(lens).transform);
+        await page.waitForTimeout(180);
+        assert.notEqual(await page.locator('.query-search-lens').evaluate(lens => getComputedStyle(lens).transform), first);
+        release();
+        await page.waitForFunction(() => document.querySelector('.query-search-visual').dataset.result === 'success');
+        await page.waitForFunction(() => !document.querySelector('.query-search-visual').dataset.result);
+        assert.equal(await page.locator('.query-search-lens').evaluate(lens => lens.getAnimations().length), 0);
+
+        for (outcome of ['empty', 'error', 'partial']) {
+            await page.locator('#emailInput').fill(outcome === 'partial' ? 'reader@example.com, broken@example.com' : 'reader@example.com');
+            await page.locator('.get-mail-btn').click();
+            await page.waitForFunction(expected => document.querySelector('.query-search-visual').dataset.result === expected, outcome);
+            assert.equal(await page.locator('.get-mail-btn').isEnabled(), true);
+        }
+        gate = new Promise(resolve => { release = resolve; });
+        outcome = 'success';
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.locator('.get-mail-btn').click();
+        await page.waitForFunction(() => document.querySelector('.query-search-visual').dataset.state === 'loading');
+        assert.equal(await page.locator('.query-search-lens').evaluate(lens => lens.getAnimations().length), 0);
+        release();
+        await page.waitForFunction(() => document.querySelector('.query-search-visual').dataset.result === 'success');
+    } finally { release(); await page.close(); }
+});
+
 for (const width of [320, 390, 1440]) test(`single-mailbox results fill the panel and totals keep side spacing at ${width}px`, async () => {
     const page = await newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
     let fail = false;
