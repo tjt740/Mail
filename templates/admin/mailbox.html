@@ -3398,10 +3398,6 @@
                             </div>
                             <div class="mailbox-filter-context" id="mailboxFilterContext" hidden></div>
                         </div>
-                        <div id="mailboxBatchProgress" class="mailbox-test-result-panel" hidden>
-                            <span id="mailboxBatchProgressText" role="status" aria-live="polite"></span>
-                            <button class="btn btn-secondary" id="stopBatchTestBtn" type="button" onclick="stopBatchMailboxTests()">停止测试</button>
-                        </div>
                     </div>
                 </div>
                 
@@ -3420,18 +3416,31 @@
                         </div>
                         <div class="mailbox-bulk-bar" id="mailboxBulkBar">
                             <span class="au-bulk-count">已选 <b id="bulkSelectedCount">0</b> 个邮箱</span>
+                            <button class="btn btn-secondary" data-bulk-action="test" id="batchTestSelectedBtn" type="button" onclick="batchTestMailboxes('selected')" title="测试选中邮箱">
+                                <span class="anticon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 11 8-11 8V4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 5v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span> <span>批量测试</span>
+                            </button>
                             <button class="btn btn-success" data-bulk-action="copy" type="button" onclick="copySelectedMailboxes()">
                                 <span class="anticon"><svg aria-hidden="true"><use href="#ai-copy"></use></svg></span> 批量复制
                             </button>
                             <button class="btn btn-secondary" data-bulk-action="group" type="button" onclick="showBatchGroupModal()">
                                 <span class="anticon"><svg aria-hidden="true"><use href="#ai-form"></use></svg></span> 批量分组
                             </button>
-                            <button class="btn btn-secondary" data-bulk-action="test" id="batchTestSelectedBtn" type="button" onclick="batchTestMailboxes('selected')">测试选中邮箱</button>
                             <button class="btn btn-danger" data-bulk-action="delete" id="batchDeleteMailboxesBtn" type="button" onclick="batchDeleteMailboxes()">
                                 <span class="anticon"><svg aria-hidden="true"><use href="#ai-delete"></use></svg></span> 批量删除
                             </button>
                             <button class="btn btn-secondary" data-bulk-action="clear" type="button" onclick="clearMailboxSelection()">取消选择</button>
                         </div>
+                        <section id="mailboxBatchProgress" class="mailbox-test-result-panel" aria-label="批量测试结果" hidden>
+                            <div class="mailbox-batch-header">
+                                <div id="mailboxBatchProgressText" role="status" aria-live="polite" aria-atomic="true"></div>
+                                <button class="btn btn-secondary" id="stopBatchTestBtn" type="button" onclick="stopBatchMailboxTests()">停止测试</button>
+                                <button class="btn btn-secondary" id="dismissBatchTestBtn" type="button" onclick="dismissBatchMailboxResults()" hidden>关闭</button>
+                            </div>
+                            <progress id="mailboxBatchProgressBar" max="1" value="0" aria-label="测试进度"></progress>
+                            <div class="mailbox-batch-log-heading"><h3>失败邮箱日志</h3><span id="mailboxBatchFailureCount" translate="no">0</span><span class="mailbox-batch-log-hint">仅显示本次测试失败的邮箱</span></div>
+                            <div id="mailboxBatchFailures" class="mailbox-batch-failures" role="list" aria-label="失败邮箱日志" tabindex="0" hidden></div>
+                            <p id="mailboxBatchEmpty" class="mailbox-batch-empty"></p>
+                        </section>
                         <div id="mailboxLatestTestResult" class="mailbox-test-result-panel" role="status" aria-live="polite" aria-hidden="true" hidden inert></div>
                         <div class="table-container">
                             <table id="mailboxTable">
@@ -7726,18 +7735,45 @@
         const panel = document.getElementById('mailboxBatchProgress');
         const text = document.getElementById('mailboxBatchProgressText');
         const stop = document.getElementById('stopBatchTestBtn');
-        panel.hidden = !state.running;
+        panel.hidden = state.dismissed;
         stop.hidden = !state.running;
-        if (!state.running) {
-            text.replaceChildren();
-            return;
-        }
-        const label = state.stopped ? '正在停止（等待进行中的测试完成）' : '批量测试中';
+        document.getElementById('dismissBatchTestBtn').hidden = state.running;
+        const label = state.running
+            ? (state.stopped ? '正在停止（等待进行中的测试完成）' : '批量测试中')
+            : (state.stopped ? '批量测试已停止' : '批量测试完成');
         text.innerHTML = `<span class="mailbox-batch-summary"><span>${escapeHtml(label)}</span>：<strong translate="no">${state.completed} / ${state.total}</strong></span>
             <span class="mailbox-test-tag normal"><span>正常</span> <b translate="no">${state.normal}</b></span>
             <span class="mailbox-test-tag banned"><span>无效</span> <b translate="no">${state.invalid}</b></span>
-            <span class="mailbox-test-tag test_error"><span>待重试</span> <b translate="no">${state.retry}</b></span>`;
+            <span class="mailbox-test-tag test_error"><span>待重试</span> <b translate="no">${state.retry}</b></span>
+            ${!state.running && state.completed < state.total ? `<span class="mailbox-batch-remaining"><span>未测试</span> <b translate="no">${state.total - state.completed}</b></span>` : ''}`;
         stop.disabled = state.stopped;
+        const progress = document.getElementById('mailboxBatchProgressBar');
+        progress.max = state.total;
+        progress.value = state.completed;
+        const failures = document.getElementById('mailboxBatchFailures');
+        // Append new failures without replacing existing logs or resetting their scroll position.
+        for (const failure of state.failures.slice(state.renderedFailures)) {
+            failures.insertAdjacentHTML('beforeend', `<article class="mailbox-batch-failure" role="listitem">
+                <div class="mailbox-batch-failure-heading"><strong translate="no">${escapeHtml(failure.email)}</strong>${renderMailboxStatusBadge(failure)}<time translate="no">${escapeHtml(failure.last_test)}</time></div>
+                <pre translate="no">${escapeHtml(failure.test_result)}</pre>
+                ${failure.note ? `<p class="mailbox-batch-failure-note">${escapeHtml(failure.note)}</p>` : ''}
+            </article>`);
+        }
+        state.renderedFailures = state.failures.length;
+        failures.hidden = state.failures.length === 0;
+        document.getElementById('mailboxBatchFailureCount').textContent = String(state.failures.length);
+        const empty = document.getElementById('mailboxBatchEmpty');
+        empty.hidden = state.failures.length > 0;
+        empty.textContent = state.running ? '测试进行中，失败日志将实时显示在这里。'
+            : (state.stopped ? '已完成的测试中暂无失败记录。' : '本次测试全部通过，无失败记录。');
+    }
+
+    function dismissBatchMailboxResults() {
+        if (!mailboxBatchTest || mailboxBatchTest.running) return;
+        mailboxBatchTest.dismissed = true;
+        renderBatchMailboxProgress();
+        const selectedButton = document.getElementById('batchTestSelectedBtn');
+        (selectedButton?.getClientRects().length ? selectedButton : document.getElementById('batchTestFilteredBtn'))?.focus({ preventScroll: true });
     }
 
     function stopBatchMailboxTests() {
@@ -7755,8 +7791,10 @@
             return;
         }
         dismissMailboxTestResult();
-        const state = { running: true, stopped: false, total: ids.length, completed: 0, normal: 0, invalid: 0, retry: 0 };
+        const targets = new Map(mailboxes.map(mailbox => [Number(mailbox.id), { email: mailbox.email }]));
+        const state = { running: true, stopped: false, dismissed: false, total: ids.length, completed: 0, normal: 0, invalid: 0, retry: 0, failures: [], renderedFailures: 0 };
         mailboxBatchTest = state;
+        document.getElementById('mailboxBatchFailures').replaceChildren();
         updateMailboxHealthTools();
         renderBatchMailboxProgress();
         let nextIndex = 0;
@@ -7768,6 +7806,16 @@
                 if (result?.account_status === 'normal') state.normal++;
                 else if (['banned', 'invalid_credentials'].includes(result?.account_status)) state.invalid++;
                 else state.retry++;
+                if (result?.account_status !== 'normal') {
+                    const hasStatus = result && result.account_status !== 'pending' && Object.hasOwn(MAILBOX_STATUS_META, result.account_status);
+                    state.failures.push({
+                        id, email: targets.get(id)?.email || String(id),
+                        account_status: hasStatus ? result.account_status : 'test_error',
+                        last_test: result?.last_test || new Date().toLocaleString('zh-CN', { hour12: false }),
+                        test_result: result?.test_result || result?.message || '测试请求未返回账号状态',
+                        note: hasStatus ? '' : '未获得有效检测结果，已保存的账号状态未更改。'
+                    });
+                }
                 renderBatchMailboxProgress();
             }
         }

@@ -13,7 +13,7 @@ const seed = () => Array.from({ length: 66 }, (_, i) => ({
     id: i + 1, email: `account${i + 1}@example.com`, server: 'imap.example.com', port: 993,
     protocol: 'imap', ssl: 1, created_by_admin: i < 60 ? 'alice' : 'bob', account_status: statuses[i % 6]
 }));
-let accounts, tested, deleted, active, maxActive, delay, failure, received, testMessage, responseDelays;
+let accounts, tested, deleted, active, maxActive, delay, failure, received, testMessage, responseDelays, responseResults;
 before(async () => {
     const html = execFileSync(process.env.PYTHON_BIN || path.join(root, '.venv/bin/python'), ['-c', `
 from flask import Flask, render_template
@@ -53,7 +53,7 @@ with app.test_request_context('/legacy/admin/mailbox'):
                         else {
                             const row = accounts.find(a => a.id === data.id);
                             row.account_status = data.id % 3 === 0 ? 'network_error' : data.id % 3 === 1 ? 'normal' : 'invalid_credentials';
-                            payload = { success: row.account_status === 'normal', account_status: row.account_status, last_test: '2026-10-02 12:00:00', message: testMessage };
+                            payload = { success: row.account_status === 'normal', account_status: row.account_status, last_test: '2026-10-02 12:00:00', message: testMessage, ...responseResults[data.id] };
                         }
                     } else if (data.action === 'batch_delete') {
                         deleted.push(...data.ids);
@@ -75,9 +75,9 @@ with app.test_request_context('/legacy/admin/mailbox'):
     browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {}) });
 });
 after(async () => { await browser?.close(); if (server) await new Promise(resolve => server.close(resolve)); });
-async function newPage(viewport = { width: 1440, height: 1000 }) {
-    accounts = seed(); tested = []; deleted = []; received = []; active = 0; maxActive = 0; delay = 20; failure = false;
-    testMessage = 'Fixture result'; responseDelays = {};
+async function newPage(viewport = { width: 1440, height: 1000 }, count = 66) {
+    accounts = seed().slice(0, count); tested = []; deleted = []; received = []; active = 0; maxActive = 0; delay = 20; failure = false;
+    testMessage = 'Fixture result'; responseDelays = {}; responseResults = {};
     const page = await browser.newPage({ viewport, reducedMotion: 'reduce' });
     if (process.env.DEBUG_UI) {
         page.on('pageerror', error => console.error(error));
@@ -85,7 +85,7 @@ async function newPage(viewport = { width: 1440, height: 1000 }) {
     }
     page.setDefaultTimeout(8000);
     await page.goto(origin);
-    await page.waitForFunction(() => document.querySelector('#batchTestFilteredBtn').textContent.includes('(66)'));
+    await page.waitForFunction(total => document.querySelector('#batchTestFilteredBtn').textContent.includes(`(${total})`), count);
     return page;
 }
 
@@ -207,7 +207,7 @@ test('late responses never replace a newer result or reopen a dismissed result; 
         await page.locator('#batchTestSelectedBtn').click();
         await panel.waitFor({ state: 'hidden' });
         await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
-        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), false);
+        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), true);
         assert.equal(await panel.isVisible(), false);
     } finally { await page.close(); }
 });
@@ -422,12 +422,14 @@ test('filtered tests respect owner, group, search and status; freeze targets as 
         assert.deepEqual(tested.sort((a,b) => a-b), [1, 13, 14, 19]);
         assert.equal(maxActive, 3);
         assert.deepEqual(await page.evaluate(() => [mailboxBatchTest.completed, mailboxBatchTest.normal, mailboxBatchTest.invalid, mailboxBatchTest.retry]), [4, 3, 1, 0]);
-        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), false);
-        assert.equal(await page.locator('#mailboxBatchProgressText').textContent(), '');
+        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), true);
+        assert.match(await page.locator('#mailboxBatchProgressText').textContent(), /批量测试完成.*4 \/ 4/);
+        assert.equal(await page.locator('#mailboxBatchFailures [role="listitem"]').count(), 1);
         assert.equal(await page.locator('#stopBatchTestBtn').isVisible(), false);
         assert.match(await page.locator('#batchTestFilteredBtn').innerText(), /\(1\)/);
         await page.evaluate(() => AppI18n.setLanguage('en'));
-        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), false);
+        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), true);
+        await page.getByRole('heading', { name: 'Failed mailbox logs' }).waitFor();
         await page.evaluate(() => AppI18n.setLanguage('zh'));
         if (process.env.SCREENSHOT_DIR) {
             await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'mailbox-batch-complete.png') });
@@ -445,9 +447,106 @@ test('selected testing keeps other accounts untouched; request failures preserve
         await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
         assert.deepEqual(tested.sort((a,b) => a-b), [1, 6]);
         assert.equal(await page.evaluate(() => mailboxBatchTest.retry), 2);
-        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), false);
+        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), true);
+        assert.equal(await page.locator('#mailboxBatchFailures [role="listitem"]').count(), 2);
+        assert.equal(await page.locator('.mailbox-batch-failure-note').count(), 2);
+        assert.match(await page.locator('#mailboxBatchFailures').innerText(), /登录状态已失效/);
         assert.deepEqual(await page.evaluate(() => mailboxData.filter(a => [1,6].includes(a.id)).map(a => a.account_status)), ['banned', 'normal']);
         assert.equal(await page.locator('#bulkSelectedCount').innerText(), '2');
+    } finally { await page.close(); }
+});
+
+test('batch failures stream full escaped logs, keep scroll position and reset on the next run', async () => {
+    const page = await newPage();
+    try {
+        const detail = 'OAuth登录失败: invalid_grant\n' + 'Token has expired. '.repeat(80) + '\n<img src=x onerror="alert(1)">';
+        testMessage = detail;
+        responseDelays = { 1: 20, 2: 30, 3: 40, 4: 900, 5: 1000, 6: 1100 };
+        for (const id of [1, 2, 3, 4, 5, 6]) await page.locator(`.mailbox-checkbox[value="${id}"]`).check();
+        assert.equal(await page.locator('#mailboxBulkBar button').first().getAttribute('id'), 'batchTestSelectedBtn');
+        await page.getByRole('button', { name: '批量测试', exact: true }).click();
+        const panel = page.locator('#mailboxBatchProgress');
+        await page.waitForFunction(() => mailboxBatchTest.completed >= 3 && mailboxBatchTest.running);
+        assert.equal(await panel.locator('[role="listitem"]').count(), 2);
+        assert.equal(await panel.locator('pre').first().textContent(), detail);
+        assert.equal(await panel.locator('img').count(), 0);
+        const scroll = await page.locator('#mailboxBatchFailures').evaluate(node => { node.scrollTop = 80; return node.scrollTop; });
+        await page.waitForFunction(() => !mailboxBatchTest.running);
+        assert.equal(await page.locator('#mailboxBatchFailures').evaluate(node => node.scrollTop), scroll);
+        assert.equal(await panel.locator('[role="listitem"]').count(), 4);
+        assert.equal(await page.locator('#mailboxBatchFailureCount').textContent(), '4');
+        assert.doesNotMatch(await page.locator('#mailboxBatchFailures').innerText(), /account(?:1|4)@example.com/);
+        await page.evaluate(() => AppI18n.setLanguage('en'));
+        await page.getByRole('heading', { name: 'Failed mailbox logs' }).waitFor();
+        assert.equal(await panel.locator('pre').first().textContent(), detail, 'raw logs must not be translated');
+        await page.locator('#dismissBatchTestBtn').click();
+        await panel.waitFor({ state: 'hidden' });
+        assert.equal(await page.locator('#bulkSelectedCount').textContent(), '6');
+        assert.equal(await page.locator('#batchTestSelectedBtn').evaluate(node => node === document.activeElement), true);
+        for (const id of [1, 2, 3, 4, 5, 6]) responseResults[id] = { account_status: 'normal', success: true };
+        responseDelays = {};
+        await page.locator('#batchTestSelectedBtn').click();
+        await page.waitForFunction(() => !mailboxBatchTest.running);
+        assert.equal(await panel.isVisible(), true);
+        assert.equal(await panel.locator('[role="listitem"]').count(), 0);
+        assert.equal(await page.locator('#mailboxBatchFailureCount').textContent(), '0');
+        await page.getByText('All tests passed. No failures recorded.', { exact: true }).waitFor();
+    } finally { await page.close(); }
+});
+
+test('batch transport failures keep the saved status and show an explanatory log', async () => {
+    const page = await newPage();
+    try {
+        await page.route('**/admin/api/mailbox', route => route.request().method() === 'POST' ? route.abort('failed') : route.continue());
+        await page.locator('.mailbox-checkbox[value="6"]').check();
+        await page.locator('#batchTestSelectedBtn').click();
+        await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
+        assert.equal(await page.evaluate(() => mailboxData.find(row => row.id === 6).account_status), 'normal');
+        assert.match(await page.locator('#mailboxBatchFailures').innerText(), /account6@example.com.*检测异常/s);
+        assert.match(await page.locator('#mailboxBatchFailures').innerText(), /Failed to fetch/);
+        assert.match(await page.locator('#mailboxBatchFailures').innerText(), /已保存的账号状态未更改/);
+    } finally { await page.close(); }
+});
+
+for (const width of [1440, 390]) test(`batch failure panel fits the workspace and produces a preview at ${width}px`, async () => {
+    const page = await newPage({ width, height: width === 1440 ? 1000 : 844 }, 40);
+    try {
+        await page.evaluate(() => AppColorTheme.setTheme('emerald'));
+        if (width === 1440) await page.locator('#groupPanelToggle').click();
+        for (const mailbox of accounts) {
+            const status = mailbox.id % 10 === 0 ? 'banned' : mailbox.id % 5 === 0 ? 'network_error' : mailbox.id % 3 === 0 ? 'invalid_credentials' : 'normal';
+            responseResults[mailbox.id] = { account_status: status, success: status === 'normal', last_test: '2026-10-12 11:32:08', message: {
+                normal: '邮箱连接测试成功',
+                banned: 'Microsoft OAuth 登录失败：AADSTS50057 — 此账号已被禁用。',
+                network_error: 'IMAP 连接超时：imap.example.com:993\n连接等待超过 30 秒，请检查服务器地址、网络或代理后重试。',
+                invalid_credentials: 'OAuth 令牌获取失败：invalid_grant\n刷新令牌已过期或被撤销，请更新 OAuth 授权后重新测试。'
+            }[status] };
+        }
+        await page.locator('#selectFilteredMailboxesBtn').click();
+        await page.locator('#batchTestSelectedBtn').click();
+        await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
+        assert.equal(await page.locator('#mailboxBatchFailureCount').textContent(), '19');
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        const panel = page.locator('#mailboxBatchProgress');
+        const bounds = await panel.boundingBox();
+        assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width);
+        const logs = page.locator('#mailboxBatchFailures');
+        assert.ok(await logs.evaluate(node => node.scrollHeight > node.clientHeight), 'logs scroll within the panel');
+        await logs.scrollIntoViewIfNeeded();
+        await logs.evaluate(node => { node.scrollTop = node.scrollHeight; });
+        assert.equal(await logs.locator('[role="listitem"]').last().evaluate(node => {
+            const rect = node.getBoundingClientRect();
+            return node.contains(document.elementFromPoint(rect.x + 20, rect.bottom - 10));
+        }), true, 'the last log stays reachable inside the panel');
+        await logs.evaluate(node => { node.scrollTop = 0; });
+        if (process.env.SCREENSHOT_DIR) {
+            fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+            if (width === 1440) await page.evaluate(() => window.scrollTo(0, 0));
+            else await panel.scrollIntoViewIfNeeded();
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-batch-failures-${width}.png`) });
+        }
+        await page.locator('#dismissBatchTestBtn').click();
+        await panel.waitFor({ state: 'hidden' });
     } finally { await page.close(); }
 });
 
@@ -475,8 +574,10 @@ test('stop waits for active tests, blocks overlapping runs and leaves remaining 
         assert.equal(active, 0);
         assert.deepEqual(accounts.slice(3), seed().slice(3));
         assert.deepEqual(await page.evaluate(() => [mailboxBatchTest.completed, mailboxBatchTest.total, mailboxBatchTest.normal, mailboxBatchTest.invalid, mailboxBatchTest.retry]), [3, 66, 1, 1, 1]);
-        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), false);
-        assert.equal(await page.locator('#mailboxBatchProgressText').textContent(), '');
+        assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), true);
+        assert.match(await page.locator('#mailboxBatchProgressText').textContent(), /批量测试已停止.*3 \/ 66/);
+        assert.match(await page.locator('.mailbox-batch-remaining').textContent(), /未测试 63/);
+        assert.equal(await page.locator('#mailboxBatchFailures [role="listitem"]').count(), 2);
         assert.equal(await page.locator('#stopBatchTestBtn').isVisible(), false);
         assert.equal(await page.locator('#batchDeleteMailboxesBtn').isEnabled(), true);
     } finally { await page.close(); }
