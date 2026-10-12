@@ -1,5 +1,18 @@
 /* The public mailbox is one continuous workspace. Scope these rules so the
    weather scene and the administrator's forms keep their own layout. */
+html:has(body.frontend-mail-page) {
+    height: auto;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+/* Let wheel/touch gestures reach the document instead of getting trapped in
+   an auto-sized body scroll container with overscroll chaining disabled. */
+body.frontend-mail-page { height: auto; overflow: visible !important; }
+body.frontend-mail-page #frontendApp {
+    height: auto;
+    min-height: calc(100dvh - 28px);
+    overflow: visible;
+}
 body.frontend-mail-page #frontendApp .frontend-topbar {
     flex-basis: 44px;
     height: 44px;
@@ -17,6 +30,7 @@ body.frontend-mail-page #frontendApp .frontend-brand-mark {
 body.frontend-mail-page #frontendApp .frontend-brand-mark svg { width: 18px; height: 18px; }
 body.frontend-mail-page #frontendApp .header h1 { font-size: 20px; }
 body.frontend-mail-page #frontendApp .mail-workspace {
+    flex: 1 0 auto;
     padding: 0 !important;
     border: 0 !important;
     border-radius: 8px !important;
@@ -91,6 +105,8 @@ body.frontend-mail-page #frontendApp .mail-workspace .get-mail-btn:hover:not(:di
     box-shadow: 0 2px 6px color-mix(in srgb, var(--scene-accent) 20%, transparent) !important;
 }
 body.frontend-mail-page #frontendApp .mail-workspace .mailbox-switcher {
+    flex: 0 0 auto;
+    min-width: 0;
     margin: 0;
     padding: 12px 22px;
     border: 0;
@@ -98,7 +114,25 @@ body.frontend-mail-page #frontendApp .mail-workspace .mailbox-switcher {
     border-radius: 0;
     box-shadow: none;
 }
+body.frontend-mail-page #frontendApp .mail-workspace .mailbox-switcher[hidden] { display: none !important; }
+body.frontend-mail-page #frontendApp .mail-workspace .mailbox-chip-list {
+    max-height: 104px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-wrap: wrap !important;
+    align-content: flex-start;
+    padding: 2px 4px 2px 0;
+    scrollbar-gutter: stable;
+}
+body.frontend-mail-page #frontendApp .mail-workspace .mailbox-chip {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+body.frontend-mail-page #frontendApp .mail-workspace .mailbox-chip-label { min-width: 0; }
+body.frontend-mail-page #frontendApp .mail-workspace :is(.mailbox-chip-count, .mailbox-chip-copy) { flex-shrink: 0; }
 body.frontend-mail-page #frontendApp .mail-workspace .mail-layout {
+    flex: 1 0 auto;
+    min-height: 0;
     display: grid;
     grid-template-columns: 184px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
@@ -158,6 +192,8 @@ body.frontend-mail-page #frontendApp .mail-workspace .folder-count {
     font-size: 12px;
 }
 body.frontend-mail-page #frontendApp .mail-workspace .mail-list-panel {
+    height: clamp(360px, calc(100dvh - 280px), 760px) !important;
+    min-height: 360px !important;
     width: 100%;
     min-width: 0;
     padding: 0 !important;
@@ -292,6 +328,7 @@ body.frontend-mail-page #frontendApp .mail-workspace .mail-content-frame { borde
     body.frontend-mail-page #frontendApp .mail-workspace .mail-list-toolbar { min-height: 48px; padding: 10px 20px; }
     body.frontend-mail-page #frontendApp .mail-workspace .mail-display { padding: 10px 16px 16px !important; }
     body.frontend-mail-page #frontendApp .mail-workspace .mailbox-switcher { padding: 12px 16px; }
+    body.frontend-mail-page #frontendApp .mail-workspace .mailbox-chip { min-height: 40px; }
 }
 
 /* Removing the single-mailbox navigation also removes its grid track. */

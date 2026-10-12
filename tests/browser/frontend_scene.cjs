@@ -100,6 +100,7 @@ for (const width of [320, 390, 1440]) test(`single-mailbox results fill the pane
     const page = await newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
     let fail = false;
     try {
+        assert.equal(await page.locator('#mailboxSwitcher').isVisible(), false);
         await page.route('**/api/get_mail', async route => {
             await new Promise(resolve => setTimeout(resolve, 120));
             await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: !fail, message: 'Fixture failure', mails: fail ? [] : [{ id: 'one', subject: 'UI fixture letter', from: 'sender@example.com', to: 'reader@example.com', body: 'Message body' }] }) });
@@ -109,6 +110,7 @@ for (const width of [320, 390, 1440]) test(`single-mailbox results fill the pane
             await page.locator('.get-mail-btn').click();
             await page.locator('#loading').waitFor({ state: 'visible' });
             assert.equal(await page.locator('#folderPanel').isVisible(), count > 1);
+            if (count === 1) assert.equal(await page.locator('#mailboxSwitcher').isVisible(), false);
             await page.locator('#loading').waitFor({ state: 'hidden' });
             assert.equal(await page.locator('#folderPanel').isVisible(), count > 1);
             assert.equal(await page.locator('#mailboxSwitcher').isVisible(), count > 1);
@@ -133,6 +135,83 @@ for (const width of [320, 390, 1440]) test(`single-mailbox results fill the pane
         assert.equal(await page.evaluate(() => MailLoading.state.active || MailLoading.state.animating), false);
         assert.equal(await page.locator('#folderPanel').isVisible(), false);
     } finally { await page.close(); }
+});
+
+for (const [width, height] of [[1280, 720], [390, 844], [844, 390]]) test(`50 mailboxes and 250 messages remain reachable at ${width}x${height}`, async () => {
+    const page = await newPage({ viewport: { width, height }, reducedMotion: 'reduce' });
+    const addresses = Array.from({ length: 50 }, (_, i) => `mailbox${i + 1}@example.com`);
+    let empty = false;
+    let release;
+    const singleRequest = new Promise(resolve => { release = resolve; });
+    try {
+        await page.route('**/api/get_mail', async route => {
+            const email = route.request().postDataJSON().email;
+            if (email === 'solo@example.com') await singleRequest;
+            await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true,
+                mails: empty ? [] : Array.from({ length: 5 }, (_, i) => ({ id: String(i), subject: `Letter ${i + 1} for ${email}`, from: 'sender@example.com', to: email, body: 'Batch fixture message' })) }) });
+        });
+        await page.locator('#emailInput').fill(addresses.join('\n'));
+        await page.locator('.get-mail-btn').click();
+        await page.waitForFunction(() => document.querySelectorAll('#mailTableBody tr[data-mail-id]').length === 250);
+        const sizes = await page.evaluate(() => {
+            const chipList = document.getElementById('mailboxChipList');
+            const panel = document.getElementById('mailListPanel');
+            const list = document.querySelector('.mail-list-wrapper');
+            return { chips: chipList.clientHeight, chipScroll: chipList.scrollHeight,
+                panel: panel.clientHeight, list: list.clientHeight, listScroll: list.scrollHeight,
+                overflowX: document.documentElement.scrollWidth > innerWidth };
+        });
+        assert.ok(sizes.chips <= 104 && sizes.chipScroll > sizes.chips, JSON.stringify(sizes));
+        assert.ok(sizes.panel >= 360 && sizes.panel <= 760 && sizes.listScroll > sizes.list, JSON.stringify(sizes));
+        assert.equal(sizes.overflowX, false);
+        // The outer page must remain scrollable, including beside the nested lists.
+        await page.mouse.move(3, 40);
+        await page.mouse.wheel(0, 650);
+        await page.waitForFunction(() => document.scrollingElement.scrollTop > 0).catch(async () => {
+            assert.fail('Page did not scroll: ' + JSON.stringify(await page.evaluate(() => [document.documentElement, document.body, document.getElementById('frontendApp')].map(el => ({
+                tag: el.tagName, height: el.clientHeight, scrollHeight: el.scrollHeight, scrollTop: el.scrollTop,
+                overflow: getComputedStyle(el).overflowY, cssHeight: getComputedStyle(el).height
+            })))));
+        });
+        const last = page.locator('.mailbox-chip[data-mailbox="mailbox50@example.com"]');
+        await last.scrollIntoViewIfNeeded();
+        const before = await page.locator('#mailboxChipList').evaluate(el => el.scrollTop);
+        assert.ok(before > 0);
+        await last.click();
+        assert.equal(await last.getAttribute('aria-selected'), 'true');
+        assert.equal(await page.locator('#mailTableBody tr[data-mail-id]').count(), 5);
+        assert.equal(await page.locator('#mailboxChipList').evaluate(el => el.scrollTop), before);
+        const all = page.locator('.mailbox-chip[data-mailbox="all"]');
+        await all.scrollIntoViewIfNeeded();
+        await all.click();
+        const list = page.locator('.mail-list-wrapper');
+        await list.scrollIntoViewIfNeeded();
+        const box = await list.boundingBox();
+        await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 100));
+        await page.mouse.wheel(0, 900);
+        await page.waitForFunction(() => document.querySelector('.mail-list-wrapper').scrollTop > 0);
+        await page.locator('#mailTableBody tr[data-mail-id]').last().click();
+        await page.locator('#mailDisplay.is-visible').waitFor();
+        assert.match(await page.locator('#mailSubject').innerText(), /mailbox50@example.com/);
+        await page.locator('.back-btn').click();
+        if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `batch-mailbox-${width}.png`), fullPage: true });
+        empty = true;
+        await page.locator('.get-mail-btn').click();
+        await page.locator('.mail-list-empty').waitFor();
+        assert.equal(await page.locator('.mailbox-chip').count(), 51);
+        assert.ok(await page.locator('#mailboxChipList').evaluate(el => el.scrollHeight > el.clientHeight && el.clientHeight <= 104));
+        assert.ok(await page.locator('#mailListPanel').evaluate(el => el.clientHeight >= 360));
+        empty = false;
+        await page.locator('#emailInput').fill('solo@example.com');
+        await page.locator('.get-mail-btn').click();
+        await page.locator('#loading').waitFor({ state: 'visible' });
+        assert.equal(await page.locator('#mailboxSwitcher').isVisible(), false);
+        assert.equal(await page.locator('#folderPanel').isVisible(), false);
+        release();
+        await page.locator('#loading').waitFor({ state: 'hidden' });
+        assert.equal(await page.locator('#mailboxSwitcher').isVisible(), false);
+        assert.equal(await page.locator('#mailTableBody tr[data-mail-id]').count(), 5);
+    } finally { release(); await page.close(); }
 });
 
 test('envelope unfolds on hover, closes on leave and supports keyboard and touch', async () => {

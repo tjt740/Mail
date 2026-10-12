@@ -2842,6 +2842,7 @@
     function updateMailboxLayout(mailboxCount) {
         const single = mailboxCount <= 1;
         document.getElementById('folderPanel').hidden = single;
+        if (single) document.getElementById('mailboxSwitcher').hidden = true;
         document.querySelector('.mail-layout').classList.toggle('is-single-mailbox', single);
     }
 
@@ -2897,7 +2898,12 @@
         mailState.activeMailbox = (mailbox || 'all').toLowerCase() === 'all' ? 'all' : mailbox.toLowerCase();
         mailState.page = 1;
         closeMailModal(true);
-        renderMailboxList();
+        // Keep the scrolled mailbox list and keyboard focus in place on selection.
+        document.querySelectorAll('#mailboxChipList .mailbox-chip').forEach(chip => {
+            const active = chip.dataset.mailbox === mailState.activeMailbox;
+            chip.classList.toggle('active', active);
+            chip.setAttribute('aria-selected', String(active));
+        });
         renderMailList();
         window.MailMotion?.reveal(document.getElementById('mailTableBody'));
     }
