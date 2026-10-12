@@ -131,15 +131,15 @@ for (const width of [320, 390, 768, 1440]) test(`public input, single-line resul
         for (const lang of ['zh', 'en', 'vi', 'fil']) {
             await page.evaluate(lang => AppI18n.setLanguage(lang), lang);
             const dimensions = await page.locator('#emailInput').evaluate(el => ({ height: el.clientHeight, scroll: el.scrollHeight, width: el.clientWidth, scrollWidth: el.scrollWidth }));
-            assert.ok(dimensions.height >= 100 && dimensions.scroll <= dimensions.height && dimensions.scrollWidth <= dimensions.width, JSON.stringify({ width, lang, dimensions }));
+            assert.ok(dimensions.height >= 72 && dimensions.scroll <= dimensions.height && dimensions.scrollWidth <= dimensions.width, JSON.stringify({ width, lang, dimensions }));
             assert.equal(await page.locator('.frontend-subtitle').count(), 0);
             if (width <= 560) assert.equal(await page.locator('.mail-table thead').isVisible(), false);
             assert.equal(await page.locator('.header h1').evaluate(el => getComputedStyle(el).whiteSpace), 'nowrap');
-            const controls = await page.evaluate(() => [...document.querySelectorAll('#emailInput, .query-count-field, .get-mail-btn, .frontend-top-actions')].map(el => { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right }; }));
+            const controls = await page.evaluate(() => [...document.querySelectorAll('#emailInput, .get-mail-btn, .frontend-top-actions')].map(el => { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right }; }));
             assert.ok(controls.every(r => r.left >= 0 && r.right <= width), JSON.stringify({ lang, controls }));
         }
         assert.equal(await page.locator('#emailCountInput').count(), 0);
-        assert.ok(await page.locator('.query-count-field').isVisible());
+        assert.equal(await page.locator('#publicMailLimitHint').count(), 0);
         await page.locator('#emailInput').fill('reader@example.com');
         await page.locator('.get-mail-btn').click();
         await page.locator('#mailTableBody tr:not(:has(.mail-list-empty))').waitFor();
