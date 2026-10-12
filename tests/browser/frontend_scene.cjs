@@ -261,6 +261,55 @@ test('envelope unfolds on hover, closes on leave and supports keyboard and touch
     } finally { await mobile.close(); }
 });
 
+test('envelope lid folds toward the viewer before the paper lifts and reverses without resetting', async () => {
+    const page = await newPage({ reducedMotion: 'no-preference', deviceScaleFactor: 2 });
+    try {
+        await page.locator('.scene-envelope-trigger').hover();
+        await page.evaluate(() => {
+            window.foldTracks = [...document.querySelectorAll('.scene-envelope-flap, .scene-letter, .scene-envelope-seal')]
+                .map(el => el.getAnimations()[0]);
+        });
+        const poseAt = async progress => page.evaluate(progress => {
+            foldTracks.forEach(animation => { animation.pause(); animation.currentTime = animation.effect.getTiming().duration * progress; });
+            const flap = document.querySelector('.scene-envelope-flap');
+            const matrix = new DOMMatrixReadOnly(getComputedStyle(flap).transform);
+            const paper = new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.scene-letter')).transform);
+            return { tipDepth: matrix.m23 * flap.offsetHeight + matrix.m43, paperY: paper.m42, hingeDepth: matrix.m43, flapY: matrix.m42, flipped: matrix.m22 };
+        }, progress);
+        const early = await poseAt(.13);
+        assert.ok(early.tipDepth > 15, 'The lid must travel in front of the envelope, not disappear behind it');
+        assert.equal(early.paperY, 0, 'The letter waits for the lid to clear the pocket');
+        if (process.env.SCREENSHOT_DIR) await page.locator('.scene-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'envelope-opening.png') });
+        const open = await poseAt(1);
+        assert.equal(open.flipped, -1, 'The fully open flap lies flat behind the letter');
+        assert.equal(open.hingeDepth, early.hingeDepth, 'The fold does not slide away from its hinge');
+        assert.equal(open.flapY, early.flapY);
+        if (process.env.SCREENSHOT_DIR) await page.locator('.scene-hero').screenshot({ path: path.join(process.env.SCREENSHOT_DIR, 'envelope-open-seam.png') });
+        const midway = await poseAt(.55);
+        const reversed = await page.evaluate(() => {
+            const trigger = document.querySelector('.scene-envelope-trigger');
+            trigger.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+            return new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.scene-letter')).transform).m42;
+        });
+        assert.ok(Math.abs(reversed - midway.paperY) < .1, 'Leaving must reverse from the rendered position without a jump');
+        await page.waitForFunction(() => foldTracks.every(animation => animation.playbackRate < 0 && animation.currentTime < 550));
+        const continued = await page.evaluate(() => {
+            const trigger = document.querySelector('.scene-envelope-trigger');
+            const paper = document.querySelector('.scene-letter');
+            const before = new DOMMatrixReadOnly(getComputedStyle(paper).transform).m42;
+            trigger.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+            return { before, after: new DOMMatrixReadOnly(getComputedStyle(paper).transform).m42,
+                sameTracks: foldTracks.every(animation => animation.effect.target.getAnimations().includes(animation)) };
+        });
+        assert.ok(Math.abs(continued.before - continued.after) < .1);
+        assert.ok(continued.sameTracks);
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.waitForFunction(() => foldTracks.every(animation => Math.abs(animation.currentTime - animation.effect.getTiming().duration) < .1 && ['paused', 'finished'].includes(animation.playState)));
+        await page.locator('.scene-envelope-trigger').press('Escape');
+        assert.equal(await page.locator('.scene-letter').evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42), 0);
+    } finally { await page.close(); }
+});
+
 test('new mail gives one arrival cue per batch and repeated, failed or empty queries do not replay it', async () => {
     const page = await newPage();
     let items = [{ id: 'a', subject: 'First letter' }, { id: 'b', subject: 'Second letter' }], success = true;

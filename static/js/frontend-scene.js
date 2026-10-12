@@ -21,17 +21,63 @@
     const envelope = hero.querySelector('.scene-envelope-trigger');
     const envelopeArt = hero.querySelector('.scene-art');
     const notice = hero.querySelector('.scene-envelope-notice');
-    let envelopeOpen = false, noticeAnimation = null, pendingNotice = false;
+    let envelopeOpen = false, envelopeAnimations = null, noticeAnimation = null, pendingNotice = false;
+    const envelopeDuration = 1050;
+    function createEnvelopeAnimations() {
+        const tracks = [
+            ['.scene-envelope-flap', [
+                { transform: 'translateZ(2px) rotateX(0deg)', offset: 0, easing: 'cubic-bezier(.4,0,.2,1)' },
+                { transform: 'translateZ(2px) rotateX(180deg)', offset: .62 },
+                { transform: 'translateZ(2px) rotateX(180deg)', offset: 1 }
+            ]],
+            ['.scene-letter', [
+                { transform: 'translate3d(0, 0, 1px)', offset: 0 },
+                { transform: 'translate3d(0, 0, 1px)', offset: .42, easing: 'cubic-bezier(.22,.75,.25,1)' },
+                { transform: 'translate3d(0, -42px, 3px)', offset: 1 }
+            ]],
+            ['.scene-envelope-seal', [
+                { transform: 'translateZ(5px) scale(1)', opacity: 1, offset: 0, easing: 'ease-out' },
+                { transform: 'translateZ(9px) scale(.94)', opacity: 0, offset: .14 },
+                { transform: 'translateZ(9px) scale(.94)', opacity: 0, offset: 1 }
+            ]]
+        ];
+        return tracks.map(([selector, keyframes]) => {
+            const animation = envelope.querySelector(selector).animate(keyframes, { duration: envelopeDuration, fill: 'both' });
+            animation.pause();
+            animation.currentTime = 0;
+            return animation;
+        });
+    }
+    function syncEnvelopeMotion() {
+        if (!envelopeAnimations) return;
+        envelopeAnimations.forEach(animation => {
+            if (reduced.matches) {
+                animation.pause();
+                animation.currentTime = envelopeOpen ? envelopeDuration : 0;
+            } else if (document.hidden || suspended) {
+                animation.pause();
+            } else {
+                // Reverse the existing timeline rather than starting delayed
+                // transitions again. The paper returns before the lid closes.
+                animation.updatePlaybackRate(envelopeOpen ? 1 : -1);
+                const time = animation.currentTime || 0;
+                if (envelopeOpen ? time < envelopeDuration : time > 0) animation.play();
+            }
+        });
+    }
     function stopNotice() {
         noticeAnimation?.cancel();
         noticeAnimation = null;
     }
     function setEnvelopeOpen(open) {
+        if (envelopeOpen === open) return;
         envelopeOpen = open;
         if (!envelope) return;
         envelope.setAttribute('aria-expanded', String(open));
         envelope.setAttribute('aria-label', open ? '合上信封' : '打开信封');
         if (open) envelopeArt.classList.remove('has-new-mail');
+        envelopeAnimations ||= createEnvelopeAnimations();
+        syncEnvelopeMotion();
     }
     function notifyNewMail() {
         if (destroyed || !notice) return;
@@ -58,7 +104,11 @@
             setEnvelopeOpen(true);
         });
         on(envelope, 'pointerleave', event => { if (event.pointerType !== 'touch') setEnvelopeOpen(false); });
-        on(envelope, 'click', () => setEnvelopeOpen(!envelopeOpen));
+        on(envelope, 'click', event => {
+            // A mouse click follows pointerenter; it must not immediately undo
+            // the hover animation. Touch and keyboard still toggle the lid.
+            setEnvelopeOpen(event.detail > 0 && event.pointerType !== 'touch' && !coarse.matches ? true : !envelopeOpen);
+        });
         on(envelope, 'keydown', event => {
             if (event.key === 'Escape') setEnvelopeOpen(false);
         });
@@ -149,6 +199,7 @@
     }
     function update() {
         stop();
+        syncEnvelopeMotion();
         if (document.hidden || suspended || reduced.matches) stopNotice();
         if (!document.hidden && !suspended && pendingNotice) notifyNewMail();
         root.dataset.sceneRunning = String(canAnimate());
@@ -213,6 +264,7 @@
         destroy() {
             destroyed = true; stop(); stopNotice(); pendingNotice = false; observer?.disconnect(); cleanups.forEach(remove => remove());
             setEnvelopeOpen(false); envelopeArt?.classList.remove('has-new-mail');
+            envelopeAnimations?.forEach(animation => animation.cancel());
             root.dataset.sceneRunning = 'false';
             layers.forEach(l => { l.ctx.clearRect(0, 0, l.width, l.height); l.skies = {}; });
         }
