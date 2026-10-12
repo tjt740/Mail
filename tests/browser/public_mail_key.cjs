@@ -324,17 +324,16 @@ for (const width of [390,1440]) test(`Supply displays all five recent messages a
     } finally {supply=false; await page.close();}
 });
 
-test('Supply frontend follows the saved quantity and translates the changing count',async()=>{
+test('Supply frontend follows the saved quantity without displaying a limit hint',async()=>{
     enabled=false; supply=true; supplyLimit=7; requests=[];
     const page=await browser.newPage({reducedMotion:'reduce'});
     try {
         await page.goto(origin);
-        await page.waitForFunction(()=>document.getElementById('publicMailLimitHint').textContent.includes('7'));
+        await page.waitForFunction(()=>window.AppI18n);
         await page.evaluate(()=>AppI18n.setLanguage('zh-TW'));
-        assert.equal(await page.locator('#publicMailLimitHint').textContent(),'每個郵箱展示最近 7 封郵件');
+        assert.equal(await page.locator('#publicMailLimitHint').count(),0);
         await page.evaluate(()=>AppI18n.setLanguage('en'));
-        assert.match(await page.locator('#publicMailLimitHint').textContent(),/7/);
-        assert.doesNotMatch(await page.locator('#publicMailLimitHint').textContent(),/[\u4e00-\u9fff]/);
+        assert.equal(await page.locator('#publicMailLimitHint').count(),0);
         await page.locator('#emailInput').fill('reader@example.com');
         await page.locator('.get-mail-btn').click();
         await page.waitForFunction(()=>document.querySelectorAll('#mailTableBody tr[data-mail-id]').length===7);
@@ -344,7 +343,7 @@ test('Supply frontend follows the saved quantity and translates the changing cou
         await page.waitForFunction(()=>document.querySelectorAll('#mailTableBody tr[data-mail-id]').length===9);
         assert.equal(requests[1].email_limit,9);
         await page.evaluate(()=>AppI18n.setLanguage('zh-TW'));
-        assert.equal(await page.locator('#publicMailLimitHint').textContent(),'每個郵箱展示最近 9 封郵件');
+        assert.equal(await page.locator('#publicMailLimitHint').count(),0);
     } finally {supply=false; supplyLimit=5; await page.close();}
 });
 

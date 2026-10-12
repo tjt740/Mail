@@ -2509,7 +2509,6 @@
                         <span>邮箱查询</span>
                     </label>
                     <textarea id="emailInput" class="highlight-input email-query-input" rows="4" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="输入邮箱地址，支持多个&#10;用换行、空格或逗号分隔"></textarea>
-                    <div class="query-count-field"><span id="publicMailLimitHint" data-i18n-ignore>每个邮箱展示最近 5 封邮件</span></div>
                     <button class="get-mail-btn" onclick="getMail()">
                         <span class="anticon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
                         <span>获取邮件</span>
@@ -2642,11 +2641,6 @@
     const REQUEST_FOLDER_MAP = { inbox: 'INBOX', trash: 'Trash' };
     const EMAIL_REGEX = /[\w.!#$%&'*+/=?^_`{|}~-]+@[\w.-]+\.[A-Za-z]{2,}/g;
     let publicMailLimit = 5;
-    function renderPublicMailLimit() {
-        const source = `每个邮箱展示最近 ${publicMailLimit} 封邮件`;
-        document.getElementById('publicMailLimitHint').textContent = window.AppI18n?.t(source) || source;
-    }
-    window.addEventListener('app-language-change', renderPublicMailLimit);
     let publicMailKeyRequired = {{ public_mail_key_required|default(false)|tojson }};
 
     function applyPublicMailPolicy(required) {
@@ -2666,7 +2660,6 @@
         }
         applyPublicMailPolicy(data.key_required);
         publicMailLimit = Number.isInteger(data.email_limit) && data.email_limit >= 1 && data.email_limit <= 20 ? data.email_limit : 5;
-        renderPublicMailLimit();
         const supply = data.provider === 'supply';
         document.querySelector('[data-folder="trash"]').hidden = supply;
         if (supply && mailState.folder !== 'inbox') switchFolder('inbox');
