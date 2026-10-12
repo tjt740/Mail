@@ -2364,7 +2364,7 @@
             grid-area: count-input;
         }
 
-        #frontendApp .query-control-block :is(.email-query-input, .count-input, .get-mail-btn) {
+        #frontendApp .query-control-block :is(.count-input, .get-mail-btn) {
             height: var(--query-control-height) !important;
             min-height: var(--query-control-height);
             max-height: var(--query-control-height);
@@ -2448,26 +2448,28 @@
         </div>
     </section>
 
-    <div class="mail-input-card mail-workspace">
-            <div class="control-row">
-                <div class="control-block query-control-block">
-                    <div class="query-key-field" id="publicMailKeyField" {% if not public_mail_key_required %}hidden{% endif %}>
-                        <label for="publicMailKeyInput">取件密钥</label>
-                        <input type="password" id="publicMailKeyInput" class="form-control highlight-input" placeholder="请输入取件密钥" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="publicMailKeyHint" {% if public_mail_key_required %}required{% else %}disabled{% endif %}>
-                        <small id="publicMailKeyHint">验证密钥后获取邮件，密钥仅用于本次页面取件。</small>
-                    </div>
-                    <label for="emailInput" class="query-input-label">
-                        <span class="query-label-icon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
-                        <span>邮箱查询</span>
-                    </label>
-                    <textarea id="emailInput" class="highlight-input email-query-input" rows="2" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="输入邮箱地址，支持多个&#10;用换行、空格或逗号分隔"></textarea>
-                    <button class="get-mail-btn" onclick="getMail()">
-                        <span class="anticon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
-                        <span class="get-mail-label">获取邮件</span>
-                    </button>
+    <section class="mail-query-panel" aria-labelledby="emailQueryLabel">
+        <div class="control-row">
+            <div class="control-block query-control-block">
+                <div class="query-key-field" id="publicMailKeyField" {% if not public_mail_key_required %}hidden{% endif %}>
+                    <label for="publicMailKeyInput">取件密钥</label>
+                    <input type="password" id="publicMailKeyInput" class="form-control highlight-input" placeholder="请输入取件密钥" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="publicMailKeyHint" {% if public_mail_key_required %}required{% else %}disabled{% endif %}>
+                    <small id="publicMailKeyHint">验证密钥后获取邮件，密钥仅用于本次页面取件。</small>
                 </div>
+                <label for="emailInput" class="query-input-label">
+                    <span class="query-label-icon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
+                    <span id="emailQueryLabel">邮箱查询</span>
+                </label>
+                <textarea id="emailInput" class="highlight-input email-query-input" rows="5" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="输入邮箱地址，支持多个&#10;用换行、空格或逗号分隔"></textarea>
+                <button class="get-mail-btn" onclick="getMail()">
+                    <span class="anticon" aria-hidden="true"><svg><use href="#ai-search"></use></svg></span>
+                    <span class="get-mail-label">获取邮件</span>
+                </button>
             </div>
+        </div>
+    </section>
 
+    <div class="mail-input-card mail-workspace">
         <div class="mailbox-switcher" id="mailboxSwitcher" hidden>
             <div class="mailbox-switcher-title">
                 <span class="anticon"><svg aria-hidden="true"><use href="#ai-mail"></use></svg></span>

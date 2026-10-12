@@ -130,8 +130,12 @@ for (const width of [320, 390, 768, 1440]) test(`public input, single-line resul
         await page.waitForFunction(() => window.AppI18n);
         for (const lang of ['zh', 'en', 'vi', 'fil']) {
             await page.evaluate(lang => AppI18n.setLanguage(lang), lang);
-            const dimensions = await page.locator('#emailInput').evaluate(el => ({ height: el.clientHeight, scroll: el.scrollHeight, width: el.clientWidth, scrollWidth: el.scrollWidth }));
-            assert.ok(dimensions.height >= 56 && dimensions.height <= 80 && dimensions.scroll <= dimensions.height && dimensions.scrollWidth <= dimensions.width, JSON.stringify({ width, lang, dimensions }));
+            const dimensions = await page.locator('#emailInput').evaluate(el => {
+                const style = getComputedStyle(el);
+                return { lines: (el.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)) / parseFloat(style.lineHeight), height: el.clientHeight, scroll: el.scrollHeight, width: el.clientWidth, scrollWidth: el.scrollWidth, resize: style.resize };
+            });
+            assert.ok(dimensions.lines >= 5 && dimensions.scroll <= dimensions.height && dimensions.scrollWidth <= dimensions.width, JSON.stringify({ width, lang, dimensions }));
+            assert.equal(dimensions.resize, 'vertical');
             assert.equal(await page.locator('.frontend-subtitle').count(), 0);
             if (width <= 560) assert.equal(await page.locator('.mail-table thead').isVisible(), false);
             assert.equal(await page.locator('.header h1').evaluate(el => getComputedStyle(el).whiteSpace), 'nowrap');
@@ -140,6 +144,19 @@ for (const width of [320, 390, 768, 1440]) test(`public input, single-line resul
         }
         assert.equal(await page.locator('#emailCountInput').count(), 0);
         assert.equal(await page.locator('#publicMailLimitHint').count(), 0);
+        await page.locator('#emailInput').fill(Array.from({ length: 5 }, (_, i) => `reader${i + 1}@example.com`).join('\n'));
+        assert.equal(await page.locator('#emailInput').evaluate(el => el.scrollHeight > el.clientHeight), false, 'Five mailbox lines should be visible without scrolling');
+        const query = await page.locator('.mail-query-panel').boundingBox();
+        const inbox = await page.locator('.mail-workspace').boundingBox();
+        assert.ok(inbox.y - query.y - query.height >= 12, 'Query and inbox should be separate surfaces');
+        if (width === 1440) {
+            const input = await page.locator('#emailInput').boundingBox();
+            await page.mouse.move(input.x + input.width - 4, input.y + input.height - 4);
+            await page.mouse.down();
+            await page.mouse.move(input.x + input.width - 4, input.y + input.height + 76, { steps: 5 });
+            await page.mouse.up();
+            assert.ok((await page.locator('#emailInput').boundingBox()).height >= input.height + 60, 'The native resize handle should increase the input height');
+        }
         await page.locator('#emailInput').fill('reader@example.com');
         await page.locator('.get-mail-btn').click();
         await page.locator('#mailTableBody tr:not(:has(.mail-list-empty))').waitFor();

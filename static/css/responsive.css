@@ -16,7 +16,6 @@ body .brand-preview-icon img, body.frontend-mail-page #frontendApp .frontend-bra
 body.frontend-mail-page #frontendApp .header { min-width: 0; overflow: hidden; }
 body.frontend-mail-page #frontendApp .header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 body.frontend-mail-page #frontendApp .query-control-block .email-query-input {
-    height: 112px !important; min-height: 112px !important; max-height: 112px !important;
     width: 100%; min-width: 0; padding: 14px !important; font-size: 16px; line-height: 24px;
     resize: none; white-space: pre; overflow: auto; overscroll-behavior: contain;
 }

@@ -1,5 +1,5 @@
-/* The public mailbox is one continuous workspace. Scope these rules so the
-   weather scene and the administrator's forms keep their own layout. */
+/* Public query and reading surfaces share a palette but have separate layouts.
+   Keep these rules scoped away from the weather scene and administrator forms. */
 html:has(body.frontend-mail-page) {
     height: auto;
     overflow-x: hidden !important;
@@ -38,26 +38,35 @@ body.frontend-mail-page #frontendApp .mail-workspace {
     box-shadow: none !important;
     backdrop-filter: none;
 }
-body.frontend-mail-page #frontendApp .mail-workspace .control-row {
+body.frontend-mail-page #frontendApp .mail-query-panel {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin: 0 0 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--scene-input);
+    box-shadow: 0 1px 3px rgb(15 23 42 / 4%);
+}
+body.frontend-mail-page #frontendApp .mail-query-panel .control-row {
     margin: 0 !important;
     padding: 0;
-    border-bottom: 1px solid var(--scene-border);
+    border: 0;
 }
-body.frontend-mail-page #frontendApp .mail-workspace .query-control-block {
+body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block {
     grid-template-columns: 104px minmax(0, 1fr) auto;
     grid-template-areas: "label email button";
     align-items: center;
-    gap: 12px;
-    padding: 10px 20px !important;
+    gap: 20px;
+    padding: 20px 24px !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    background: var(--scene-input) !important;
+    background: transparent !important;
 }
-body.frontend-mail-page #frontendApp .mail-workspace .query-control-block:has(.query-key-field:not([hidden])) {
+body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block:has(.query-key-field:not([hidden])) {
     grid-template-areas: "key key key" "label email button";
 }
-body.frontend-mail-page #frontendApp .mail-workspace .query-input-label {
+body.frontend-mail-page #frontendApp .mail-query-panel .query-input-label {
     margin: 0;
     gap: 9px;
     font-size: 14px;
@@ -65,7 +74,7 @@ body.frontend-mail-page #frontendApp .mail-workspace .query-input-label {
     letter-spacing: 0;
     white-space: normal;
 }
-body.frontend-mail-page #frontendApp .mail-workspace .query-label-icon {
+body.frontend-mail-page #frontendApp .mail-query-panel .query-label-icon {
     width: 20px;
     height: 20px;
     flex: 0 0 20px;
@@ -73,19 +82,21 @@ body.frontend-mail-page #frontendApp .mail-workspace .query-label-icon {
     background: transparent !important;
     color: var(--scene-muted) !important;
 }
-body.frontend-mail-page #frontendApp .mail-workspace .query-control-block .email-query-input {
-    height: 58px !important;
-    min-height: 58px !important;
-    max-height: 58px !important;
+body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block .email-query-input {
+    height: 136px;
+    min-height: 136px;
+    max-height: 480px;
+    resize: vertical;
+    overflow: auto;
     margin: 0;
-    padding: 8px 12px !important;
-    border-radius: 5px !important;
+    padding: 12px 14px !important;
+    border-radius: 8px !important;
     background: var(--scene-inner) !important;
     box-shadow: none !important;
     font-size: 14px;
-    line-height: 20px;
+    line-height: 22px;
 }
-body.frontend-mail-page #frontendApp .mail-workspace .query-control-block .get-mail-btn {
+body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block .get-mail-btn {
     width: auto;
     min-width: 132px;
     height: 42px !important;
@@ -100,7 +111,7 @@ body.frontend-mail-page #frontendApp .mail-workspace .query-control-block .get-m
     box-shadow: 0 1px 2px color-mix(in srgb, var(--scene-text) 12%, transparent) !important;
     transform: none !important;
 }
-body.frontend-mail-page #frontendApp .mail-workspace .get-mail-btn:hover:not(:disabled) {
+body.frontend-mail-page #frontendApp .mail-query-panel .get-mail-btn:hover:not(:disabled) {
     filter: brightness(1.08);
     box-shadow: 0 2px 6px color-mix(in srgb, var(--scene-accent) 20%, transparent) !important;
 }
@@ -306,16 +317,16 @@ body.frontend-mail-page #frontendApp .mail-workspace .mail-body {
 }
 body.frontend-mail-page #frontendApp .mail-workspace .mail-content-frame { border-radius: 0; height: max(360px, calc(100dvh - 370px)); }
 @media (max-width: 900px) {
-    body.frontend-mail-page #frontendApp .mail-workspace .query-control-block {
+    body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block {
         grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas: "label button" "email email";
-        gap: 8px;
-        padding: 10px 16px !important;
+        gap: 12px;
+        padding: 16px !important;
     }
-    body.frontend-mail-page #frontendApp .mail-workspace .query-control-block:has(.query-key-field:not([hidden])) {
+    body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block:has(.query-key-field:not([hidden])) {
         grid-template-areas: "key key" "label button" "email email";
     }
-    body.frontend-mail-page #frontendApp .mail-workspace .get-mail-btn { min-width: 0; height: 44px !important; min-height: 44px; }
+    body.frontend-mail-page #frontendApp .mail-query-panel .get-mail-btn { min-width: 0; height: 44px !important; min-height: 44px; }
     body.frontend-mail-page #frontendApp .mail-workspace .mail-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
     body.frontend-mail-page #frontendApp .mail-workspace .folder-panel {
         padding: 8px 16px !important;
@@ -446,20 +457,9 @@ body.frontend-mail-page #frontendApp .mail-workspace .loading-text {
     line-height: 1.6;
     padding-inline: 10px;
 }
-/* These translations use three short lines so their hints fit narrow screens. */
-body.frontend-mail-page #frontendApp .mail-workspace .query-control-block .email-query-input:is(:lang(en), :lang(vi), :lang(fil)) {
-    height: 78px !important;
-    min-height: 78px !important;
-    max-height: 78px !important;
-}
 @media (max-width: 560px) {
-    body.frontend-mail-page #frontendApp .mail-workspace .query-control-block .email-query-input {
-        height: 58px !important;
-        min-height: 58px !important;
-        max-height: 58px !important;
-    }
-    body.frontend-mail-page #frontendApp .mail-workspace .query-control-block { padding: 10px 12px !important; gap: 6px; }
-    body.frontend-mail-page #frontendApp .mail-workspace .get-mail-btn { padding: 0 12px !important; }
+    body.frontend-mail-page #frontendApp .mail-query-panel .query-control-block { padding: 14px !important; gap: 10px; }
+    body.frontend-mail-page #frontendApp .mail-query-panel .get-mail-btn { padding: 0 12px !important; }
     body.frontend-mail-page #frontendApp .mail-workspace .folder-panel { padding: 6px 12px !important; }
     body.frontend-mail-page #frontendApp .mail-workspace .mail-table :is(th, td) { padding: 12px 8px; }
     body.frontend-mail-page #frontendApp .mail-workspace .mail-subject { font-size: 18px; }
