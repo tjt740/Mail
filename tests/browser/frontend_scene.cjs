@@ -411,14 +411,9 @@ test('scene changes preserve queries, retrieved mail, selection and readable tex
             await page.waitForFunction(() => {
                 const body = getComputedStyle(document.querySelector('.mail-body--text'));
                 const input = getComputedStyle(document.querySelector('.highlight-input'));
-                return body.color === input.color && body.backgroundColor === input.backgroundColor;
+                return body.color === input.color;
             });
-            const readable = await page.evaluate(() => {
-                const body = getComputedStyle(document.querySelector('.mail-body--text'));
-                const input = getComputedStyle(document.querySelector('.highlight-input'));
-                return body.color === input.color && body.backgroundColor === input.backgroundColor;
-            });
-            assert.equal(readable, true, `Text mail must use a matching foreground and background in ${mode}`);
+            assert.deepEqual(await contrastFailures(page, '#mailDisplay'), [], `Text mail must remain readable on the continuous reading surface in ${mode}`);
         }
         await page.locator('.back-btn').click();
         await page.locator('#mailTableBody').getByText('Scene test letter', { exact: true }).waitFor();

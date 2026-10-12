@@ -131,7 +131,7 @@ for (const width of [320, 390, 768, 1440]) test(`public input, single-line resul
         for (const lang of ['zh', 'en', 'vi', 'fil']) {
             await page.evaluate(lang => AppI18n.setLanguage(lang), lang);
             const dimensions = await page.locator('#emailInput').evaluate(el => ({ height: el.clientHeight, scroll: el.scrollHeight, width: el.clientWidth, scrollWidth: el.scrollWidth }));
-            assert.ok(dimensions.height >= 72 && dimensions.scroll <= dimensions.height && dimensions.scrollWidth <= dimensions.width, JSON.stringify({ width, lang, dimensions }));
+            assert.ok(dimensions.height >= 56 && dimensions.height <= 80 && dimensions.scroll <= dimensions.height && dimensions.scrollWidth <= dimensions.width, JSON.stringify({ width, lang, dimensions }));
             assert.equal(await page.locator('.frontend-subtitle').count(), 0);
             if (width <= 560) assert.equal(await page.locator('.mail-table thead').isVisible(), false);
             assert.equal(await page.locator('.header h1').evaluate(el => getComputedStyle(el).whiteSpace), 'nowrap');

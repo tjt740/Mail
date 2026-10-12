@@ -87,15 +87,15 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
     isolation: isolate;
     display: flex;
     align-items: center;
-    flex: 0 0 208px;
-    min-height: 208px;
-    margin-bottom: 16px;
-    padding: 26px 36px;
+    flex: 0 0 auto;
+    min-height: 112px;
+    margin-bottom: 8px;
+    padding: 16px 24px;
     overflow: hidden;
-    border: 1px solid var(--scene-border);
-    border-radius: 24px;
+    border: 0;
+    border-radius: 10px;
     background: var(--scene-surface);
-    box-shadow: var(--scene-shadow);
+    box-shadow: none;
     transition: background-color .8s ease, border-color .8s ease, box-shadow .8s ease;
 }
 #sceneCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
@@ -105,20 +105,20 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
 :root[data-color-theme] .scene-hero { background: var(--scene-hero-bg); }
 :root[data-color-theme] .scene-hero :is(h2, .scene-satellite) { color: var(--scene-hero-text); }
 :root[data-color-theme] .scene-hero :is(.scene-eyebrow, .scene-description) { color: color-mix(in srgb, var(--scene-hero-text) 90%, var(--scene-bg)); }
-.scene-copy { position: relative; z-index: 2; max-width: 70%; }
-.scene-eyebrow { display: flex; align-items: center; gap: 8px; color: var(--scene-muted); font-size: 11px; letter-spacing: .16em; margin: 0 0 12px; }
+.scene-copy { position: relative; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; max-width: calc(100% - 200px); }
+.scene-eyebrow { display: none; }
 .scene-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--scene-accent); box-shadow: 0 0 0 4px var(--scene-soft); }
-.scene-copy h2 { margin: 0; color: var(--scene-text); font-size: clamp(21px, 2.2vw, 32px); font-weight: 650; line-height: 1.35; letter-spacing: -.035em; }
-.scene-description { margin: 10px 0 18px; font-size: 13px; color: var(--scene-muted); }
-.scene-controls { display: inline-flex; align-items: center; gap: 3px; padding: 4px; border: 1px solid var(--scene-border); border-radius: 12px; background: var(--scene-inner); }
+.scene-copy h2 { margin: 0; color: var(--scene-text); font-size: 20px; font-weight: 600; line-height: 1.4; letter-spacing: -.035em; }
+.scene-description { display: none; }
+.scene-controls { display: inline-flex; align-items: center; gap: 3px; padding: 0; border: 0; border-radius: 6px; background: transparent; }
 .scene-controls button {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    min-height: 32px; padding: 5px 12px; border: 1px solid transparent; border-radius: 8px;
-    background: transparent; color: var(--scene-muted); font: inherit; font-size: 12px; cursor: pointer;
+    min-height: 36px; padding: 5px 12px; border: 0; border-radius: 6px;
+    background: transparent; color: var(--scene-hero-text, var(--scene-text)); font: inherit; font-size: 12px; cursor: pointer;
     transition: color .25s ease, background-color .35s ease, box-shadow .35s ease, transform .25s ease;
 }
 .scene-controls button:hover { color: var(--scene-text); background: var(--scene-soft); }
-.scene-controls button[aria-pressed="true"] { color: var(--scene-accent); background: var(--scene-input); border-color: var(--scene-border); box-shadow: 0 2px 7px rgba(20, 40, 75, .06); }
+.scene-controls button[aria-pressed="true"] { color: var(--scene-accent); background: var(--scene-input); box-shadow: none; }
 .scene-controls button:active { transform: scale(.95); }
 .scene-controls button:focus-visible { outline: 2px solid var(--scene-accent); outline-offset: 2px; }
 
@@ -140,8 +140,8 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
     --envelope-shadow: color-mix(in srgb, var(--app-primary) 23%, transparent);
     --envelope-glow: color-mix(in srgb, var(--app-primary) 16%, transparent);
     --envelope-finish: linear-gradient(125deg, #ffffff24, transparent 48%, #ffffff0a);
-    position: absolute; right: 9%; top: 50%; width: 250px; height: 200px;
-    transform: translateY(-50%); perspective: 800px; pointer-events: none; z-index: 3;
+    position: absolute; right: 2%; top: 50%; width: 250px; height: 200px;
+    transform: translateY(-50%) scale(.56); perspective: 800px; pointer-events: none; z-index: 3;
 }
 :root[data-color-theme="sunny"] .scene-art {
     --envelope-back: #538caa; --envelope-fold-left: #a9d4df; --envelope-fold-right: #d7ece4;
@@ -314,20 +314,18 @@ body.frontend-mail-page #frontendApp :is(.mail-input-card, .query-control-block,
 :root[data-mail-scene="night"] #frontendApp .get-mail-btn,
 :root[data-mail-scene="rain"] #frontendApp .get-mail-btn { box-shadow: 0 6px 22px color-mix(in srgb, var(--primary-color) 16%, transparent) !important; }
 :root[data-scene-running="false"] :is(.scene-envelope-float, .scene-satellite, .scene-envelope-shadow) { animation-play-state: paused; }
-@media (max-height: 800px) and (min-width: 769px) { .scene-hero { flex-basis: 172px; min-height: 172px; padding-block: 18px; } .scene-art { transform: translateY(-50%) scale(.83); } .scene-eyebrow { margin-bottom: 7px; } .scene-description { margin: 7px 0 12px; } }
 @media (max-height: 620px) and (min-width: 769px) { html:has(body.frontend-mail-page), body.frontend-mail-page { height: auto; overflow-y: auto !important; } body.frontend-mail-page #frontendApp { height: auto; min-height: 100vh; overflow: visible; } body.frontend-mail-page #frontendApp .mail-input-card { min-height: 400px; } }
-@media (max-width: 900px) { .scene-art { right: 3%; } .scene-hero { padding-inline: 24px; } }
+@media (max-width: 900px) { .scene-art { right: -35px; } .scene-copy { max-width: calc(100% - 130px); gap: 8px; } .scene-hero { padding-inline: 18px; } }
 @media (max-width: 560px) {
     :root body.frontend-mail-page { padding: 8px !important; }
-    .scene-hero { flex-basis: auto; min-height: 205px; padding: 22px 18px 18px; margin-bottom: 10px; border-radius: 18px; }
-    .scene-copy { max-width: 100%; width: 100%; }
-    .scene-copy h2 { max-width: 72%; font-size: 21px; line-height: 1.4; }
-    .scene-copy h2 span { display: block; }
-    .scene-eyebrow { font-size: 10px; margin-bottom: 10px; }
-    .scene-description { max-width: 70%; font-size: 11px; margin: 8px 0 18px; }
-    .scene-art { right: -50px; top: 43%; transform: translateY(-50%) scale(.47); }
+    .scene-hero { min-height: 120px; padding: 12px 14px; margin-bottom: 8px; border-radius: 8px; }
+    .scene-copy { display: block; max-width: 100%; width: 100%; }
+    .scene-copy h2 { max-width: calc(100% - 84px); min-height: 40px; font-size: 16px; line-height: 1.4; }
+    .scene-copy h2 span { display: inline; }
+    .scene-art { right: -68px; top: 42px; transform: translateY(-50%) scale(.40); }
     .scene-controls { gap: 2px; }
-    .scene-controls button { min-height: 36px; padding-inline: 11px; }
+    .scene-controls { margin-top: 8px; }
+    .scene-controls button { min-height: 40px; padding-inline: 10px; }
     body.frontend-mail-page #frontendApp .mail-input-card { backdrop-filter: none; }
 }
 @media (prefers-reduced-motion: reduce) {
