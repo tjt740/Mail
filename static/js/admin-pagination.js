@@ -2,6 +2,7 @@
     'use strict';
 
     const PAGE_SIZES = Object.freeze([20, 50, 100, 200, 500, 1000]);
+    const DEFAULT_PAGE_SIZE = 100;
     const MAX_PAGE_SIZE = 10000;
     const t = text => global.AppI18n?.t(text) || text;
 
@@ -14,7 +15,7 @@
 
     // Shared by the template pages and React so every list has the same controls.
     function mountSizeControl(container, { value, onChange, id = 'perPageSelect', disabled = false }) {
-        const current = parsePageSize(value) || PAGE_SIZES[0];
+        const current = parsePageSize(value) || DEFAULT_PAGE_SIZE;
         container.replaceChildren();
         container.classList.add('admin-page-size');
         const label = document.createElement('label');
@@ -72,5 +73,5 @@
         container.append(label, select, custom);
     }
 
-    global.AdminPagination = { PAGE_SIZES, MAX_PAGE_SIZE, parsePageSize, mountSizeControl };
+    global.AdminPagination = { PAGE_SIZES, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, parsePageSize, mountSizeControl };
 })(window);

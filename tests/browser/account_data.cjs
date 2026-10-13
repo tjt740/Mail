@@ -88,6 +88,7 @@ const record = (page, id) => page.locator(`[data-account-id="${id}"]`);
 test('account data sends preset and custom sizes, resets the page and retains filters and selection', async () => {
     const page = await newPage(320);
     try {
+        assert.equal(await page.locator('#accountPerPageSelect').inputValue(), '100');
         await record(page, 1).getByRole('checkbox').check();
         for (const size of [20, 50, 100, 200, 500, 1000]) {
             const request = page.waitForRequest(req => req.url().includes('/account-data?') && new URL(req.url()).searchParams.get('per_page') === String(size));
@@ -194,6 +195,7 @@ for (const width of [1440, 768, 390, 320]) {
             if (width <= 768) await page.getByRole('button', { name: '展开菜单' }).click();
             await page.getByRole('menuitem', { name: /账号资料/ }).click();
             await record(page, 1).waitFor();
+            assert.equal(await page.locator('#accountPerPageSelect').inputValue(), '100');
             assert.ok(page.url().endsWith('/admin/account-data'));
             assert.equal(await page.locator('iframe').count(), 0);
             const expected = [accounts[0].email, accounts[0].password, accounts[0].oauth_client_id, accounts[0].oauth_refresh_token].join('----');
@@ -238,6 +240,8 @@ for (const width of [1440, 768, 390, 320]) {
 test('cross-page selection copies complete lines and applying filters clears selection', async () => {
     const page = await newPage();
     try {
+        await page.locator('#accountPerPageSelect').selectOption('20');
+        await page.waitForFunction(() => !document.getElementById('accountPerPageSelect').disabled);
         await record(page, 1).getByRole('checkbox').check();
         await page.locator('.account-pagination').getByTitle('2', { exact: true }).click();
         await record(page, 21).waitFor();
@@ -273,7 +277,7 @@ test('creator, category, authentication and dates combine in the filter request'
         const request = page.waitForRequest(req => req.url().includes('/account-data?') && req.url().includes('owner=alice'));
         await page.getByRole('button', { name: /筛选/ }).click();
         const params = new URL((await request).url()).searchParams;
-        assert.deepEqual(Object.fromEntries(params), { page: '1', per_page: '20', search: 'account1@', owner: 'alice', group_id: '1', auth_type: 'oauth', account_status: 'normal', start_date: '2026-09-29', end_date: '2026-09-29' });
+        assert.deepEqual(Object.fromEntries(params), { page: '1', per_page: '100', search: 'account1@', owner: 'alice', group_id: '1', auth_type: 'oauth', account_status: 'normal', start_date: '2026-09-29', end_date: '2026-09-29' });
         await page.waitForFunction(() => document.querySelectorAll('.account-record').length === 1);
         await page.evaluate(() => window.AppI18n.setLanguage('en'));
         assert.equal(await page.getByRole('button', { name: /Copy selected/ }).count(), 1);
@@ -336,11 +340,25 @@ test('account records and detail dialogs remain readable across all palettes', a
         await page.route('**/admin/api/mailbox/account-data/1', route => route.fulfill({ json: { success: true, data: rows[0] } }));
         await page.getByRole('button', { name: /刷新/ }).click();
         await record(page, 1).locator('.account-deleted-tag').waitFor();
+        await page.locator('#accountPerPageSelect').selectOption('custom');
         for (const [key, label] of [['sunny','晴天'],['night','夜间'],['rain','雨夜'],['clay','暖陶橙'],['ocean','海洋蓝'],['emerald','翡翠绿'],['violet','紫罗兰'],['rose','玫瑰红']]) {
             await page.locator('.react-color-theme-button').click();
             await page.getByRole('menuitem', { name: new RegExp(label) }).click();
             await page.locator('.react-color-theme-dropdown').waitFor({ state: 'hidden' });
             await page.waitForFunction(key => document.documentElement.dataset.colorTheme === key, key);
+            const colors = await page.locator('.admin-page-size').evaluate(el => {
+                const probe = document.createElement('span');
+                probe.style.cssText = 'background:var(--surface);color:var(--text)';
+                el.append(probe);
+                const expected = getComputedStyle(probe);
+                const result = { expected: [expected.backgroundColor, expected.color], actual: [...el.querySelectorAll('select,input,button')].map(item => { const style = getComputedStyle(item); return [style.backgroundColor, style.color]; }) };
+                probe.remove(); return result;
+            });
+            colors.actual.forEach(color => assert.deepEqual(color, colors.expected, key));
+            if (process.env.PAGINATION_SCREENSHOT_DIR) {
+                fs.mkdirSync(process.env.PAGINATION_SCREENSHOT_DIR, { recursive: true });
+                await page.locator('.account-pagination').screenshot({ path: path.join(process.env.PAGINATION_SCREENSHOT_DIR, `account-pagination-${key}.png`) });
+            }
             failures.push(...(await contrastFailures(page, '.account-data-page')).map(item => ({ theme: key, ...item })));
             await record(page, 1).getByRole('button', { name: /详\s*情/ }).click();
             await page.getByRole('dialog').getByText('fixture-client-1', { exact: true }).waitFor();

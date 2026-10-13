@@ -66,6 +66,8 @@ for (const [name, selector, rowSelector, paginationSelector] of pages) {
             await page.addInitScript(() => localStorage.setItem('mailSystemLanguage', 'zh'));
             await page.goto(origin + '/admin/' + name);
             await page.locator(selector).waitFor();
+            assert.equal(await page.locator(selector).inputValue(), '100');
+            assert.equal(await page.locator(rowSelector).count(), 100);
             assert.deepEqual(await page.locator(`${selector} option`).evaluateAll(options => options.map(option => option.value)), [...sizes.map(String), 'custom']);
             for (const size of sizes) {
                 await page.locator(selector).selectOption(String(size));
@@ -98,6 +100,21 @@ for (const [name, selector, rowSelector, paginationSelector] of pages) {
                 fs.mkdirSync(process.env.PAGINATION_SCREENSHOT_DIR, { recursive: true });
                 await page.screenshot({ path: path.join(process.env.PAGINATION_SCREENSHOT_DIR, `${name}-320.png`) });
             }
+            for (const theme of ['sunny', 'night', 'rain']) {
+                await page.evaluate(theme => window.MailThemes.apply(theme), theme);
+                const colors = await control.evaluate(el => {
+                    const probe = document.createElement('span');
+                    probe.style.cssText = 'background:var(--surface);color:var(--text)';
+                    el.append(probe);
+                    const expected = getComputedStyle(probe);
+                    const result = { expected: [expected.backgroundColor, expected.color], actual: [...el.querySelectorAll('select,input,button')].map(item => { const style = getComputedStyle(item); return [style.backgroundColor, style.color]; }) };
+                    probe.remove(); return result;
+                });
+                colors.actual.forEach(color => assert.deepEqual(color, colors.expected, `${name}: ${theme}`));
+            }
+            await page.reload();
+            await page.locator(selector).waitFor();
+            assert.equal(await page.locator(selector).inputValue(), '100', 'Mobile also defaults to 100');
             assert.deepEqual(errors, []);
         } finally { await page.close(); }
     });
@@ -162,7 +179,9 @@ test('mail log refresh preserves a custom size draft', async () => {
         await page.locator('#mailLogPerPageSelect').selectOption('custom');
         const input = page.locator('.admin-page-size input');
         await input.fill('153');
-        await page.evaluate(() => loadMailLogs());
+        // Keep the refresh promise reachable while Chromium evaluates the updated list.
+        await page.evaluate(() => { window.paginationRefresh = loadMailLogs(); });
+        await page.waitForFunction(() => !isLoadingMailLogs);
         assert.equal(await input.inputValue(), '153');
         assert.equal(await input.isVisible(), true);
     } finally { await page.close(); }

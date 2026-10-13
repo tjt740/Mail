@@ -1162,7 +1162,7 @@
 
     // 全局变量
     let currentPage = 1;
-    let perPage = 100;
+    let perPage = AdminPagination.DEFAULT_PAGE_SIZE;
     let searchQuery = '';
     let totalPages = 1;
     let selectedProxies = new Set();
@@ -1170,8 +1170,8 @@
     // 当前代理类型和各类型独立分页/搜索状态
     let currentProxyType = 'http';
     const proxyStates = {
-        http: { page: 1, search: '', perPage: 100 },
-        socks5: { page: 1, search: '', perPage: 100 }
+        http: { page: 1, search: '', perPage },
+        socks5: { page: 1, search: '', perPage }
     };
 
     // 页面加载时初始化

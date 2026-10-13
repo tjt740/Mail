@@ -4194,7 +4194,7 @@
 
     // 全局变量
     let currentPage = 1;
-    let perPage = window.matchMedia('(max-width: 640px)').matches ? 20 : 100;
+    let perPage = AdminPagination.DEFAULT_PAGE_SIZE;
     let searchQuery = '';
     let ownerFilter = '';
     let testStatusFilter = new URLSearchParams(window.location.search).get('status') || '';

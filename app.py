@@ -4943,7 +4943,7 @@ def api_admin_mailbox():
         
         # 获取邮箱列表（支持分页和搜索）
         page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 30))
+        per_page = int(request.args.get('per_page', 100))
         search = request.args.get('search', '').strip()
         fast_mode = request.args.get('fast', '') == '1'
         select_columns = FAST_MAILBOX_COLUMNS if fast_mode else "*"
@@ -5124,7 +5124,7 @@ def api_account_data():
     db = get_db()
     try:
         page = max(1, int(request.args.get('page', '1')))
-        per_page = min(10000, max(1, int(request.args.get('per_page', '20'))))
+        per_page = min(10000, max(1, int(request.args.get('per_page', '100'))))
         start = request.args.get('start_date', '').strip()
         end = request.args.get('end_date', '').strip()
         start_date = datetime.strptime(start, '%Y-%m-%d') if start else None
@@ -7213,7 +7213,7 @@ def api_admin_proxies(proxy_type):
     if request.method == 'GET':
         # 获取代理列表（支持分页和搜索）
         page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 30))
+        per_page = int(request.args.get('per_page', 100))
         search = request.args.get('search', '').strip()
         fast_mode = request.args.get('fast', '0') == '1'  # 快速模式，跳过总数统计
         
@@ -8239,7 +8239,7 @@ def api_admin_cards():
     if request.method == 'GET':
         # 获取卡密列表（支持分页和搜索）
         page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 30))
+        per_page = int(request.args.get('per_page', 100))
         search = request.args.get('search', '').strip()
         
         offset = (page - 1) * per_page
@@ -10285,7 +10285,7 @@ def api_admin_card_logs():
         retention_days = apply_card_log_retention(db, db_type)
         
         page = max(1, safe_int(request.args.get('page', 1), 1))
-        per_page = max(1, safe_int(request.args.get('per_page', 30), 30))
+        per_page = max(1, safe_int(request.args.get('per_page', 100), 100))
         search = request.args.get('search', '').strip()
         offset = (page - 1) * per_page
         
@@ -10804,7 +10804,7 @@ def api_admin_mail_logs():
 
     try:
         page = max(safe_int(request.args.get('page', 1), 1), 1)
-        per_page = min(max(safe_int(request.args.get('per_page', 30), 30), 1), 10000)
+        per_page = min(max(safe_int(request.args.get('per_page', 100), 100), 1), 10000)
         search = request.args.get('search', '').strip()
         status_filter = request.args.get('status', '').strip()
         email_filters = request.args.get('email_filters', '').strip()

@@ -82,10 +82,10 @@ function groupPath(group, groups) {
 export default function AccountDataPage({ t }) {
   const { message } = App.useApp();
   const [draft, setDraft] = useState(INITIAL_FILTERS);
-  const [query, setQuery] = useState({ filters: INITIAL_FILTERS, page: 1, perPage: 20 });
+  const [query, setQuery] = useState({ filters: INITIAL_FILTERS, page: 1, perPage: window.AdminPagination.DEFAULT_PAGE_SIZE });
   const [revision, setRevision] = useState(0);
   const [rows, setRows] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, total: 0, per_page: 20 });
+  const [pagination, setPagination] = useState({ page: 1, total: 0, per_page: window.AdminPagination.DEFAULT_PAGE_SIZE });
   const [metadata, setMetadata] = useState({ owners: [], groups: [] });
   const [metadataError, setMetadataError] = useState('');
   const [loading, setLoading] = useState(true);

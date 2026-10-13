@@ -6,7 +6,8 @@
     gap: 8px;
     max-width: 100%;
     min-width: 0;
-    font-size: 13px;
+    color: var(--text-muted);
+    font-size: 14px;
 }
 .admin-page-size-custom[hidden] { display: none; }
 .admin-page-size label { white-space: nowrap; }
@@ -15,22 +16,43 @@
 .admin-page-size button {
     box-sizing: border-box;
     width: auto;
-    min-height: 34px;
+    height: 32px;
     margin: 0;
-    padding: 6px 10px;
-    border: 1px solid var(--border-color, #d9d9d9);
-    border-radius: 6px;
-    background: var(--surface-1, var(--app-surface, #fff));
-    color: var(--text-primary, var(--app-text, #333));
+    padding: 4px 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background-color: var(--surface);
+    color: var(--text);
     font: inherit;
+    line-height: 22px;
+    transition: border-color .16s, box-shadow .16s, background-color .16s;
 }
-.admin-page-size input { width: 100px; }
+.admin-page-size select {
+    appearance: none;
+    min-width: 90px;
+    padding-right: 30px;
+    background-image: var(--select-arrow);
+    background-repeat: no-repeat;
+    background-size: 14px;
+    background-position: right 10px center;
+}
+.admin-page-size input { width: 90px; appearance: textfield; -moz-appearance: textfield; }
+.admin-page-size input::-webkit-inner-spin-button,
+.admin-page-size input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .admin-page-size select,
 .admin-page-size button { cursor: pointer; }
-.admin-page-size :disabled { cursor: not-allowed; opacity: .6; }
-.admin-page-size :focus-visible {
-    outline: 2px solid var(--primary-color, var(--app-primary, #c96442));
-    outline-offset: 2px;
+.admin-page-size :is(select, input, button):enabled:hover { border-color: var(--primary-color); }
+.admin-page-size button:enabled:hover { color: var(--primary-color); }
+.admin-page-size :is(select, input, button):focus-visible {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-ring);
+}
+.admin-page-size :disabled {
+    cursor: not-allowed;
+    color: var(--text-muted);
+    background-color: var(--surface-2);
+    opacity: .6;
 }
 @media (max-width: 640px) {
     body .pagination.admin-list-pagination {
@@ -40,5 +62,8 @@
     body .pagination.admin-list-pagination > * { max-width: 100%; }
     .admin-page-size select,
     .admin-page-size input,
-    .admin-page-size button { min-height: 40px; }
+    .admin-page-size button { height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .admin-page-size :is(select, input, button) { transition: none; }
 }

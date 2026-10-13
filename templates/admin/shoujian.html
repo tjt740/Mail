@@ -1748,7 +1748,7 @@
     let currentMailLogs = [];
     let expandedMailLogGroups = new Set();
     let hasInitializedLogGroups = false;
-    let logsPerPage = 20;
+    let logsPerPage = AdminPagination.DEFAULT_PAGE_SIZE;
     const LOG_REFRESH_INTERVAL_MS = 15000;
     let isLoadingMailLogs = false;
     let mailLogsAbortController = null;

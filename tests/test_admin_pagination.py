@@ -40,6 +40,9 @@ class AdminPaginationTests(unittest.TestCase):
 
     def test_all_admin_lists_honor_presets_and_custom_sizes(self):
         for endpoint in ('mailbox', 'mailbox/account-data', 'proxies/http', 'proxies/socks5', 'cards', 'card-logs', 'mail-logs'):
+            default = self.client.get(f'/admin/api/{endpoint}').get_json()
+            self.assertEqual(default['pagination']['per_page'], 100, endpoint)
+            self.assertEqual(len(default['data']), 100, endpoint)
             for size in (20, 50, 100, 200, 500, 1000, 137, 1101, 10000):
                 with self.subTest(endpoint=endpoint, size=size):
                     first = self.fetch_page(endpoint, size)
