@@ -250,6 +250,7 @@
             bg: p.background, surface: `color-mix(in srgb, ${p.surface} 92%, transparent)`,
             inner: p.surface2, input: p.surface, text: p.text, muted: p.muted, border: p.border,
             accent: p.primary, secondary: p.secondary, 'on-accent': p.dark ? '#102130' : '#ffffff',
+            companion: p.companion, highlight: p.highlight,
             success: p.mint, danger: p.coral, warning: p.gold, soft: p.soft,
             overlay: `color-mix(in srgb, ${p.surface2} 96%, transparent)`,
             backdrop: p.dark ? 'rgba(2,8,21,.80)' : 'rgba(17,36,63,.55)'

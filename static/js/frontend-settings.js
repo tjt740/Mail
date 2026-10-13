@@ -58,6 +58,8 @@
             const palette = window.MailThemes.get(theme.key);
             option.style.setProperty('--option-preview', palette.hero);
             option.style.setProperty('--option-surface', palette.surface);
+            option.style.setProperty('--option-companion', palette.companion);
+            option.style.setProperty('--option-highlight', palette.highlight);
             option.innerHTML = '<span class="frontend-theme-preview" aria-hidden="true"></span><span class="frontend-settings-name"></span><span class="frontend-settings-check" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m3.5 8 3 3 6-6"/></svg></span>';
             option.querySelector('.frontend-settings-name').textContent = theme.name;
             option.addEventListener('click', () => select(() => window.AppColorTheme.setTheme(theme.key), 'theme'));

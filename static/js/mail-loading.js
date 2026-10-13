@@ -26,7 +26,7 @@
         ctx.arcTo(x, y, x + w, y, radius);
         ctx.closePath();
     }
-    function envelope(angle, opacity, ghost = false) {
+    function envelope(angle, opacity, ghost = false, tone = palette.primary) {
         const depth = Math.cos(angle), scale = .82 + (depth + 1) * .1;
         ctx.save();
         ctx.globalAlpha = opacity;
@@ -35,14 +35,14 @@
         ctx.scale(scale, scale);
         // The narrow edge and the offset spine make the turn read as a solid object.
         ctx.scale(.24 + Math.abs(depth) * .76, 1);
-        ctx.fillStyle = palette.secondary;
+        ctx.fillStyle = tone;
         roundedRect(-33 + Math.sin(angle) * 5, -25, 66, 50, 10);
         ctx.fill();
         const surface = ctx.createLinearGradient(-33, -25, 33, 25);
-        surface.addColorStop(0, palette.primary);
-        surface.addColorStop(1, palette.secondary);
+        surface.addColorStop(0, tone);
+        surface.addColorStop(1, palette.primary);
         ctx.fillStyle = surface;
-        if (!ghost) { ctx.shadowColor = palette.primary + '30'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6; }
+        if (!ghost) { ctx.shadowColor = tone + '30'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6; }
         roundedRect(-33, -25, 66, 50, 10);
         ctx.fill();
         ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
@@ -67,17 +67,19 @@
         const scale = Math.min(width / 320, height / 140);
         ctx.translate((width - 320 * scale) / 2, (height - 140 * scale) / 2);
         ctx.scale(scale, scale);
-        const angles = [0, 1, 2].map(index => time * 1.7 + index * Math.PI * 2 / 3 - .35);
+        const angles = [palette.primary, palette.companion, palette.highlight].map((tone, index) => ({
+            angle: time * 1.7 + index * Math.PI * 2 / 3 - .35, tone
+        }));
         if (!reduced.matches) {
             // Render short, translucent trails rather than accumulating old frames.
             ctx.filter = 'blur(3px)';
             for (let sample = 4; sample >= 1; sample--) {
-                angles.forEach(angle => envelope(angle - sample * .11, .035 + (4 - sample) * .022, true));
+                angles.forEach(({angle, tone}) => envelope(angle - sample * .11, .035 + (4 - sample) * .022, true, tone));
             }
             ctx.filter = 'none';
         }
-        angles.sort((a, b) => Math.cos(a) - Math.cos(b));
-        angles.forEach(angle => envelope(angle, .72 + (Math.cos(angle) + 1) * .14));
+        angles.sort((a, b) => Math.cos(a.angle) - Math.cos(b.angle));
+        angles.forEach(({angle, tone}) => envelope(angle, .72 + (Math.cos(angle) + 1) * .14, false, tone));
         ctx.restore();
     }
     function resize() {

@@ -8,6 +8,8 @@ body.frontend-mail-page {
     --scene-muted: #52647c;
     --scene-border: rgba(113, 139, 175, .2);
     --scene-accent: #275fa7;
+    --scene-companion: #126b52;
+    --scene-highlight: #875807;
     --scene-secondary: #3667a5;
     --scene-on-accent: #fff;
     --scene-success: #17694a;
@@ -107,7 +109,7 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
 :root[data-color-theme] .scene-hero :is(.scene-eyebrow, .scene-description) { color: color-mix(in srgb, var(--scene-hero-text) 90%, var(--scene-bg)); }
 .scene-copy { position: relative; z-index: 2; max-width: 70%; }
 .scene-eyebrow { display: flex; align-items: center; gap: 8px; color: var(--scene-muted); font-size: 11px; letter-spacing: .16em; margin: 0 0 12px; }
-.scene-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--scene-accent); box-shadow: 0 0 0 4px var(--scene-soft); }
+.scene-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--scene-companion); box-shadow: 0 0 0 4px color-mix(in srgb, var(--scene-companion) 10%, transparent); }
 .scene-copy h2 { margin: 0; color: var(--scene-text); font-size: clamp(21px, 2.2vw, 32px); font-weight: 650; line-height: 1.35; letter-spacing: -.035em; }
 .scene-description { margin: 10px 0 18px; font-size: 13px; color: var(--scene-muted); }
 .scene-controls {
@@ -131,22 +133,25 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
 }
 .scene-controls button:active { transform: scale(.95); }
 .scene-controls button:focus-visible { outline: 2px solid var(--scene-accent); outline-offset: 2px; }
+.scene-controls [data-scene="day"] [aria-hidden] { color: var(--accent-gold); }
+.scene-controls [data-scene="night"] [aria-hidden] { color: var(--accent-violet); }
+.scene-controls [data-scene="rain"] [aria-hidden] { color: var(--accent-cyan); }
 
 /* True CSS perspective with independently layered paper, envelope and seal. */
 .scene-art {
-    --envelope-back: color-mix(in srgb, var(--app-primary) 78%, var(--app-secondary));
+    --envelope-back: color-mix(in srgb, var(--scene-accent) 65%, var(--scene-companion));
     --envelope-fold-left: color-mix(in srgb, var(--app-primary) 32%, white);
-    --envelope-fold-right: color-mix(in srgb, var(--app-primary) 17%, white);
+    --envelope-fold-right: color-mix(in srgb, var(--scene-companion) 24%, white);
     --envelope-flap: color-mix(in srgb, var(--app-primary) 60%, white);
     --envelope-base: color-mix(in srgb, var(--app-primary) 40%, white);
-    --envelope-paper: color-mix(in srgb, var(--app-primary) 2%, white);
-    --envelope-paper-bottom: color-mix(in srgb, var(--app-primary) 9%, white);
+    --envelope-paper: color-mix(in srgb, var(--scene-highlight) 3%, white);
+    --envelope-paper-bottom: color-mix(in srgb, var(--scene-highlight) 11%, white);
     --envelope-line: color-mix(in srgb, var(--app-primary) 28%, white);
-    --envelope-line-strong: color-mix(in srgb, var(--app-primary) 58%, white);
+    --envelope-line-strong: color-mix(in srgb, var(--scene-highlight) 58%, white);
     --envelope-edge: color-mix(in srgb, var(--app-primary) 12%, white);
-    --envelope-seal: color-mix(in srgb, var(--app-primary) 3%, white);
-    --envelope-seal-bottom: color-mix(in srgb, var(--app-primary) 18%, white);
-    --envelope-seal-ink: var(--app-primary);
+    --envelope-seal: color-mix(in srgb, var(--scene-highlight) 8%, white);
+    --envelope-seal-bottom: color-mix(in srgb, var(--scene-highlight) 28%, white);
+    --envelope-seal-ink: var(--scene-highlight);
     --envelope-shadow: color-mix(in srgb, var(--app-primary) 23%, transparent);
     --envelope-glow: color-mix(in srgb, var(--app-primary) 16%, transparent);
     --envelope-finish: linear-gradient(125deg, #ffffff24, transparent 48%, #ffffff0a);
@@ -162,20 +167,20 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
     --envelope-shadow: #47799930; --envelope-glow: #ffdf9145;
 }
 :root[data-color-theme="night"] .scene-art {
-    --envelope-back: #292c57; --envelope-fold-left: #555f99; --envelope-fold-right: #7574aa;
-    --envelope-flap: #424979; --envelope-base: #505887;
-    --envelope-paper: #dce4f5; --envelope-paper-bottom: #aebcdb;
-    --envelope-line: #99a8cb; --envelope-line-strong: #747eaa; --envelope-edge: #aeb7e0;
-    --envelope-seal: #e5e0fc; --envelope-seal-bottom: #ada8df; --envelope-seal-ink: #3a3b6d;
+    --envelope-back: #293c59; --envelope-fold-left: #626ca4; --envelope-fold-right: #72a6b7;
+    --envelope-flap: #536995; --envelope-base: #505887;
+    --envelope-paper: #f2eadd; --envelope-paper-bottom: #cbd8e8;
+    --envelope-line: #99a8cb; --envelope-line-strong: #ba9e66; --envelope-edge: #aeb7e0;
+    --envelope-seal: #faebc6; --envelope-seal-bottom: #dcbe80; --envelope-seal-ink: #674e28;
     --envelope-shadow: #050b2b66; --envelope-glow: #bba6ff38;
     --envelope-finish: radial-gradient(circle at 19% 30%, #e9e8ff99 0 .7px, transparent 1.5px), radial-gradient(circle at 84% 68%, #e9e8ff77 0 .6px, transparent 1.4px), linear-gradient(115deg, #d6d6ff25, transparent 38%, #c5b5ff0c);
 }
 :root[data-color-theme="rain"] .scene-art {
-    --envelope-back: #152c43; --envelope-fold-left: #2b596e; --envelope-fold-right: #3c7482;
+    --envelope-back: #25324c; --envelope-fold-left: #2b596e; --envelope-fold-right: #696789;
     --envelope-flap: #24445c; --envelope-base: #285169;
     --envelope-paper: #c5dbe0; --envelope-paper-bottom: #8eabba;
     --envelope-line: #839eae; --envelope-line-strong: #527689; --envelope-edge: #7bb9c3;
-    --envelope-seal: #d6f2ee; --envelope-seal-bottom: #84bacb; --envelope-seal-ink: #1c4d5b;
+    --envelope-seal: #efd6e2; --envelope-seal-bottom: #ba9fbd; --envelope-seal-ink: #503249;
     --envelope-shadow: #03152477; --envelope-glow: #79d9ea33;
     --envelope-finish: radial-gradient(ellipse 2px 3.5px at 20% 26%, #ecffff99 12%, #adcfd244 45%, #0b2e4955 75%, transparent 100%), radial-gradient(ellipse 1.5px 3px at 82% 63%, #ecffff77 12%, #adcfd233 45%, #0b2e4944 75%, transparent 100%), radial-gradient(ellipse 1px 2px at 31% 75%, #ecffff88 12%, transparent 100%), linear-gradient(118deg, transparent 20%, #c3ffff18 40%, transparent 60%);
 }
@@ -215,6 +220,8 @@ body.frontend-mail-page #frontendApp .frontend-subtitle { color: var(--scene-mut
 .scene-satellite { position: absolute; color: var(--scene-accent); animation: scene-float 5s ease-in-out infinite reverse; }
 .scene-satellite-one { top: 20px; right: 15px; font-size: 22px; }
 .scene-satellite-two { bottom: 24px; left: 16px; font-size: 30px; animation-delay: -2s; }
+body.frontend-mail-page #frontendApp .scene-hero .scene-satellite-one { color: var(--scene-highlight); }
+body.frontend-mail-page #frontendApp .scene-hero .scene-satellite-two { color: var(--scene-companion); }
 @keyframes scene-float { 0%,100% { transform: translate3d(0, 0, 0) rotateZ(0); } 50% { transform: translate3d(0, -10px, 8px) rotateZ(3deg); } }
 @keyframes scene-shadow { 0%,100% { transform: scale(1); opacity: .15; } 50% { transform: scale(.8); opacity: .09; } }
 

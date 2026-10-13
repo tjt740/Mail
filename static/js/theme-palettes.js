@@ -1,5 +1,10 @@
 /* Shared by the React shell and embedded pages, including storage-free sessions. */
 (function () {
+    const accentPairs = {
+        sunny: ['mint', 'gold'], night: ['cyan', 'gold'], rain: ['violet', 'coral'],
+        clay: ['cyan', 'gold'], ocean: ['mint', 'coral'], emerald: ['violet', 'gold'],
+        violet: ['mint', 'coral'], rose: ['cyan', 'gold']
+    };
     const themes = [
         { key: 'sunny', name: '晴天', description: '天蓝 · 杏黄 · 薄荷绿', primary: '#1f62a9', secondary: '#1c619c', soft: '#dceffa', background: '#eff6fb', surface: '#ffffff', surface2: '#f5f9fd', surface3: '#e6f0f8', text: '#20344c', muted: '#4c5d70', border: '#d5e3ef', cyan: '#006881', mint: '#126b52', gold: '#875807', violet: '#62429f', coral: '#a14856', hero: 'linear-gradient(115deg, #e0f3ff 0%, #c9e8fc 48%, #e6efde 78%, #ffe8af 100%)', heroText: '#193d63', dark: false },
         { key: 'night', name: '夜间', description: '深蓝 · 星紫 · 月光金', primary: '#a3afff', secondary: '#c3a6fa', soft: '#2e3457', background: '#0c1223', surface: '#171f35', surface2: '#1d2740', surface3: '#29344f', text: '#e7edff', muted: '#a5b4d2', border: '#34415e', cyan: '#6fd8ef', mint: '#72deb9', gold: '#f4ce83', violet: '#bfabff', coral: '#f7a0b5', hero: 'radial-gradient(ellipse at 78% 20%, #51417a 0%, transparent 60%), linear-gradient(115deg, #182442, #242c57 62%, #383666)', heroText: '#edf0ff', dark: true },
@@ -10,6 +15,11 @@
         { key: 'violet', name: '紫罗兰', primary: '#6630c2', secondary: '#6D28D9', soft: '#EDE9FE', background: '#f5effc', surface2: '#f9f4ff', surface3: '#ede2fa', border: '#e0d1f0', cyan: '#1e627d', mint: '#1b6658', gold: '#7d540d', violet: '#6336a1', coral: '#9b3d6b', hero: 'linear-gradient(120deg, #e5d3fc, #f3dcef 42%, #e0e7ff 74%, #d8f3eb)', heroText: '#573a7b' },
         { key: 'rose', name: '玫瑰红', primary: '#b8183b', secondary: '#BE123C', soft: '#FFE4E6', background: '#fff1f5', surface2: '#fff6f8', surface3: '#fae3eb', border: '#efd0dc', cyan: '#1e6379', mint: '#1d6b54', gold: '#7d520f', violet: '#704399', coral: '#9e3355', hero: 'linear-gradient(120deg, #ffd7e3, #ffe4d6 42%, #eedcfa 74%, #dcebf9)', heroText: '#78384e' }
     ].map(value => ({ surface: '#fff', surface2: '#f8fafc', surface3: '#edf1f6', text: '#263548', muted: '#526176', border: '#dce3eb', cyan: '#007f9d', mint: '#168364', gold: '#a56b08', violet: '#7851c2', coral: '#c45869', hero: 'linear-gradient(115deg, #e4effe, #dcf3ed 60%, #fff0cf)', heroText: '#243d56', dark: false, ...value }));
+    themes.forEach(palette => {
+        const [companion, highlight] = accentPairs[palette.key];
+        palette.companion = palette[companion];
+        palette.highlight = palette[highlight];
+    });
     const get = key => themes.find(item => item.key === key) || themes[0];
     function apply(key) {
         const p = get(key), root = document.documentElement;
