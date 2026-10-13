@@ -22,7 +22,7 @@
 .account-credential-line { margin: 14px 0; padding: 12px; border-radius: 6px; background: #f7f7f5; white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 120px; font: 13px/1.7 ui-monospace, SFMono-Regular, Consolas, monospace; }
 .account-record-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; color: #726c61; font-size: 12px; }
 .account-record-meta > span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-.account-pagination { margin-top: 24px; justify-content: flex-end; flex-wrap: wrap; }
+.account-pagination { display: flex; align-items: center; gap: 12px; margin-top: 24px; justify-content: flex-end; flex-wrap: wrap; }
 .account-detail-modal .ant-modal-body { max-height: 70vh; overflow: auto; }
 .account-detail-modal .ant-descriptions { margin-top: 22px; }
 .account-detail-modal .ant-descriptions-item-label { width: 170px; }

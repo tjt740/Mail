@@ -690,10 +690,12 @@
     });
 
     let logPage = 1;
-    let logPerPage = 150;
+    let logPerPage = 20;
     let logSearch = '';
+    let logRequestId = 0;
 
     async function loadCardLogs(page = 1) {
+        const requestId = ++logRequestId;
         logPage = page;
         try {
             const params = new URLSearchParams({
@@ -703,6 +705,7 @@
             });
             const response = await fetch(`/admin/api/card-logs?${params}`);
             const data = await response.json();
+            if (requestId !== logRequestId) return;
             if (data.success) {
                 renderCardLogs(data.data);
                 renderLogPagination(data.pagination);
@@ -713,6 +716,7 @@
                 showToast(data.message || '加载卡密日志失败', 'error');
             }
         } catch (error) {
+            if (requestId !== logRequestId) return;
             console.error('加载卡密日志失败:', error);
             showToast('网络错误，请稍后重试', 'error');
         }
@@ -749,15 +753,7 @@
         }
         
         let html = `<div class="pagination-info">共 ${pagination.total} 条记录，第 ${pagination.page} 页，共 ${pagination.pages} 页</div>`;
-        html += `<div class="page-size-control">
-            <label for="logPerPageSelect">每页</label>
-            <select id="logPerPageSelect" onchange="changeLogPerPage()">
-                <option value="150" ${logPerPage === 150 ? 'selected' : ''}>150条</option>
-                <option value="200" ${logPerPage === 200 ? 'selected' : ''}>200条</option>
-                <option value="250" ${logPerPage === 250 ? 'selected' : ''}>250条</option>
-                <option value="300" ${logPerPage === 300 ? 'selected' : ''}>300条</option>
-            </select>
-        </div>`;
+        html += `<div id="pageSizeControl"></div>`;
         
         if (pagination.pages > 1) {
             html += '<div class="pagination-buttons">';
@@ -796,11 +792,13 @@
         }
         
         container.innerHTML = html;
+        AdminPagination.mountSizeControl(document.getElementById('pageSizeControl'), {
+            id: 'logPerPageSelect', value: logPerPage, onChange: changeLogPerPage
+        });
     }
 
-    function changeLogPerPage() {
-        const select = document.getElementById('logPerPageSelect');
-        logPerPage = parseInt(select.value, 10) || 150;
+    function changeLogPerPage(size) {
+        logPerPage = size;
         loadCardLogs(1);
     }
 

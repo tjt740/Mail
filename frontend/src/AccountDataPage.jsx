@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import 'dayjs/locale/vi';
 import AdminOwnerTag from './AdminOwnerTag.jsx';
+import PageSizeControl from './PageSizeControl.jsx';
 import './account-data.css';
 
 const INITIAL_FILTERS = { search: '', owner: undefined, group_id: undefined, auth_type: undefined, account_status: 'normal', start_date: '', end_date: '' };
@@ -269,7 +270,10 @@ export default function AccountDataPage({ t }) {
             <div className="account-record-meta"><span>{t('创建人')}：<AdminOwnerTag owner={row.created_by_admin} t={t} /></span><span>{t('添加时间')}：{dateText(row.created_at)}</span><span>{t('分类')}：{row.groups.length ? row.groups.map(group => <Tag key={group.id}><span translate="no">{group.name}</span></Tag>) : t('未分组')}</span></div>
           </article>)}
         </div></Spin>}
-      <Pagination className="account-pagination" current={pagination.page} pageSize={query.perPage} total={pagination.total} disabled={loading} showSizeChanger pageSizeOptions={[20, 50, 100]} onChange={(page, perPage) => setQuery(previous => ({ ...previous, page: perPage === previous.perPage ? page : 1, perPage }))} />
+      <div className="account-pagination">
+        <PageSizeControl value={query.perPage} disabled={loading} onChange={perPage => setQuery(previous => ({ ...previous, page: 1, perPage }))} />
+        <Pagination current={pagination.page} pageSize={query.perPage} total={pagination.total} disabled={loading} showSizeChanger={false} onChange={page => setQuery(previous => ({ ...previous, page }))} />
+      </div>
     </Card>
 
     <Modal title={t('邮箱详情')} open={detailId !== null} onCancel={() => setDetailId(null)} footer={<Button onClick={() => setDetailId(null)}>{t('关闭')}</Button>} width={840} destroyOnHidden className="account-detail-modal">

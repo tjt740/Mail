@@ -1344,26 +1344,48 @@
     
     // ========== 统一代理管理功能 ==========
     
-    // 加载所有代理列表（HTTP + SOCKS5）
+    let proxiesLoadController = null;
+
+    async function loadProxyType(type, search, signal) {
+        const proxies = [];
+        let page = 1;
+        let pages = 1;
+        do {
+            const params = new URLSearchParams({ page, per_page: 1000, search });
+            const response = await fetch(`/admin/api/proxies/${type}?${params}`, { signal });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || '加载代理列表失败');
+            proxies.push(...data.data.map(proxy => ({ ...proxy, proxy_type: type.toUpperCase() })));
+            pages = data.pagination?.pages || 1;
+            page += 1;
+        } while (page <= pages);
+        return proxies;
+    }
+
+    function renderProxyPage(page = currentPage) {
+        currentPage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(allProxies.length / perPage)));
+        renderUnifiedProxyTable();
+        renderUnifiedPagination();
+    }
+
+    // 加载完整的 HTTP / SOCKS5 数据，再对合并后的列表分页。
     async function loadAllProxies(page = null, search = null) {
+        proxiesLoadController?.abort();
+        const controller = new AbortController();
+        proxiesLoadController = controller;
         try {
             if (page !== null) currentPage = page;
             if (search !== null) searchQuery = search;
             
-            // 并行加载HTTP和SOCKS5代理 - 减少每页数量以提升加载速度
-            const [httpResponse, socks5Response] = await Promise.all([
-                fetch(`/admin/api/proxies/http?page=1&per_page=100&search=${searchQuery}`),
-                fetch(`/admin/api/proxies/socks5?page=1&per_page=100&search=${searchQuery}`)
+            const [httpProxies, socks5Proxies] = await Promise.all([
+                loadProxyType('http', searchQuery, controller.signal),
+                loadProxyType('socks5', searchQuery, controller.signal)
             ]);
-            
-            const httpData = await httpResponse.json();
-            const socks5Data = await socks5Response.json();
-            
-            if (httpData.success && socks5Data.success) {
+            if (!controller.signal.aborted) {
                 // 合并代理数据，添加类型标识
                 allProxies = [
-                    ...httpData.data.map(proxy => ({ ...proxy, proxy_type: 'HTTP' })),
-                    ...socks5Data.data.map(proxy => ({ ...proxy, proxy_type: 'SOCKS5' }))
+                    ...httpProxies,
+                    ...socks5Proxies
                 ];
                 
                 // 按unified_id排序，确保显示顺序为1-2-3-4而不是1-3-2-4
@@ -1374,12 +1396,10 @@
                     return aId - bId;
                 });
                 
-                renderUnifiedProxyTable();
-                renderUnifiedPagination();
-            } else {
-                showToast('加载代理列表失败', 'error');
+                renderProxyPage();
             }
         } catch (error) {
+            if (error.name === 'AbortError') return;
             console.error('加载代理列表失败:', error);
             showToast('网络错误，请稍后重试', 'error');
         }
@@ -1440,25 +1460,17 @@
     function renderUnifiedPagination() {
         const container = document.getElementById('proxyPaginationContainer');
         const total = allProxies.length;
-        totalPages = Math.ceil(total / perPage);
+        totalPages = Math.max(1, Math.ceil(total / perPage));
         
         let html = `<div class="pagination-info">共 ${total} 条记录，第 ${currentPage} 页，共 ${totalPages} 页</div>`;
-        html += `<div class="page-size-control">
-            <label for="proxyPerPageSelect">每页</label>
-            <select id="proxyPerPageSelect" onchange="changePerPage()">
-                <option value="100" ${perPage === 100 ? 'selected' : ''}>100条</option>
-                <option value="150" ${perPage === 150 ? 'selected' : ''}>150条</option>
-                <option value="200" ${perPage === 200 ? 'selected' : ''}>200条</option>
-                <option value="300" ${perPage === 300 ? 'selected' : ''}>300条</option>
-            </select>
-        </div>`;
+        html += `<div id="pageSizeControl"></div>`;
         
         if (totalPages > 1) {
             html += '<div class="pagination-buttons">';
             
             // 上一页
             if (currentPage > 1) {
-                html += `<button class="page-btn" onclick="loadAllProxies(${currentPage - 1})">« 上一页</button>`;
+                html += `<button class="page-btn" onclick="renderProxyPage(${currentPage - 1})">« 上一页</button>`;
             }
             
             // 页码按钮
@@ -1466,7 +1478,7 @@
             let endPage = Math.min(totalPages, currentPage + 2);
             
             if (startPage > 1) {
-                html += `<button class="page-btn" onclick="loadAllProxies(1)">1</button>`;
+                html += `<button class="page-btn" onclick="renderProxyPage(1)">1</button>`;
                 if (startPage > 2) {
                     html += '<span class="page-ellipsis">...</span>';
                 }
@@ -1474,25 +1486,28 @@
             
             for (let i = startPage; i <= endPage; i++) {
                 const activeClass = i === currentPage ? 'active' : '';
-                html += `<button class="page-btn ${activeClass}" onclick="loadAllProxies(${i})">${i}</button>`;
+                html += `<button class="page-btn ${activeClass}" onclick="renderProxyPage(${i})">${i}</button>`;
             }
             
             if (endPage < totalPages) {
                 if (endPage < totalPages - 1) {
                     html += '<span class="page-ellipsis">...</span>';
                 }
-                html += `<button class="page-btn" onclick="loadAllProxies(${totalPages})">${totalPages}</button>`;
+                html += `<button class="page-btn" onclick="renderProxyPage(${totalPages})">${totalPages}</button>`;
             }
             
             // 下一页
             if (currentPage < totalPages) {
-                html += `<button class="page-btn" onclick="loadAllProxies(${currentPage + 1})">下一页 »</button>`;
+                html += `<button class="page-btn" onclick="renderProxyPage(${currentPage + 1})">下一页 »</button>`;
             }
             
             html += '</div>';
         }
         
         container.innerHTML = html;
+        AdminPagination.mountSizeControl(document.getElementById('pageSizeControl'), {
+            id: 'proxyPerPageSelect', value: perPage, onChange: changePerPage
+        });
     }
     
     // 加载代理列表
@@ -1586,15 +1601,7 @@
         totalPages[type] = pagination.pages;
         
         let html = `<div class="pagination-info">共 ${pagination.total} 条记录，第 ${pagination.page} 页，共 ${pagination.pages} 页</div>`;
-        html += `<div class="page-size-control">
-            <label for="proxyPerPageSelect">每页</label>
-            <select id="proxyPerPageSelect" onchange="changePerPage()">
-                <option value="100" ${proxyStates[type].perPage === 100 ? 'selected' : ''}>100条</option>
-                <option value="150" ${proxyStates[type].perPage === 150 ? 'selected' : ''}>150条</option>
-                <option value="200" ${proxyStates[type].perPage === 200 ? 'selected' : ''}>200条</option>
-                <option value="300" ${proxyStates[type].perPage === 300 ? 'selected' : ''}>300条</option>
-            </select>
-        </div>`;
+        html += `<div id="${type}PageSizeControl"></div>`;
         
         if (pagination.pages > 1) {
             html += '<div class="pagination-buttons">';
@@ -1636,6 +1643,10 @@
         }
         
         container.innerHTML = html;
+        AdminPagination.mountSizeControl(document.getElementById(`${type}PageSizeControl`), {
+            id: `${type}PerPageSelect`, value: proxyStates[type].perPage,
+            onChange: size => { proxyStates[type].perPage = size; loadProxies(type, 1); }
+        });
     }
     
     // 清除代理搜索
@@ -1651,13 +1662,11 @@
     }
     
     // 改变每页显示数量
-    function changePerPage() {
-        const select = document.getElementById('proxyPerPageSelect');
-        if (!select) return;
-        perPage = parseInt(select.value, 10);
+    function changePerPage(size) {
+        perPage = size;
         proxyStates.http.perPage = perPage;
         proxyStates.socks5.perPage = perPage;
-        loadAllProxies(1, searchQuery);
+        renderProxyPage(1);
     }
     
     // 显示添加代理模态框

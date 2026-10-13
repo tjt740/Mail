@@ -5208,17 +5208,7 @@
         totalPages = Math.max(1, Math.ceil(totalCount / perPage));
         
         let html = `<div class="pagination-info">共 ${totalCount} 条记录，第 ${page} 页，共 ${totalPages} 页</div>`;
-        html += `<div class="page-size-control">
-            <label for="perPageSelect">每页</label>
-            <select id="perPageSelect" onchange="changePerPage()">
-                <option value="20" ${perPage === 20 ? 'selected' : ''}>20条</option>
-                <option value="50" ${perPage === 50 ? 'selected' : ''}>50条</option>
-                <option value="100" ${perPage === 100 ? 'selected' : ''}>100条</option>
-                <option value="150" ${perPage === 150 ? 'selected' : ''}>150条</option>
-                <option value="200" ${perPage === 200 ? 'selected' : ''}>200条</option>
-                <option value="300" ${perPage === 300 ? 'selected' : ''}>300条</option>
-            </select>
-        </div>`;
+        html += `<div id="pageSizeControl"></div>`;
         
         if (totalPages > 1) {
             html += '<div class="pagination-buttons">';
@@ -5260,6 +5250,9 @@
         }
         
         container.innerHTML = html;
+        AdminPagination.mountSizeControl(document.getElementById('pageSizeControl'), {
+            id: 'perPageSelect', value: perPage, onChange: changePerPage
+        });
     }
 
     function getGroupById(id) {
@@ -6332,8 +6325,8 @@
     }
     
     // 改变每页显示数量
-    function changePerPage() {
-        perPage = parseInt(document.getElementById('perPageSelect').value, 10);
+    function changePerPage(size) {
+        perPage = size;
         renderMailboxView(1);
     }
 

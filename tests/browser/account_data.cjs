@@ -85,6 +85,36 @@ async function newPage(width = 1440, initialPath = '/admin/account-data') {
 }
 const record = (page, id) => page.locator(`[data-account-id="${id}"]`);
 
+test('account data sends preset and custom sizes, resets the page and retains filters and selection', async () => {
+    const page = await newPage(320);
+    try {
+        await record(page, 1).getByRole('checkbox').check();
+        for (const size of [20, 50, 100, 200, 500, 1000]) {
+            const request = page.waitForRequest(req => req.url().includes('/account-data?') && new URL(req.url()).searchParams.get('per_page') === String(size));
+            await page.locator('#accountPerPageSelect').selectOption(String(size));
+            const params = new URL((await request).url()).searchParams;
+            assert.equal(params.get('page'), '1');
+            assert.equal(params.get('account_status'), 'normal');
+            await page.waitForFunction(() => !document.getElementById('accountPerPageSelect').disabled);
+        }
+        const control = page.locator('.admin-page-size');
+        await page.locator('#accountPerPageSelect').selectOption('custom');
+        await control.getByRole('spinbutton').fill('7');
+        const changed = page.waitForRequest(req => req.url().includes('/account-data?') && new URL(req.url()).searchParams.get('per_page') === '7');
+        await control.getByRole('spinbutton').press('Enter');
+        assert.equal(new URL((await changed).url()).searchParams.get('page'), '1');
+        await page.waitForFunction(() => !document.getElementById('accountPerPageSelect').disabled);
+        assert.equal(await page.locator('.account-record').count(), 7);
+        assert.equal(await record(page, 1).getByRole('checkbox').isChecked(), true);
+        await page.locator('.account-pagination').getByTitle('2', { exact: true }).click();
+        await page.waitForFunction(() => !document.getElementById('accountPerPageSelect').disabled);
+        assert.equal(await control.getByRole('spinbutton').inputValue(), '7');
+        await page.locator('#accountPerPageSelect').selectOption('50');
+        await record(page, 1).waitFor();
+        assert.equal(await record(page, 1).getByRole('checkbox').isChecked(), true);
+    } finally { await page.close(); }
+});
+
 for (const width of [1440, 390, 320]) {
     test(`deleted account shows authentication, health and red struck-through deletion tag at ${width}px`, async () => {
         const page = await newPage(width);

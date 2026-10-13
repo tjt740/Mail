@@ -5124,7 +5124,7 @@ def api_account_data():
     db = get_db()
     try:
         page = max(1, int(request.args.get('page', '1')))
-        per_page = min(100, max(1, int(request.args.get('per_page', '20'))))
+        per_page = min(10000, max(1, int(request.args.get('per_page', '20'))))
         start = request.args.get('start_date', '').strip()
         end = request.args.get('end_date', '').strip()
         start_date = datetime.strptime(start, '%Y-%m-%d') if start else None
@@ -10804,7 +10804,7 @@ def api_admin_mail_logs():
 
     try:
         page = max(safe_int(request.args.get('page', 1), 1), 1)
-        per_page = min(max(safe_int(request.args.get('per_page', 30), 30), 1), 200)
+        per_page = min(max(safe_int(request.args.get('per_page', 30), 30), 1), 10000)
         search = request.args.get('search', '').strip()
         status_filter = request.args.get('status', '').strip()
         email_filters = request.args.get('email_filters', '').strip()

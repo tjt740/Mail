@@ -864,6 +864,10 @@
 
     // Shared by the React shell and legacy screens; keep locale dictionaries in sync.
     const sharedMessages = {
+        '自定义': ['Custom', 'Tùy chỉnh'],
+        '自定义每页条数': ['Custom rows per page', 'Số dòng tùy chỉnh mỗi trang'],
+        '请输入 1–10000 之间的整数': ['Enter a whole number from 1 to 10000', 'Nhập số nguyên từ 1 đến 10000'],
+        '应用': ['Apply', 'Áp dụng'],
         '导入格式说明': ['Import formats', 'Định dạng nhập'],
         '每行一个邮箱，也支持 JSON 数组、CSV/TSV 表头和分行字段。': ['One mailbox per line. JSON arrays, CSV/TSV headers and multiline fields are also supported.', 'Mỗi dòng một hộp thư. Hỗ trợ mảng JSON, tiêu đề CSV/TSV và trường nhiều dòng.'],
         '支持中英文逗号、分号、竖线、冒号、Tab、空格、JSON、key=value': ['Supports commas, semicolons, pipes, colons, tabs, spaces, JSON and key=value.', 'Hỗ trợ dấu phẩy, chấm phẩy, dấu gạch đứng, hai chấm, Tab, khoảng trắng, JSON và key=value.'],
@@ -1360,6 +1364,10 @@
 
     // Filipino translations are shared by the React shell and legacy pages.
     dictionary.fil = {
+        '自定义': 'Pasadya',
+        '自定义每页条数': 'Pasadyang bilang bawat pahina',
+        '请输入 1–10000 之间的整数': 'Maglagay ng buong bilang mula 1 hanggang 10000',
+        '应用': 'Ilapat',
         '导入格式说明': 'Mga format ng pag-import',
         '每行一个邮箱，也支持 JSON 数组、CSV/TSV 表头和分行字段。': 'Isang mailbox bawat linya. Sinusuportahan din ang JSON array, CSV/TSV header at mga field sa magkakahiwalay na linya.',
         '支持中英文逗号、分号、竖线、冒号、Tab、空格、JSON、key=value': 'Sinusuportahan ang kuwit, semicolon, pipe, colon, tab, espasyo, JSON at key=value.',

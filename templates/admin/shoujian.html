@@ -889,6 +889,7 @@
 
     .pagination {
         display: flex;
+        flex-wrap: wrap;
         justify-content: flex-end;
         align-items: center;
         gap: 10px;
@@ -1642,7 +1643,8 @@
                     </div>
                 </div>
 
-                <div class="pagination">
+                <div class="pagination admin-list-pagination">
+                    <div id="mailLogPageSizeControl"></div>
                     <button class="btn btn-secondary" type="button" id="prevPageBtn" onclick="changeMailLogPage(-1)">上一页</button>
                     <span id="paginationInfo">第 1 / 1 页</span>
                     <button class="btn btn-secondary" type="button" id="nextPageBtn" onclick="changeMailLogPage(1)">下一页</button>
@@ -1746,7 +1748,7 @@
     let currentMailLogs = [];
     let expandedMailLogGroups = new Set();
     let hasInitializedLogGroups = false;
-    const LOGS_PER_PAGE = 30;
+    let logsPerPage = 20;
     const LOG_REFRESH_INTERVAL_MS = 15000;
     let isLoadingMailLogs = false;
     let mailLogsAbortController = null;
@@ -2287,6 +2289,14 @@
         document.getElementById('paginationInfo').textContent = `共 ${totalEmails} 个邮箱，第 ${currentLogPage} / ${totalLogPages} 页`;
         document.getElementById('prevPageBtn').disabled = currentLogPage <= 1;
         document.getElementById('nextPageBtn').disabled = currentLogPage >= totalLogPages;
+        const sizeControl = document.getElementById('mailLogPageSizeControl');
+        // Background refreshes must not overwrite a custom size being typed.
+        if (!sizeControl.children.length) {
+            AdminPagination.mountSizeControl(sizeControl, {
+                id: 'mailLogPerPageSelect', value: logsPerPage,
+                onChange: size => { logsPerPage = size; loadMailLogs(1); }
+            });
+        }
     }
 
     function populateAdminFilter(options = []) {
@@ -2345,7 +2355,7 @@
 
         const params = new URLSearchParams({
             page: String(page),
-            per_page: String(LOGS_PER_PAGE)
+            per_page: String(logsPerPage)
         });
         const search = document.getElementById('logSearch')?.value.trim();
         const status = document.getElementById('statusFilter')?.value;

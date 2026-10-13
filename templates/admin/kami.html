@@ -1859,7 +1859,7 @@
 
     // 全局变量
     let currentPage = 1;
-    let perPage = 150;
+    let perPage = 20;
     let totalPages = 1;
     let selectedCards = new Set();
     let allCards = [];
@@ -1997,8 +1997,11 @@
             });
     }
 
+    let cardListRequestId = 0;
+
     // 加载卡密列表
     function loadCardList(page = 1) {
+        const requestId = ++cardListRequestId;
         currentPage = page;
         const searchTerm = document.getElementById('searchInput').value;
         
@@ -2011,6 +2014,7 @@
         fetch(`/admin/api/cards?${params}`)
             .then(response => response.json())
             .then(data => {
+                if (requestId !== cardListRequestId) return;
                 if (data.success) {
                     allCards = data.data;
                     filteredCards = allCards;
@@ -2022,6 +2026,7 @@
                 }
             })
             .catch(error => {
+                if (requestId !== cardListRequestId) return;
                 console.error('加载卡密列表失败:', error);
                 showToast('网络错误，请稍后重试', 'error');
             });
@@ -2221,15 +2226,7 @@
         totalPages = pagination.pages;
         
         let html = `<div class="pagination-info">共 ${pagination.total} 条记录，第 ${pagination.page} 页，共 ${pagination.pages} 页</div>`;
-        html += `<div class="page-size-control">
-            <label for="perPageSelect">每页</label>
-            <select id="perPageSelect" onchange="changePerPage()">
-                <option value="150" ${perPage === 150 ? 'selected' : ''}>150条</option>
-                <option value="200" ${perPage === 200 ? 'selected' : ''}>200条</option>
-                <option value="250" ${perPage === 250 ? 'selected' : ''}>250条</option>
-                <option value="300" ${perPage === 300 ? 'selected' : ''}>300条</option>
-            </select>
-        </div>`;
+        html += `<div id="pageSizeControl"></div>`;
         
         if (pagination.pages > 1) {
             html += '<div class="pagination-buttons">';
@@ -2271,6 +2268,9 @@
         }
         
         container.innerHTML = html;
+        AdminPagination.mountSizeControl(document.getElementById('pageSizeControl'), {
+            id: 'perPageSelect', value: perPage, onChange: changePerPage
+        });
     }
 
     // 搜索卡密
@@ -2285,10 +2285,8 @@
     }
 
     // 改变每页显示数量
-    function changePerPage() {
-        const select = document.getElementById('perPageSelect');
-        if (!select) return;
-        perPage = parseInt(select.value, 10);
+    function changePerPage(size) {
+        perPage = size;
         loadCardList(1);
     }
 
