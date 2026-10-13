@@ -3,6 +3,7 @@
 {% block title %}收件日志 - {{ system_title }}{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mail-content.css') }}">
 <style>
     * {
         margin: 0;
@@ -1143,7 +1144,8 @@
     }
 
     .detail-mail-body.has-frame {
-        display: flex;
+        flex: none;
+        overflow: hidden;
         padding: 0;
     }
 
@@ -1160,7 +1162,7 @@
         display: block;
         flex: 1;
         width: 100%;
-        min-height: 0;
+        height: 360px;
         border: 0;
         background: #fff;
     }
@@ -1662,6 +1664,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/mail-content.js') }}"></script>
 <script>
     const SIDEBAR_COLLAPSE_KEY = 'adminSidebarCollapsed';
     const ADMIN_MOBILE_BREAKPOINT = 1024;
@@ -2057,7 +2060,8 @@
                     ${renderMailDetailMeta('管理员', getLogAdmin(log))}
                 </div>
                 <div class="mail-detail-section-title">邮件正文</div>
-                <div class="detail-mail-body" id="detailMailBodyContent"></div>
+                <div class="detail-mail-body" id="detailMailBodyContent" translate="no"></div>
+                <div id="detailMailResources"></div>
                 ${log.error_message ? renderDetailRow('处理建议', getErrorAdvice(log.error_message)) : ''}
                 ${log.error_message ? renderDetailRow('错误详情', log.error_message, 'detail-error') : ''}
             </div>
@@ -2122,24 +2126,29 @@
         container.style.whiteSpace = '';
 
         const body = log.mail_body || '';
+        let renderedInlineImages = new Set();
         if (!body) {
             container.classList.add('is-empty');
             container.textContent = log.error_message
                 ? '这条是收取失败记录，没有实际邮件正文。请查看下方错误详情。'
                 : '这条记录没有保存正文。重新收取或轮询成功后，这里会显示实际邮件内容。';
-            return;
-        }
-
-        if ((log.mail_body_type || '').toLowerCase() === 'html') {
+        } else if ((log.mail_body_type || '').toLowerCase() === 'html') {
             container.classList.add('has-frame');
-            const frame = document.createElement('iframe');
-            frame.setAttribute('sandbox', '');
-            frame.srcdoc = body;
+            const frame = window.MailContent.createFrame(body, {
+                title: `邮件正文：${log.mail_subject || '无主题'}`,
+                autoResize: true,
+                images: log.mail_images || [],
+                attachments: log.mail_attachments || []
+            });
+            renderedInlineImages = frame.renderedInlineImages;
             container.appendChild(frame);
         } else {
             container.textContent = body;
             container.style.whiteSpace = 'pre-wrap';
         }
+        document.getElementById('detailMailResources')?.replaceChildren(window.MailContent.createResources({
+            images: log.mail_images || [], attachments: log.mail_attachments || [], renderedInlineImages
+        }));
     }
 
     function closeLogDetailModal() {

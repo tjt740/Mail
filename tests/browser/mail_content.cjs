@@ -38,13 +38,13 @@ from flask import Flask, render_template
 app = Flask(__name__, template_folder=sys.argv[1] + '/templates')
 app.jinja_env.globals['url_for'] = lambda name, **kw: '/static/' + kw['filename'] if name == 'static' else '/' + name
 with app.test_request_context('/admin/mailbox'):
-    print(json.dumps({name: render_template(name, embedded=True, admin_username='test', system_title='Mail', page_title='Mail') for name in ['admin/mailbox.html', 'frontend/index.html']}))
+    print(json.dumps({name: render_template(name, embedded=True, admin_username='test', system_title='Mail', page_title='Mail') for name in ['admin/mailbox.html', 'admin/shoujian.html', 'frontend/index.html']}))
 `, root], { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }));
     server = http.createServer((req, res) => {
         const pathname = new URL(req.url, 'http://localhost').pathname;
-        if (pathname === '/admin/mailbox' || pathname === '/') {
+        if (pathname === '/admin/mailbox' || pathname === '/admin/shoujian' || pathname === '/') {
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
-            return res.end(rendered[pathname === '/' ? 'frontend/index.html' : 'admin/mailbox.html']);
+            return res.end(rendered[pathname === '/' ? 'frontend/index.html' : `${pathname.slice(1)}.html`]);
         }
         if (pathname.startsWith('/static/')) {
             const file = path.resolve(root, '.' + pathname);
@@ -71,7 +71,7 @@ after(async () => {
 async function showMail(page, admin, html, type = 'html', images = [], attachments = []) {
     await page.evaluate(({ admin, html, type, images, attachments }) => {
         const mail = { id: 'fixture', subject: 'Account invitation', from: 'team@example.com', to: 'reader@example.com',
-            body: html, bodyType: type, body_type: type, date: '2026-09-23T08:00:00Z', receivedAt: '2026-09-23T08:00:00Z', folder: 'inbox' };
+            body: html, bodyType: type, body_type: type, images, attachments, date: '2026-09-23T08:00:00Z', receivedAt: '2026-09-23T08:00:00Z', folder: 'inbox' };
         if (admin) {
             document.getElementById('receiveModal').classList.add('show');
             document.getElementById('receiveMailboxLabel').textContent = 'reader@example.com';
@@ -164,11 +164,12 @@ test('HTML scripts, event handlers and navigation cannot escape the mail frame',
         const element = page.locator('.receive-content-frame');
         const frame = await (await element.elementHandle()).contentFrame();
         await frame.locator('#safe').waitFor();
-        assert.equal(await frame.locator('script, form, iframe, [onerror], meta[http-equiv="refresh"]').count(), 0);
+        assert.equal(await frame.locator('form, iframe, [onerror], meta[http-equiv="refresh"]').count(), 0);
+        assert.equal(await frame.locator('script').count(), 1, 'Only the trusted height measurement script remains');
         assert.equal(await frame.locator('#unsafe').getAttribute('href'), null);
         assert.equal(await frame.locator('#safe').getAttribute('target'), '_blank');
         assert.equal(await frame.locator('#safe').getAttribute('rel'), 'noopener noreferrer');
-        assert.equal(await element.getAttribute('sandbox'), 'allow-popups allow-popups-to-escape-sandbox');
+        assert.equal(await element.getAttribute('sandbox'), 'allow-popups allow-popups-to-escape-sandbox allow-scripts');
         assert.equal(await element.getAttribute('referrerpolicy'), 'no-referrer');
         assert.equal(await page.evaluate(() => window.mailCodeRan), undefined);
         assert.equal(page.url(), origin + '/admin/mailbox');
@@ -294,5 +295,86 @@ test('public auto-size bridge permits no mail scripts or forged resize messages'
         await page.evaluate(() => window.postMessage({ type: 'mail-content-height', id: document.querySelector('.mail-content-frame').dataset.mailContentId, height: 99999 }, '*'));
         await page.waitForTimeout(80);
         assert.equal(await element.evaluate(el => el.style.height), height, 'The sender window is validated in addition to the ID');
+    } finally { await page.close(); }
+});
+
+for (const logs of [false, true]) for (const width of [390, 1440]) {
+    test(`${logs ? 'log detail' : 'admin mailbox'} displays complete rich mail and attachments at ${width}px`, async () => {
+        const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="160"><rect width="640" height="160" fill="#527f96"/></svg>';
+        const images = [{ content_id: 'banner', filename: 'banner.svg', mime_type: 'image/svg+xml', content: Buffer.from(svg).toString('base64') }];
+        const attachments = [{ filename: 'report.txt', mime_type: 'text/plain', content: Buffer.from('Complete attachment contents').toString('base64') }];
+        const html = fixture.replace('</body>', `<img id="inline" src="cid:banner">${'<p>Long rich message with all content.</p>'.repeat(100)}<p id="end">Final paragraph</p></body>`);
+        try {
+            await page.goto(origin + (logs ? '/admin/shoujian' : '/admin/mailbox'));
+            if (logs) {
+                await page.evaluate(({ html, images, attachments }) => renderLogDetail({
+                    id: 1, mail_subject: 'Full message', mail_body_type: 'html', mail_body: html,
+                    mail_images: images, mail_attachments: attachments, status: 'received'
+                }), { html, images, attachments });
+            } else await showMail(page, true, html, 'html', images, attachments);
+            const element = page.locator(logs ? '#detailMailBodyContent iframe' : '.receive-content-frame');
+            const frame = await (await element.elementHandle()).contentFrame();
+            await frame.waitForFunction(() => document.getElementById('inline').naturalWidth === 640);
+            await page.waitForFunction(selector => parseInt(document.querySelector(selector).style.height) > 2000,
+                logs ? '#detailMailBodyContent iframe' : '.receive-content-frame');
+            await frame.waitForFunction(() => document.documentElement.scrollHeight <= innerHeight + 1);
+            assert.equal(await frame.locator('#end').innerText(), 'Final paragraph');
+            assert.equal(await frame.locator('.button a').getAttribute('href'), 'https://example.com/activate');
+            assert.equal(await frame.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(241, 238, 229)');
+            assert.equal(await page.locator('.mail-resources img').count(), 0, 'CID images appear once in the body');
+            assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+            const button = page.getByRole('button', { name: '下载 · report.txt' });
+            await button.scrollIntoViewIfNeeded();
+            const downloadPromise = page.waitForEvent('download');
+            await button.click();
+            const download = await downloadPromise;
+            assert.equal(download.suggestedFilename(), 'report.txt');
+            assert.equal(fs.readFileSync(await download.path(), 'utf8'), 'Complete attachment contents');
+            assert.ok(await page.locator(logs ? '.log-detail-close' : '.receive-back').isVisible());
+            if (process.env.MAIL_SCREENSHOT_DIR) {
+                fs.mkdirSync(process.env.MAIL_SCREENSHOT_DIR, { recursive: true });
+                await page.evaluate(logs => { document.getElementById(logs ? 'logDetailBody' : 'receiveDetailView').scrollTop = 0; }, logs);
+                await page.screenshot({ path: path.join(process.env.MAIL_SCREENSHOT_DIR, `${logs ? 'logs' : 'admin'}-rich-${width}.png`) });
+            }
+            if (logs) {
+                await page.evaluate(() => renderLogDetail({ id: 2, mail_body_type: 'text', mail_body: 'Literal <b>plain</b>\n  indentation' }));
+                assert.equal(await page.locator('#detailMailBodyContent').textContent(), 'Literal <b>plain</b>\n  indentation');
+                assert.equal(await page.locator('#detailMailBodyContent iframe, .mail-resources section').count(), 0);
+                assert.equal(await page.locator('#detailMailBodyContent').evaluate(el => getComputedStyle(el).whiteSpace), 'pre-wrap');
+            }
+            assert.deepEqual(errors, []);
+        } finally { await page.close(); }
+    });
+}
+
+test('refetch upgrades cached plain mail to HTML while retaining its ID', async () => {
+    const page = await browser.newPage();
+    try {
+        await page.goto(origin + '/admin/mailbox');
+        await page.waitForLoadState('networkidle');
+        await page.route('**/api/get_mail', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+            success: true, mails: [{ subject: 'Cached message', from: 'sender@example.com', date: '2026-10-13 08:00:00',
+                body_type: 'html', body: '<h2 id="full">Full HTML content</h2>' }]
+        }) }));
+        await page.evaluate(async () => {
+            mailboxData = [{ id: 1, email: 'reader@example.com' }];
+            receiveState.mailboxId = 1;
+            document.getElementById('receiveModal').classList.add('show');
+            saveReceiveStore({ 1: [{ id: 'original-id', subject: 'Cached message', from: 'sender@example.com',
+                receivedAt: '2026-10-13 08:00:00', bodyType: 'text', body: 'Old plain preview', folder: 'inbox' }] });
+            await fetchMailboxMails();
+        });
+        const mails = await page.evaluate(() => receiveState.mails);
+        assert.equal(mails.length, 1);
+        assert.equal(mails[0].id, 'original-id');
+        assert.equal(mails[0].bodyType, 'html');
+        await page.evaluate(() => openReceiveDetail('original-id'));
+        const frame = await (await page.locator('.receive-content-frame').elementHandle()).contentFrame();
+        assert.equal(await frame.locator('#full').innerText(), 'Full HTML content');
+        await page.reload();
+        assert.equal(await page.evaluate(() => loadReceiveStore()[1][0].bodyType), 'html');
     } finally { await page.close(); }
 });

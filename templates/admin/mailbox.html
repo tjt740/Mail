@@ -3,6 +3,7 @@
 {% block title %}邮箱管理 - {{ system_title }}{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mail-content.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-owner-tag.css') }}">
 <style>
     * {
@@ -2111,7 +2112,7 @@
         display: block;
         width: 100%;
         min-width: 0;
-        height: clamp(360px, 55vh, 640px);
+        height: 360px;
         border: 0;
         background: #fff;
     }
@@ -2779,26 +2780,6 @@
             min-height: 0;
         }
         
-        .receive-body {
-            grid-template-columns: 1fr;
-            height: min(720px, calc(90vh - 78px));
-            overflow: auto;
-        }
-
-        .receive-sidebar {
-            flex-direction: row;
-            flex-wrap: wrap;
-            align-self: auto;
-        }
-
-        .receive-tab {
-            flex: 1 1 45%;
-        }
-
-        .receive-sidebar .btn {
-            flex: 1 1 100%;
-        }
-
         .receive-meta {
             grid-template-columns: 1fr;
         }
@@ -3628,11 +3609,8 @@
                                 <h4 id="receiveDetailSubject">-</h4>
                                 <div class="receive-meta" id="receiveDetailMeta"></div>
                             </div>
-                            <div class="receive-detail-content" id="receiveDetailBody"><span class="receive-empty-placeholder">（无正文）</span></div>
-                            <div id="receiveDetailImages" class="receive-detail-images" style="display:none;">
-                                <div class="receive-detail-images-title"><span class="anticon"><svg aria-hidden="true"><use href="#ai-camera"></use></svg></span> 图片</div>
-                                <div id="receiveDetailImageContainer" class="receive-detail-image-grid"></div>
-                            </div>
+                            <div class="receive-detail-content" id="receiveDetailBody" translate="no"><span class="receive-empty-placeholder">（无正文）</span></div>
+                            <div id="receiveDetailImages" style="display:none;"></div>
                         </div>
                     </div>
                 </div>
@@ -6592,7 +6570,7 @@
         setReceiveFetchingState(true);
         
         // Keep feedback inside the mobile dialog so it cannot cover its controls.
-        const mobileReceive = window.matchMedia('(max-width: 768px), (max-width: 1024px) and (max-height: 500px)').matches;
+        const mobileReceive = window.matchMedia('(max-width: 1024px)').matches;
         const loadingMessage = options.silentAuto ? '正在自动收取邮件，请稍候...' : '正在收取邮件，请稍候...';
         const loadingToastId = mobileReceive ? null : showToast(loadingMessage, 'info', 0);
         if (mobileReceive) updateReceiveStatus(loadingMessage);
@@ -6642,13 +6620,16 @@
                     };
                     
                     // Check if this mail already exists (by subject, from, and date to avoid duplicates)
-                    const isDuplicate = allMails.some(m => 
+                    const existingMail = allMails.find(m =>
                         m.subject === mail.subject && 
                         m.from === mail.from &&
                         m.receivedAt === mail.receivedAt
                     );
                     
-                    if (!isDuplicate) {
+                    if (existingMail) {
+                        // Refresh old text-only or incomplete cached messages without changing their identity.
+                        Object.assign(existingMail, mail, { id: existingMail.id });
+                    } else {
                         allMails.push(mail);
                         newMailsCount++;
                     }
@@ -7007,63 +6988,33 @@
             </div>
         `;
         const body = document.getElementById('receiveDetailBody');
+        let renderedInlineImages = new Set();
         if (body) {
-            const isHtml = (mail.bodyType || '').toLowerCase() === 'html';
+            const isHtml = (mail.bodyType || mail.body_type || '').toLowerCase() === 'html';
             body.classList.toggle('receive-detail-content--html', isHtml);
             if (isHtml) {
-                body.replaceChildren(window.MailContent.createFrame(mail.body || '（无正文）', {
+                const frame = window.MailContent.createFrame(mail.body || '（无正文）', {
                     title: `邮件正文：${mail.subject || '无主题'}`,
                     className: 'receive-content-frame',
+                    autoResize: true,
                     images: mail.images || [],
                     attachments: mail.attachments || []
-                }));
+                });
+                renderedInlineImages = frame.renderedInlineImages;
+                body.replaceChildren(frame);
                 body.style.whiteSpace = 'normal';
             } else {
                 body.textContent = mail.body || '（无正文）';
                 body.style.whiteSpace = 'pre-wrap';
             }
         }
-        // Display images (matching frontend inbox page behavior)
         const imagesSection = document.getElementById('receiveDetailImages');
-        const imageContainer = document.getElementById('receiveDetailImageContainer');
-        if (imagesSection && imageContainer) {
-            const images = mail.images || [];
-            const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml'];
-            const validImages = images.filter(image => allowedMimeTypes.includes(image.mime_type));
-            if (validImages.length > 0) {
-                imageContainer.innerHTML = '';
-                validImages.forEach((image) => {
-                    const imageItem = document.createElement('div');
-                    imageItem.className = 'receive-detail-image-item';
-                    const img = document.createElement('img');
-                    const dataUri = 'data:' + image.mime_type + ';base64,' + image.content;
-                    img.src = dataUri;
-                    img.alt = image.filename || 'image';
-                    img.style.cssText = 'max-width:200px; max-height:200px; display:block; cursor:pointer; border-radius:6px;';
-                    img.onclick = () => {
-                        try {
-                            const byteChars = atob(image.content);
-                            const byteNums = new Uint8Array(byteChars.length);
-                            for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
-                            const blob = new Blob([byteNums], { type: image.mime_type });
-                            const blobUrl = URL.createObjectURL(blob);
-                            const win = window.open(blobUrl, '_blank');
-                            if (win) win.addEventListener('unload', () => URL.revokeObjectURL(blobUrl));
-                        } catch (e) {
-                            console.error('打开图片失败:', e);
-                        }
-                    };
-                    const imageInfo = document.createElement('div');
-                    imageInfo.className = 'receive-detail-image-info';
-                    imageInfo.textContent = image.filename || 'image';
-                    imageItem.appendChild(img);
-                    imageItem.appendChild(imageInfo);
-                    imageContainer.appendChild(imageItem);
-                });
-                imagesSection.style.display = 'block';
-            } else {
-                imagesSection.style.display = 'none';
-            }
+        if (imagesSection) {
+            const resources = window.MailContent.createResources({
+                images: mail.images || [], attachments: mail.attachments || [], renderedInlineImages
+            });
+            imagesSection.replaceChildren(resources);
+            imagesSection.style.display = resources.childElementCount ? 'block' : 'none';
         }
     }
 

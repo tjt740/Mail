@@ -157,5 +157,68 @@
             }
         }
     });
-    window.MailContent = { createFrame, imageSource };
+    function createResources({ images = [], attachments = [], renderedInlineImages = new Set() } = {}) {
+        const resources = document.createElement('div');
+        resources.className = 'mail-resources';
+        function section(label) {
+            const group = document.createElement('section');
+            const heading = document.createElement('h5');
+            heading.textContent = window.AppI18n?.t(label) || label;
+            group.appendChild(heading);
+            resources.appendChild(group);
+            return group;
+        }
+        const visibleImages = images.filter(image => !renderedInlineImages.has(image) && imageSource(image));
+        if (visibleImages.length) {
+            const group = section('图片');
+            visibleImages.forEach(image => {
+                const figure = document.createElement('figure');
+                const img = document.createElement('img');
+                img.src = imageSource(image);
+                img.alt = image.filename || 'image';
+                img.referrerPolicy = 'no-referrer';
+                const caption = document.createElement('figcaption');
+                caption.textContent = image.filename || '';
+                caption.translate = false;
+                figure.append(img, caption);
+                group.appendChild(figure);
+            });
+        }
+        if (attachments.length) {
+            const group = section('附件');
+            attachments.forEach(attachment => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'mail-attachment-download';
+                button.textContent = `${window.AppI18n?.t('下载') || '下载'} · ${attachment.filename || 'attachment'}`;
+                button.translate = false;
+                const hasContent = typeof attachment.content === 'string' && /^[a-z0-9+/=\s]*$/i.test(attachment.content);
+                const url = /^https?:\/\//i.test(attachment.url || '') ? attachment.url : '';
+                button.disabled = !hasContent && !url;
+                button.addEventListener('click', () => {
+                    const link = document.createElement('a');
+                    let blobUrl;
+                    try {
+                        if (hasContent) {
+                            const bytes = Uint8Array.from(atob(attachment.content.replace(/\s/g, '')), char => char.charCodeAt(0));
+                            blobUrl = URL.createObjectURL(new Blob([bytes], { type: attachment.mime_type || 'application/octet-stream' }));
+                        }
+                        link.href = blobUrl || url;
+                        link.download = attachment.filename || 'attachment';
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+                        document.body.appendChild(link);
+                        link.click();
+                    } finally {
+                        link.remove();
+                        if (blobUrl) setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+                    }
+                });
+                group.appendChild(button);
+            });
+        }
+        return resources;
+    }
+
+    window.MailContent = { createFrame, imageSource, createResources };
 })();

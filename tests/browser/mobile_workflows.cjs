@@ -57,7 +57,7 @@ async function shot(page, name) {
     fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
     await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, name + '.png') });
 }
-for (const [width, height] of [[320, 740], [390, 844], [768, 1024], [844, 390]]) test(`mailbox import, edit and reading at ${width}x${height}`, async () => {
+for (const [width, height] of [[320, 740], [390, 844], [390, 500], [768, 1024], [844, 390]]) test(`mailbox import, edit and reading at ${width}x${height}`, async () => {
     writes = []; mailDelay = 0; mailFailure = false;
     const page = await browser.newPage({ viewport: { width, height }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
     const errors = []; page.on('pageerror', error => errors.push(error.message));
@@ -121,6 +121,10 @@ for (const [width, height] of [[320, 740], [390, 844], [768, 1024], [844, 390]])
         await frame.locator('#receiveTableBody tr:not(:has(.receive-empty))').first().waitFor();
         assert.equal(await frame.locator('#receiveListView').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
         assert.equal(await frame.locator('#receiveModal .modal-body').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
+        if (width < 600) {
+            assert.ok((await frame.locator('.receive-main').boundingBox()).width > width * .9,
+                'Short portrait windows retain a full-width message list');
+        }
         assert.equal(await frame.locator('#toast-container .toast').filter({ hasText: /收取/ }).count(), 0, 'Retrieval feedback must not cover dialog controls');
         assert.equal(await frame.locator('#toast-container .toast.success').count(), 0, 'Completed form notifications should not cover the next dialog');
         await shot(page, `receive-${width}`);
@@ -191,3 +195,56 @@ for (const width of [320, 390, 768, 1440]) test(`public brand is centered and co
         await shot(page, `public-${width}`);
     } finally { await page.close(); }
 });
+
+for (const [width, height] of [[800, 900], [890, 940], [1024, 800], [1100, 800]]) {
+    test(`compact receive dialog uses the embedded viewport at ${width}x${height}`, async () => {
+        writes = []; mailDelay = 1500; mailFailure = false;
+        const page = await browser.newPage({ viewport: { width, height }, reducedMotion: 'reduce' });
+        page.setDefaultTimeout(7000);
+        try {
+            await page.goto(origin + '/admin/mailbox');
+            const frame = page.frameLocator('.legacy-frame');
+            await frame.locator('[data-action="receive"]').first().click();
+            await frame.locator('#receiveFetchBtn.is-loading').waitFor();
+            const layout = await frame.locator('#receiveModal').evaluate(modal => {
+                const box = selector => modal.querySelector(selector).getBoundingClientRect().toJSON();
+                const body = modal.querySelector('.receive-body');
+                return { viewport: { width: innerWidth, height: innerHeight }, modal: box('.modal-content'),
+                    controls: box('.receive-sidebar'), account: box('.receive-account'), count: box('.receive-count-field'),
+                    fetch: box('#receiveFetchBtn'), main: box('.receive-main'), list: box('#receiveListView'),
+                    folders: [...modal.querySelectorAll('.receive-tab')].map(el => el.getBoundingClientRect().toJSON()),
+                    bodyHeight: body.clientHeight, bodyScrollHeight: body.scrollHeight };
+            });
+            assert.ok(layout.viewport.width > 768 && layout.viewport.width <= 1024, JSON.stringify(layout.viewport));
+            assert.ok(layout.modal.top >= 0 && layout.modal.bottom <= layout.viewport.height + 1, 'Dialog fits its iframe');
+            assert.ok(layout.controls.height <= 140, JSON.stringify(layout.controls));
+            assert.ok(layout.account.bottom <= layout.count.top, 'Mailbox has its own row above retrieval controls');
+            assert.ok(Math.abs(layout.count.y - layout.fetch.y) <= 2, 'Count and fetch controls align on one row');
+            assert.ok(await frame.locator('.receive-copy-btn').evaluate(el => {
+                const label = document.getElementById('receiveMailboxLabel');
+                return el.getBoundingClientRect().left - label.getBoundingClientRect().right <= 12;
+            }), 'Copy stays next to the address instead of at the far edge');
+            assert.equal(await frame.locator('#emailCountInput').evaluate(el => document.activeElement === el), false,
+                'Opening received mail does not focus or select the count input');
+            assert.equal(layout.folders[0].y, layout.folders[1].y, 'Folders share one row');
+            assert.ok(layout.list.height >= layout.bodyHeight * .5, JSON.stringify(layout));
+            assert.ok(layout.bodyScrollHeight <= layout.bodyHeight + 1, 'Only the message list should scroll');
+            assert.equal(await frame.locator('#toast-container .toast').count(), 0, 'Loading feedback stays inside the dialog');
+            await shot(page, `compact-receive-loading-${width}`);
+            await frame.locator('#receiveTableBody tr:not(:has(.receive-empty))').first().waitFor();
+            await frame.locator('#receiveTableBody tr').nth(9).click();
+            assert.equal(await frame.locator('.receive-sidebar').isVisible(), false);
+            assert.ok((await frame.locator('#receiveDetailView').boundingBox()).height >= layout.viewport.height * .8);
+            for (const selector of ['.receive-back', '#receiveModal .modal-close']) {
+                assert.ok(await frame.locator(selector).evaluate(el => {
+                    const rect = el.getBoundingClientRect();
+                    return el.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+                }), selector + ' remains reachable');
+            }
+            await frame.locator('.receive-back').click();
+            await page.setViewportSize({ width: 390, height: 740 });
+            assert.equal(await frame.locator('#receiveModal .modal-body').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
+            await frame.locator('#receiveModal .modal-close').click();
+        } finally { mailDelay = 0; await page.close(); }
+    });
+}

@@ -1,0 +1,15 @@
+.mail-resources { display: grid; gap: 16px; min-width: 0; white-space: normal; }
+.mail-resources:empty { display: none; }
+.mail-resources section { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
+.mail-resources h5 { margin: 0 0 12px; font-size: 14px; }
+.mail-resources figure { margin: 0 0 12px; }
+.mail-resources img { display: block; max-width: 100%; height: auto; }
+.mail-resources figcaption { margin-top: 6px; overflow-wrap: anywhere; color: var(--text-muted); }
+.mail-attachment-download {
+    display: block; max-width: 100%; margin: 8px 0; padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--text); font: inherit;
+    text-align: start; overflow-wrap: anywhere; cursor: pointer;
+}
+.mail-attachment-download:hover { background: var(--surface-2); }
+.mail-attachment-download:disabled { cursor: default; opacity: .6; }

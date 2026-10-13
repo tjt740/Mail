@@ -43,7 +43,6 @@ logger = logging.getLogger(__name__)
 
 # Columns used for fast mailbox listing (avoid fetching large blobs/passwords)
 FAST_MAILBOX_COLUMNS = "id, email, server, port, protocol, ssl, send_server, send_port, send_protocol, send_ssl, status, account_status, remarks, created_by_admin, last_test, test_result, created_at, updated_at"
-MAIL_LOG_BODY_MAX_LENGTH = 200000
 MAIL_LOG_LIST_BODY_PREVIEW_LENGTH = 1200
 MAIL_LOG_LIST_PER_EMAIL_LIMIT = 30
 
@@ -892,6 +891,9 @@ def migrate_mail_logs_table(db, db_type):
             if 'mail_body' not in columns:
                 db.execute("ALTER TABLE mail_logs ADD COLUMN mail_body TEXT DEFAULT ''")
                 logger.info("Added mail_body column to mail_logs table")
+            for column in ('mail_images', 'mail_attachments'):
+                if column not in columns:
+                    db.execute(f"ALTER TABLE mail_logs ADD COLUMN {column} TEXT DEFAULT '[]'")
 
             db.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_message_id ON mail_logs(message_id)')
             db.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_status_created ON mail_logs(status, created_at DESC)')
@@ -906,7 +908,9 @@ def migrate_mail_logs_table(db, db_type):
                         'source': "ALTER TABLE mail_logs ADD COLUMN source VARCHAR(64) DEFAULT 'manual'",
                         'admin_username': "ALTER TABLE mail_logs ADD COLUMN admin_username VARCHAR(255) DEFAULT ''",
                         'mail_body_type': "ALTER TABLE mail_logs ADD COLUMN mail_body_type VARCHAR(32) DEFAULT 'text'",
-                        'mail_body': "ALTER TABLE mail_logs ADD COLUMN mail_body LONGTEXT"
+                        'mail_body': "ALTER TABLE mail_logs ADD COLUMN mail_body LONGTEXT",
+                        'mail_images': "ALTER TABLE mail_logs ADD COLUMN mail_images LONGTEXT",
+                        'mail_attachments': "ALTER TABLE mail_logs ADD COLUMN mail_attachments LONGTEXT"
                     }
                     for column_name, alter_sql in columns_to_add.items():
                         cursor.execute(f"SHOW COLUMNS FROM mail_logs LIKE '{column_name}'")
@@ -929,6 +933,8 @@ def migrate_mail_logs_table(db, db_type):
                     cursor.execute("ALTER TABLE mail_logs ADD COLUMN IF NOT EXISTS admin_username VARCHAR(255) DEFAULT ''")
                     cursor.execute("ALTER TABLE mail_logs ADD COLUMN IF NOT EXISTS mail_body_type VARCHAR(32) DEFAULT 'text'")
                     cursor.execute("ALTER TABLE mail_logs ADD COLUMN IF NOT EXISTS mail_body TEXT DEFAULT ''")
+                    cursor.execute("ALTER TABLE mail_logs ADD COLUMN IF NOT EXISTS mail_images TEXT DEFAULT '[]'")
+                    cursor.execute("ALTER TABLE mail_logs ADD COLUMN IF NOT EXISTS mail_attachments TEXT DEFAULT '[]'")
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_message_id ON mail_logs(message_id)')
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_status_created ON mail_logs(status, created_at DESC)')
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_mail_logs_email_message ON mail_logs(email, message_id)')
@@ -3653,13 +3659,19 @@ def _normalize_mail_body(mail):
     if body is None:
         body = ''
     body = str(body)
-    if len(body) > MAIL_LOG_BODY_MAX_LENGTH:
-        body = body[:MAIL_LOG_BODY_MAX_LENGTH] + '\n\n[正文过长，已截断]'
-
     body_type = (mail.get('body_type') or 'text').strip().lower()
     if body_type not in ('text', 'html', 'image'):
         body_type = 'text'
     return body, body_type
+
+def _mail_resource_list(value):
+    """Accept fetched resources and JSON saved by any supported database."""
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (ValueError, TypeError):
+            return []
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
 
 def _find_mail_log_id(db, db_type, email_address, mail):
     """查找邮件日志是否已存在，优先使用Message-ID去重"""
@@ -3694,18 +3706,21 @@ def _mail_log_exists(db, db_type, email_address, mail):
     return _find_mail_log_id(db, db_type, email_address, mail) is not None
 
 def _insert_mail_log(db, db_type, email_address, mail, source, user_ip='', user_agent='', admin_username=''):
-    """写入一条收件日志，存在则跳过"""
+    """写入收件日志；再次收取时更新完整内容，保留原日志身份。"""
+    mail_body, mail_body_type = _normalize_mail_body(mail)
+    mail_images = json.dumps(_mail_resource_list(mail.get('images')), ensure_ascii=False)
+    mail_attachments = json.dumps(_mail_resource_list(mail.get('attachments')), ensure_ascii=False)
     existing_id = _find_mail_log_id(db, db_type, email_address, mail)
     if existing_id:
-        mail_body, mail_body_type = _normalize_mail_body(mail)
-        if mail_body:
+        if mail_body or mail_images != '[]' or mail_attachments != '[]':
             update_sql = '''
                 UPDATE mail_logs
-                SET admin_username = ?, mail_body_type = ?,
-                    mail_body = CASE WHEN COALESCE(mail_body, '') = '' THEN ? ELSE mail_body END
+                SET admin_username = ?, mail_body_type = ?, mail_body = ?,
+                    mail_images = ?, mail_attachments = ?
                 WHERE id = ?
             '''
-            update_params = [admin_username or '', mail_body_type, mail_body, existing_id]
+            update_params = [admin_username or '', mail_body_type, mail_body,
+                             mail_images, mail_attachments, existing_id]
             if db_type == 'sqlite':
                 db.execute(update_sql, update_params)
             else:
@@ -3723,20 +3738,18 @@ def _insert_mail_log(db, db_type, email_address, mail, source, user_ip='', user_
     mail_to = (mail.get('to') or email_address).strip()
     received_at = _normalize_mail_received_at(mail)
     folder = (mail.get('folder') or 'inbox').strip().lower()
-    mail_body, mail_body_type = _normalize_mail_body(mail)
-
     params = [
         email_address, subject, mail_from, mail_to, received_at,
         'received', '', user_ip, user_agent, now, message_id, folder, source,
-        admin_username or '', mail_body_type, mail_body
+        admin_username or '', mail_body_type, mail_body, mail_images, mail_attachments
     ]
 
     sql = '''
         INSERT INTO mail_logs
         (email, mail_subject, mail_from, mail_to, received_at, status, error_message,
          ip_address, user_agent, created_at, message_id, folder, source,
-         admin_username, mail_body_type, mail_body)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         admin_username, mail_body_type, mail_body, mail_images, mail_attachments)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     '''
 
     if db_type == 'sqlite':
@@ -11153,7 +11166,7 @@ def api_admin_mail_log_detail(log_id):
             row = db.execute(f'''
                 SELECT l.id, l.email, l.mail_subject, l.mail_from, l.mail_to, l.received_at, l.status,
                        l.error_message, l.ip_address, l.user_agent, l.created_at, l.message_id, l.folder, l.source,
-                       l.admin_username, l.mail_body_type, l.mail_body,
+                       l.admin_username, l.mail_body_type, l.mail_body, l.mail_images, l.mail_attachments,
                        ma.mailbox_created_at, ma.mailbox_created_by_admin
                 FROM mail_logs l
                 LEFT JOIN {mailbox_meta_sql} ON ma.email_key = {email_key_sql}
@@ -11168,7 +11181,7 @@ def api_admin_mail_log_detail(log_id):
                 cursor.execute(f'''
                     SELECT l.id, l.email, l.mail_subject, l.mail_from, l.mail_to, l.received_at, l.status,
                            l.error_message, l.ip_address, l.user_agent, l.created_at, l.message_id, l.folder, l.source,
-                           l.admin_username, l.mail_body_type, l.mail_body,
+                           l.admin_username, l.mail_body_type, l.mail_body, l.mail_images, l.mail_attachments,
                            ma.mailbox_created_at, ma.mailbox_created_by_admin
                     FROM mail_logs l
                     LEFT JOIN {mailbox_meta_sql} ON ma.email_key = {email_key_sql}
@@ -11188,6 +11201,8 @@ def api_admin_mail_log_detail(log_id):
                 'message': '收件日志不存在'
             }), 404
 
+        for field in ('mail_images', 'mail_attachments'):
+            log[field] = _mail_resource_list(log.get(field))
         return jsonify({
             'success': True,
             'data': log

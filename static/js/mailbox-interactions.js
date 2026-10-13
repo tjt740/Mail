@@ -112,7 +112,7 @@
         content.tabIndex = -1;
         const touchLayout = window.matchMedia('(pointer: coarse), (max-width: 768px)').matches;
         if (touchLayout) document.querySelectorAll('#toast-container .toast.success').forEach(toast => toast.remove());
-        const focusable = (!touchLayout && [...element.querySelectorAll('input:not([type="hidden"]):not(:disabled):not([readonly]), textarea:not(:disabled), select:not(:disabled)')].find(item => item.getClientRects().length))
+        const focusable = (element.id !== 'receiveModal' && !touchLayout && [...element.querySelectorAll('input:not([type="hidden"]):not(:disabled):not([readonly]), textarea:not(:disabled), select:not(:disabled)')].find(item => item.getClientRects().length))
             || element.querySelector('.modal-close');
         (focusable || content).focus({ preventScroll: true });
     }
