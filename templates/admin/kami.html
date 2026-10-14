@@ -405,76 +405,6 @@
         font-style: italic;
     }
 
-    .kami-toolbar .btn {
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 8px !important;
-        height: 44px;
-        padding: 0 18px !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        box-shadow: none !important;
-        transform: none !important;
-    }
-
-    .kami-toolbar .btn i {
-        display: inline-flex;
-        line-height: 1;
-    }
-
-    .kami-toolbar .btn-primary {
-        background: #c76442 !important;
-        background-image: none !important;
-        border: 1px solid #c76442 !important;
-        color: #fff !important;
-    }
-
-    .kami-toolbar .btn-success {
-        background: #4f7f5c !important;
-        background-image: none !important;
-        border: 1px solid #4f7f5c !important;
-        color: #fff !important;
-    }
-
-    .kami-toolbar .btn-danger {
-        background: #b94a3d !important;
-        background-image: none !important;
-        border: 1px solid #b94a3d !important;
-        color: #fff !important;
-    }
-
-    .kami-toolbar .btn-secondary,
-    .kami-toolbar .btn-clear {
-        background: var(--surface) !important;
-        background-image: none !important;
-        border: 1px solid var(--border) !important;
-        color: var(--text) !important;
-    }
-
-    .kami-toolbar .btn-search {
-        background: #3f5f54 !important;
-        background-image: none !important;
-        border: 1px solid #3f5f54 !important;
-        color: #fff !important;
-    }
-
-    .kami-toolbar .btn:hover {
-        filter: brightness(0.96);
-        box-shadow: 0 1px 3px rgba(40, 35, 28, 0.08) !important;
-    }
-
-    .kami-toolbar .btn-secondary:hover,
-    .kami-toolbar .btn-clear:hover {
-        background: var(--surface-3) !important;
-        filter: none;
-    }
-
-    .kami-toolbar .search-box input {
-        height: 44px;
-        box-shadow: none !important;
-    }
-    
     .page-controls select {
         padding: 8px 12px;
         border: 2px solid var(--border);
@@ -2473,8 +2403,8 @@
     }
 
     // 删除单个卡密
-    function deleteCard(cardId) {
-        if (!confirm('确定要删除这个卡密吗？此操作不可恢复。')) {
+    async function deleteCard(cardId) {
+        if (!await AdminUI.confirm('确定要删除这个卡密吗？此操作不可恢复。', { danger: true })) {
             return;
         }
 
@@ -2501,13 +2431,14 @@
     }
 
     // 批量删除卡密
-    function batchDeleteCards() {
+    async function batchDeleteCards() {
         if (selectedCards.size === 0) {
             showToast('请选择要删除的卡密', 'error');
             return;
         }
 
-        if (!confirm(`确定要删除选中的 ${selectedCards.size} 个卡密吗？此操作不可恢复。`)) {
+        const cardIds = Array.from(selectedCards);
+        if (!await AdminUI.confirm(`确定要删除选中的 ${cardIds.length} 个卡密吗？此操作不可恢复。`, { danger: true })) {
             return;
         }
 
@@ -2518,7 +2449,7 @@
             },
             body: JSON.stringify({ 
                 action: 'batch_delete',
-                ids: Array.from(selectedCards) 
+                ids: cardIds
             })
         })
         .then(response => response.json())
@@ -3384,8 +3315,8 @@
     }
     
     // 恢复卡密
-    function restoreCard(cardId, type) {
-        if (!confirm('确定要恢复这个卡密吗？恢复后将重新出现在卡密列表中。')) {
+    async function restoreCard(cardId, type) {
+        if (!await AdminUI.confirm('确定要恢复这个卡密吗？恢复后将重新出现在卡密列表中。')) {
             return;
         }
         
@@ -3416,8 +3347,8 @@
     }
     
     // 永久删除卡密
-    function permanentDeleteCard(cardId, type) {
-        if (!confirm('确定要永久删除这个卡密吗？此操作不可恢复！')) {
+    async function permanentDeleteCard(cardId, type) {
+        if (!await AdminUI.confirm('确定要永久删除这个卡密吗？此操作不可恢复！', { danger: true })) {
             return;
         }
         
@@ -3447,8 +3378,8 @@
     }
     
     // 清空回收站
-    function clearRecycleBin() {
-        if (!confirm('确定要清空整个回收站吗？此操作将永久删除所有回收站中的卡密，不可恢复！')) {
+    async function clearRecycleBin() {
+        if (!await AdminUI.confirm('确定要清空整个回收站吗？此操作将永久删除所有回收站中的卡密，不可恢复！', { danger: true })) {
             return;
         }
         
@@ -3517,7 +3448,7 @@
     }
     
     // 批量恢复回收站项目
-    function batchRestoreRecycleItems(type) {
+    async function batchRestoreRecycleItems(type) {
         const checkboxes = document.querySelectorAll(`.recycle-checkbox-${type}:checked`);
         const cardIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
         
@@ -3527,7 +3458,7 @@
         }
         
         const typeText = type === 'deleted' ? '已删除' : '已过期';
-        if (!confirm(`确定要批量恢复选中的 ${cardIds.length} 个${typeText}卡密吗？恢复后将重新出现在卡密列表中。`)) {
+        if (!await AdminUI.confirm(`确定要批量恢复选中的 ${cardIds.length} 个${typeText}卡密吗？恢复后将重新出现在卡密列表中。`)) {
             return;
         }
         
@@ -3558,7 +3489,7 @@
     }
     
     // 批量永久删除回收站项目
-    function batchPermanentDeleteRecycleItems(type) {
+    async function batchPermanentDeleteRecycleItems(type) {
         const checkboxes = document.querySelectorAll(`.recycle-checkbox-${type}:checked`);
         const cardIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
         
@@ -3568,7 +3499,7 @@
         }
         
         const typeText = type === 'deleted' ? '已删除' : '已过期';
-        if (!confirm(`确定要永久删除选中的 ${cardIds.length} 个${typeText}卡密吗？此操作不可恢复！`)) {
+        if (!await AdminUI.confirm(`确定要永久删除选中的 ${cardIds.length} 个${typeText}卡密吗？此操作不可恢复！`, { danger: true })) {
             return;
         }
         

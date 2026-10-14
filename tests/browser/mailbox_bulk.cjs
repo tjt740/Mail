@@ -398,11 +398,13 @@ test('invalid filter excludes network/unknown/untested accounts, selects across 
         assert.match(await page.locator('#batchTestFilteredBtn').innerText(), /\(22\)/);
         await page.locator('#selectFilteredMailboxesBtn').click();
         assert.equal(await page.locator('#bulkSelectedCount').innerText(), '22');
-        page.once('dialog', dialog => { assert.match(dialog.message(), /22.*跨页.*不可撤销/); dialog.dismiss(); });
         await page.locator('#batchDeleteMailboxesBtn').click();
+        const confirmation = page.getByRole('alertdialog');
+        assert.match(await confirmation.innerText(), /22.*跨页.*不可撤销/);
+        await confirmation.getByRole('button', { name: '取消', exact: true }).click();
         assert.deepEqual(deleted, []);
-        page.once('dialog', dialog => dialog.accept());
         await page.locator('#batchDeleteMailboxesBtn').click();
+        await confirmation.getByRole('button', { name: '确认', exact: true }).click();
         await page.waitForFunction(() => document.querySelector('#batchTestFilteredBtn').disabled);
         assert.deepEqual(deleted.sort((a,b) => a-b), seed().filter(a => ['banned', 'invalid_credentials'].includes(a.account_status)).map(a => a.id));
         assert.equal(accounts.length, 44);

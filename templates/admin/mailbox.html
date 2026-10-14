@@ -6157,7 +6157,7 @@
 
     async function deleteGroup(groupId) {
         if (!groupId || groupId === ROOT_GROUP_ID || groupId === UNGROUPED_GROUP_ID) return;
-        if (!confirm('确定要删除该分组及其子分组吗？')) return;
+        if (!await AdminUI.confirm('确定要删除该分组及其子分组吗？', { danger: true })) return;
         
         try {
             const response = await fetch('/admin/api/mailbox-groups', {
@@ -7473,7 +7473,7 @@
             showToast('请先停止批量测试，等待进行中的测试完成后再删除', 'info');
             return;
         }
-        if (!confirm('确定要删除这个邮箱账号吗？')) {
+        if (!await AdminUI.confirm('确定要删除这个邮箱账号吗？', { danger: true })) {
             return;
         }
         
@@ -8054,12 +8054,13 @@
             return;
         }
         
-        if (!confirm(`确定要永久删除选中的 ${selectedMailboxes.size} 个邮箱账号吗？包含跨页选中的邮箱，此操作不可撤销。`)) {
+        const mailboxIds = Array.from(selectedMailboxes);
+        if (!await AdminUI.confirm(`确定要永久删除选中的 ${mailboxIds.length} 个邮箱账号吗？包含跨页选中的邮箱，此操作不可撤销。`, { danger: true })) {
             return;
         }
         
         try {
-            const deletedCount = await requestBatchDeleteMailboxIds(Array.from(selectedMailboxes));
+            const deletedCount = await requestBatchDeleteMailboxIds(mailboxIds);
             showToast(`成功删除 ${deletedCount} 个邮箱`, 'success');
             selectedMailboxes.clear();
             await loadMailboxes(currentPage, searchQuery);
@@ -8389,7 +8390,7 @@
     
     // 删除服务器
     async function deleteServer(id) {
-        if (!confirm('确定要删除这个服务器配置吗？')) {
+        if (!await AdminUI.confirm('确定要删除这个服务器配置吗？', { danger: true })) {
             return;
         }
         
@@ -8424,7 +8425,8 @@
             return;
         }
         
-        if (!confirm(`确定要删除选中的 ${selectedServers.size} 个服务器配置吗？`)) {
+        const serverIds = Array.from(selectedServers);
+        if (!await AdminUI.confirm(`确定要删除选中的 ${serverIds.length} 个服务器配置吗？`, { danger: true })) {
             return;
         }
         
@@ -8434,7 +8436,7 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ ids: Array.from(selectedServers) })
+                body: JSON.stringify({ ids: serverIds })
             });
             
             const data = await response.json();

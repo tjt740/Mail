@@ -87,6 +87,61 @@
         modalClose(modalStack[modalStack.length - 1]);
     });
 
+    /* Theme-aware confirmation; callers await an explicit decision before writing. */
+    let confirmationOpen = false;
+    function confirmAction(message, options = {}) {
+        // Repeated clicks must not queue duplicate destructive operations.
+        if (confirmationOpen) return Promise.resolve(false);
+        confirmationOpen = true;
+        const t = text => window.AppI18n?.t(text) || text;
+        const previous = document.activeElement;
+        const dialog = document.createElement('dialog');
+        dialog.className = 'admin-confirm modal-content';
+        dialog.setAttribute('role', 'alertdialog');
+        dialog.setAttribute('aria-labelledby', 'admin-confirm-title');
+        dialog.setAttribute('aria-describedby', 'admin-confirm-message');
+        dialog.innerHTML = '<div class="modal-header"><h3 class="modal-title" id="admin-confirm-title"></h3>' +
+            '<button type="button" class="modal-close">&times;</button></div>' +
+            '<div class="modal-body"><p class="admin-confirm-message" id="admin-confirm-message"></p></div>' +
+            '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-decision="cancel" autofocus></button>' +
+            '<button type="button" class="btn" data-decision="confirm"></button></div>';
+        dialog.querySelector('.modal-title').textContent = t(options.title || '确认');
+        dialog.querySelector('.admin-confirm-message').textContent = t(String(message ?? ''));
+        dialog.querySelector('.modal-close').setAttribute('aria-label', t('关闭'));
+        dialog.querySelector('[data-decision="cancel"]').textContent = t('取消');
+        const accept = dialog.querySelector('[data-decision="confirm"]');
+        accept.classList.add(options.danger ? 'btn-danger' : 'btn-primary');
+        accept.textContent = t(options.confirmText || '确认');
+        return new Promise(resolve => {
+            let settled = false;
+            function finish(accepted) {
+                if (settled) return;
+                settled = true;
+                dialog.close();
+                dialog.remove();
+                confirmationOpen = false;
+                if (previous?.isConnected) previous.focus({ preventScroll: true });
+                resolve(accepted);
+            }
+            dialog.querySelector('.modal-close').addEventListener('click', () => finish(false));
+            dialog.querySelector('[data-decision="cancel"]').addEventListener('click', () => finish(false));
+            accept.addEventListener('click', () => finish(true));
+            dialog.addEventListener('cancel', event => { event.preventDefault(); finish(false); });
+            dialog.addEventListener('close', () => finish(false));
+            // Escape must not also close an underlying edit/recycle-bin dialog.
+            dialog.addEventListener('keydown', event => {
+                event.stopPropagation();
+                if (event.key !== 'Tab') return;
+                const buttons = [...dialog.querySelectorAll('button:not(:disabled)')];
+                const first = buttons[0], last = buttons[buttons.length - 1];
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+            });
+            document.body.appendChild(dialog);
+            dialog.showModal();
+        });
+    }
+
     /* ------------------------------------------------ 数字滚动 */
     function countUp(el, target, opts) {
         if (!el) return;
@@ -196,6 +251,7 @@
 
     window.AdminUI = {
         toast: toast,
+        confirm: confirmAction,
         modal: { open: modalOpen, close: modalClose },
         countUp: countUp,
         staggerRows: staggerRows,

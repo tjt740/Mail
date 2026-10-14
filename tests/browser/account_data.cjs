@@ -150,8 +150,10 @@ for (const width of [1440, 390, 320]) {
             await page.keyboard.press('Escape');
             await page.getByRole('dialog').waitFor({ state: 'hidden' });
             await page.evaluate(() => window.AppI18n.setLanguage('en'));
+            await record(page, 1).getByText('Deleted', { exact: true }).waitFor();
             assert.equal(await record(page, 1).locator('del').textContent(), 'Deleted');
             await page.evaluate(() => window.AppI18n.setLanguage('fil'));
+            await record(page, 1).getByText('Natanggal', { exact: true }).waitFor();
             assert.equal(await record(page, 1).locator('del').textContent(), 'Natanggal');
         } finally { await page.close(); }
     });
@@ -362,7 +364,16 @@ test('account records and detail dialogs remain readable across all palettes', a
             failures.push(...(await contrastFailures(page, '.account-data-page')).map(item => ({ theme: key, ...item })));
             await record(page, 1).getByRole('button', { name: /详\s*情/ }).click();
             await page.getByRole('dialog').getByText('fixture-client-1', { exact: true }).waitFor();
-            failures.push(...(await contrastFailures(page, '.ant-modal-content')).map(item => ({ theme: key, ...item })));
+            const modal = page.locator('.account-detail-modal');
+            assert.equal(await modal.locator('.ant-modal-container').evaluate(el => getComputedStyle(el).borderRadius), '16px');
+            assert.equal(await modal.locator('.ant-modal-title').evaluate(el => getComputedStyle(el).fontSize), '18px');
+            assert.equal(await modal.locator('.ant-modal-footer .ant-btn').evaluate(el => getComputedStyle(el).borderRadius), '10px');
+            failures.push(...(await contrastFailures(page, '.ant-modal-container')).map(item => ({ theme: key, ...item })));
+            if (process.env.ACCOUNT_DATA_SCREENSHOT_DIR && key === 'rain') {
+                fs.mkdirSync(process.env.ACCOUNT_DATA_SCREENSHOT_DIR, { recursive: true });
+                await modal.locator('.ant-modal-container').screenshot({ path: path.join(process.env.ACCOUNT_DATA_SCREENSHOT_DIR, 'account-modal-content-rain.png') });
+                await page.screenshot({ path: path.join(process.env.ACCOUNT_DATA_SCREENSHOT_DIR, 'account-modal-rain.png') });
+            }
             await page.keyboard.press('Escape');
             await page.getByRole('dialog').waitFor({ state: 'hidden' });
         }

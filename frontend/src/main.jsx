@@ -44,6 +44,7 @@ import AccountDataPage from './AccountDataPage.jsx';
 import MailboxBrand from './MailboxBrand.jsx';
 import '../../static/css/motion.css';
 import '../../static/css/scene-themes.css';
+import '../../static/css/admin-controls.css';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -556,7 +557,8 @@ function MailApp() {
           colorSuccessText: palette.mint,
           colorWarningText: palette.gold,
           colorErrorText: palette.coral,
-          borderRadius: 8,
+          borderRadius: 10,
+          controlHeight: 40,
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
         },
         components: {

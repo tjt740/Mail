@@ -145,6 +145,7 @@
     }
 
     document.addEventListener('keydown', event => {
+        if (event.target.closest('dialog[open]')) return;
         const modal = modalStack[modalStack.length - 1];
         if (!modal) return;
         if (event.key === 'Escape') {

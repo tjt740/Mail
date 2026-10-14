@@ -545,6 +545,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-pagination.css') }}">
     {% endif %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    {% if request.path and '/admin' in request.path %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-controls.css') }}">
+    {% endif %}
 </head>
 <body class="preload{% if embedded %} embedded-view{% endif %}">
     {% include '_icons.html' %}

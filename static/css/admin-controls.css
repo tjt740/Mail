@@ -1,0 +1,173 @@
+/* Shared controls for the React shell and legacy admin pages. Load after page styles. */
+:root {
+    --admin-control-height: 40px;
+    --admin-control-radius: 10px;
+    --admin-dialog-radius: 16px;
+    --admin-dialog-padding: 20px;
+    --admin-overlay: rgba(9, 18, 32, .48);
+    --admin-dialog-shadow: 0 24px 64px rgba(0, 0, 0, .24);
+}
+:root[data-theme-mode="dark"] { --admin-overlay: rgba(2, 8, 22, .72); }
+
+/* Size and states are shared; semantic colors still identify the action. */
+:root body :is(.btn, .btn-small, .ah-help-btn, .ant-btn) {
+    box-sizing: border-box;
+    border-radius: var(--admin-control-radius) !important;
+    font-family: inherit;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+    text-decoration: none;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease !important;
+}
+:root body :is(.btn, .btn-small, .ah-help-btn, .ant-btn:where(:not(.ant-btn-text):not(.ant-btn-link):not(.ant-btn-icon-only))) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px !important;
+    min-height: var(--admin-control-height) !important;
+    height: auto;
+    padding: 8px 14px !important;
+    font-size: 14px !important;
+    line-height: 22px !important;
+}
+:root body :is(.btn-sm, .btn-small, .ant-btn-sm) {
+    min-height: 32px !important;
+    padding: 4px 10px !important;
+    font-size: 13px !important;
+    line-height: 22px !important;
+}
+:root body :is(.btn, .btn-small, .ah-help-btn) { border: 1px solid var(--border); cursor: pointer; }
+:root body :is(.btn, .btn-small, .ah-help-btn):hover { transform: none !important; filter: none !important; }
+:root body :is(.btn, .btn-small, .ah-help-btn, .ant-btn):focus-visible {
+    outline: 2px solid var(--primary-color) !important;
+    outline-offset: 3px;
+}
+:root body :is(.btn, .btn-small, .ah-help-btn, .ant-btn):disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+:root body :is(.btn, .btn-small, .ah-help-btn) i { display: inline-flex; align-items: center; line-height: 1; }
+:root body :is(.btn-primary, .btn-search, .ant-btn-primary):not(:disabled) {
+    background: var(--primary-color) !important;
+    color: var(--on-primary) !important;
+    border: 1px solid var(--primary-color) !important;
+}
+:root body :is(.btn-primary, .btn-search, .ant-btn-primary):hover:not(:disabled) {
+    background: var(--secondary-color) !important;
+    border-color: var(--secondary-color) !important;
+}
+:root body :is(.btn-secondary, .btn-clear, .ah-help-btn, .ant-btn-default):not(:disabled) {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+}
+:root body :is(.btn-secondary, .btn-clear, .ah-help-btn, .ant-btn-default):hover:not(:disabled) {
+    background: var(--surface-3) !important;
+    border-color: var(--primary-color) !important;
+}
+:root body :is(.btn-success, .btn-warning, .btn-danger, .ant-btn-dangerous) {
+    --button-accent: var(--accent-mint);
+    color: var(--button-accent) !important;
+    background: color-mix(in srgb, var(--button-accent) 10%, var(--surface)) !important;
+    border: 1px solid color-mix(in srgb, var(--button-accent) 45%, var(--border)) !important;
+}
+:root body :is(.btn-danger, .ant-btn-dangerous) { --button-accent: var(--accent-coral); }
+:root body .btn-warning { --button-accent: var(--accent-gold); }
+:root body :is(.btn-success, .btn-warning, .btn-danger, .ant-btn-dangerous):hover:not(:disabled) {
+    background: color-mix(in srgb, var(--button-accent) 18%, var(--surface)) !important;
+}
+
+/* Keep toolbars out of the shrinking table area so rounded edges aren't clipped. */
+:root body :is(.kami-toolbar, .search-controls, .toolbar, .toolbar-actions, .filter-actions) { flex-shrink: 0; }
+:root body .kami-toolbar { flex-wrap: wrap; overflow: visible; padding: 3px; gap: 12px; }
+:root body .kami-toolbar .btn-group { flex-wrap: wrap; flex-shrink: 1; }
+:root body .kami-toolbar .search-controls { min-width: min(100%, 360px); max-width: 650px; }
+:root body .kami-toolbar .search-box input { height: var(--admin-control-height); font-style: normal; }
+:root body .kami-toolbar .search-box input::placeholder { font-style: normal; }
+
+/* Dialog content keeps its page-specific width and internal workspace layout. */
+:root body :is(.modal, .log-detail-modal) { background: var(--admin-overlay) !important; }
+:root body :is(.modal-content, .log-detail-content, .ant-modal-container) {
+    box-sizing: border-box;
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--admin-dialog-radius) !important;
+    box-shadow: var(--admin-dialog-shadow) !important;
+}
+:root body :is(.modal-header, .log-detail-header, .ant-modal-header) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px var(--admin-dialog-padding) !important;
+    margin: 0;
+    background: var(--surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+:root body :is(.modal-title, .log-detail-title, .ant-modal-title) {
+    margin: 0;
+    color: var(--text) !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    line-height: 26px !important;
+}
+:root body .modal-body:not(.receive-body), :root body :is(.log-detail-body, .ant-modal-body) { padding: var(--admin-dialog-padding) !important; }
+:root body :is(.modal-footer, .ant-modal-footer) {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px var(--admin-dialog-padding) !important;
+    margin: 0;
+    border-top: 1px solid var(--border) !important;
+    background: var(--surface) !important;
+}
+:root body :is(.modal-footer, .ant-modal-footer) > .btn { margin: 0; }
+:root body :is(.modal-close, .log-detail-close, .ant-modal-close) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--admin-control-radius);
+    background: transparent;
+    color: var(--text-muted) !important;
+    cursor: pointer;
+}
+:root body :is(.modal-close, .log-detail-close, .ant-modal-close):hover { background: var(--surface-3); color: var(--text) !important; }
+:root body :is(.modal-close, .log-detail-close, .ant-modal-close):focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+:root body .ant-modal-container { padding: 0 !important; overflow: hidden; }
+:root body .ant-modal-header { padding-right: 60px !important; }
+:root body .ant-modal-close { top: 13px; right: 16px; }
+:root body .ant-modal-mask { background: var(--admin-overlay) !important; }
+
+/* Native dialog supplies focus containment and makes the background inert. */
+:root body dialog.admin-confirm {
+    width: min(440px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px) !important;
+    max-height: calc(100dvh - 32px);
+    margin: auto !important;
+    padding: 0;
+    overflow: auto;
+}
+dialog.admin-confirm::backdrop { background: var(--admin-overlay); }
+.admin-confirm .modal-close { margin-left: auto; }
+.admin-confirm-message { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.7; }
+
+@media (max-width: 768px) {
+    :root { --admin-control-height: 44px; --admin-dialog-padding: 16px; }
+    :root body :is(.btn-sm, .btn-small, .ant-btn-sm) { min-height: 44px !important; }
+    :root body .kami-toolbar .search-controls { flex-basis: 100%; min-width: 0; max-width: 100%; }
+    :root body .kami-toolbar .btn-group { flex-basis: 100%; }
+    :root body :is(.modal-close, .log-detail-close, .ant-modal-close) { width: 44px; height: 44px; }
+    :root body .ant-modal-close { top: 7px; right: 10px; }
+    :root body .modal-footer > .btn, :root body .ant-modal-footer > .ant-btn { flex: 1 1 auto; white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+    :root body :is(.btn, .btn-small, .ah-help-btn, .ant-btn) { transition: none !important; }
+}

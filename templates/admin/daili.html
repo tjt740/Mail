@@ -1276,7 +1276,7 @@
     
     // 关闭代理
     async function disableProxy() {
-        if (!confirm('确定要关闭代理功能吗？')) {
+        if (!await AdminUI.confirm('确定要关闭代理功能吗？')) {
             return;
         }
         
@@ -1308,7 +1308,7 @@
     
     // 切换代理
     async function switchProxy(type, id, name) {
-        if (!confirm(`确定要切换到代理 "${name}" 吗？`)) {
+        if (!await AdminUI.confirm(`确定要切换到代理 "${name}" 吗？`)) {
             return;
         }
         
@@ -1832,7 +1832,7 @@
     
     // 删除代理
     async function deleteProxy(type, id) {
-        if (!confirm('确定要删除这个代理配置吗？')) {
+        if (!await AdminUI.confirm('确定要删除这个代理配置吗？', { danger: true })) {
             return;
         }
         
@@ -1954,7 +1954,8 @@
             return;
         }
         
-        if (!confirm(`确定要删除选中的 ${selectedProxies.size} 个代理吗？`)) {
+        const proxyKeys = Array.from(selectedProxies);
+        if (!await AdminUI.confirm(`确定要删除选中的 ${proxyKeys.length} 个代理吗？`, { danger: true })) {
             return;
         }
         
@@ -1963,7 +1964,7 @@
             const httpIds = [];
             const socks5Ids = [];
             
-            selectedProxies.forEach(key => {
+            proxyKeys.forEach(key => {
                 const [type, id] = key.split('-');
                 if (type === 'http') {
                     httpIds.push(parseInt(id));
