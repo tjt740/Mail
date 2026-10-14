@@ -178,6 +178,65 @@ test('sidebar child creation reveals and restores the new child through collapse
     } finally { await page.close(); }
 });
 
+for (const width of [1440, 390]) test(`group menus create children while the header creates top-level groups at ${width}px`, async () => {
+    const page = await newPage(width);
+    const menu = page.locator('#groupContextMenu');
+    const modal = page.locator('#groupModal');
+    const openPanel = async () => {
+        if (width < 1000 && !await page.locator('#groupPanel').isVisible()) await page.locator('#mobileGroupPanelToggle').click();
+    };
+    try {
+        await page.evaluate(() => setSelectedGroup(1));
+        await openPanel();
+        await page.locator('.group-item[data-group-id="1"] .group-actions-button').click();
+        assert.equal(await menu.locator('[data-action="add"]').isVisible(), false);
+        assert.deepEqual(await menu.locator('button:visible:not(:disabled)').evaluateAll(buttons => buttons.map(button => button.dataset.action)), ['add-child', 'edit', 'delete']);
+        await page.evaluate(() => handleGroupAction('add'));
+        assert.equal(await modal.isVisible(), false, 'a group action must not create a top-level group');
+        if (process.env.SCREENSHOT_DIR) {
+            fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+            await page.evaluate(() => MailThemes.apply('rain'));
+            await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `group-actions-${width}.png`) });
+        }
+        await menu.locator('[data-action="add-child"]').click();
+        assert.equal(await modal.locator('#groupModalTitle').innerText(), '添加下级分组');
+        assert.equal(await modal.locator('#groupParentName').inputValue(), 'Capcut');
+        await modal.locator('#groupNameInput').fill('菜单子分组');
+        await modal.locator('.modal-footer .btn-primary').click();
+        await modal.waitFor({ state: 'hidden' });
+        assert.equal(groups.find(group => group.name === '菜单子分组').parent_id, 1);
+
+        // Right-clicking a child follows the same rule, including deeper nesting.
+        await openPanel();
+        await page.locator('.group-item[data-group-id="4"]').click({ button: 'right' });
+        assert.equal(await menu.locator('[data-action="add"]').isVisible(), false);
+        await menu.locator('[data-action="add-child"]').click();
+        assert.equal(await modal.locator('#groupParentName').inputValue(), '菜单子分组');
+        await modal.locator('.modal-close').click();
+
+        // The header plus remains an explicit top-level entry even with a child selected.
+        await page.locator('#groupPanel .group-panel-header-toggle').click();
+        assert.equal(await modal.locator('#groupModalTitle').innerText(), '添加分组');
+        assert.equal(await modal.locator('#groupParentName').inputValue(), '主分组');
+        await modal.locator('#groupNameInput').fill('独立顶级组');
+        await modal.locator('.modal-footer .btn-primary').click();
+        await modal.waitFor({ state: 'hidden' });
+        assert.equal(groups.find(group => group.name === '独立顶级组').parent_id, null);
+
+        for (const groupId of ['all_groups', 'ungrouped']) {
+            await openPanel();
+            await page.locator(`.group-item[data-group-id="${groupId}"] .group-actions-button`).click();
+            assert.equal(await menu.locator('[data-action="add"]').isVisible(), true, 'switching context restores the top-level action');
+            assert.equal(await menu.locator('[data-action="add-child"]').isDisabled(), true);
+            await menu.locator('[data-action="add"]').click();
+            assert.equal(await modal.locator('#groupParentName').inputValue(), '主分组');
+            await modal.locator('.modal-close').click();
+        }
+        const additions = writes.filter(write => write.path === '/admin/api/mailbox-groups' && write.action === 'add');
+        assert.deepEqual(additions.map(write => write.parent_id), [1, null]);
+    } finally { await page.close(); }
+});
+
 
 for (const width of [1440, 1024, 390]) test(`nested group branches at ${width}px separate selection, expansion and settings`, async () => {
     const page = await newPage(width);

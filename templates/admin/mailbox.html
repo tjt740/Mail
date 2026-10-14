@@ -6006,18 +6006,19 @@
         hideGroupContextMenu();
         contextTargetGroupId = groupId;
         document.querySelector(`.group-item[data-group-id="${groupId}"] .group-actions-button`)?.setAttribute('aria-expanded', 'true');
+        const isGroup = !!getGroupById(groupId) && ![ROOT_GROUP_ID, UNGROUPED_GROUP_ID].includes(groupId);
+        const addButton = menu.querySelector('[data-action="add"]');
+        addButton.hidden = isGroup;
+        addButton.disabled = isGroup;
+        menu.querySelector('[data-action="add-child"]').disabled = !isGroup;
+        menu.querySelector('[data-action="edit"]').disabled = !isGroup;
+        menu.querySelector('[data-action="delete"]').disabled = !isGroup;
         menu.style.left = `${event.pageX}px`;
         menu.style.top = `${event.pageY}px`;
         MailboxInteractions.popup(menu, true);
         const bounds = menu.getBoundingClientRect();
         menu.style.left = `${Math.max(8, Math.min(event.pageX, window.scrollX + innerWidth - bounds.width - 8))}px`;
         menu.style.top = `${Math.max(window.scrollY + 8, Math.min(event.pageY, window.scrollY + innerHeight - bounds.height - 8))}px`;
-
-        const isProtected = !groupId || groupId === ROOT_GROUP_ID || groupId === UNGROUPED_GROUP_ID;
-        menu.querySelector('[data-action="add"]').disabled = false;
-        menu.querySelector('[data-action="add-child"]').disabled = isProtected;
-        menu.querySelector('[data-action="edit"]').disabled = isProtected;
-        menu.querySelector('[data-action="delete"]').disabled = isProtected;
     }
 
     function hideGroupContextMenu() {
@@ -6039,13 +6040,14 @@
 
     function handleGroupAction(action) {
         const target = contextTargetGroupId;
-        if (action === 'add') {
+        const isGroup = !!getGroupById(target) && ![ROOT_GROUP_ID, UNGROUPED_GROUP_ID].includes(target);
+        if (action === 'add' && !isGroup) {
             openGroupModal('add', null, null);
-        } else if (action === 'add-child' && target) {
+        } else if (action === 'add-child' && isGroup) {
             openGroupModal('add', target, null);
-        } else if (action === 'edit' && target) {
+        } else if (action === 'edit' && isGroup) {
             openGroupModal('edit', getGroupById(target)?.parentId, target);
-        } else if (action === 'delete' && target) {
+        } else if (action === 'delete' && isGroup) {
             deleteGroup(target);
         }
     }
@@ -6055,7 +6057,7 @@
         groupModalParentId = parentId || null;
         groupModalEditId = groupId;
         const modal = document.getElementById('groupModal');
-        document.getElementById('groupModalTitle').textContent = mode === 'edit' ? '编辑分组' : '添加分组';
+        document.getElementById('groupModalTitle').textContent = mode === 'edit' ? '编辑分组' : (groupModalParentId ? '添加下级分组' : '添加分组');
         document.getElementById('groupParentName').value = groupModalParentId ? (getGroupById(groupModalParentId)?.name || '') : TOP_LEVEL_LABEL;
         document.getElementById('groupNameInput').value = mode === 'edit' && groupId ? (getGroupById(groupId)?.name || '') : '';
         MailboxInteractions.openModal(modal);
