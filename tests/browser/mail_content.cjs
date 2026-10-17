@@ -213,7 +213,7 @@ test('mailbox list deduplicates before pagination and preserves group/owner filt
     } finally { await page.close(); }
 });
 
-for (const width of [390, 1440]) test(`public reader stays inside the inbox with complete images and long mail at ${width}px`, async () => {
+for (const width of [390, 768, 1440]) test(`public reader stays inside the inbox with complete images and long mail at ${width}px`, async () => {
     const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
     let release;
     const gate = new Promise(resolve => { release = resolve; });
@@ -233,6 +233,11 @@ for (const width of [390, 1440]) test(`public reader stays inside the inbox with
         const frame = await (await element.elementHandle()).contentFrame();
         await frame.waitForFunction(() => document.getElementById('inline').naturalWidth > 0);
         await page.waitForFunction(() => parseInt(document.querySelector('.mail-content-frame').style.height) > 1000);
+        const navigation = await page.locator('.mail-display-actions').boundingBox();
+        const reader = await page.locator('#mailDisplay').boundingBox();
+        assert.ok(reader.y >= navigation.y + navigation.height - 1, 'Mail must be clipped below navigation, including its top padding');
+        assert.equal(await page.locator('#mailDisplay').evaluate(el => el.scrollTop), 0, 'Long messages must open at their beginning');
+        assert.ok(await page.locator('#mailSubject').isVisible());
         const beforeImage = (await element.boundingBox()).height;
         release();
         await frame.waitForFunction(() => document.getElementById('remote').naturalWidth > 0);
@@ -249,11 +254,21 @@ for (const width of [390, 1440]) test(`public reader stays inside the inbox with
         await page.locator('#mailDisplay').evaluate(el => { el.scrollTop = el.scrollHeight; });
         assert.ok(await page.locator('#mailDisplay').evaluate(el => el.scrollTop > 500));
         assert.equal(await page.evaluate(() => window.scrollY), 0);
+        assert.deepEqual(await page.locator('.mail-display-actions').boundingBox(), navigation, 'Navigation must not move when mail scrolls');
         assert.ok(await page.locator('.back-btn').evaluate(el => {
             const box = el.getBoundingClientRect();
             return el.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
         }), 'Back stays reachable inside the inbox when reading the end');
+        if (process.env.MAIL_SCREENSHOT_DIR) {
+            fs.mkdirSync(process.env.MAIL_SCREENSHOT_DIR, { recursive: true });
+            await page.locator('#mailDisplay').evaluate(el => {
+                const body = document.getElementById('mailBody');
+                el.scrollTop = body.offsetTop - el.offsetTop;
+            });
+            await page.screenshot({ path: path.join(process.env.MAIL_SCREENSHOT_DIR, `public-scrolled-${width}.png`) });
+        }
         await page.locator('.back-btn').click();
+        assert.ok(await page.locator('.mail-display-actions').isHidden(), 'Reader navigation must be hidden in the mail list');
         assert.ok(await page.locator('.mail-query-panel').isVisible());
         assert.equal(await page.locator('#emailInput').inputValue(), 'reader@example.com\nsecond@example.com');
         assert.equal(await page.evaluate(() => window.scrollY), 0);

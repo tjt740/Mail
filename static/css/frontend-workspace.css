@@ -336,12 +336,20 @@ body.frontend-mail-page #frontendApp .mail-workspace .mail-display {
     overflow: auto !important;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
-    scroll-padding-top: 52px;
-    padding: 12px 24px 20px !important;
+    scroll-padding-top: 12px;
+    padding: 0 24px 20px !important;
     border: 0 !important;
     border-radius: 0 !important;
 }
-body.frontend-mail-page #frontendApp .mail-workspace .mail-display-actions { flex-shrink: 0; margin-bottom: 8px; }
+/* Keep navigation outside the reader's scroll surface so mail cannot pass
+   behind it or appear in the padding above an overlaid sticky toolbar. */
+body.frontend-mail-page #frontendApp .mail-workspace .mail-display-actions {
+    display: none;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 12px 24px 8px;
+}
+body.frontend-mail-page #frontendApp .mail-workspace .mail-list-panel:has(> .mail-display.is-visible) > .mail-display-actions { display: flex; }
 body.frontend-mail-page #frontendApp .mail-workspace .back-btn {
     min-height: 36px;
     padding: 6px 0;
@@ -379,15 +387,7 @@ body.frontend-mail-page #frontendApp .mail-workspace .mail-body {
 }
 body.frontend-mail-page #frontendApp .mail-workspace .mail-content-frame { border-radius: 0; height: 320px; }
 /* The reader replaces only the inbox list. Its auto-sized HTML frame and
-   images share this one scroll surface, leaving the surrounding page fixed. */
-body.frontend-mail-page #frontendApp .mail-workspace .mail-display-actions {
-    position: sticky;
-    top: 0;
-    z-index: 3;
-    background: color-mix(in srgb, var(--scene-bg) 82%, transparent);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-}
+   images share one scroll surface below the fixed navigation. */
 body.frontend-mail-page #frontendApp .mail-workspace .mail-header { margin-bottom: 12px; }
 @media (max-width: 900px) {
     body.frontend-mail-page #frontendApp .scene-art { transform: translateY(-50%) scale(.64); }
@@ -411,7 +411,8 @@ body.frontend-mail-page #frontendApp .mail-workspace .mail-header { margin-botto
     body.frontend-mail-page #frontendApp .mail-workspace .folder-list { flex-direction: row; }
     body.frontend-mail-page #frontendApp .mail-workspace .folder-btn { width: auto; min-height: 44px; gap: 10px; }
     body.frontend-mail-page #frontendApp .mail-workspace .mail-list-toolbar { min-height: 48px; padding: 10px 20px; }
-    body.frontend-mail-page #frontendApp .mail-workspace .mail-display { padding: 10px 16px 16px !important; }
+    body.frontend-mail-page #frontendApp .mail-workspace .mail-display { padding: 0 16px 16px !important; }
+    body.frontend-mail-page #frontendApp .mail-workspace .mail-display-actions { padding: 10px 16px 8px; }
     body.frontend-mail-page #frontendApp .mail-workspace .mailbox-switcher { padding: 12px 16px; }
     body.frontend-mail-page #frontendApp .mail-workspace .mailbox-chip { min-height: 40px; }
 }
