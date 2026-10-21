@@ -22,6 +22,7 @@ from email.mime.text import MIMEText
 from email.header import decode_header
 from urllib.parse import quote
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -107,6 +108,7 @@ class ProxyMailFetcher:
         self.fast_mode = bool(fast_mode)
         self.graph_access_token = ''
         self.connection = None
+        self._selected_mailbox = None
         self.proxy_enabled = False
         self.proxy_info = None
         
@@ -242,12 +244,12 @@ class ProxyMailFetcher:
 
         raise Exception(f"Graph API令牌获取失败: {last_error}")
 
-    def _authenticate_imap(self):
+    def _authenticate_imap(self, token_future=None):
         """根据账号类型选择普通密码登录或 XOAUTH2 登录。"""
         if self._has_oauth_credentials():
             try:
                 logger.info("Attempting XOAUTH2 authentication")
-                access_token = self._fetch_oauth_access_token()
+                access_token = token_future.result() if token_future is not None else self._fetch_oauth_access_token()
                 auth_string = f"user={self.username}\x01auth=Bearer {access_token}\x01\x01"
                 self.connection.authenticate('XOAUTH2', lambda _: auth_string.encode('utf-8'))
                 logger.info("XOAUTH2 authentication successful")
@@ -673,7 +675,7 @@ class ProxyMailFetcher:
                 
                 # Select INBOX to verify connection works
                 try:
-                    select_result = self.connection.select('INBOX')
+                    select_result = self._select_mailbox('INBOX')
                     logger.info(f"INBOX selected through HTTP proxy: {select_result}")
                 except Exception as e:
                     logger.error(f"INBOX selection failed through HTTP proxy: {e}")
@@ -703,34 +705,19 @@ class ProxyMailFetcher:
             
     def _connect_imap(self):
         """Connect using IMAP protocol"""
+        token_pool = None
         try:
             # Set socket timeout for better error handling
             original_timeout = socket.getdefaulttimeout()
             socket.setdefaulttimeout(30)  # 30 second timeout
             
             try:
-                if not self.fast_mode:
-                    # Test basic connectivity first for explicit diagnostics. Normal fetches skip
-                    # this because the IMAP connection itself performs the same network work.
-                    logger.info(f"Testing connectivity to {self.server}:{self.port}")
-                    test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    test_socket.settimeout(10)
-
-                    try:
-                        test_result = test_socket.connect_ex((self.server, self.port))
-                        test_socket.close()
-
-                        if test_result != 0:
-                            raise Exception(f"无法连接到邮件服务器 {self.server}:{self.port} (错误码: {test_result})")
-
-                    except socket.gaierror as e:
-                        raise Exception(f"无法解析邮件服务器地址 {self.server}: {str(e)}")
-                    except socket.timeout:
-                        raise Exception(f"连接邮件服务器 {self.server}:{self.port} 超时")
-                    except Exception as e:
-                        raise Exception(f"网络连接测试失败: {str(e)}")
-
-                    logger.info("Basic connectivity test passed")
+                # Direct OAuth refresh and the IMAP handshake are independent. Keep
+                # proxy connections sequential: SOCKS changes process-wide sockets.
+                token_future = None
+                if self._has_oauth_credentials() and not self.proxy_enabled:
+                    token_pool = ThreadPoolExecutor(max_workers=1)
+                    token_future = token_pool.submit(self._fetch_oauth_access_token)
                 
                 # Create IMAP connection
                 logger.info(f"Establishing IMAP connection to {self.server}:{self.port} (SSL: {self.use_ssl})")
@@ -750,7 +737,7 @@ class ProxyMailFetcher:
                     except ssl.SSLError as e:
                         raise Exception(f"SSL连接失败: {str(e)}，请检查服务器SSL配置或尝试关闭SSL")
                     except Exception as e:
-                        raise Exception(f"SSL IMAP连接失败: {str(e)}")
+                        raise Exception(f"IMAP连接失败: {str(e)}")
                 else:
                     try:
                         self.connection = imaplib.IMAP4(self.server, self.port)
@@ -761,14 +748,14 @@ class ProxyMailFetcher:
                 
                 # Login with better error handling
                 try:
-                    self._authenticate_imap()
+                    self._authenticate_imap(token_future)
                     logger.info("Authentication successful")
                 except Exception as e:
                     raise e
                 
                 # Select INBOX
                 try:
-                    self.connection.select('INBOX')
+                    self._select_mailbox('INBOX')
                     logger.info("INBOX selected successfully")
                 except Exception as e:
                     raise Exception(f"无法选择INBOX邮箱: {str(e)}")
@@ -776,6 +763,8 @@ class ProxyMailFetcher:
                 return True
                 
             finally:
+                if token_pool is not None:
+                    token_pool.shutdown(wait=True)
                 # Restore original timeout
                 socket.setdefaulttimeout(original_timeout)
                 
@@ -803,6 +792,21 @@ class ProxyMailFetcher:
             else:
                 raise Exception(f"IMAP连接失败: {str(e)}")
     
+    def _select_mailbox(self, folder):
+        """Reuse a successful selection only while the same connection is active."""
+        key = 'INBOX' if folder.upper() == 'INBOX' else folder
+        previous = getattr(self, '_selected_mailbox', None)
+        if previous and previous[0] is self.connection and previous[1] == key:
+            return previous[2]
+        # A failed SELECT leaves IMAP in authenticated state, even if another
+        # folder was previously selected. A fallback must really reselect it.
+        self._selected_mailbox = None
+        result = self.connection.select(folder)
+        if result[0] != 'OK':
+            raise Exception(f"无法选择邮箱文件夹: {folder}")
+        self._selected_mailbox = (self.connection, key, result)
+        return result
+
     def disconnect(self):
         """Disconnect from the mail server"""
         if self.connection:
@@ -813,6 +817,7 @@ class ProxyMailFetcher:
                 logger.warning(f"Error during disconnect: {e}")
             finally:
                 self.connection = None
+                self._selected_mailbox = None
     
     def close(self):
         """Close the connection (alias for disconnect)"""
@@ -1063,14 +1068,14 @@ class ProxyMailFetcher:
         try:
             selected_folder = folder
             try:
-                status, _ = self.connection.select(folder)
+                status, _ = self._select_mailbox(folder)
                 if status != 'OK':
                     raise Exception(f"无法选择邮箱文件夹: {folder}")
             except Exception as e:
                 if folder.upper() != 'INBOX':
                     # 尝试回退到收件箱，避免文件夹不可用导致失败
                     try:
-                        fallback_status, _ = self.connection.select('INBOX')
+                        fallback_status, _ = self._select_mailbox('INBOX')
                         if fallback_status != 'OK':
                             raise Exception(f"无法选择邮箱文件夹: {folder}")
                         selected_folder = 'INBOX'
@@ -1524,16 +1529,6 @@ class ProxyMailFetcher:
                 
         return body_text, body_html
                     
-    def close(self):
-        """Close connection"""
-        if self.connection:
-            try:
-                self.connection.close()
-                self.connection.logout()
-            except:
-                pass
-            self.connection = None
-            
     def test_connection(self):
         """Test connection and provide diagnostics"""
         diagnostics = {
@@ -1600,21 +1595,8 @@ class ProxyMailFetcher:
             else:
                 diagnostics['dns_resolution'] = '⚠️ 通过代理连接，跳过DNS测试'
             
-            # Test basic TCP connection (only for direct connections)
-            if not self.proxy_enabled:
-                try:
-                    test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    test_socket.settimeout(10)
-                    result = test_socket.connect_ex((self.server, self.port))
-                    test_socket.close()
-                    
-                    if result == 0:
-                        diagnostics['tcp_connection'] = '✅ TCP连接测试成功'
-                    else:
-                        diagnostics['tcp_connection'] = f'❌ TCP连接失败 (错误码: {result})'
-                except Exception as e:
-                    diagnostics['tcp_connection'] = f'❌ TCP连接测试失败: {str(e)}'
-            else:
+            # The authenticated IMAP session verifies TCP connectivity too.
+            if self.proxy_enabled:
                 diagnostics['tcp_connection'] = '⚠️ 通过代理连接，跳过TCP测试'
             
             # Test full connection
@@ -1622,6 +1604,8 @@ class ProxyMailFetcher:
             try:
                 connection_success = self.connect()
                 if connection_success:
+                    if not self.proxy_enabled:
+                        diagnostics['tcp_connection'] = '✅ TCP连接成功（实际邮箱连接验证）'
                     self.close()
                     diagnostics['connection_test'] = f'✅ 邮箱连接成功 (通过{connection_method})'
                     diagnostics['auth_status'] = '✅ 身份验证成功'
@@ -1640,24 +1624,24 @@ class ProxyMailFetcher:
                 
                 # Categorize error types for better user feedback
                 error_type = 'unknown'
-                if 'ssl' in error_message.lower() or 'certificate' in error_message.lower() or 'handshake' in error_message.lower():
-                    error_type = 'ssl_error'
-                    diagnostics['ssl_status'] = '❌ SSL连接失败'
-                elif 'authentication' in error_message.lower() or 'login' in error_message.lower() or 'credentials' in error_message.lower() or '用户名或密码' in error_message:
-                    error_type = 'auth_failed'
-                    diagnostics['auth_status'] = '❌ 身份验证失败'
-                elif 'connection' in error_message.lower() or 'refused' in error_message.lower() or '连接被拒绝' in error_message:
-                    error_type = 'connection_refused'
-                    diagnostics['connection_status'] = '❌ 连接被拒绝'
-                elif 'timeout' in error_message.lower() or '超时' in error_message:
+                if any(word in error_message.lower() for word in ('dns', '解析', 'name resolution', 'nodename nor servname', 'name or service not known')):
+                    error_type = 'dns_error'
+                    diagnostics['dns_resolution'] = f'❌ {error_message}'
+                elif any(word in error_message.lower() for word in ('timeout', 'timed out', '超时')):
                     error_type = 'timeout'
                     diagnostics['connection_status'] = '❌ 连接超时'
+                elif 'ssl' in error_message.lower() or 'certificate' in error_message.lower() or 'handshake' in error_message.lower():
+                    error_type = 'ssl_error'
+                    diagnostics['ssl_status'] = '❌ SSL连接失败'
+                elif any(word in error_message.lower() for word in ('authentication', 'authenticate', 'login', 'credentials', '用户名或密码', '登录失败')):
+                    error_type = 'auth_failed'
+                    diagnostics['auth_status'] = '❌ 身份验证失败'
                 elif 'proxy' in error_message.lower() or '代理' in error_message:
                     error_type = 'proxy_error'
                     diagnostics['proxy_status'] = '❌ 代理连接失败'
-                elif 'dns' in error_message.lower() or '解析' in error_message:
-                    error_type = 'dns_error'
-                    diagnostics['dns_resolution'] = f'❌ {error_message}'
+                elif 'connection' in error_message.lower() or 'refused' in error_message.lower() or '连接被拒绝' in error_message:
+                    error_type = 'connection_refused'
+                    diagnostics['connection_status'] = '❌ 连接被拒绝'
                 else:
                     diagnostics['error_details'] = error_message
                     
