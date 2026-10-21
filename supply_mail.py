@@ -1,9 +1,12 @@
 """Server-only Supply adapter. Never log upstream bodies or credentials."""
+import hashlib
 import json
 import os
 import re
 import tempfile
+import threading
 import time
+from collections import OrderedDict
 from datetime import datetime, timezone, timedelta
 from email.utils import getaddresses, parsedate_to_datetime
 from pathlib import Path
@@ -15,6 +18,8 @@ TIMEOUT = 25
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 DEFAULT_MAIL_LIMIT = 5
 MAX_MAIL_LIMIT = 20
+ACCOUNT_CACHE_TTL = 60
+ACCOUNT_CACHE_SIZE = 512
 ERRORS = {
     'auth': (502, '邮件服务凭证已失效，请联系管理员更新'),
     'missing': (404, '当前邮件服务授权范围内未找到该邮箱'),
@@ -31,6 +36,43 @@ class SupplyError(Exception):
         self.code = code
         self.status, self.message = ERRORS[code]
         super().__init__(self.message)
+
+
+class _AccountCache:
+    """Bounded, process-local ID hints. Never cache messages or failed lookups."""
+    def __init__(self):
+        self.entries = OrderedDict()
+        self.lock = threading.Lock()
+
+    def get(self, key):
+        with self.lock:
+            entry = self.entries.get(key)
+            if entry is None:
+                return None
+            account_id, expires = entry
+            if expires <= time.monotonic():
+                self.entries.pop(key, None)
+                return None
+            self.entries.move_to_end(key)
+            return account_id
+
+    def put(self, key, account_id):
+        with self.lock:
+            now = time.monotonic()
+            for old_key, (_, expires) in list(self.entries.items()):
+                if expires <= now:
+                    self.entries.pop(old_key, None)
+            self.entries[key] = (account_id, now + ACCOUNT_CACHE_TTL)
+            self.entries.move_to_end(key)
+            while len(self.entries) > ACCOUNT_CACHE_SIZE:
+                self.entries.popitem(last=False)
+
+    def discard(self, key):
+        with self.lock:
+            self.entries.pop(key, None)
+
+
+_account_cache = _AccountCache()
 
 
 def validate_token_input(value):
@@ -80,6 +122,7 @@ def save_token(path, token):
 class Client:
     def __init__(self, token):
         self.token = token  # One immutable snapshot per lookup, including pagination.
+        self.token_digest = hashlib.sha256(token.encode()).digest()
         self.deadline = time.monotonic() + TIMEOUT
 
     def post(self, endpoint, payload):
@@ -141,6 +184,11 @@ class Client:
         self.rows(self.post('/supply/require', {'page': 1, 'limit': 1}))
 
     def find_account(self, email):
+        key = (self.token_digest, email)
+        cached = _account_cache.get(key)
+        if cached is not None:
+            return cached
+
         def match(rows):
             for row in rows:
                 address = row.get('username') or row.get('email') or row.get('account')
@@ -153,12 +201,14 @@ class Client:
 
         account_id = match(self.rows(self.post('/supply/require', {'page': 1, 'limit': 50, 'username': email})))
         if account_id is not None:
+            _account_cache.put(key, account_id)
             return account_id
         for page in range(1, 6):
             data = self.post('/supply/require', {'page': page, 'limit': 200})
             rows = self.rows(data)
             account_id = match(rows)
             if account_id is not None:
+                _account_cache.put(key, account_id)
                 return account_id
             total = data.get('total') if isinstance(data, dict) else None
             if len(rows) < 200 or (isinstance(total, (int, float)) and page * 200 >= total):
@@ -167,11 +217,17 @@ class Client:
 
     def fetch(self, email, limit=DEFAULT_MAIL_LIMIT):
         limit = validate_mail_limit(limit)
+        email = email.strip().lower()
         account_id = self.find_account(email)
         payload = {'id': account_id}
         if limit > 10:
             payload['number'] = limit
-        rows = self.rows(self.post('/supply/getMail', payload), allow_empty=True)
+        try:
+            # Always fetch fresh mail; the upstream still checks the current token.
+            rows = self.rows(self.post('/supply/getMail', payload), allow_empty=True)
+        except SupplyError:
+            _account_cache.discard((self.token_digest, email))
+            raise
         messages = []
         used_ids = set()
         for index, row in enumerate(rows):

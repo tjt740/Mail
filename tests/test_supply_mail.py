@@ -10,6 +10,7 @@ from unittest.mock import patch
 import requests
 import app as app_module
 import supply_mail
+from python.mail_fetcher import MAIL_ACCOUNT_LOOKUP_SQL
 
 TOKEN = 'fixture-supply-token-only'
 
@@ -40,6 +41,11 @@ def mail_rows():
 
 
 class SupplyClientTests(unittest.TestCase):
+    def setUp(self):
+        cache = patch.object(supply_mail, '_account_cache', supply_mail._AccountCache())
+        cache.start()
+        self.addCleanup(cache.stop)
+
     def test_exact_match_normalization_sorting_and_five_message_limit(self):
         with patch.object(supply_mail.requests, 'post', side_effect=[
             ok({'list': [{'id': 1, 'username': 'other@example.com'}, {'id': 'right-id', 'username': ' READER@example.com '}]}),
@@ -58,8 +64,9 @@ class SupplyClientTests(unittest.TestCase):
 
     def test_configurable_limit_and_upstream_number_parameter(self):
         for limit in (1, 5, 10, 20):
-            with self.subTest(limit=limit), patch.object(supply_mail.requests, 'post', side_effect=[
-                ok([{'id': 1, 'username': 'reader@example.com'}]), ok(mail_rows())]) as post:
+            def upstream(url, **kwargs):
+                return ok([{'id': 1, 'username': 'reader@example.com'}]) if url.endswith('/require') else ok(mail_rows())
+            with self.subTest(limit=limit), patch.object(supply_mail.requests, 'post', side_effect=upstream) as post:
                 result = supply_mail.Client(TOKEN).fetch('reader@example.com', limit=limit)
                 self.assertEqual(len(result['mails']), min(limit, 8))
                 self.assertEqual(result['limit'], limit)
@@ -117,6 +124,69 @@ class SupplyClientTests(unittest.TestCase):
         mail = supply_mail.normalize_mail({'title': 'Title', 'text': 'plain < 5 > 2', 'senderEmail': 'sender@example.com'}, 0)
         self.assertEqual(mail['body'], 'plain < 5 > 2')
 
+    def test_cached_account_skips_lookup_but_always_fetches_new_mail(self):
+        with patch.object(supply_mail.requests, 'post', side_effect=[
+            ok([{'id': 0, 'username': 'reader@example.com'}]), ok([{'subject': 'first'}]),
+            ok([{'subject': 'new mail'}]),
+        ]) as post:
+            first = supply_mail.Client(TOKEN).fetch('reader@example.com')
+            second = supply_mail.Client(TOKEN).fetch(' READER@example.com ')
+        self.assertEqual(first['mails'][0]['subject'], 'first')
+        self.assertEqual(second['mails'][0]['subject'], 'new mail')
+        self.assertEqual([call.args[0].rsplit('/', 1)[-1] for call in post.call_args_list],
+                         ['require', 'getMail', 'getMail'])
+        self.assertEqual(post.call_args.kwargs['json'], {'id': 0})
+
+    def test_cached_accounts_are_isolated_by_token_and_email_and_expire(self):
+        now = 100
+        with patch.object(supply_mail.time, 'monotonic', side_effect=lambda: now), \
+                patch.object(supply_mail.requests, 'post', return_value=ok([
+                    {'id': 1, 'username': 'reader@example.com'}, {'id': 2, 'username': 'other@example.com'}])) as post:
+            self.assertEqual(supply_mail.Client(TOKEN).find_account('reader@example.com'), 1)
+            self.assertEqual(supply_mail.Client(TOKEN).find_account('other@example.com'), 2)
+            self.assertEqual(supply_mail.Client('different-fixture-token').find_account('reader@example.com'), 1)
+            self.assertEqual(post.call_count, 3)
+            now += supply_mail.ACCOUNT_CACHE_TTL - 1
+            self.assertEqual(supply_mail.Client(TOKEN).find_account('reader@example.com'), 1)
+            self.assertEqual(post.call_count, 3)
+            now += 1
+            self.assertEqual(supply_mail.Client(TOKEN).find_account('reader@example.com'), 1)
+            self.assertEqual(post.call_count, 4)
+
+    def test_missing_account_is_not_cached_and_new_account_is_visible_immediately(self):
+        with patch.object(supply_mail.requests, 'post', side_effect=[
+            ok([]), ok([]), ok([{'id': 3, 'username': 'reader@example.com'}]), ok([]),
+        ]):
+            with self.assertRaises(supply_mail.SupplyError):
+                supply_mail.Client(TOKEN).fetch('reader@example.com')
+            self.assertTrue(supply_mail.Client(TOKEN).fetch('reader@example.com')['success'])
+
+    def test_upstream_error_evicts_cached_id_without_hiding_failure(self):
+        with patch.object(supply_mail.requests, 'post', side_effect=[
+            ok([{'id': 3, 'username': 'reader@example.com'}]), ok([]),
+            Response({'code': 401}),
+            ok([{'id': 4, 'username': 'reader@example.com'}]), ok([]),
+        ]) as post:
+            supply_mail.Client(TOKEN).fetch('reader@example.com')
+            with self.assertRaises(supply_mail.SupplyError) as error:
+                supply_mail.Client(TOKEN).fetch('reader@example.com')
+            self.assertEqual(error.exception.code, 'auth')
+            supply_mail.Client(TOKEN).fetch('reader@example.com')
+            self.assertEqual(post.call_args.kwargs['json'], {'id': 4})
+            self.assertEqual(post.call_count, 5)
+
+    def test_account_cache_is_bounded_and_thread_safe(self):
+        from concurrent.futures import ThreadPoolExecutor
+        cache = supply_mail._AccountCache()
+        def remember(index):
+            cache.put(('token-digest', index), index)
+            cache.get(('token-digest', index))
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(remember, range(supply_mail.ACCOUNT_CACHE_SIZE * 2)))
+        self.assertLessEqual(len(cache.entries), supply_mail.ACCOUNT_CACHE_SIZE)
+        cache.put(('token-digest', 'new'), 0)
+        self.assertEqual(cache.get(('token-digest', 'new')), 0)
+
     def test_html_layout_and_inline_image_metadata_are_preserved(self):
         html = '<html><style>p { color: blue }</style><p>完整正文</p><img src="cid:banner"><img src="https://example.com/photo.png"></html>'
         image = {'filename': 'banner.png', 'mime_type': 'image/png', 'content': 'aGVsbG8=', 'contentId': '<banner>', 'size': 5}
@@ -136,6 +206,9 @@ class SupplyClientTests(unittest.TestCase):
 
 class SupplyIntegrationTests(unittest.TestCase):
     def setUp(self):
+        cache = patch.object(supply_mail, '_account_cache', supply_mail._AccountCache())
+        cache.start()
+        self.addCleanup(cache.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.path = Path(self.tmp.name) / 'private/token.json'
         self.previous = {key: app_module.app.config.get(key) for key in ('DATABASE', 'DATABASE_TYPE', 'TESTING', 'SUPPLY_TOKEN_FILE')}
@@ -267,7 +340,7 @@ class SupplyIntegrationTests(unittest.TestCase):
                 response = self.public.post('/api/get_mail', json={'email': 'reader@example.com', **payload})
                 self.assertEqual(response.status_code, 403)
             post.assert_not_called()
-        with patch.object(supply_mail.requests, 'post', side_effect=upstream):
+        with patch.object(supply_mail.requests, 'post', return_value=ok(mail_rows())):
             self.assertTrue(self.public.post('/api/get_mail', json={'email': 'reader@example.com', 'master_key': 'fixture-master'}).get_json()['success'])
 
     def test_scoped_personal_key_cannot_query_an_ungranted_supply_mailbox(self):
@@ -320,6 +393,33 @@ class SupplyIntegrationTests(unittest.TestCase):
             self.assertEqual(response.get_json()['message'], 'Local mailbox authentication failed')
             self.assertFalse(response.get_json()['success'])
             upstream.assert_not_called()
+
+    def test_local_import_overrides_supply_cache_and_lookup_uses_indexes(self):
+        supply_mail.save_token(self.path, TOKEN)
+        with patch.object(supply_mail.requests, 'post', side_effect=[
+            ok([{'id': 9, 'username': 'local@example.com'}]), ok([]),
+        ]):
+            self.assertEqual(self.public.post('/api/get_mail', json={'email': 'local@example.com'}).get_json()['provider'], 'supply')
+        self.add_local_mailbox()
+        result = SimpleNamespace(returncode=0, stdout=json.dumps({'success': True, 'mails': []}))
+        with patch.object(app_module.subprocess, 'run', return_value=result), \
+                patch.object(supply_mail.requests, 'post') as upstream, \
+                patch.object(app_module.security, 'query', wraps=app_module.security.query) as query:
+            response = self.public.post('/api/get_mail', json={'email': 'LOCAL@example.com'})
+            self.assertEqual(response.get_json()['provider'], 'mailbox')
+            upstream.assert_not_called()
+        routing = next(call.args[1] for call in query.call_args_list
+                       if 'SELECT id FROM mail_accounts' in call.args[1])
+        with sqlite3.connect(app_module.app.config['DATABASE']) as db:
+            for sql, params in ((routing, ('local@example.com',) * 2),
+                                (MAIL_ACCOUNT_LOOKUP_SQL, ('login@example.com',) * 3)):
+                plan = ' '.join(row[3] for row in db.execute('EXPLAIN QUERY PLAN ' + sql, params))
+                self.assertNotIn('SCAN mail_accounts', plan)
+                self.assertIn('idx_mail_accounts_email_lower', plan)
+                self.assertIn('idx_mail_accounts_username_lower', plan)
+            cursor = db.execute(MAIL_ACCOUNT_LOOKUP_SQL, ('login@example.com',) * 3)
+            row = dict(zip([column[0] for column in cursor.description], cursor.fetchone()))
+            self.assertEqual(row['email'], 'Local@Example.com')
 
     def test_local_routing_keeps_key_and_mailbox_scope_checks(self):
         self.add_local_mailbox()
@@ -434,7 +534,7 @@ class SupplyIntegrationTests(unittest.TestCase):
             for email in ('bad address', [], None):
                 self.assertEqual(self.owner.post('/admin/api/supply-token', json={'action': 'preview', 'email': email}).status_code, 400)
             post.assert_not_called()
-        with patch.object(supply_mail.requests, 'post', side_effect=[ok([{'id': 1, 'username': 'reader@example.com'}]), ok(None)]):
+        with patch.object(supply_mail.requests, 'post', return_value=ok(None)):
             response = self.owner.post('/admin/api/supply-token', json={'action': 'preview', 'email': 'reader@example.com'})
         self.assertEqual(response.get_json()['mails'], [])
         self.assertEqual(response.get_json()['connection']['status'], 'connected')

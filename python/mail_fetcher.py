@@ -1689,6 +1689,14 @@ class ProxyMailFetcher:
             }
 
 
+MAIL_ACCOUNT_LOOKUP_SQL = '''
+    SELECT * FROM mail_accounts
+    WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)
+    ORDER BY CASE WHEN email = ? THEN 0 ELSE 1 END, id
+    LIMIT 1
+'''
+
+
 def main():
     """Main function for CLI usage"""
     import argparse
@@ -1743,13 +1751,7 @@ def main():
         # The public UI normalizes user input to lowercase while imported mailbox
         # addresses may retain mixed casing, so an exact SQLite comparison can
         # incorrectly report that an existing, card-bound mailbox is missing.
-        cursor.execute('''
-            SELECT *
-            FROM mail_accounts
-            WHERE email = ? COLLATE NOCASE OR username = ? COLLATE NOCASE
-            ORDER BY CASE WHEN email = ? THEN 0 ELSE 1 END, id
-            LIMIT 1
-        ''', (email_address, email_address, email_address))
+        cursor.execute(MAIL_ACCOUNT_LOOKUP_SQL, (email_address, email_address, email_address))
         account = cursor.fetchone()
         
         if not account:

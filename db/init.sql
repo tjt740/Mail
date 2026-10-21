@@ -196,6 +196,8 @@ INSERT OR IGNORE INTO proxy_config (config_key, config_value, description) VALUE
 
 -- 创建索引（增强版）
 CREATE INDEX IF NOT EXISTS idx_mail_accounts_email ON mail_accounts(email);
+CREATE INDEX IF NOT EXISTS idx_mail_accounts_email_lower ON mail_accounts(LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_mail_accounts_username_lower ON mail_accounts(LOWER(username));
 CREATE INDEX IF NOT EXISTS idx_mail_accounts_created_at ON mail_accounts(created_at);
 CREATE INDEX IF NOT EXISTS idx_mail_accounts_status ON mail_accounts(status);
 CREATE INDEX IF NOT EXISTS idx_server_addresses_name ON server_addresses(server_name);

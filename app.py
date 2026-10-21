@@ -1652,6 +1652,10 @@ def ensure_mail_account_indexes(db, db_type):
         db.execute('CREATE INDEX IF NOT EXISTS idx_mail_accounts_created_at ON mail_accounts(created_at)')
         db.execute('CREATE INDEX IF NOT EXISTS idx_mail_accounts_email_created ON mail_accounts(email, created_at)')
         db.execute('CREATE INDEX IF NOT EXISTS idx_mail_accounts_created_by_admin ON mail_accounts(created_by_admin)')
+        # Public routing, scoped authorization and the fetcher use LOWER(...).
+        # Ordinary email indexes cannot serve these case-insensitive lookups.
+        db.execute('CREATE INDEX IF NOT EXISTS idx_mail_accounts_email_lower ON mail_accounts(LOWER(email))')
+        db.execute('CREATE INDEX IF NOT EXISTS idx_mail_accounts_username_lower ON mail_accounts(LOWER(username))')
     except Exception as e:
         logger.warning(f"Failed to ensure mail_accounts indexes: {e}")
 
