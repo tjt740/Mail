@@ -234,6 +234,7 @@ class SupplyIntegrationTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_owner_only_configuration_read_write_and_hidden_ui(self):
+        self.assertEqual(self.owner.get('/admin/api/supply-token').get_json()['masked_token'], '')
         for client, status in [(self.other, 403), (self.public, 401)]:
             for method in ('get', 'post'):
                 response = getattr(client, method)('/admin/api/supply-token', json={'token': TOKEN})
@@ -253,11 +254,14 @@ class SupplyIntegrationTests(unittest.TestCase):
         with patch.object(supply_mail.requests, 'post', return_value=ok([])):
             response = self.owner.post('/admin/api/supply-token', json={'token': ' ' + TOKEN + ' '})
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['masked_token'], 'fixt••••••••only')
+        self.assertNotIn(TOKEN, response.get_data(as_text=True))
         self.assertEqual(supply_mail.load_token(self.path), TOKEN)
         self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
         self.assertEqual(self.path.parent.stat().st_mode & 0o777, 0o700)
         for url in ('/admin/api/supply-token', '/admin/api/system-config', '/legacy/admin/system'):
             self.assertNotIn(TOKEN, self.owner.get(url).get_data(as_text=True))
+        self.assertEqual(self.owner.get('/admin/api/supply-token').get_json()['masked_token'], 'fixt••••••••only')
         with sqlite3.connect(app_module.app.config['DATABASE']) as db:
             db.execute("UPDATE admin_users SET username='renamed' WHERE id=1")
         self.assertEqual(self.owner.get('/admin/api/supply-token').status_code, 403)
@@ -274,6 +278,7 @@ class SupplyIntegrationTests(unittest.TestCase):
         for headers in ({'Origin': 'https://foreign.example'}, {'Sec-Fetch-Site': 'cross-site'}):
             self.assertEqual(self.owner.post('/admin/api/supply-token', json={'token': TOKEN}, headers=headers).status_code, 403)
         self.assertEqual(supply_mail.load_token(self.path), TOKEN)
+        self.assertEqual(self.owner.get('/admin/api/supply-token').get_json()['masked_token'], 'fixt••••••••only')
         with patch.object(supply_mail.os, 'replace', side_effect=OSError):
             with self.assertRaises(supply_mail.SupplyError):
                 supply_mail.save_token(self.path, 'different-fixture-token')
@@ -308,6 +313,54 @@ class SupplyIntegrationTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 403)
                 self.assertNotIn(TOKEN, response.get_data(as_text=True))
             load.assert_not_called()
+
+    def test_https_proxy_allows_same_origin_token_save_test_and_reveal(self):
+        for peer in ('127.0.0.1', '::1'):
+            with self.subTest(peer=peer), patch.object(supply_mail.requests, 'post', return_value=ok([])):
+                options = dict(base_url='http://localhost:8005',
+                               headers={'Origin': 'https://localhost:8005',
+                                        'X-Forwarded-Proto': 'https', 'Sec-Fetch-Site': 'same-origin'},
+                               environ_overrides={'REMOTE_ADDR': peer})
+                saved = self.owner.post('/admin/api/supply-token', json={'token': TOKEN}, **options)
+                self.assertEqual(saved.status_code, 200, saved.get_json())
+                self.assertEqual(supply_mail.load_token(self.path), TOKEN)
+                tested = self.owner.post('/admin/api/supply-token', json={'action': 'test'}, **options)
+                self.assertEqual(tested.get_json()['connection']['status'], 'connected')
+                revealed = self.owner.post('/admin/api/supply-token', json={'action': 'reveal'}, **options)
+                self.assertEqual(revealed.get_json()['token'], TOKEN)
+
+    def test_proxy_origin_validation_rejects_spoofed_or_cross_origin_requests(self):
+        supply_mail.save_token(self.path, TOKEN)
+        cases = [
+            ('198.51.100.10', {'Origin': 'https://localhost:8005', 'X-Forwarded-Proto': 'https'}),
+            ('127.0.0.1', {'Origin': 'https://foreign.example', 'X-Forwarded-Proto': 'https',
+                           'X-Forwarded-Host': 'foreign.example'}),
+            ('127.0.0.1', {'Origin': 'https://localhost:9000', 'X-Forwarded-Proto': 'https'}),
+            ('127.0.0.1', {'Origin': 'http://localhost:8005', 'X-Forwarded-Proto': 'https'}),
+            ('127.0.0.1', {'Origin': 'https://localhost:8005', 'X-Forwarded-Proto': 'https, http'}),
+            ('127.0.0.1', {'Origin': 'https://localhost:8005', 'X-Forwarded-Proto': 'https',
+                           'Sec-Fetch-Site': 'cross-site'}),
+        ]
+        with patch.object(supply_mail.requests, 'post') as upstream:
+            for peer, headers in cases:
+                for payload in ({'token': 'replacement-fixture-token'}, {'action': 'reveal'}):
+                    with self.subTest(peer=peer, headers=headers, action=payload.get('action', 'save')):
+                        response = self.owner.post('/admin/api/supply-token', json=payload,
+                            base_url='http://localhost:8005', headers=headers,
+                            environ_overrides={'REMOTE_ADDR': peer})
+                        self.assertEqual(response.status_code, 403)
+                        self.assertNotIn(TOKEN, response.get_data(as_text=True))
+            upstream.assert_not_called()
+        self.assertEqual(supply_mail.load_token(self.path), TOKEN)
+
+    def test_direct_http_and_https_same_origin_requests_still_work(self):
+        with patch.object(supply_mail.requests, 'post', return_value=ok([])):
+            for origin in ('http://localhost:8005', 'https://localhost:8005'):
+                with self.subTest(origin=origin):
+                    response = self.owner.post('/admin/api/supply-token', json={'token': TOKEN},
+                        base_url=origin, headers={'Origin': origin},
+                        environ_overrides={'REMOTE_ADDR': '198.51.100.10'})
+                    self.assertEqual(response.status_code, 200, response.get_json())
 
     def test_session_revoked_during_token_read_cannot_reveal_it(self):
         def revoke(path):

@@ -3332,6 +3332,23 @@ def _supply_owner_is_current():
                 session.get('admin_session_version') == actor['session_version'])
 
 
+def _supply_request_is_same_origin():
+    if request.headers.get('Sec-Fetch-Site') == 'cross-site':
+        return False
+    origin = request.headers.get('Origin')
+    if not origin:
+        return True
+    scheme = request.scheme
+    # Local Nginx terminates TLS and preserves Host (including the public port).
+    # Trust only its single, overwritten protocol header, never a remote peer or
+    # X-Forwarded-Host supplied by the browser.
+    if request.remote_addr in ('127.0.0.1', '::1'):
+        forwarded_scheme = request.headers.get('X-Forwarded-Proto')
+        if forwarded_scheme in ('http', 'https'):
+            scheme = forwarded_scheme
+    return origin.rstrip('/') == f'{scheme}://{request.host}'
+
+
 def _supply_connection(token):
     # A check applies only to the token that was actually tested. Never expose its digest.
     try:
@@ -3370,10 +3387,8 @@ def api_admin_supply_token():
         if request.method == 'GET':
             token = supply_mail.load_token(path)
             return jsonify(success=True, configured=bool(token), email_limit=_supply_mail_limit(),
-                           connection=_supply_connection(token))
-        origin = request.headers.get('Origin')
-        if (request.headers.get('Sec-Fetch-Site') == 'cross-site' or
-                (origin and origin.rstrip('/') != request.host_url.rstrip('/'))):
+                           masked_token=supply_mail.mask_token(token), connection=_supply_connection(token))
+        if not _supply_request_is_same_origin():
             return jsonify(success=False, message='请求来源无效'), 403
         if not request.is_json or len(request.get_data(cache=True)) > 2048:
             return jsonify(success=False, message='请求内容无效'), 400
@@ -3414,6 +3429,7 @@ def api_admin_supply_token():
         if action == 'preview':
             return jsonify(**result, configured=True, connection=connection)
         return jsonify(success=True, configured=True, updated=action == 'save', connection=connection,
+                       masked_token=supply_mail.mask_token(token),
                        message='Supply Token 已验证并保存' if action == 'save' else '连接成功')
     except ValueError as error:
         return jsonify(success=False, message=str(error)), 400

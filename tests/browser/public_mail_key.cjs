@@ -72,7 +72,9 @@ print(json.dumps(pages))
                         return res.end(JSON.stringify({success:true,configured:true,connection:connectionState,mails:previewMode==='empty'?[]:Array.from({length:Math.min(data.email_limit,8)},(_,i)=>({subject:'原始邮件 '+(8-i),body_type:previewMode==='html'?'html':'text',body:'验证码 003821 <script>window.previewInjected=true</script>',from:'sender@example.com',to:data.email,date:'2026-10-12T12:00:00Z'}))}));
                     }
                 }
-                return res.end(JSON.stringify({success:true,configured:tokenConfigured,email_limit:supplyLimit,connection:connectionState}));
+                return res.end(JSON.stringify({success:true,configured:tokenConfigured,
+                    masked_token:tokenConfigured?savedSupplyToken.slice(0,4)+'••••••••'+savedSupplyToken.slice(-4):'',
+                    email_limit:supplyLimit,connection:connectionState}));
             }
             if (pathname === '/admin/api/system-config') {
                 if (req.method === 'POST') {
@@ -214,19 +216,30 @@ test('Supply token form is owner-only, validates before saving, clears input and
         await page.waitForFunction(()=>!document.getElementById('supplyTokenSubmit').disabled);
         assert.equal(tokenConfigured,false);
         assert.equal(await page.locator('#supplyTokenInput').inputValue(),'');
+        assert.equal(await page.locator('#supplyTokenInput').getAttribute('placeholder'),'输入新的 Supply Token');
         await page.locator('#supplyTokenInput').fill('valid-fixture-token');
         await page.locator('#supplyTokenSubmit').click();
         await page.waitForFunction(()=>document.getElementById('supplyTokenStatus').textContent==='已配置 Supply Token');
         assert.deepEqual(tokenRequests,['invalid-fixture-token','valid-fixture-token']);
         assert.equal(await page.locator('#supplyTokenInput').inputValue(),'');
+        assert.equal(await page.locator('#supplyTokenInput').getAttribute('placeholder'),'vali••••••••oken');
         assert.equal(await page.evaluate(()=>JSON.stringify([Object.entries(localStorage),Object.entries(sessionStorage)]).includes('fixture-token')),false);
         await page.evaluate(()=>AppI18n.setLanguage('zh-TW'));
         await page.waitForFunction(()=>document.getElementById('supplyTokenSubmit').textContent==='驗證並儲存 Token');
+        assert.equal(await page.locator('#supplyTokenInput').getAttribute('placeholder'),'vali••••••••oken');
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
         await shot(page,'supply-token-traditional-mobile');
         await page.reload();
         await page.waitForFunction(()=>document.getElementById('supplyTokenStatus').textContent==='已設定 Supply Token');
         assert.equal(await page.locator('#supplyTokenInput').inputValue(),'');
+        assert.equal(await page.locator('#supplyTokenInput').getAttribute('placeholder'),'vali••••••••oken');
+        await page.locator('#supplyTokenSubmit').click();
+        assert.equal(tokenRequests.length,2,'The saved mask must never be submitted as a credential');
+        await page.locator('#supplyTokenInput').fill('invalid-fixture-token');
+        await page.locator('#supplyTokenSubmit').click();
+        await page.waitForFunction(()=>!document.getElementById('supplyTokenSubmit').disabled);
+        assert.equal(savedSupplyToken,'valid-fixture-token');
+        assert.equal(await page.locator('#supplyTokenInput').getAttribute('placeholder'),'vali••••••••oken');
         await page.goto(origin+'/other');
         assert.equal(await page.locator('#supplyTokenInput').count(),0);
         assert.deepEqual(errors,[]);
@@ -243,6 +256,7 @@ test('owner can reveal saved or draft tokens without caching them or changing co
         const input=page.locator('#supplyTokenInput'), toggle=page.locator('#supplyTokenToggle');
         await page.waitForFunction(()=>!document.getElementById('supplyTokenToggle').disabled);
         assert.equal(await input.inputValue(),'');
+        assert.equal(await input.getAttribute('placeholder'),'save••••••••-123');
         assert.equal(revealRequests,0,'Loading settings must not fetch plaintext');
         await toggle.click();
         await page.waitForFunction(()=>document.getElementById('supplyTokenInput').type==='text');
@@ -256,6 +270,7 @@ test('owner can reveal saved or draft tokens without caching them or changing co
         assert.equal(await input.getAttribute('type'),'password');
         assert.equal(await input.inputValue(),'');
         assert.equal(await toggle.getAttribute('aria-label'),'查看已儲存的 Token');
+        assert.equal(await input.getAttribute('placeholder'),'save••••••••-123');
         await input.fill('draft-token-fixture');
         await toggle.click();
         assert.equal(await input.getAttribute('type'),'text');

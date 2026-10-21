@@ -1240,7 +1240,7 @@
                         <label class="form-label supply-setting-label" for="supplyTokenInput"><svg aria-hidden="true"><use href="#ai-key"></use></svg><span>Supply Token</span></label>
                         <div class="supply-control-line">
                             <div class="supply-token-field">
-                                <input type="password" class="form-control" id="supplyTokenInput" autocomplete="new-password" autocapitalize="off" spellcheck="false" maxlength="512" placeholder="输入新的 Supply Token" required>
+                                <input type="password" class="form-control" id="supplyTokenInput" autocomplete="new-password" autocapitalize="off" spellcheck="false" maxlength="512" placeholder="输入新的 Supply Token" data-i18n-ignore required>
                                 <button type="button" class="supply-token-toggle" id="supplyTokenToggle" aria-label="显示 Token" title="显示 Token" aria-controls="supplyTokenInput" aria-pressed="false" data-i18n-ignore disabled><svg aria-hidden="true"><use href="#ai-eye"></use></svg></button>
                             </div>
                             <button type="submit" class="btn supply-action-primary" id="supplyTokenSubmit"><svg class="supply-button-icon" aria-hidden="true"><use href="#ai-safety-certificate"></use></svg><span data-button-label>验证并保存 Token</span></button>
@@ -1407,7 +1407,7 @@
 {% if can_manage_supply_token %}
 <script src="{{ url_for('static', filename='js/supply-connection.js') }}"></script>
 <script src="{{ url_for('static', filename='js/mail-content.js') }}"></script>
-<script src="{{ url_for('static', filename='js/supply-settings.js') }}"></script>
+<script src="{{ url_for('static', filename='js/supply-settings.js') }}?v=20261014-masked-token"></script>
 {% endif %}
 <script>
     // Toast 统一走 AdminUI.toast（window.showToast 由 admin-ui.js 提供）

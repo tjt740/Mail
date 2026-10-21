@@ -90,6 +90,10 @@ def validate_mail_limit(value):
     return value
 
 
+def mask_token(token):
+    return f'{token[:4]}••••••••{token[-4:]}' if token else ''
+
+
 def load_token(path):
     try:
         data = json.loads(Path(path).read_text(encoding='utf-8'))

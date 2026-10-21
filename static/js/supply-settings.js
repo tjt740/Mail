@@ -24,8 +24,10 @@
             });
             renderConnection();
             updateTokenToggle();
+            updateTokenPlaceholder();
         });
         let configured = false;
+        let maskedToken = '';
         let ready = false;
         let loading = true;
         let busy = false;
@@ -81,8 +83,13 @@
         function updatePresets() {
             presets.forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.limit) === Number(get('supplyMailLimit').value))));
         }
-        function setConfigured(value) {
+        function updateTokenPlaceholder() {
+            tokenInput.placeholder = maskedToken || window.AppI18n?.t('输入新的 Supply Token') || '输入新的 Supply Token';
+        }
+        function setConfigured(value, masked = maskedToken) {
             configured = value;
+            maskedToken = configured ? masked : '';
+            updateTokenPlaceholder();
             setText(get('supplyTokenStatus'), configured ? '已配置 Supply Token' : '尚未配置 Supply Token');
             updateControls();
         }
@@ -167,7 +174,7 @@
             const data = await response.json();
             if (data.connection) { connection = data.connection; renderConnection(); }
             if (!response.ok || !data.success) throw new Error(data.message || '请求失败');
-            if (typeof data.configured === 'boolean') setConfigured(data.configured);
+            if (typeof data.configured === 'boolean') setConfigured(data.configured, data.masked_token);
             return data;
         }
         async function run(action, button, task) {
@@ -306,7 +313,7 @@
                 ready = true;
                 connection = data.connection || { status: 'untested' };
                 renderConnection();
-                setConfigured(data.configured);
+                setConfigured(data.configured, data.masked_token);
             } catch {
                 setText(get('supplyTokenStatus'), '暂时无法读取邮件服务配置，请刷新重试');
             } finally {
