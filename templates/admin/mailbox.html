@@ -7759,10 +7759,19 @@
         updateMailboxHealthTools();
         renderBatchMailboxProgress();
         let nextIndex = 0;
+        const concurrency = 6;
         async function worker() {
             while (!state.stopped && nextIndex < ids.length) {
                 const id = ids[nextIndex++];
-                const result = await testMailbox(id, { silent: true, batch: true });
+                let result;
+                for (let attempt = 0; !state.stopped; attempt++) {
+                    result = await testMailbox(id, { silent: true, batch: true });
+                    if (result?.error_type !== 'test_busy' || attempt >= 19) break;
+                    // Server capacity is shared with receiving and other tabs.
+                    // Only retry a request that did not start an actual test.
+                    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500));
+                }
+                if (!result || (state.stopped && result.error_type === 'test_busy')) return;
                 state.completed++;
                 if (result?.account_status === 'normal') state.normal++;
                 else if (['banned', 'invalid_credentials'].includes(result?.account_status)) state.invalid++;
@@ -7781,7 +7790,7 @@
             }
         }
         try {
-            await Promise.all(Array.from({ length: Math.min(3, ids.length) }, () => worker()));
+            await Promise.all(Array.from({ length: Math.min(concurrency, ids.length) }, () => worker()));
         } finally {
             state.running = false;
             renderMailboxView(currentPage, true);

@@ -14,6 +14,7 @@ const seed = () => Array.from({ length: 66 }, (_, i) => ({
     protocol: 'imap', ssl: 1, created_by_admin: i < 60 ? 'alice' : 'bob', account_status: statuses[i % 6]
 }));
 let accounts, tested, deleted, active, maxActive, delay, failure, received, testMessage, responseDelays, responseResults;
+let testAttempts, busyRemaining, busyAlways;
 before(async () => {
     const html = execFileSync(process.env.PYTHON_BIN || path.join(root, '.venv/bin/python'), ['-c', `
 from flask import Flask, render_template
@@ -47,6 +48,12 @@ with app.test_request_context('/legacy/admin/mailbox'):
                     let body = ''; for await (const chunk of req) body += chunk;
                     const data = JSON.parse(body);
                     if (data.action === 'test') {
+                        testAttempts.push(data.id);
+                        if (busyAlways || busyRemaining > 0) {
+                            busyRemaining--;
+                            res.statusCode = 503;
+                            return res.end(JSON.stringify({ success: false, error_type: 'test_busy', retry_after_ms: 1000, message: '邮件服务繁忙，请稍后重试' }));
+                        }
                         tested.push(data.id); active++; maxActive = Math.max(active, maxActive);
                         await new Promise(resolve => setTimeout(resolve, responseDelays[data.id] ?? delay)); active--;
                         if (failure) payload = { success: false, message: '登录状态已失效' };
@@ -78,6 +85,7 @@ after(async () => { await browser?.close(); if (server) await new Promise(resolv
 async function newPage(viewport = { width: 1440, height: 1000 }, count = 66) {
     accounts = seed().slice(0, count); tested = []; deleted = []; received = []; active = 0; maxActive = 0; delay = 20; failure = false;
     testMessage = 'Fixture result'; responseDelays = {}; responseResults = {};
+    testAttempts = []; busyRemaining = 0; busyAlways = false;
     const page = await browser.newPage({ viewport, reducedMotion: 'reduce' });
     if (process.env.DEBUG_UI) {
         page.on('pageerror', error => console.error(error));
@@ -422,7 +430,7 @@ test('filtered tests respect owner, group, search and status; freeze targets as 
         await page.locator('#batchTestFilteredBtn').click();
         await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
         assert.deepEqual(tested.sort((a,b) => a-b), [1, 13, 14, 19]);
-        assert.equal(maxActive, 3);
+        assert.equal(maxActive, 4);
         assert.deepEqual(await page.evaluate(() => [mailboxBatchTest.completed, mailboxBatchTest.normal, mailboxBatchTest.invalid, mailboxBatchTest.retry]), [4, 3, 1, 0]);
         assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), true);
         assert.match(await page.locator('#mailboxBatchProgressText').textContent(), /批量测试完成.*4 \/ 4/);
@@ -574,13 +582,75 @@ for (const width of [1440, 390]) test(`batch failure panel fits the workspace an
     } finally { await page.close(); }
 });
 
+test('batch uses six workers and tests each frozen target exactly once', async () => {
+    const page = await newPage(undefined, 18);
+    try {
+        delay = 100;
+        await page.locator('#batchTestFilteredBtn').click();
+        await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
+        assert.equal(maxActive, 6);
+        assert.equal(tested.length, 18);
+        assert.equal(new Set(tested).size, 18);
+        assert.deepEqual(await page.evaluate(() => [mailboxBatchTest.completed, mailboxBatchTest.total]), [18, 18]);
+    } finally { await page.close(); }
+});
+
+test('batch retries capacity contention without counting it as an account failure', async () => {
+    const page = await newPage(undefined, 6);
+    try {
+        busyRemaining = 4;
+        await page.locator('#batchTestFilteredBtn').click();
+        await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
+        assert.equal(testAttempts.length, 10);
+        assert.equal(tested.length, 6);
+        assert.equal(new Set(tested).size, 6);
+        assert.deepEqual(await page.evaluate(() => [mailboxBatchTest.completed, mailboxBatchTest.normal, mailboxBatchTest.invalid, mailboxBatchTest.retry]), [6, 2, 2, 2]);
+        assert.ok(!(await page.locator('#mailboxBatchFailures').innerText()).includes('服务繁忙'));
+    } finally { await page.close(); }
+});
+
+test('stop while waiting for capacity leaves untested accounts and saved statuses untouched', async () => {
+    const page = await newPage(undefined, 18);
+    try {
+        busyAlways = true;
+        await page.locator('#batchTestFilteredBtn').click();
+        await page.waitForFunction(() => mailboxBatchTest?.running);
+        await page.waitForTimeout(100);
+        await page.locator('#stopBatchTestBtn').click();
+        await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
+        assert.equal(tested.length, 0);
+        assert.equal(testAttempts.length, 6);
+        assert.deepEqual(accounts, seed().slice(0, 18));
+        assert.equal(await page.evaluate(() => mailboxBatchTest.completed), 0);
+        assert.match(await page.locator('.mailbox-batch-remaining').textContent(), /未测试 18/);
+    } finally { await page.close(); }
+});
+
+test('persistent capacity contention has bounded retries and preserves saved health', async () => {
+    const page = await newPage(undefined, 1);
+    try {
+        busyAlways = true;
+        await page.evaluate(() => {
+            const originalTimeout = window.setTimeout;
+            window.setTimeout = (callback, delay, ...args) => originalTimeout(callback, delay >= 1000 && delay <= 1500 ? 0 : delay, ...args);
+        });
+        await page.locator('#batchTestFilteredBtn').click();
+        await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
+        assert.equal(testAttempts.length, 20);
+        assert.equal(tested.length, 0);
+        assert.deepEqual(accounts, seed().slice(0, 1));
+        assert.equal(await page.evaluate(() => mailboxBatchTest.retry), 1);
+        assert.match(await page.locator('#mailboxBatchFailures').innerText(), /已保存的账号状态未更改/);
+    } finally { await page.close(); }
+});
+
 test('stop waits for active tests, blocks overlapping runs and leaves remaining accounts untouched', async () => {
     const page = await newPage();
     try {
         delay = 400;
         await page.locator('#selectFilteredMailboxesBtn').click();
         await page.locator('#batchTestSelectedBtn').click();
-        await page.waitForFunction(() => document.querySelectorAll('[data-action="test"]:disabled').length === 3);
+        await page.waitForFunction(() => document.querySelectorAll('[data-action="test"]:disabled').length === 6);
         assert.equal(await page.locator('#batchDeleteMailboxesBtn').isDisabled(), true);
         assert.equal(await page.locator('#batchTestFilteredBtn').isDisabled(), true);
         const alignment = await page.evaluate(() => {
@@ -594,14 +664,14 @@ test('stop waits for active tests, blocks overlapping runs and leaves remaining 
         }
         await page.locator('#stopBatchTestBtn').click();
         await page.waitForFunction(() => mailboxBatchTest && !mailboxBatchTest.running);
-        assert.equal(tested.length, 3);
+        assert.equal(tested.length, 6);
         assert.equal(active, 0);
-        assert.deepEqual(accounts.slice(3), seed().slice(3));
-        assert.deepEqual(await page.evaluate(() => [mailboxBatchTest.completed, mailboxBatchTest.total, mailboxBatchTest.normal, mailboxBatchTest.invalid, mailboxBatchTest.retry]), [3, 66, 1, 1, 1]);
+        assert.deepEqual(accounts.slice(6), seed().slice(6));
+        assert.deepEqual(await page.evaluate(() => [mailboxBatchTest.completed, mailboxBatchTest.total, mailboxBatchTest.normal, mailboxBatchTest.invalid, mailboxBatchTest.retry]), [6, 66, 2, 2, 2]);
         assert.equal(await page.locator('#mailboxBatchProgress').isVisible(), true);
-        assert.match(await page.locator('#mailboxBatchProgressText').textContent(), /批量测试已停止.*3 \/ 66/);
-        assert.match(await page.locator('.mailbox-batch-remaining').textContent(), /未测试 63/);
-        assert.equal(await page.locator('#mailboxBatchFailures [role="listitem"]').count(), 2);
+        assert.match(await page.locator('#mailboxBatchProgressText').textContent(), /批量测试已停止.*6 \/ 66/);
+        assert.match(await page.locator('.mailbox-batch-remaining').textContent(), /未测试 60/);
+        assert.equal(await page.locator('#mailboxBatchFailures [role="listitem"]').count(), 4);
         assert.equal(await page.locator('#stopBatchTestBtn').isVisible(), false);
         assert.equal(await page.locator('#batchDeleteMailboxesBtn').isEnabled(), true);
     } finally { await page.close(); }

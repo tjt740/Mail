@@ -53,6 +53,30 @@ MAILBOX_ACCOUNT_STATUS_INVALID = 'invalid_credentials'
 MAILBOX_ACCOUNT_STATUS_NETWORK = 'network_error'
 MAILBOX_ACCOUNT_STATUS_ERROR = 'test_error'
 DEFAULT_MAILBOX_SCOPE_MANAGER_USERNAMES = ('tjt740', 'lhm', 'pink')
+# Shared by tests, interactive receiving and polling in this application process.
+MAIL_PROCESS_LIMIT = 6
+MAIL_PROCESS_SLOTS = threading.BoundedSemaphore(MAIL_PROCESS_LIMIT)
+
+
+class MailboxTestBusy(Exception):
+    pass
+
+
+def _run_mail_process(args, **kwargs):
+    """Bound child processes; batch tests retry capacity contention in the UI."""
+    is_test = '--test-connection' in args
+    if not MAIL_PROCESS_SLOTS.acquire(blocking=not is_test):
+        raise MailboxTestBusy()
+    try:
+        return subprocess.run(args, **kwargs)
+    finally:
+        MAIL_PROCESS_SLOTS.release()
+
+
+def _mailbox_test_busy_response():
+    # Capacity is not evidence about credentials; do not persist account status.
+    return jsonify(success=False, error_type='test_busy', retry_after_ms=1000,
+                   message='邮件服务繁忙，请稍后重试'), 503, {'Retry-After': '1'}
 
 
 def classify_mailbox_account_status(test_payload=None, fallback_message=''):
@@ -3585,7 +3609,7 @@ def _run_mail_fetcher(email_address, limit=None):
     ]
 
     try:
-        result = subprocess.run(
+        result = _run_mail_process(
             script_args,
             capture_output=True,
             text=True,
@@ -4578,7 +4602,7 @@ def api_get_mail():
                         return jsonify(success=False, provider='supply', code='folder', message='此邮件服务仅支持收件箱'), 400
                     response_data = supply_mail.Client(token).fetch(email.lower(), limit=_supply_mail_limit())
                 else:
-                    result = subprocess.run(script_args, capture_output=True, text=True, timeout=30)
+                    result = _run_mail_process(script_args, capture_output=True, text=True, timeout=30)
                     if result.returncode != 0:
                         return jsonify(success=False, message=f'邮件获取失败: {result.stderr or "未知错误"}')
                     response_data = json.loads(result.stdout)
@@ -4708,7 +4732,7 @@ def api_get_mail():
                 if folder:
                     script_args.extend(['--folder', folder])
                 
-                result = subprocess.run(script_args, capture_output=True, text=True, timeout=30)
+                result = _run_mail_process(script_args, capture_output=True, text=True, timeout=30)
                 
                 if result.returncode == 0:
                     # 解析JSON输出
@@ -6308,7 +6332,7 @@ def _test_mailbox(db, data):
             return jsonify({'success': False, 'message': '邮箱不存在'})
 
         try:
-            result = subprocess.run([
+            result = _run_mail_process([
                 sys.executable,
                 os.path.join(os.path.dirname(__file__), 'python', 'mail_fetcher.py'),
                 account_dict['email'],
@@ -6332,6 +6356,8 @@ def _test_mailbox(db, data):
                     'message': result.stderr.strip() or '邮箱测试失败',
                     'error_type': 'test_exception',
                 }
+        except MailboxTestBusy:
+            return _mailbox_test_busy_response()
         except subprocess.TimeoutExpired:
             test_payload = {
                 'success': False,
@@ -6637,7 +6663,7 @@ def _test_new_mailbox(data):
             
             try:
                 # 调用Python邮件获取器进行测试
-                result = subprocess.run([
+                result = _run_mail_process([
                     sys.executable, 
                     os.path.join(os.path.dirname(__file__), 'python', 'mail_fetcher.py'),
                     temp_email,
@@ -6670,6 +6696,8 @@ def _test_new_mailbox(data):
                         })
                     })
                     
+            except MailboxTestBusy:
+                return _mailbox_test_busy_response()
             except subprocess.TimeoutExpired:
                 return jsonify({
                     'success': False,
