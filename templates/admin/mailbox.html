@@ -3101,7 +3101,6 @@
             margin: 0;
         }
 
-        #mailboxTable td.mailbox-col-created_at,
         #mailboxTable td.mailbox-col-updated_at,
         #mailboxTable td.mailbox-col-created_by_admin,
         #mailboxTable td.mailbox-col-group {
@@ -3982,7 +3981,7 @@
 <script>
     const SIDEBAR_COLLAPSE_KEY = 'adminSidebarCollapsed';
     const MAILBOX_GROUP_PANEL_KEY = 'mailboxGroupPanelCollapsedV3';
-    const MAILBOX_COLUMN_STORAGE_KEY = 'mailboxTableVisibleColumnsV8';
+    const MAILBOX_COLUMN_STORAGE_KEY = 'mailboxTableVisibleColumnsV9';
     const CURRENT_ADMIN_USERNAME = {{ admin_username|tojson }};
 
     function getStoredPreference(key) {
@@ -4225,7 +4224,7 @@
         { key: 'email', label: '邮箱地址', required: true, defaultVisible: true, minWidth: 230, weight: 3.4 },
         { key: 'server', label: '收/发信息', defaultVisible: false, sortable: true, minWidth: 170, weight: 1.1 },
         { key: 'test_status', label: '账号状态', required: true, defaultVisible: true, filter: 'test_status', minWidth: 110, fixed: true },
-        { key: 'created_at', label: '添加时间', defaultVisible: false, sortable: true, minWidth: 150, fixed: true },
+        { key: 'created_at', label: '添加时间', defaultVisible: true, sortable: true, minWidth: 150, fixed: true },
         { key: 'created_by_admin', label: '操作人', defaultVisible: true, filter: 'owner', minWidth: 105, fixed: true },
         { key: 'updated_at', label: '最后修改时间', defaultVisible: false, sortable: true, minWidth: 178, fixed: true },
         { key: 'remarks', label: '备注', defaultVisible: true, minWidth: 120, weight: 1.7, priorityGrow: true },
@@ -4456,13 +4455,19 @@
         const requiredKeys = MAILBOX_COLUMNS.filter(column => column.required).map(column => column.key);
         let visibleKeys = getDefaultVisibleMailboxColumns();
         const stored = getStoredPreference(MAILBOX_COLUMN_STORAGE_KEY);
+        const legacyStored = stored ? null : getStoredPreference('mailboxTableVisibleColumnsV8');
 
-        if (stored) {
+        if (stored || legacyStored) {
             try {
-                const parsed = JSON.parse(stored);
+                const parsed = JSON.parse(stored || legacyStored);
                 if (Array.isArray(parsed)) {
                     const validKeys = new Set(MAILBOX_COLUMNS.map(column => column.key));
                     visibleKeys = parsed.filter(key => validKeys.has(key));
+                    if (!stored) {
+                        // Show the new default once while preserving other saved column choices.
+                        if (!visibleKeys.includes('created_at')) visibleKeys.push('created_at');
+                        saveVisibleMailboxColumns(visibleKeys);
+                    }
                 }
             } catch (error) {
                 visibleKeys = getDefaultVisibleMailboxColumns();
@@ -7867,9 +7872,8 @@
             return;
         }
 
-        const idSet = new Set(Array.from(selectedMailboxes).map(id => parseInt(id, 10)));
-        const emails = mailboxData
-            .filter(mailbox => idSet.has(mailbox.id))
+        const emails = sortMailboxes(getFilteredMailboxes())
+            .filter(mailbox => selectedMailboxes.has(Number(mailbox.id)))
             .map(mailbox => mailbox.email)
             .filter(Boolean);
 

@@ -11,6 +11,7 @@ let server, browser, origin;
 const statuses = ['banned', 'invalid_credentials', 'network_error', 'test_error', 'pending', 'normal'];
 const seed = () => Array.from({ length: 66 }, (_, i) => ({
     id: i + 1, email: `account${i + 1}@example.com`, server: 'imap.example.com', port: 993,
+    created_at: `2026-10-02 12:${String(Math.floor(i / 3)).padStart(2, '0')}:00`,
     protocol: 'imap', ssl: 1, created_by_admin: i < 60 ? 'alice' : 'bob', account_status: statuses[i % 6]
 }));
 let accounts, tested, deleted, active, maxActive, delay, failure, received, testMessage, responseDelays, responseResults;
@@ -90,11 +91,14 @@ after(async () => {
         await closed;
     }
 });
-async function newPage(viewport = { width: 1440, height: 1000 }, count = 66) {
+async function newPage(viewport = { width: 1440, height: 1000 }, count = 66, preferences = {}) {
     accounts = seed().slice(0, count); tested = []; deleted = []; received = []; active = 0; maxActive = 0; delay = 20; failure = false;
     testMessage = 'Fixture result'; responseDelays = {}; responseResults = {};
     testAttempts = []; busyRemaining = 0; busyAlways = false;
     const page = await browser.newPage({ viewport, reducedMotion: 'reduce' });
+    await page.addInitScript(values => {
+        for (const [key, value] of Object.entries(values)) localStorage.setItem(key, JSON.stringify(value));
+    }, preferences);
     if (process.env.DEBUG_UI) {
         page.on('pageerror', error => console.error(error));
         page.on('console', message => { if (message.type() === 'error') console.error(message.text()); });
@@ -104,6 +108,81 @@ async function newPage(viewport = { width: 1440, height: 1000 }, count = 66) {
     await page.waitForFunction(total => document.querySelector('#batchTestFilteredBtn').textContent.includes(`(${total})`), count);
     return page;
 }
+
+for (const width of [1440, 390]) {
+    for (const legacy of [false, true]) test(`added time is shown by default and can be hidden after ${legacy ? 'saved preferences migrate' : 'a fresh visit'} at ${width}px`, async () => {
+        const page = await newPage({ width, height: 1000 }, 66, legacy ? {
+            mailboxTableVisibleColumnsV8: ['email', 'server', 'actions']
+        } : {});
+        try {
+            const createdCell = page.locator('#mailboxTable tbody tr').first().locator('.mailbox-col-created_at');
+            assert.equal(await createdCell.isVisible(), true);
+            assert.match(await createdCell.innerText(), /2026/);
+            if (legacy) {
+                assert.equal(await page.locator('#mailboxTable tbody tr').first().locator('.mailbox-col-server').count(), 1);
+                assert.equal(await page.locator('#mailboxTable th.mailbox-col-remarks').count(), 0);
+            }
+            if (process.env.SCREENSHOT_DIR && !legacy) {
+                fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true });
+                await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `mailbox-added-time-${width}.png`) });
+            }
+            if (width < 640) await page.setViewportSize({ width: 1440, height: 1000 });
+            await page.locator('#columnConfigBtn').click();
+            await page.locator('#columnConfigMenu input[data-column-key="created_at"]').uncheck();
+            await page.reload();
+            await page.waitForFunction(() => document.querySelector('#adminMailboxCount').textContent === '66');
+            assert.equal(await page.locator('#mailboxTable .mailbox-col-created_at').count(), 0, 'later column choices must persist');
+        } finally { await page.close(); }
+    });
+}
+
+test('batch copy follows displayed sorting regardless of checkbox order or string IDs', async () => {
+    const page = await newPage();
+    try {
+        await page.evaluate(() => {
+            window.writeTextToClipboard = async text => { window.copiedAddresses = text; return true; };
+            mailboxData.forEach(mailbox => { mailbox.id = String(mailbox.id); });
+            renderMailboxView();
+        });
+        for (const id of [64, 66, 65]) await page.locator(`.mailbox-checkbox[value="${id}"]`).check();
+        const checkCopy = async () => {
+            const expected = await page.locator('#mailboxTable tbody tr').evaluateAll(rows => rows
+                .filter(row => row.querySelector('.mailbox-checkbox')?.checked)
+                .map(row => row.querySelector('.mailbox-email-address').textContent.trim()).join('\n'));
+            await page.locator('[data-bulk-action="copy"]').click();
+            assert.equal(await page.evaluate(() => window.copiedAddresses), expected);
+        };
+        await checkCopy();
+        await page.locator('th.mailbox-col-created_at button').click();
+        await checkCopy();
+        await page.evaluate(() => {
+            mailboxData.forEach(mailbox => { mailbox.created_at = '2026-10-02 12:00:00'; });
+            renderMailboxView();
+        });
+        await checkCopy();
+    } finally { await page.close(); }
+});
+
+test('batch copy includes all selected pages in list order and respects the filtered scope', async () => {
+    const page = await newPage();
+    try {
+        await page.evaluate(() => {
+            window.writeTextToClipboard = async text => { window.copiedAddresses = text; return true; };
+        });
+        await page.locator('#perPageSelect').selectOption('20');
+        await page.locator('#selectFilteredMailboxesBtn').click();
+        await page.locator('[data-bulk-action="copy"]').click();
+        assert.equal(await page.evaluate(() => window.copiedAddresses), seed().reverse().map(row => row.email).join('\n'));
+        await page.getByRole('button', { name: '下一页 »', exact: true }).click();
+        await page.locator('[data-bulk-action="copy"]').click();
+        assert.equal(await page.evaluate(() => window.copiedAddresses.split('\n').length), 66);
+        await page.locator('[data-status-view="normal"]').click();
+        await page.locator('#selectFilteredMailboxesBtn').click();
+        await page.locator('[data-bulk-action="copy"]').click();
+        assert.equal(await page.evaluate(() => window.copiedAddresses), seed().reverse()
+            .filter(row => row.account_status === 'normal').map(row => row.email).join('\n'));
+    } finally { await page.close(); }
+});
 
 for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
     test(`full test feedback can be closed and is replaced when testing another account at ${viewport.width}px`, async () => {
