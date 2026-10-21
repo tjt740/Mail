@@ -185,6 +185,8 @@ for (const width of [320, 390, 1440]) test(`single-mailbox results fill the pane
 for (const [width, height] of [[1280, 720], [390, 844], [844, 390]]) test(`50 mailboxes and 250 messages remain reachable at ${width}x${height}`, async () => {
     const page = await newPage({ viewport: { width, height }, reducedMotion: 'reduce' });
     const addresses = Array.from({ length: 50 }, (_, i) => `mailbox${i + 1}@example.com`);
+    const horizontalChips = width <= 900;
+    const chipScrollAxis = horizontalChips ? 'scrollLeft' : 'scrollTop';
     let empty = false;
     let release;
     const singleRequest = new Promise(resolve => { release = resolve; });
@@ -203,10 +205,11 @@ for (const [width, height] of [[1280, 720], [390, 844], [844, 390]]) test(`50 ma
             const panel = document.getElementById('mailListPanel');
             const list = document.querySelector('.mail-list-wrapper');
             return { chips: chipList.clientHeight, chipScroll: chipList.scrollHeight,
+                chipWidth: chipList.clientWidth, chipScrollWidth: chipList.scrollWidth,
                 panel: panel.clientHeight, list: list.clientHeight, listScroll: list.scrollHeight,
                 overflowX: document.documentElement.scrollWidth > innerWidth };
         });
-        assert.ok(sizes.chips <= 104 && sizes.chipScroll > sizes.chips, JSON.stringify(sizes));
+        assert.ok(sizes.chips <= 104 && (horizontalChips ? sizes.chipScrollWidth > sizes.chipWidth : sizes.chipScroll > sizes.chips), JSON.stringify(sizes));
         assert.ok(sizes.panel > 60 && sizes.panel < height && sizes.list >= 30 && sizes.listScroll > sizes.list, JSON.stringify(sizes));
         assert.equal(sizes.overflowX, false);
         // Wheel gestures outside the inbox must not move the viewport.
@@ -222,12 +225,12 @@ for (const [width, height] of [[1280, 720], [390, 844], [844, 390]]) test(`50 ma
         assert.ok(edges.left >= 8 && edges.right >= 8 && edges.bottom >= 8 && !edges.pageOverflow, JSON.stringify(edges));
         const last = page.locator('.mailbox-chip[data-mailbox="mailbox50@example.com"]');
         await last.scrollIntoViewIfNeeded();
-        const before = await page.locator('#mailboxChipList').evaluate(el => el.scrollTop);
+        const before = await page.locator('#mailboxChipList').evaluate((el, axis) => el[axis], chipScrollAxis);
         assert.ok(before > 0);
         await last.click();
         assert.equal(await last.getAttribute('aria-selected'), 'true');
         assert.equal(await page.locator('#mailTableBody tr[data-mail-id]').count(), 5);
-        assert.equal(await page.locator('#mailboxChipList').evaluate(el => el.scrollTop), before);
+        assert.equal(await page.locator('#mailboxChipList').evaluate((el, axis) => el[axis], chipScrollAxis), before);
         const all = page.locator('.mailbox-chip[data-mailbox="all"]');
         await all.scrollIntoViewIfNeeded();
         await all.click();
@@ -251,7 +254,8 @@ for (const [width, height] of [[1280, 720], [390, 844], [844, 390]]) test(`50 ma
         await page.locator('.get-mail-btn').click();
         await page.locator('.mail-list-empty').waitFor();
         assert.equal(await page.locator('.mailbox-chip').count(), 51);
-        assert.ok(await page.locator('#mailboxChipList').evaluate(el => el.scrollHeight > el.clientHeight && el.clientHeight <= 104));
+        assert.ok(await page.locator('#mailboxChipList').evaluate((el, horizontal) =>
+            (horizontal ? el.scrollWidth > el.clientWidth : el.scrollHeight > el.clientHeight) && el.clientHeight <= 104, horizontalChips));
         assert.ok(await page.locator('#mailListPanel').evaluate(el => el.clientHeight > 60));
         empty = false;
         await page.locator('#emailInput').fill('solo@example.com');

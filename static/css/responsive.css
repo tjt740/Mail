@@ -34,7 +34,7 @@ body.frontend-mail-page #frontendApp .query-control-block :is(.count-input, .get
 }
 @media (max-width: 560px) {
     body.frontend-mail-page #frontendApp .query-control-block { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "label label" "email email" "count button"; }
-    body.frontend-mail-page #frontendApp .query-control-block:has(.query-key-field:not([hidden])) { grid-template-areas: "key key" "label label" "email email" "count button"; }
+    body.frontend-mail-page #frontendApp .query-control-block.has-query-key { grid-template-areas: "key key" "label label" "email email" "count button"; }
     body.frontend-mail-page #frontendApp .query-count-field { min-width: 0; }
     body.frontend-mail-page #frontendApp .query-count-field label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
     body.frontend-mail-page #frontendApp .get-mail-btn { padding-inline: 6px; min-width: 0; font-size: 14px; }
@@ -42,7 +42,7 @@ body.frontend-mail-page #frontendApp .query-control-block :is(.count-input, .get
     body.frontend-mail-page #frontendApp :is(.folder-list, .mail-pagination, .mailbox-chip-list) > * { flex-shrink: 0; }
     body.frontend-mail-page #frontendApp .mail-list-wrapper { overflow: auto !important; }
     body.frontend-mail-page #frontendApp .mail-table { display: table; table-layout: fixed; min-width: 620px; width: 100%; }
-    body.frontend-mail-page #frontendApp .mail-table:has(.mail-list-empty) { min-width: 0; }
+    body.frontend-mail-page #frontendApp .mail-table.is-empty { min-width: 0; }
     body.frontend-mail-page #frontendApp .mail-table thead { display: table-header-group; }
     body.frontend-mail-page #frontendApp .mail-table colgroup { display: table-column-group; }
     body.frontend-mail-page #frontendApp .mail-table tbody { display: table-row-group; }
@@ -67,11 +67,11 @@ body.frontend-mail-page .scene-controls button { flex-shrink: 0; }
     body #mailboxTable .mailbox-empty-row td { white-space: normal !important; }
 }
 @media (max-width: 560px) {
-    body.frontend-mail-page #frontendApp .mail-table:has(.mail-list-empty) :is(thead, colgroup) { display: none; }
+    body.frontend-mail-page #frontendApp .mail-table.is-empty :is(thead, colgroup) { display: none; }
 }
 @media (min-width: 901px) {
     body.frontend-mail-page #frontendApp .query-control-block { grid-template-areas: "label . ." "email count button"; }
-    body.frontend-mail-page #frontendApp .query-control-block:has(.query-key-field:not([hidden])) { grid-template-areas: "key key key" "label . ." "email count button"; }
+    body.frontend-mail-page #frontendApp .query-control-block.has-query-key { grid-template-areas: "key key key" "label . ." "email count button"; }
     body.frontend-mail-page #frontendApp .query-count-field { display: flex; grid-area: count; align-self: end; }
     body.frontend-mail-page #frontendApp .query-count-field label { align-self: start; }
 }

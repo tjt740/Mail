@@ -2395,7 +2395,7 @@
 {% endblock %}
 
 {% block body %}
-<script>document.body.classList.add('frontend-mail-page');</script>
+<script>document.documentElement.classList.add('frontend-mail-root'); document.body.classList.add('frontend-mail-page');</script>
 <canvas id="bgCanvas" aria-hidden="true"></canvas>
 <!-- Toast notification container -->
 <div id="toast-container" class="toast-container"></div>
@@ -2449,7 +2449,7 @@
 
     <section class="mail-query-panel" aria-labelledby="emailQueryLabel">
         <div class="control-row">
-            <div class="control-block query-control-block">
+            <div class="control-block query-control-block{% if public_mail_key_required %} has-query-key{% endif %}">
                 <div class="query-key-field" id="publicMailKeyField" {% if not public_mail_key_required %}hidden{% endif %}>
                     <label for="publicMailKeyInput">取件密钥</label>
                     <input type="password" id="publicMailKeyInput" class="form-control highlight-input" placeholder="请输入取件密钥" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="publicMailKeyHint" {% if public_mail_key_required %}required{% else %}disabled{% endif %}>
@@ -2533,7 +2533,7 @@
                         <div class="mail-pagination" id="mailPagination"></div>
                     </div>
                     <div class="mail-list-wrapper">
-                        <table class="mail-table">
+                        <table class="mail-table is-empty">
                             <colgroup>
                                 <col style="width: 6%;">
                                 <col style="width: 18%;">
@@ -2641,6 +2641,7 @@
     function applyPublicMailPolicy(required) {
         publicMailKeyRequired = required;
         document.getElementById('publicMailKeyField').hidden = !required;
+        document.querySelector('.query-control-block').classList.toggle('has-query-key', required);
         const input = document.getElementById('publicMailKeyInput');
         input.required = required;
         input.disabled = !required;
@@ -3152,6 +3153,7 @@
         mailState.page = Math.min(mailState.page, totalPages);
         const start = (mailState.page - 1) * mailState.perPage;
         const pageData = filtered.slice(start, start + mailState.perPage);
+        document.querySelector('.mail-table').classList.toggle('is-empty', pageData.length === 0);
         
         if (tbody) {
             tbody.innerHTML = '';
