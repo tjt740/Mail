@@ -4,6 +4,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import requests
@@ -280,6 +281,79 @@ class SupplyIntegrationTests(unittest.TestCase):
                 'email': 'ungranted@example.com', 'master_key': 'personal-fixture-key'})
             self.assertEqual(response.status_code, 404)
             post.assert_not_called()
+
+    def add_local_mailbox(self):
+        with sqlite3.connect(app_module.app.config['DATABASE']) as db:
+            db.execute('''INSERT INTO mail_accounts (email, username, password, server, port)
+                VALUES (?, ?, ?, ?, ?)''', ('Local@Example.com', 'Login@Example.com',
+                                            'fixture-password', 'imap.example.com', 993))
+
+    def test_local_mailbox_takes_priority_over_supply_for_email_username_and_folders(self):
+        self.add_local_mailbox()
+        supply_mail.save_token(self.path, TOKEN)
+        result = SimpleNamespace(returncode=0, stdout=json.dumps({'success': True, 'mails': []}))
+        for email in ('local@example.com', 'LOCAL@EXAMPLE.COM', ' login@EXAMPLE.com '):
+            for folder in ('INBOX', 'Trash'):
+                with self.subTest(email=email, folder=folder), \
+                        patch.object(app_module.subprocess, 'run', return_value=result) as run, \
+                        patch.object(supply_mail.requests, 'post') as upstream:
+                    response = self.public.post('/api/get_mail', json={'email': email, 'folder': folder})
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.get_json()['provider'], 'mailbox')
+                    self.assertTrue(response.get_json()['success'])
+                    run.assert_called_once()
+                    command = run.call_args.args[0]
+                    self.assertIn(email.strip(), command)
+                    self.assertEqual(command[command.index('--folder') + 1], folder)
+                    upstream.assert_not_called()
+        self.assertEqual(self.public.get('/api/public-mail-config').get_json()['provider'], 'auto')
+
+    def test_local_failure_does_not_fall_through_to_supply(self):
+        self.add_local_mailbox()
+        supply_mail.save_token(self.path, TOKEN)
+        result = SimpleNamespace(returncode=0, stdout=json.dumps({
+            'success': False, 'message': 'Local mailbox authentication failed', 'connection': 'direct'}))
+        with patch.object(app_module.subprocess, 'run', return_value=result), \
+                patch.object(supply_mail.requests, 'post') as upstream:
+            response = self.public.post('/api/get_mail', json={'email': 'local@example.com'})
+            self.assertEqual(response.get_json()['provider'], 'mailbox')
+            self.assertEqual(response.get_json()['message'], 'Local mailbox authentication failed')
+            self.assertFalse(response.get_json()['success'])
+            upstream.assert_not_called()
+
+    def test_local_routing_keeps_key_and_mailbox_scope_checks(self):
+        self.add_local_mailbox()
+        supply_mail.save_token(self.path, TOKEN)
+        self.owner.post('/admin/api/system-config', json={
+            'action': 'update_admin_master_key', 'admin_master_key': 'owner-fixture-key',
+            'confirm_master_key': 'owner-fixture-key'})
+        self.owner.post('/admin/api/system-config', json={'action': 'update_public_mail_key', 'enabled': True})
+        self.other.post('/admin/api/system-config', json={
+            'action': 'update_admin_master_key', 'admin_master_key': 'personal-fixture-key',
+            'confirm_master_key': 'personal-fixture-key'})
+        with patch.object(app_module.subprocess, 'run') as run, \
+                patch.object(supply_mail.requests, 'post') as upstream:
+            for credentials, status in (({}, 403), ({'master_key': 'wrong'}, 403),
+                                        ({'master_key': 'personal-fixture-key'}, 404)):
+                response = self.public.post('/api/get_mail', json={'email': 'local@example.com', **credentials})
+                self.assertEqual(response.status_code, status, response.get_json())
+            run.assert_not_called()
+            upstream.assert_not_called()
+
+    def test_supply_errors_identify_provider_and_do_not_fall_through_to_local(self):
+        supply_mail.save_token(self.path, TOKEN)
+        with patch.object(supply_mail.requests, 'post', return_value=ok([])), \
+                patch.object(app_module.subprocess, 'run') as run:
+            response = self.public.post('/api/get_mail', json={'email': 'supply-only@example.com'})
+            self.assertEqual(response.status_code, 404)
+            self.assertEqual(response.get_json()['code'], 'missing')
+            self.assertEqual(response.get_json()['provider'], 'supply')
+            run.assert_not_called()
+        with patch.object(supply_mail.requests, 'post') as upstream:
+            response = self.public.post('/api/get_mail', json={'email': 'supply-only@example.com', 'folder': 'Trash'})
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.get_json()['provider'], 'supply')
+            upstream.assert_not_called()
 
     def test_revoked_session_during_validation_cannot_save(self):
         supply_mail.save_token(self.path, TOKEN)

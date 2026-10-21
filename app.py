@@ -3434,7 +3434,7 @@ def api_public_mail_config():
     try:
         token = supply_mail.load_token(_supply_token_path())
         response = jsonify(success=True, key_required=_public_mail_key_required(),
-                           provider='supply' if token else 'mailbox',
+                           provider='auto' if token else 'mailbox',
                            email_limit=_supply_mail_limit() if token else supply_mail.DEFAULT_MAIL_LIMIT)
     except Exception:
         logger.exception('Public mail access configuration unavailable')
@@ -4545,9 +4545,17 @@ def api_get_mail():
                     script_args.extend(['--folder', folder])
                 
                 token = supply_mail.load_token(_supply_token_path()) if is_public_lookup and not is_admin_session else None
-                if token:
+                # A configured Supply token supplements the local mailboxes; it
+                # must not take over accounts already managed by this mail site.
+                # Match the fetcher's case-insensitive email/username lookup.
+                use_supply = token and not security.query(db, '''
+                    SELECT id FROM mail_accounts
+                    WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)
+                    LIMIT 1
+                ''', (email, email))
+                if use_supply:
                     if folder.upper() != 'INBOX':
-                        return jsonify(success=False, code='folder', message='此邮件服务仅支持收件箱'), 400
+                        return jsonify(success=False, provider='supply', code='folder', message='此邮件服务仅支持收件箱'), 400
                     response_data = supply_mail.Client(token).fetch(email.lower(), limit=_supply_mail_limit())
                 else:
                     result = subprocess.run(script_args, capture_output=True, text=True, timeout=30)
@@ -4556,6 +4564,7 @@ def api_get_mail():
                     response_data = json.loads(result.stdout)
 
                 if isinstance(response_data, dict):
+                    response_data['provider'] = 'supply' if use_supply else 'mailbox'
                     if response_data.get('success'):
                         # 记录公开查询或管理员访问日志
                         user_ip = request.environ.get('HTTP_X_FORWARDED_FOR') or request.environ.get('REMOTE_ADDR') or 'unknown'
@@ -4592,7 +4601,7 @@ def api_get_mail():
                 return jsonify(success=False, message='邮件服务响应格式错误'), 502
 
             except supply_mail.SupplyError as error:
-                return jsonify(success=False, code=error.code, message=error.message), error.status
+                return jsonify(success=False, provider='supply', code=error.code, message=error.message), error.status
             except subprocess.TimeoutExpired:
                 return jsonify({
                     'success': False,

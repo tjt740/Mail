@@ -2655,9 +2655,10 @@
         }
         applyPublicMailPolicy(data.key_required);
         publicMailLimit = Number.isInteger(data.email_limit) && data.email_limit >= 1 && data.email_limit <= 20 ? data.email_limit : 5;
-        const supply = data.provider === 'supply';
-        document.querySelector('[data-folder="trash"]').hidden = supply;
-        if (supply && mailState.folder !== 'inbox') switchFolder('inbox');
+        // Automatic routing also serves local mailboxes, including their trash.
+        const supplyOnly = data.provider === 'supply';
+        document.querySelector('[data-folder="trash"]').hidden = supplyOnly;
+        if (supplyOnly && mailState.folder !== 'inbox') switchFolder('inbox');
     }
 
     refreshPublicMailPolicy().catch(() => {});
@@ -2831,13 +2832,16 @@
         }
     }
 
-    function appendConnectionInfo(message, proxyData, connectionType) {
+    function appendConnectionInfo(message, proxyData, connectionType, provider) {
         const text = message || '';
+        if (provider === 'supply') return `${text} (Supply)`;
         const hasConnectionInfo = /\(直连\)|\(代理\)/.test(text);
         if (hasConnectionInfo) return text;
 
         const useProxy = connectionType === 'proxy' || (proxyData && proxyData.enabled);
-        return `${text} ${useProxy ? '(代理)' : '(直连)'}`;
+        if (useProxy) return `${text} (代理)`;
+        if (connectionType === 'direct' || proxyData?.enabled === false) return `${text} (直连)`;
+        return text;
     }
     
     function copyToClipboardLegacy(text) {
@@ -3071,7 +3075,7 @@
                         proxy: data.proxy
                     }));
                 } else {
-                    const message = appendConnectionInfo(data.message || '获取邮件失败', data.proxy, data.connection);
+                    const message = appendConnectionInfo(data.message || '获取邮件失败', data.proxy, data.connection, data.provider);
                     errorMessages.push(`${email}：${message}`);
                 }
             });

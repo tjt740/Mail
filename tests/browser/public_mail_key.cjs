@@ -35,7 +35,7 @@ print(json.dumps(pages))
         }
         if (pathname.includes('/api/')) {
             res.setHeader('Content-Type','application/json');
-            if (pathname === '/api/public-mail-config') return res.end(JSON.stringify({success:true,key_required:enabled,provider:supply?'supply':'mailbox',email_limit:supply?supplyLimit:5}));
+            if (pathname === '/api/public-mail-config') return res.end(JSON.stringify({success:true,key_required:enabled,provider:supply?'auto':'mailbox',email_limit:supply?supplyLimit:5}));
             if (pathname === '/admin/api/supply-token') {
                 if (req.method === 'POST') {
                     let body=''; for await (const chunk of req) body+=chunk;
@@ -310,7 +310,7 @@ for (const width of [390,1440]) test(`Supply displays all five recent messages a
         await page.waitForFunction(()=>document.querySelectorAll('#mailTableBody tr[data-mail-id]').length===10);
         assert.equal(requests.length,2);
         assert.ok(requests.every(data=>data.email_limit===5));
-        assert.equal(await page.locator('[data-folder="trash"]').isVisible(),false);
+        assert.equal(await page.locator('[data-folder="trash"]').getAttribute('hidden'),null);
         assert.equal(await page.locator('#mailPerPageSelect').count(),0);
         assert.equal(await page.locator('#mailTableBody .col-subject').first().innerText(),'原始邮件 5');
         await page.locator('#mailTableBody tr[data-mail-id]').first().click();
@@ -322,6 +322,23 @@ for (const width of [390,1440]) test(`Supply displays all five recent messages a
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
         await shot(page,'supply-five-traditional-'+width);
         assert.deepEqual(errors,[]);
+    } finally {supply=false; await page.close();}
+});
+
+test('Supply errors identify the provider without claiming a direct mailbox connection', async()=>{
+    enabled=false; supply=true;
+    const page=await browser.newPage({reducedMotion:'reduce'});
+    try {
+        await page.route('**/api/get_mail',route=>route.fulfill({status:404,contentType:'application/json',
+            body:JSON.stringify({success:false,provider:'supply',code:'missing',message:'当前邮件服务授权范围内未找到该邮箱'})}));
+        await page.goto(origin);
+        await page.locator('#emailInput').fill('missing@example.com');
+        await page.locator('.get-mail-btn').click();
+        await page.waitForFunction(()=>document.body.innerText.includes('missing@example.com：当前邮件服务授权范围内未找到该邮箱 (Supply)'));
+        assert.equal((await page.locator('body').innerText()).includes('(直连)'),false);
+        assert.equal(await page.evaluate(()=>appendConnectionInfo('连接失败',null,null)),'连接失败');
+        assert.equal(await page.evaluate(()=>appendConnectionInfo('连接失败',{enabled:false},null)),'连接失败 (直连)');
+        assert.equal(await page.evaluate(()=>appendConnectionInfo('连接失败',null,'proxy')),'连接失败 (代理)');
     } finally {supply=false; await page.close();}
 });
 
