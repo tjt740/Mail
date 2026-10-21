@@ -77,6 +77,12 @@
 .mailbox-workspace #mailboxBulkBar .btn-success { background: var(--surface); border: 1px solid var(--workspace-line); color: var(--accent-mint); }
 .mailbox-workspace #batchDeleteMailboxesBtn { background: transparent; color: var(--accent-coral); border: 1px solid var(--workspace-line); }
 .mailbox-workspace #mailboxTable { border: 0; }
+.mailbox-workspace .table-container { position: relative; }
+.mailbox-workspace .mailbox-list-loading, .mailbox-workspace .mailbox-list-error { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 200px; padding: 20px; color: var(--text-muted); }
+.mailbox-workspace .mailbox-list-loading { position: absolute; inset: 0 0 auto; z-index: 5; background: var(--surface); }
+.mailbox-workspace .table-container[aria-busy="true"]:not(.mailbox-list-has-data) { min-height: 200px; }
+.mailbox-workspace .table-container[aria-busy="true"] { overflow-anchor: none; }
+.mailbox-workspace :is(#mailboxListLoading, #mailboxListError, #mailboxTable)[hidden] { display: none !important; }
 .mailbox-workspace #mailboxTable th { font-size: 11px; color: #949086; font-weight: 500; background: #faf9f6; height: 38px; padding-top: 8px; padding-bottom: 8px; }
 .mailbox-workspace #mailboxTable td { padding-top: 6px; padding-bottom: 6px; border-color: #f0ede8; font-size: 13px; }
 .mailbox-workspace .mailbox-email-content { display: grid; grid-template-columns: minmax(0, 1fr) 28px; align-items: center; gap: 2px 8px; }

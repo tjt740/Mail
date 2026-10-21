@@ -66,6 +66,21 @@ test('account status stays visible with old saved column preferences', () => {
     assert.ok(setup().context.getVisibleMailboxColumnKeys().includes('test_status'));
 });
 
+test('group counts deduplicate addresses across nested memberships and ignore missing mailbox IDs', () => {
+    const context = vm.createContext({
+        ROOT_GROUP_ID: 'all', UNGROUPED_GROUP_ID: 'ungrouped',
+        groups: [{ id: 'all' }, { id: 'ungrouped' }, { id: 1 }, { id: 2, parentId: 1 }, { id: 3, parentId: 2 }],
+        mailboxData: [{ id: 1, email: 'same@example.com' }, { id: '2', email: 'SAME@example.com' }, { id: 3, email: 'ungrouped@example.com' }, { id: 4, email: 'other@example.com' }],
+        mailboxGroupMappings: [{ mailbox_id: 1, group_id: 2 }, { mailbox_id: 2, group_id: 3 }, { mailbox_id: 4, group_id: 3 }, { mailbox_id: 999, group_id: 3 }]
+    });
+    vm.runInContext(declaration('recalculateGroupCounts'), context);
+    context.recalculateGroupCounts();
+    assert.deepEqual(Array.from(context.groups, group => group.mailboxCount), [3, 1, 2, 2, 2]);
+    context.mailboxData = [];
+    context.recalculateGroupCounts();
+    assert.ok(context.groups.every(group => group.mailboxCount === 0));
+});
+
 for (const [status, label] of Object.entries({
     normal: '正常', banned: '封禁', invalid_credentials: '凭据失效',
     network_error: '网络异常', test_error: '检测异常', pending: '未检测'

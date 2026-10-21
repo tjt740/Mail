@@ -340,8 +340,8 @@ for (const width of [1440, 768, 390]) test(`add menu stays visible and priority 
             const text = range.getBoundingClientRect();
             return { y: rect.y, height: rect.height, textOffset: Math.abs(text.x + text.width / 2 - rect.x - rect.width / 2) };
         }));
-        assert.equal(new Set(boxes.map(box => box.y)).size, width <= 640 ? 2 : 1, 'phone actions use two rows; wider screens use one row');
-        if (width <= 640) assert.ok(boxes.every(box => box.height >= 44), 'phone actions should be easy to tap');
+        assert.equal(new Set(boxes.map(box => box.y)).size, 1, 'the four primary actions fit on one row');
+        if (width <= 640) assert.ok(boxes.every(box => box.height >= 34 && box.height <= 38), `phone actions stay compact: ${JSON.stringify(boxes)}`);
         assert.equal(new Set(boxes.map(box => box.height)).size, 1, 'all four action buttons should have equal height');
         assert.ok(boxes.every(box => box.textOffset < 1), 'button labels should be horizontally centered');
 

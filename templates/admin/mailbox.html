@@ -4,6 +4,7 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mail-content.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mail-loading.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-owner-tag.css') }}">
 <style>
     * {
@@ -3426,6 +3427,17 @@
                         </section>
                         <div id="mailboxLatestTestResult" class="mailbox-test-result-panel" role="status" aria-live="polite" aria-hidden="true" hidden inert></div>
                         <div class="table-container">
+                            <div id="mailboxListLoading" class="mailbox-list-loading" role="status" aria-live="polite">
+                                <div class="mail-loading-visual" aria-hidden="true">
+                                    <canvas id="mailLoadingCanvas"></canvas>
+                                    <span class="mail-loading-fallback" hidden><svg><use href="#ai-mail"></use></svg></span>
+                                </div>
+                                <span>加载中...</span>
+                            </div>
+                            <div id="mailboxListError" class="mailbox-list-error" role="alert" hidden>
+                                <span>加载邮箱列表失败</span>
+                                <button class="btn btn-secondary" type="button" onclick="loadMailboxes(currentPage, searchQuery)">重试</button>
+                            </div>
                             <table id="mailboxTable">
                                 <colgroup id="mailboxTableColumns"></colgroup>
                                 <thead>
@@ -3978,6 +3990,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mailbox-mobile.css') }}">
 <script src="{{ url_for('static', filename='js/mail-content.js') }}"></script>
 <script src="{{ url_for('static', filename='js/mailbox-interactions.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mail-loading.js') }}"></script>
 <script>
     const SIDEBAR_COLLAPSE_KEY = 'adminSidebarCollapsed';
     const MAILBOX_GROUP_PANEL_KEY = 'mailboxGroupPanelCollapsedV3';
@@ -4202,6 +4215,11 @@
     let mailboxTestFeedbackVersion = 0;
     let mailboxTestFeedbackClosing = Promise.resolve();
     let mailboxLoadRequestId = 0;
+    let mailboxLoadController = null;
+    let mailboxListLoading = true;
+    let mailboxListLoaded = false;
+    let mailboxGroupsLoaded = false;
+    let mailboxGroupsRequest = null;
     let lastMailboxFilterKey = null;
     let totalPages = 1;
     let selectedMailboxes = new Set();
@@ -4369,7 +4387,6 @@
 
     // 页面加载时初始化
     document.addEventListener('DOMContentLoaded', function() {
-        initGroups();
         bindGroupPanelEvents();
         initBatchAutoFillEvents();
         initReceiveSearch();
@@ -4968,19 +4985,38 @@
             if (data.success) {
                 mailboxGroupMappings = data.mappings || [];
                 rebuildMailboxGroupMapFromMappings();
-            }
+            } else throw new Error('加载邮箱分组映射失败');
         } catch (error) {
             console.error('加载邮箱分组映射失败:', error);
+            throw error;
         }
     }
     
-    // 加载邮箱列表
+    function setMailboxListLoading(loading, failed = false) {
+        mailboxListLoading = loading;
+        const table = document.getElementById('mailboxTable');
+        const container = table.closest('.table-container');
+        container.setAttribute('aria-busy', String(loading));
+        container.classList.toggle('mailbox-list-has-data', mailboxListLoaded);
+        table.hidden = loading && !mailboxListLoaded;
+        table.inert = loading;
+        document.getElementById('mailboxListLoading').hidden = !loading;
+        document.getElementById('mailboxListError').hidden = !failed;
+        window.MailLoading?.setActive(loading);
+        updateMailboxHealthTools();
+    }
+
+    // Fetch the list and its group metadata together, sharing an in-flight group request.
     async function loadMailboxes(page = 1, search = '') {
+        const requestId = ++mailboxLoadRequestId;
+        mailboxLoadController?.abort();
+        const controller = new AbortController();
+        mailboxLoadController = controller;
+        currentPage = page;
+        searchQuery = search;
+        let failed = false;
+        setMailboxListLoading(true);
         try {
-            const requestId = ++mailboxLoadRequestId;
-            currentPage = page;
-            searchQuery = search;
-            
             const params = new URLSearchParams({
                 page: 1,
                 per_page: 100000,  // 支持加载大量邮箱（最多10万个）
@@ -4990,30 +5026,32 @@
                 include_legacy_duplicates: '1'
             });
             
-            const response = await fetch(`/admin/api/mailbox?${params}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-            
-            const data = await response.json();
+            if (!mailboxGroupsRequest) {
+                mailboxGroupsRequest = (mailboxGroupsLoaded ? refreshMailboxGroupMappings() : initGroups())
+                    .finally(() => { mailboxGroupsRequest = null; });
+            }
+            const [data] = await Promise.all([
+                fetch(`/admin/api/mailbox?${params}`, { signal: controller.signal }).then(response => readJsonResponse(response)),
+                mailboxGroupsRequest
+            ]);
             if (requestId !== mailboxLoadRequestId) return;
-            
-            if (data.success) {
+            if (data.success && mailboxGroupsLoaded) {
                 mailboxData = data.data || [];
                 renderOwnerFilterOptions();
-                await refreshMailboxGroupMappings();
                 rebuildMailboxGroupMapFromMappings();
                 recalculateGroupCounts();  // Recalculate counts after loading mailboxes
                 renderGroupTree();  // Re-render tree to show updated counts
                 renderMailboxView(page);
+                mailboxListLoaded = true;
             } else {
-                showToast('加载邮箱列表失败', 'error');
+                failed = true;
             }
         } catch (error) {
+            if (requestId !== mailboxLoadRequestId || error.name === 'AbortError') return;
             console.error('加载邮箱列表失败:', error);
-            showToast('网络错误，请稍后重试', 'error');
+            failed = true;
+        } finally {
+            if (requestId === mailboxLoadRequestId) setMailboxListLoading(false, failed);
         }
     }
     
@@ -5025,7 +5063,6 @@
         const changed = tbody.dataset.viewKey !== viewKey;
         tbody.dataset.viewKey = viewKey;
         renderMailboxTableHeader();
-        tbody.innerHTML = '';
         
         if (mailboxes.length === 0) {
             const colCount = visibleColumns.length || 1;
@@ -5034,14 +5071,16 @@
             return;
         }
         
+        const fragment = document.createDocumentFragment();
         mailboxes.forEach((mailbox, index) => {
             const row = document.createElement('tr');
             const rowNumber = (currentPage - 1) * perPage + index + 1;
             row.dataset.mailboxId = mailbox.id;
             row.className = highlightedMailboxId === mailbox.id ? 'mailbox-row-copied' : '';
             row.innerHTML = visibleColumns.map(column => getMailboxCellHtml(column, mailbox, rowNumber)).join('');
-            tbody.appendChild(row);
+            fragment.appendChild(row);
         });
+        tbody.replaceChildren(fragment);
         if (changed) MailboxInteractions.reveal(tbody);
 
         updateSelectionButtons();
@@ -5079,8 +5118,8 @@
         const count = getFilteredMailboxes().length;
         const testing = Boolean(mailboxBatchTest?.running);
         const configs = [
-            { id: 'batchTestFilteredBtn', label: '测试筛选结果', count, disabled: testing || count === 0 },
-            { id: 'selectFilteredMailboxesBtn', label: '全选筛选结果', count, disabled: count === 0 }
+            { id: 'batchTestFilteredBtn', label: '测试筛选结果', count, disabled: mailboxListLoading || testing || count === 0 },
+            { id: 'selectFilteredMailboxesBtn', label: '全选筛选结果', count, disabled: mailboxListLoading || count === 0 }
         ];
         configs.forEach(config => {
             const button = document.getElementById(config.id);
@@ -5091,15 +5130,22 @@
         updateMailboxWorkspaceFilters();
         for (const id of ['batchTestSelectedBtn', 'batchDeleteMailboxesBtn']) {
             const button = document.getElementById(id);
-            if (button) button.disabled = testing || selectedMailboxes.size === 0;
+            if (button) button.disabled = mailboxListLoading || testing || selectedMailboxes.size === 0;
         }
     }
 
     function updateMailboxWorkspaceFilters() {
         const scope = uniqueMailboxes(mailboxData.filter(mailbox => mailboxMatchesCurrentScope(mailbox, true)));
+        const counts = { '': scope.length, invalid: 0, retry: 0, pending: 0, normal: 0 };
+        scope.forEach(mailbox => {
+            const status = getMailboxTestStatus(mailbox).className;
+            if (status === 'banned' || status === 'invalid_credentials') counts.invalid++;
+            else if (status === 'network_error' || status === 'test_error') counts.retry++;
+            else if (status === 'normal' || status === 'pending') counts[status]++;
+        });
         document.querySelectorAll('[data-status-count]').forEach(element => {
             const status = element.dataset.statusCount;
-            element.textContent = String(status ? scope.filter(mailbox => mailboxMatchesTestStatus(mailbox, status)).length : scope.length);
+            element.textContent = String(counts[status] || 0);
         });
         document.querySelectorAll('[data-status-view]').forEach(button => {
             button.setAttribute('aria-pressed', String(button.dataset.statusView === testStatusFilter));
@@ -5710,50 +5756,56 @@
     }
 
     function recalculateGroupCounts() {
-        // Recalculate counts for all groups based on current mailboxData and mailboxGroupMappings
-        const groupedMailboxIds = new Set(mailboxGroupMappings.map(m => m.mailbox_id || m.mailboxId));
-        // Create a set of existing mailbox IDs to verify mappings reference existing mailboxes
-        const existingMailboxIds = new Set(mailboxData.map(m => m.id));
-        
-        // Update each group's count
-        groups.forEach(group => {
-            if (group.id === ROOT_GROUP_ID) {
-                // "所有分组" shows total count of all mailboxes
-                group.mailboxCount = uniqueMailboxes(mailboxData).length;
-            } else if (group.id === UNGROUPED_GROUP_ID) {
-                // "未分组" shows count of mailboxes not in any group
-                group.mailboxCount = uniqueMailboxes(mailboxData.filter(m => !groupedMailboxIds.has(m.id))).length;
-            } else {
-                // Custom groups: count mailboxes assigned to this group that still exist
-                const mailboxesInGroup = mailboxGroupMappings.filter(m => {
-                    const gid = m.group_id || m.groupId;
-                    const mid = m.mailbox_id || m.mailboxId;
-                    return (gid === group.id || isDescendantGroup(gid, group.id)) && existingMailboxIds.has(mid);
-                });
-                const memberIds = new Set(mailboxesInGroup.map(m => m.mailbox_id ?? m.mailboxId));
-                group.mailboxCount = uniqueMailboxes(mailboxData.filter(m => memberIds.has(m.id))).length;
+        const groupById = new Map(groups.map(group => [String(group.id), group]));
+        const mailboxById = new Map(mailboxData.map(mailbox => [String(mailbox.id), mailbox]));
+        const groupedIds = new Set();
+        const members = new Map(groups.map(group => [String(group.id), new Set()]));
+        const emailKey = mailbox => String(mailbox.email || '').trim().toLowerCase() || `id:${mailbox.id}`;
+        mailboxGroupMappings.forEach(mapping => {
+            const id = String(mapping.mailbox_id ?? mapping.mailboxId);
+            groupedIds.add(id);
+            const mailbox = mailboxById.get(id);
+            if (!mailbox) return;
+            let group = groupById.get(String(mapping.group_id ?? mapping.groupId));
+            const visited = new Set();
+            while (group && !visited.has(group.id)) {
+                visited.add(group.id);
+                members.get(String(group.id)).add(emailKey(mailbox));
+                group = groupById.get(String(group.parentId));
             }
+        });
+        const all = new Set(), ungrouped = new Set();
+        mailboxData.forEach(mailbox => {
+            all.add(emailKey(mailbox));
+            if (!groupedIds.has(String(mailbox.id))) ungrouped.add(emailKey(mailbox));
+        });
+        groups.forEach(group => {
+            group.mailboxCount = group.id === ROOT_GROUP_ID ? all.size
+                : group.id === UNGROUPED_GROUP_ID ? ungrouped.size : members.get(String(group.id)).size;
         });
     }
 
     async function initGroups() {
         try {
             // Load groups from API instead of localStorage
-            const response = await fetch('/admin/api/mailbox-groups?compact=1');
+            const response = await fetch('/admin/api/mailbox-groups');
             const data = await response.json();
             
             if (data.success) {
                 // Process groups from API
                 groups = data.groups || [];
                 mailboxGroupMappings = data.mappings || [];
+                mailboxGroupsLoaded = true;
             } else {
                 console.error('Failed to load groups from API:', data.message);
+                mailboxGroupsLoaded = false;
                 groups = getDefaultGroups();
                 mailboxGroupMap = {};
                 mailboxGroupMappings = [];
             }
         } catch (e) {
             console.error('Error loading groups from API:', e);
+            mailboxGroupsLoaded = false;
             groups = getDefaultGroups();
             mailboxGroupMap = {};
             mailboxGroupMappings = [];
@@ -5795,7 +5847,7 @@
         expandGroupAncestors(selectedGroupId);
         renderGroupTree();
         refreshGroupSelects();
-        renderMailboxView(1);
+        if (!mailboxListLoading) renderMailboxView(1);
     }
     
     function loadGroupCollapseState() {

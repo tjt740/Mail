@@ -119,15 +119,28 @@
     .mailbox-page .mailbox-workspace .mailbox-heading-copy h2 { font-size: 18px; }
     .mailbox-page .mailbox-workspace #resetMailboxFiltersBtn:disabled { display: none; }
     .mailbox-page .mailbox-workspace .mailbox-list-toolbar { padding: 10px; }
-    .mailbox-page .mailbox-workspace .mailbox-list-tools > button { min-height: 44px; white-space: normal; }
+    .mailbox-page .mailbox-workspace .mailbox-list-tools > button { min-height: 36px !important; font-size: 12px !important; line-height: 20px !important; padding: 7px 8px !important; white-space: normal; }
     .mailbox-page .mailbox-workspace #mailboxTable .mailbox-email-address,
     .mailbox-page .mailbox-workspace #mailboxTable .mailbox-email-text { white-space: normal !important; overflow-wrap: anywhere; text-align: left; }
     .mailbox-page .mailbox-workspace #mailboxTable td > span { justify-self: start; }
-    .mailbox-page .mailbox-workspace .mailbox-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .mailbox-page .mailbox-workspace .mailbox-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
     .mailbox-page .mailbox-workspace .mailbox-actions-more { display: contents; }
-    .mailbox-page .mailbox-workspace .mailbox-actions .btn-small { min-height: 44px; white-space: normal; }
+    .mailbox-page .mailbox-workspace .mailbox-actions .btn-small { min-height: 34px !important; padding: 5px 4px !important; font-size: 12px !important; line-height: 20px !important; border-radius: 7px; white-space: normal; }
     .mailbox-page .mailbox-workspace .mailbox-more-menu { position: static; grid-column: 1 / -1; width: 100%; margin: 0; box-shadow: none; background: var(--surface-2); }
     .mailbox-page .mailbox-workspace .mailbox-actions-more.open .mailbox-more-menu { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+}
+
+/* The iframe document owns phone scrolling; list cards must not create another scroller. */
+@media (max-width: 640px), (max-width: 1024px) and (max-height: 500px) {
+    html.mailbox-page { overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    html.mailbox-page body { height: auto !important; min-height: 100%; overflow: visible !important; }
+    .mailbox-page .mailbox-workspace { height: auto !important; min-height: 100%; }
+    .mailbox-page .mailbox-workspace :is(.content, .content-grid, .mail-panel, .scroll-card-body) { overflow: visible !important; }
+    .mailbox-page .mailbox-workspace .mail-panel .table-container { overflow: visible !important; max-height: none !important; }
+    .mailbox-page .mailbox-workspace .mailbox-heading-actions .btn,
+    .mailbox-page .mailbox-workspace #mailboxBulkBar .btn { min-height: 34px !important; font-size: 12px !important; line-height: 20px !important; padding: 6px 9px !important; }
+    .mailbox-page .mailbox-workspace .mailbox-status-views { touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; }
+    .mailbox-page .mailbox-workspace #paginationContainer { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 }
 
 @media (max-width: 1024px) and (max-height: 500px) {
@@ -137,6 +150,17 @@
     .mailbox-page .mailbox-workspace .mail-panel > .card:last-child { flex: none; }
     .mailbox-page .mailbox-workspace .mail-panel .table-container { flex: none; height: auto; max-height: none !important; min-height: 160px; }
     .mailbox-page .mailbox-workspace #paginationContainer { position: static !important; }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) and (max-height: 500px) {
+    .mailbox-page .mailbox-workspace .mail-panel .table-container {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        overscroll-behavior-x: contain;
+        overscroll-behavior-y: auto;
+        touch-action: pan-x pan-y;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 @media (min-width: 600px) and (max-width: 1024px) and (max-height: 500px) {

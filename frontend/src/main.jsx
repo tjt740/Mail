@@ -39,6 +39,8 @@ import filPH from './locales/fil_PH.js';
 import '../../static/js/i18n.js';
 import '../../static/js/motion.js';
 import '../../static/js/theme-palettes.js';
+import '../../static/js/mail-loading.js';
+import '../../static/css/mail-loading.css';
 import './styles.css';
 import AccountDataPage from './AccountDataPage.jsx';
 import MailboxBrand from './MailboxBrand.jsx';
@@ -305,6 +307,19 @@ function AmbientCanvas({ variant = 'welcome', className = 'mail-ambient-canvas' 
   return <canvas ref={ref} className={className} aria-hidden="true" />;
 }
 
+function MailLoadingVisual() {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const loading = window.MailLoading.create(canvasRef.current);
+    loading.setActive(true);
+    return () => loading.destroy();
+  }, []);
+  return <div className="mail-loading-visual" aria-hidden="true">
+    <canvas ref={canvasRef} />
+    <span className="mail-loading-fallback" hidden><MailOutlined /></span>
+  </div>;
+}
+
 function LegacyFrame({ title, src, language, colorTheme }) {
   const frameRef = useRef(null);
   const [loaded, setLoaded] = useState(false);
@@ -329,7 +344,7 @@ function LegacyFrame({ title, src, language, colorTheme }) {
   return (
     <div className={`legacy-frame-wrap ${loaded ? 'is-loaded' : 'is-loading'}`} aria-busy={!loaded}>
       {!loaded && <div className="frame-loading" role="status" aria-live="polite">
-        <span className="frame-loading-orbit" aria-hidden="true"><MailOutlined /></span>
+        <MailLoadingVisual />
         <span>{t(slow ? '页面加载时间较长，请重试' : '页面加载中')}</span>
         {slow && <Button onClick={() => { setSlow(false); setAttempt((value) => value + 1); }}>{t('重试')}</Button>}
       </div>}
@@ -469,7 +484,6 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
           />
           <div className="admin-title">
             <Title level={4}>{currentItem?.label || t('后台管理')}</Title>
-            <Text type="secondary">{systemTitle}</Text>
           </div>
           <Space className="admin-actions">
             <ColorThemeSwitcher colorTheme={colorTheme} onChange={onColorThemeChange} t={t} />
