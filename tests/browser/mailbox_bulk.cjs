@@ -81,7 +81,15 @@ with app.test_request_context('/legacy/admin/mailbox'):
     origin = `http://127.0.0.1:${server.address().port}`;
     browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {}) });
 });
-after(async () => { await browser?.close(); if (server) await new Promise(resolve => server.close(resolve)); });
+after(async () => {
+    await browser?.close();
+    if (server) {
+        const closed = new Promise(resolve => server.close(resolve));
+        // Native Chrome can leave speculative sockets open after the pages close.
+        server.closeAllConnections();
+        await closed;
+    }
+});
 async function newPage(viewport = { width: 1440, height: 1000 }, count = 66) {
     accounts = seed().slice(0, count); tested = []; deleted = []; received = []; active = 0; maxActive = 0; delay = 20; failure = false;
     testMessage = 'Fixture result'; responseDelays = {}; responseResults = {};
