@@ -2726,6 +2726,7 @@ def render_react_app(page_title=None, **props):
         'adminUsername': session.get('admin_username', ''),
         'adminLoginTitle': get_system_config('admin_login_title', '管理员登录'),
         'path': request.path,
+        'basePath': request.script_root,
         'adminPermissions': sorted(security.effective(get_db(), session.get('admin_id'))) if session.get('admin_logged_in') else []
     }
     app_props.update(props)
@@ -11926,6 +11927,10 @@ def _update_admin_master_key(db, db_type, data):
             'success': False,
             'message': f'更新万能秘钥失败: {str(e)}'
         })
+
+# Register after the normal session validation so mailbox permissions stay authoritative.
+import ccbot_sso
+ccbot_sso.register(app, get_db, security)
 
 if __name__ == '__main__':
     # 初始化数据库

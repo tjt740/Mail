@@ -47,6 +47,7 @@ venv/
 .venv/
 .venv-*/
 .env
+.env.ccbot-sso
 
 # Node / React frontend
 frontend/node_modules/

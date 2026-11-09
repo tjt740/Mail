@@ -52,6 +52,10 @@ const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
 const appProps = window.__MAIL_APP_PROPS__ || {};
+// Keep the admin router inside a mounted mail app (for example /email).
+const mountPath = (appProps.basePath || (appProps.path && window.location.pathname.endsWith(appProps.path)
+  ? window.location.pathname.slice(0, -appProps.path.length) : '')).replace(/\/$/, '');
+const mailUrl = path => `${mountPath}${path}`;
 const COLOR_THEME_STORAGE_KEY = 'mailSystemColorTheme';
 const LANGUAGE_OPTIONS = window.AppI18n.languages;
 const ANT_LOCALES = { zh: zhCN, 'zh-TW': zhTW, en: enUS, vi: viVN, fil: filPH };
@@ -226,7 +230,8 @@ function ColorThemeSwitcher({ colorTheme, onChange, t, className = '' }) {
 }
 
 function getCurrentPath() {
-  const path = window.location.pathname;
+  const path = mountPath && window.location.pathname.startsWith(`${mountPath}/`)
+    ? window.location.pathname.slice(mountPath.length) : window.location.pathname;
   if (path === '/admin' || path === '/admin/') return '/admin/home';
   return path;
 }
@@ -235,9 +240,9 @@ function buildLegacyUrl(pathname) {
   const search = window.location.search || '';
   const separator = search ? '&' : '?';
   if (pathname === '/') {
-    return `/legacy/${search}${separator}embedded=1`;
+    return mailUrl(`/legacy/${search}${separator}embedded=1`);
   }
-  return `/legacy${pathname}${search}${separator}embedded=1`;
+  return mailUrl(`/legacy${pathname}${search}${separator}embedded=1`);
 }
 
 function LoginPage({ language, onLanguageChange, colorTheme, onColorThemeChange, t }) {
@@ -416,8 +421,8 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
 
   function handleAdminMenuClick(key) {
     setMobileMenuOpen(false);
-    if (key !== window.location.pathname) {
-      window.history.pushState({}, '', key);
+    if (key !== getCurrentPath()) {
+      window.history.pushState({}, '', mailUrl(key));
       window.dispatchEvent(new PopStateEvent('popstate'));
     }
   }
@@ -489,7 +494,7 @@ function AdminShell({ language, onLanguageChange, colorTheme, onColorThemeChange
             <ColorThemeSwitcher colorTheme={colorTheme} onChange={onColorThemeChange} t={t} />
             <LanguageSwitcher language={language} onChange={onLanguageChange} t={t} />
             <Text className="admin-user">{appProps.adminUsername || t('管理员')}</Text>
-            <Button icon={<LogoutOutlined />} href="/admin/logout">
+            <Button icon={<LogoutOutlined />} href={mailUrl('/admin/logout')}>
               {t('退出')}
             </Button>
           </Space>
