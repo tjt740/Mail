@@ -6609,6 +6609,7 @@
         if (!receiveState.mailboxId) return;
         if (receiveState.isFetching) return;
         const targetMailboxId = receiveState.mailboxId;
+        const activeMailAtStart = options.silentAuto ? null : receiveState.activeMail;
         const fetchToken = receiveState.fetchToken + 1;
         receiveState.fetchToken = fetchToken;
         const mailbox = mailboxData.find(item => item.id === targetMailboxId);
@@ -6628,8 +6629,8 @@
         if (mobileReceive) updateReceiveStatus(loadingMessage);
         
         const store = loadReceiveStore();
-        let allMails = store[targetMailboxId] || [];
-        let newMailsCount = 0;
+        const allMails = store[targetMailboxId] || [];
+        const newMails = new Set();
         
         try {
             // Fetch emails using the custom limit
@@ -6683,16 +6684,12 @@
                         Object.assign(existingMail, mail, { id: existingMail.id });
                     } else {
                         allMails.push(mail);
-                        newMailsCount++;
+                        newMails.add(mail);
                     }
                 }
                 
-                // Sort all emails from newest to oldest by receivedAt per requirements
-                allMails.sort((a, b) => {
-                    const dateA = new Date(a.receivedAt);
-                    const dateB = new Date(b.receivedAt);
-                    return dateB - dateA; // Newest first
-                });
+                allMails.sort((a, b) => receiveMailTimestamp(b.receivedAt) - receiveMailTimestamp(a.receivedAt));
+                const newMailsCount = newMails.size;
                 
                 // Save all mails to store
                 const latestStore = loadReceiveStore();
@@ -6730,8 +6727,11 @@
                         );
                     }
 
-                    // Update the list without rebuilding an open message or its HTML frame.
-                    if (!receiveState.activeMail) renderReceiveList();
+                    const latestNewMail = activeMailAtStart && receiveState.activeMail === activeMailAtStart
+                        ? allMails.find(mail => newMails.has(mail)) : null;
+                    if (latestNewMail) openReceiveDetail(latestNewMail.id);
+                    if (receiveState.activeMail) updateReceiveFolderCounts();
+                    else renderReceiveList();
                 }
             } else {
                 // Remove loading toast
@@ -6766,6 +6766,14 @@
         if (el) {
             el.textContent = text;
         }
+    }
+
+    function receiveMailTimestamp(value) {
+        // Match the Beijing time used when displaying dates without an offset.
+        const date = String(value || '').replace(/^(\d{4}-\d{2}-\d{2}) /, '$1T');
+        const localTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(date);
+        const timestamp = Date.parse(localTime ? `${date}+08:00` : date);
+        return Number.isNaN(timestamp) ? -Infinity : timestamp;
     }
 
     function renderReceiveView() {
@@ -6955,6 +6963,13 @@
         }
     }
 
+    function updateReceiveFolderCounts() {
+        document.querySelectorAll('.receive-folder-count').forEach(badge => {
+            const count = receiveState.mails.filter(mail => mail.folder === badge.dataset.folder).length;
+            badge.textContent = window.AppI18n ? window.AppI18n.formatNumber(count) : String(count);
+        });
+    }
+
     function renderReceiveList() {
         setReceiveView(false);
 
@@ -6962,10 +6977,7 @@
         document.getElementById('receiveListTitle').textContent = receiveState.searchQuery
             ? '搜索结果' : receiveState.folder === 'trash' ? '垃圾箱' : '收件箱';
         document.getElementById('receiveMailCount').textContent = `共 ${filtered.length} 封邮件`;
-        document.querySelectorAll('.receive-folder-count').forEach(badge => {
-            const count = receiveState.mails.filter(mail => mail.folder === badge.dataset.folder).length;
-            badge.textContent = window.AppI18n ? window.AppI18n.formatNumber(count) : String(count);
-        });
+        updateReceiveFolderCounts();
 
         const tbody = document.getElementById('receiveTableBody');
         if (tbody) {
@@ -7006,7 +7018,7 @@
         clearTimeout(receiveSearchTimer);
         const mail = receiveState.mails.find(item => item.id === mailId);
         if (!mail) return;
-        receiveState.listScrollTop = document.getElementById('receiveListView').scrollTop;
+        if (!receiveState.activeMail) receiveState.listScrollTop = document.getElementById('receiveListView').scrollTop;
         receiveState.activeMail = mail;
         renderReceiveDetail(mail);
         document.getElementById('receiveDetailView').scrollTop = 0;

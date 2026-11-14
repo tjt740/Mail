@@ -393,3 +393,44 @@ test('refetch upgrades cached plain mail to HTML while retaining its ID', async 
         assert.equal(await page.evaluate(() => loadReceiveStore()[1][0].bodyType), 'html');
     } finally { await page.close(); }
 });
+
+test('manual fetch from a detail opens the newest added mail and keeps it on duplicate fetches', async () => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, timezoneId: 'America/Los_Angeles' });
+    const original = { subject: 'Current message', date: '2026-10-13 08:00:00', body_type: 'html', body: '<p>Current body</p>' };
+    const cached = { subject: 'Already cached and newer', date: '2026-10-13 10:00:00' };
+    const older = { subject: 'Older addition', date: '2026-10-13 00:30:00Z' };
+    const latest = { subject: 'Newest addition', date: '2026-10-13 09:00:00', body_type: 'html', body: '<p id="latest-body">New body</p>' };
+    let mails = [original, cached];
+    try {
+        await page.route('**/api/get_mail', route => route.fulfill({ json: { success: true, mails } }));
+        await page.goto(origin + '/admin/mailbox');
+        await page.waitForLoadState('networkidle');
+        await page.evaluate(() => {
+            mailboxData = [{ id: 1, email: 'reader@example.com' }];
+            openReceiveModal(1);
+        });
+        await page.getByRole('button', { name: original.subject, exact: true }).click();
+        await page.waitForFunction(() => !receiveState.isFetching);
+
+        const fetchButton = page.locator('#receiveFetchBtn');
+        mails = [older, cached, latest, original, { subject: 'Unknown date', date: '未知' }];
+        await fetchButton.click();
+        await page.waitForFunction(() => !receiveState.isFetching);
+        assert.equal(await page.locator('#receiveDetailSubject').innerText(), latest.subject);
+        assert.equal(await page.locator('.receive-folder-count[data-folder="inbox"]').innerText(), '5');
+        const iframe = page.locator('.receive-content-frame');
+        await page.frameLocator('.receive-content-frame').locator('#latest-body').waitFor();
+        const latestFrame = await iframe.elementHandle();
+
+        await fetchButton.click();
+        await page.waitForFunction(() => !receiveState.isFetching);
+        assert.equal(await page.locator('#receiveDetailSubject').innerText(), latest.subject);
+        assert.equal(await latestFrame.evaluate(el => el.isConnected), true);
+
+        await page.locator('.receive-back').click();
+        mails = [{ subject: 'Fetched from the list', date: '2026-10-13 11:00:00' }, ...mails];
+        await fetchButton.click();
+        await page.getByRole('button', { name: 'Fetched from the list', exact: true }).waitFor();
+        assert.equal(await page.locator('#receiveDetailView').isVisible(), false);
+    } finally { await page.close(); }
+});
