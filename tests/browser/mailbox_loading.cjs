@@ -43,7 +43,7 @@ after(async () => {
     if (server) { const closed = new Promise(resolve => server.close(resolve)); server.closeAllConnections(); await closed; }
 });
 async function ready(page) {
-    await page.waitForFunction(() => document.querySelector('#mailboxListLoading').hidden && document.querySelectorAll('#mailboxTable tbody tr[data-mailbox-id]').length === 100);
+    await page.waitForFunction(() => document.querySelectorAll('.table-container[aria-busy="false"] #mailboxTable tbody tr[data-mailbox-id]').length === 100);
 }
 
 test('initial list and groups load in parallel once, with the public loader until both finish', async () => {
@@ -59,6 +59,8 @@ test('initial list and groups load in parallel once, with the public loader unti
         assert.equal(pending.length, 2, 'list and full group metadata must already be in flight together');
         assert.equal(pending.filter(url => url.includes('mailbox-groups')).length, 1);
         assert.equal(await page.locator('#mailboxListLoading').isVisible(), true);
+        assert.equal(await page.locator('#mailboxTable').isVisible(), false);
+        assert.equal(await page.locator('#mailboxRefreshStatus').isVisible(), false);
         assert.equal(await page.locator('.mailbox-empty-row').count(), 0, 'loading must not flash an empty result');
         assert.equal(await page.evaluate(() => MailLoading.state.animating), true);
         await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -78,9 +80,12 @@ test('list failures offer retry; a later reload cancels stale data and keeps the
         await page.route('**/admin/api/mailbox?*', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ success: false }) }), { times: 1 });
         await page.goto(origin + '/legacy/admin/mailbox');
         await page.locator('#mailboxListError').waitFor({ state: 'visible' });
+        assert.equal(await page.locator('#mailboxTable').isVisible(), false);
         assert.equal(await page.evaluate(() => MailLoading.state.active), false);
         await page.locator('#mailboxListError button').click();
         await ready(page);
+        const selected = page.locator('.mailbox-checkbox[value="1"]');
+        await selected.check();
         const gate = new Promise(resolve => { release = resolve; });
         let requests = 0;
         await page.route('**/admin/api/mailbox?*', async route => {
@@ -88,12 +93,20 @@ test('list failures offer retry; a later reload cancels stale data and keeps the
             if (first) await gate;
             await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: [{ ...accounts[0], email: first ? 'stale@example.com' : 'latest@example.com' }] }) });
         });
-        await page.evaluate(() => { window.firstReload = loadMailboxes(); });
-        await page.waitForTimeout(100);
+        await Promise.all([
+            page.waitForRequest('**/admin/api/mailbox?*'),
+            page.evaluate(() => { window.firstReload = loadMailboxes(); })
+        ]);
+        assert.equal(await page.locator('#mailboxListLoading').isVisible(), false, 'refresh must not cover existing rows');
+        assert.equal(await page.locator('#mailboxTable').isVisible(), true);
+        assert.equal(await page.locator('.mailbox-list-toolbar #mailboxRefreshStatus').isVisible(), true);
+        assert.equal(await page.evaluate(() => MailLoading.state.active), false);
         await page.evaluate(() => loadMailboxes());
         release();
         await page.evaluate(() => window.firstReload);
         assert.equal(await page.locator('.mailbox-email-address').innerText(), 'latest@example.com');
+        assert.equal(await selected.isChecked(), true);
+        assert.equal(await page.locator('#mailboxRefreshStatus').isVisible(), false);
         assert.equal(await page.locator('#mailboxListLoading').isVisible(), false);
         assert.equal(await page.locator('#mailboxListError').isVisible(), false);
     } finally { release?.(); await page.unrouteAll({ behavior: 'ignoreErrors' }); await page.close(); }
@@ -145,7 +158,8 @@ for (const [width, height] of [[320, 740], [390, 844], [844, 390]]) test(`phone 
         await row.locator('.mailbox-checkbox').check();
         const selected = await frame.locator('#bulkSelectedCount').innerText();
         const scrolling = await scroll();
-        await frame.evaluate(() => loadMailboxes(currentPage, searchQuery));
+        await frame.evaluate(() => { loadMailboxes(currentPage, searchQuery); });
+        await ready(frame);
         assert.equal(await frame.locator('#bulkSelectedCount').innerText(), selected);
         assert.ok(Math.abs(await scroll() - scrolling) <= 2, 'refreshing data does not jump the list');
         await frame.locator('#paginationContainer').scrollIntoViewIfNeeded();

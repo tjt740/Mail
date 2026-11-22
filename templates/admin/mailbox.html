@@ -3385,7 +3385,11 @@
                 <div class="card">
                     <div class="card-body scroll-card-body">
                         <div class="mailbox-list-toolbar">
-                            <div class="mailbox-list-count"><strong id="adminMailboxCount">0</strong><span>个邮箱</span><span class="mailbox-list-tip">点击邮箱地址复制</span></div>
+                            <div class="mailbox-list-count">
+                                <strong id="adminMailboxCount">0</strong><span>个邮箱</span>
+                                <span id="mailboxRefreshStatus" role="status" hidden>加载中...</span>
+                                <span class="mailbox-list-tip">点击邮箱地址复制</span>
+                            </div>
                             <div class="mailbox-list-tools">
                                 <button class="btn btn-secondary" id="selectFilteredMailboxesBtn" type="button" onclick="selectFilteredMailboxes()" disabled>全选筛选结果 (0)</button>
                                 <button class="btn btn-secondary" id="batchTestFilteredBtn" type="button" onclick="batchTestMailboxes('filtered')" disabled>测试筛选结果 (0)</button>
@@ -3426,7 +3430,7 @@
                             </div>
                         </section>
                         <div id="mailboxLatestTestResult" class="mailbox-test-result-panel" role="status" aria-live="polite" aria-hidden="true" hidden inert></div>
-                        <div class="table-container">
+                        <div class="table-container" aria-busy="true">
                             <div id="mailboxListLoading" class="mailbox-list-loading" role="status" aria-live="polite">
                                 <div class="mail-loading-visual" aria-hidden="true">
                                     <canvas id="mailLoadingCanvas"></canvas>
@@ -3438,7 +3442,7 @@
                                 <span>加载邮箱列表失败</span>
                                 <button class="btn btn-secondary" type="button" onclick="loadMailboxes(currentPage, searchQuery)">重试</button>
                             </div>
-                            <table id="mailboxTable">
+                            <table id="mailboxTable" hidden>
                                 <colgroup id="mailboxTableColumns"></colgroup>
                                 <thead>
                                     <tr id="mailboxTableHead"></tr>
@@ -4994,15 +4998,16 @@
     
     function setMailboxListLoading(loading, failed = false) {
         mailboxListLoading = loading;
+        const showInitialLoader = loading && !mailboxListLoaded;
         const table = document.getElementById('mailboxTable');
         const container = table.closest('.table-container');
         container.setAttribute('aria-busy', String(loading));
-        container.classList.toggle('mailbox-list-has-data', mailboxListLoaded);
-        table.hidden = loading && !mailboxListLoaded;
+        table.hidden = !mailboxListLoaded;
         table.inert = loading;
-        document.getElementById('mailboxListLoading').hidden = !loading;
+        document.getElementById('mailboxListLoading').hidden = !showInitialLoader;
+        document.getElementById('mailboxRefreshStatus').hidden = !(loading && mailboxListLoaded);
         document.getElementById('mailboxListError').hidden = !failed;
-        window.MailLoading?.setActive(loading);
+        window.MailLoading?.setActive(showInitialLoader);
         updateMailboxHealthTools();
     }
 
