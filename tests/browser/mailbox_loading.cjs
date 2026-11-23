@@ -124,7 +124,8 @@ test('opening and saving remarks show progress, keep a failed draft and submit o
     const writes = [];
     const row = page.locator('tr[data-mailbox-id="100"]');
     const progress = page.locator('#remarksProgress');
-    const field = page.locator('#remarksText');
+    const dialog = page.locator('#remarksModal');
+    const field = dialog.getByRole('textbox', { name: '备注', exact: true });
     const save = page.locator('#remarksSaveBtn');
     let stored = 'Original note';
     try {
@@ -148,6 +149,9 @@ test('opening and saving remarks show progress, keep a failed draft and submit o
         await ready(page);
         await row.locator('[data-action="remarks"]').click();
         await progress.waitFor();
+        assert.equal(await dialog.getByRole('heading').innerText(), '【备注】');
+        assert.equal(await dialog.getByText('备注内容', { exact: true }).count(), 0);
+        assert.equal(await field.getAttribute('placeholder'), null);
         assert.equal(await field.isDisabled(), true);
         assert.equal(await save.isDisabled(), true);
         assert.equal(await page.locator('#remarksLoadingCanvas').isVisible(), true);

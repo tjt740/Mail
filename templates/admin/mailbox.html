@@ -3898,16 +3898,15 @@
 <div id="remarksModal" class="modal">
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
-            <h3 class="modal-title">编辑备注</h3>
+            <h3 class="modal-title"><span>【<span id="remarksLabel">备注</span>】</span></h3>
             <button class="modal-close" data-dismiss-remarks onclick="closeRemarksModal()" aria-label="关闭">&times;</button>
         </div>
         <div class="modal-body">
             <form id="remarksForm">
                 <input type="hidden" id="remarksMailboxId">
                 <div class="form-group">
-                    <label for="remarksText">备注内容</label>
                     <div class="remarks-editor">
-                        <textarea id="remarksText" rows="5" placeholder="输入备注信息"></textarea>
+                        <textarea id="remarksText" rows="5" aria-labelledby="remarksLabel"></textarea>
                         <div id="remarksProgress" role="status" tabindex="0" hidden>
                             <div class="mail-loading-visual" aria-hidden="true">
                                 <canvas id="remarksLoadingCanvas"></canvas>
