@@ -26,7 +26,11 @@ with app.test_request_context('/'):
         }
         if (url.pathname.includes('/api/')) {
             res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ success: true, language: 'zh', data: url.pathname === '/admin/api/mailbox' ? accounts : [], groups: [{ id: 1, name: 'Team', parent_id: null }], mappings: accounts.map(account => ({ mailbox_id: account.id, group_id: 1 })) }));
+            let data = [];
+            if (url.pathname === '/admin/api/mailbox') {
+                data = url.searchParams.has('id') ? accounts.find(account => account.id === Number(url.searchParams.get('id'))) : accounts;
+            }
+            return res.end(JSON.stringify({ success: true, language: 'zh', data, groups: [{ id: 1, name: 'Team', parent_id: null }], mappings: accounts.map(account => ({ mailbox_id: account.id, group_id: 1 })) }));
         }
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.end(url.pathname.startsWith('/legacy/') ? pages.mailbox : pages.shell);
@@ -110,6 +114,109 @@ test('list failures offer retry; a later reload cancels stale data and keeps the
         assert.equal(await page.locator('#mailboxListLoading').isVisible(), false);
         assert.equal(await page.locator('#mailboxListError').isVisible(), false);
     } finally { release?.(); await page.unrouteAll({ behavior: 'ignoreErrors' }); await page.close(); }
+});
+
+test('opening and saving remarks show progress, keep a failed draft and submit once per attempt', async () => {
+    const page = await browser.newPage({ locale: 'zh-CN' });
+    let releaseRead, releaseWrite;
+    const readGate = new Promise(resolve => { releaseRead = resolve; });
+    const writeGate = new Promise(resolve => { releaseWrite = resolve; });
+    const writes = [];
+    const row = page.locator('tr[data-mailbox-id="100"]');
+    const progress = page.locator('#remarksProgress');
+    const field = page.locator('#remarksText');
+    const save = page.locator('#remarksSaveBtn');
+    let stored = 'Original note';
+    try {
+        await page.addInitScript(() => localStorage.setItem('mailboxTableVisibleColumnsV9', '["remarks"]'));
+        await page.route('**/admin/api/mailbox?*', async route => {
+            const detail = new URL(route.request().url()).searchParams.has('id');
+            if (detail) await readGate;
+            const mailbox = { ...accounts[99], remarks: stored };
+            await route.fulfill({ json: { success: true, data: detail ? mailbox : [...accounts.slice(0, 99), mailbox] } });
+        });
+        await page.route('**/admin/api/mailbox', async route => {
+            writes.push(route.request().postDataJSON());
+            if (writes.length === 1) {
+                await writeGate;
+                return route.fulfill({ status: 503, json: { success: false, message: '保存失败' } });
+            }
+            stored = writes.at(-1).remarks;
+            await route.fulfill({ json: { success: true } });
+        });
+        await page.goto(origin + '/legacy/admin/mailbox');
+        await ready(page);
+        await row.locator('[data-action="remarks"]').click();
+        await progress.waitFor();
+        assert.equal(await field.isDisabled(), true);
+        assert.equal(await save.isDisabled(), true);
+        assert.equal(await page.locator('#remarksLoadingCanvas').isVisible(), true);
+        await page.waitForFunction(() => remarksVisual.state.animating && remarksVisual.state.frameCount > 1);
+        releaseRead();
+        await page.locator('#remarksText:enabled').waitFor();
+        assert.equal(await field.inputValue(), stored);
+        await field.fill('Updated note');
+        await save.click();
+        await progress.waitFor();
+        assert.equal(await progress.innerText(), '保存中…');
+        assert.equal(await save.isDisabled(), true);
+        await page.evaluate(() => saveMailboxRemarks());
+        await page.keyboard.press('Escape');
+        assert.equal(await progress.isVisible(), true);
+        releaseWrite();
+        await page.getByRole('alert').filter({ hasText: '保存失败' }).waitFor();
+        assert.equal(await field.inputValue(), 'Updated note');
+        assert.equal(await save.isEnabled(), true);
+        await save.click();
+        await page.locator('#remarksModal').waitFor({ state: 'hidden' });
+        await ready(page);
+        assert.equal(await row.locator('.mailbox-remarks-text').innerText(), 'Updated note');
+        assert.equal(await page.evaluate(() => remarksVisual.state.active), false);
+        assert.deepEqual(writes, Array(2).fill({ action: 'update_remarks', id: 100, remarks: 'Updated note' }));
+    } finally {
+        releaseRead(); releaseWrite();
+        await page.unrouteAll({ behavior: 'ignoreErrors' }); await page.close();
+    }
+});
+
+test('phone remarks feedback survives fast responses and discards a cancelled read', async () => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+    let releaseOld;
+    const oldRead = new Promise(resolve => { releaseOld = resolve; });
+    try {
+        await page.route('**/admin/api/mailbox?id=100', async route => {
+            await oldRead;
+            await route.fulfill({ json: { success: true, data: { ...accounts[99], remarks: 'Stale note' } } });
+        });
+        await page.goto(origin + '/admin/mailbox');
+        await page.locator('.legacy-frame-wrap.is-loaded').waitFor();
+        const frame = page.frames().find(item => item.url().includes('/legacy/'));
+        await ready(frame);
+        await frame.locator('tr[data-mailbox-id="100"] [data-action="remarks"]').tap();
+        await frame.locator('#remarksProgress').waitFor();
+        assert.equal(await frame.evaluate(() => remarksVisual.state.active && !remarksVisual.state.animating), true);
+        await frame.locator('#remarksModal .modal-close').tap();
+        await frame.locator('#remarksModal').waitFor({ state: 'hidden' });
+        assert.equal(await frame.evaluate(() => remarksVisual.state.active), false);
+        await frame.evaluate(() => {
+            const modal = document.getElementById('remarksModal');
+            window.remarksTimings = {};
+            new MutationObserver(() => { window.remarksTimings[modal.dataset.phase] = performance.now(); })
+                .observe(modal, { attributes: true, attributeFilter: ['data-phase'] });
+        });
+        await frame.locator('tr[data-mailbox-id="99"] [data-action="remarks"]').tap();
+        releaseOld();
+        await frame.locator('#remarksText:enabled').waitFor();
+        assert.equal(await frame.locator('#remarksText').inputValue(), '');
+        await frame.locator('#remarksSaveBtn').tap();
+        await frame.locator('#remarksModal').waitFor({ state: 'hidden' });
+        const times = await frame.evaluate(() => window.remarksTimings);
+        assert.ok(times.ready - times.loading >= 300, 'a fast read still shows feedback');
+        assert.ok(times.closed - times.saving >= 300, 'a fast save still shows feedback');
+    } finally {
+        releaseOld();
+        await page.unrouteAll({ behavior: 'ignoreErrors' }); await page.close();
+    }
 });
 
 for (const [width, height] of [[320, 740], [390, 844], [844, 390]]) test(`phone scroll, compact actions and modal return at ${width}x${height}`, async () => {

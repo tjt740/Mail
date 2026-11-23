@@ -3387,7 +3387,7 @@
                         <div class="mailbox-list-toolbar">
                             <div class="mailbox-list-count">
                                 <strong id="adminMailboxCount">0</strong><span>个邮箱</span>
-                                <span id="mailboxRefreshStatus" role="status" hidden>加载中...</span>
+                                <span id="mailboxRefreshStatus" role="status" hidden><span class="receive-spinner" aria-hidden="true"></span><span>加载中...</span></span>
                                 <span class="mailbox-list-tip">点击邮箱地址复制</span>
                             </div>
                             <div class="mailbox-list-tools">
@@ -3899,20 +3899,29 @@
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
             <h3 class="modal-title">编辑备注</h3>
-            <button class="modal-close" onclick="closeRemarksModal()">&times;</button>
+            <button class="modal-close" data-dismiss-remarks onclick="closeRemarksModal()" aria-label="关闭">&times;</button>
         </div>
         <div class="modal-body">
             <form id="remarksForm">
                 <input type="hidden" id="remarksMailboxId">
                 <div class="form-group">
                     <label for="remarksText">备注内容</label>
-                    <textarea id="remarksText" rows="5" placeholder="输入备注信息" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px;"></textarea>
+                    <div class="remarks-editor">
+                        <textarea id="remarksText" rows="5" placeholder="输入备注信息"></textarea>
+                        <div id="remarksProgress" role="status" tabindex="0" hidden>
+                            <div class="mail-loading-visual" aria-hidden="true">
+                                <canvas id="remarksLoadingCanvas"></canvas>
+                                <span class="mail-loading-fallback" hidden><svg><use href="#ai-mail"></use></svg></span>
+                            </div>
+                            <span id="remarksProgressLabel"></span>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn" onclick="closeRemarksModal()">取消</button>
-            <button type="button" class="btn btn-primary" onclick="saveMailboxRemarks()">保存</button>
+            <button type="button" class="btn" data-dismiss-remarks onclick="closeRemarksModal()">取消</button>
+            <button type="button" id="remarksSaveBtn" class="btn btn-primary" onclick="saveMailboxRemarks()">保存</button>
         </div>
     </div>
 </div>
@@ -8571,64 +8580,104 @@
     }
     
     // 备注模态框
+    const remarksDialog = document.getElementById('remarksModal');
+    const remarksField = document.getElementById('remarksText');
+    const remarksSaveButton = document.getElementById('remarksSaveBtn');
+    const remarksProgress = document.getElementById('remarksProgress');
+    const remarksVisual = window.MailLoading?.create?.(document.getElementById('remarksLoadingCanvas'));
+    let remarksReadController = null;
+
+    function setRemarksPhase(phase) {
+        const saving = phase === 'saving';
+        const busy = phase === 'loading' || saving;
+        remarksDialog.dataset.phase = phase;
+        remarksField.disabled = phase !== 'ready';
+        remarksField.setAttribute('aria-busy', String(busy));
+        remarksSaveButton.disabled = phase !== 'ready';
+        remarksDialog.querySelectorAll('[data-dismiss-remarks]').forEach(button => { button.disabled = saving; });
+        remarksProgress.hidden = !busy;
+        if (busy) document.getElementById('remarksProgressLabel').textContent = saving ? '保存中…' : '加载中...';
+        remarksVisual?.setActive(busy);
+    }
+
+    async function requestMailboxRemarks(query, options) {
+        // Start the request immediately, but let even a fast response show a readable progress state.
+        const [result] = await Promise.all([
+            fetch(`{{ request.script_root }}/admin/api/mailbox${query}`, options).then(readJsonResponse),
+            new Promise(resolve => setTimeout(resolve, 350))
+        ]);
+        return result;
+    }
+
     async function editMailboxRemarks(id) {
+        if (remarksDialog.dataset.phase === 'saving') return;
+        remarksReadController?.abort();
+        const controller = new AbortController();
+        remarksReadController = controller;
+        document.getElementById('remarksMailboxId').value = id;
+        remarksField.value = '';
+        setRemarksPhase('loading');
+        MailboxInteractions.openModal(remarksDialog);
         try {
-            const response = await fetch(`/admin/api/mailbox?id=${id}`);
-            const data = await response.json();
-            
-            if (data.success) {
-                const mailbox = data.data;
-                document.getElementById('remarksMailboxId').value = mailbox.id;
-                document.getElementById('remarksText').value = mailbox.remarks || '';
-                MailboxInteractions.openModal('remarksModal');
-            } else {
-                showToast(data.message || '获取邮箱信息失败', 'error');
+            const result = await requestMailboxRemarks(`?id=${encodeURIComponent(id)}`, { signal: controller.signal });
+            if (controller.signal.aborted) return;
+            if (!result.success || String(result.data?.id) !== String(id)) {
+                closeRemarksModal();
+                showToast(result.message || '获取邮箱信息失败', 'error');
+                return;
+            }
+            remarksField.value = result.data.remarks || '';
+            setRemarksPhase('ready');
+            if (document.activeElement === remarksDialog.querySelector('.modal-close') && !matchMedia('(pointer: coarse), (max-width: 768px)').matches) {
+                remarksField.focus({ preventScroll: true });
             }
         } catch (error) {
+            if (controller.signal.aborted) return;
+            closeRemarksModal();
             console.error('获取邮箱信息失败:', error);
             showToast('获取邮箱信息失败', 'error');
         }
     }
     
     function closeRemarksModal() {
-        MailboxInteractions.closeModal('remarksModal');
+        if (remarksDialog.dataset.phase === 'saving') return;
+        remarksReadController?.abort();
+        remarksReadController = null;
+        setRemarksPhase('closed');
+        MailboxInteractions.closeModal(remarksDialog);
     }
     
     async function saveMailboxRemarks() {
+        if (remarksDialog.dataset.phase !== 'ready') return;
         const mailboxId = document.getElementById('remarksMailboxId').value;
-        const remarks = document.getElementById('remarksText').value;
-        
-        if (!mailboxId) {
-            showToast('邮箱ID缺失', 'error');
-            return;
-        }
-        
+        setRemarksPhase('saving');
+        remarksProgress.focus({ preventScroll: true });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000);
+        let saved = false;
         try {
-            const response = await fetch('/admin/api/mailbox', {
+            const result = await requestMailboxRemarks('', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'update_remarks',
-                    id: parseInt(mailboxId, 10),
-                    remarks: remarks
-                })
+                signal: controller.signal,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update_remarks', id: Number(mailboxId), remarks: remarksField.value })
             });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                showToast('备注保存成功', 'success');
-                closeRemarksModal();
-                loadMailboxes(currentPage, searchQuery);
-            } else {
-                showToast(result.message || '保存失败', 'error');
-            }
+            saved = result.success;
+            if (!saved) showToast(result.message || '保存失败', 'error');
         } catch (error) {
             console.error('保存备注失败:', error);
-            showToast('网络错误，请稍后重试', 'error');
+            showToast(controller.signal.aborted ? '请求超时' : '网络错误，请稍后重试', 'error');
+        } finally {
+            clearTimeout(timeout);
+            setRemarksPhase('ready');
         }
+        if (!saved) {
+            remarksSaveButton.focus({ preventScroll: true });
+            return;
+        }
+        closeRemarksModal();
+        showToast('备注保存成功', 'success');
+        loadMailboxes(currentPage, searchQuery);
     }
     
     // 点击模态框外部关闭
